@@ -22,6 +22,7 @@ void PowerFlowSampler::setRootConfig(const SysfsRootConfig &config)
     m_config = config;
     m_prevRaplEnergyUj = 0;
     m_hasPrevRapl = false;
+    m_dbusPollTick = 0;
 }
 
 PowerFlowSnapshot PowerFlowSampler::sample(qint64 elapsedMs, double cpuLoadPercent, int avgFreqMhz, int maxFreqMhz)
@@ -66,6 +67,39 @@ PowerFlowSnapshot PowerFlowSampler::sample(qint64 elapsedMs, double cpuLoadPerce
                     const double currentA = SysfsReader::readScaledDouble(devDir.filePath(QStringLiteral("current_now")), 1000000.0, 0.0, &cOk);
                     if (cOk && vOk) {
                         snap.batteryWatts = currentA * voltageV;
+                    }
+                }
+
+                // Read energy_now / energy_full / energy_full_design (in uWh -> Wh) or fallback to charge_* (uAh)
+                bool eNowOk = false;
+                double energyNowWh = SysfsReader::readScaledDouble(devDir.filePath(QStringLiteral("energy_now")), 1000000.0, 0.0, &eNowOk);
+                double energyFullWh = SysfsReader::readScaledDouble(devDir.filePath(QStringLiteral("energy_full")), 1000000.0, 0.0);
+                double energyDesignWh = SysfsReader::readScaledDouble(devDir.filePath(QStringLiteral("energy_full_design")), 1000000.0, 0.0);
+
+                if (!eNowOk) {
+                    const double effV = (voltageV > 1.0) ? voltageV : 11.4;
+                    const double chargeNowAh = SysfsReader::readScaledDouble(devDir.filePath(QStringLiteral("charge_now")), 1000000.0, 0.0, &eNowOk);
+                    const double chargeFullAh = SysfsReader::readScaledDouble(devDir.filePath(QStringLiteral("charge_full")), 1000000.0, 0.0);
+                    const double chargeDesignAh = SysfsReader::readScaledDouble(devDir.filePath(QStringLiteral("charge_full_design")), 1000000.0, 0.0);
+                    if (eNowOk) {
+                        energyNowWh = chargeNowAh * effV;
+                        energyFullWh = chargeFullAh * effV;
+                        energyDesignWh = chargeDesignAh * effV;
+                    }
+                }
+
+                if (energyFullWh > 0.1 && energyDesignWh > 0.1) {
+                    snap.batteryHealthPercent = std::clamp((energyFullWh * 100.0) / energyDesignWh, 10.0, 100.0);
+                }
+
+                if (snap.batteryWatts > 0.25 && energyNowWh > 0.0) {
+                    const QString lowerStatus = snap.batteryStatus.toLower();
+                    if (lowerStatus.contains(QStringLiteral("discharging"))) {
+                        snap.batteryTimeRemainingMinutes = std::clamp(
+                            static_cast<int>((energyNowWh / snap.batteryWatts) * 60.0), 1, 2400);
+                    } else if (lowerStatus.contains(QStringLiteral("charging")) && energyFullWh > energyNowWh) {
+                        snap.batteryTimeRemainingMinutes = std::clamp(
+                            static_cast<int>(((energyFullWh - energyNowWh) / snap.batteryWatts) * 60.0), 1, 2400);
                     }
                 }
             }
@@ -120,22 +154,25 @@ PowerFlowSnapshot PowerFlowSampler::sample(qint64 elapsedMs, double cpuLoadPerce
         }
     }
 
-    // Query active Power Profile via D-Bus if using live /sys
+    // Query active Power Profile via D-Bus if using live /sys (throttled to every 5th tick)
     if (m_config.sysRoot == QStringLiteral("/sys") && QDBusConnection::systemBus().isConnected()) {
-        QDBusMessage msg = QDBusMessage::createMethodCall(
-            QStringLiteral("net.hadess.PowerProfiles"),
-            QStringLiteral("/net/hadess/PowerProfiles"),
-            QStringLiteral("org.freedesktop.DBus.Properties"),
-            QStringLiteral("Get"));
-        msg << QStringLiteral("net.hadess.PowerProfiles") << QStringLiteral("ActiveProfile");
-        const QDBusMessage reply = QDBusConnection::systemBus().call(msg, QDBus::Block, 50);
-        if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
-            const QVariant unwrapped = reply.arguments().at(0).value<QDBusVariant>().variant();
-            const QString prof = unwrapped.toString().trimmed();
-            if (!prof.isEmpty()) {
-                snap.activePowerProfile = prof;
+        if ((m_dbusPollTick++ % 5) == 0) {
+            QDBusMessage msg = QDBusMessage::createMethodCall(
+                QStringLiteral("net.hadess.PowerProfiles"),
+                QStringLiteral("/net/hadess/PowerProfiles"),
+                QStringLiteral("org.freedesktop.DBus.Properties"),
+                QStringLiteral("Get"));
+            msg << QStringLiteral("net.hadess.PowerProfiles") << QStringLiteral("ActiveProfile");
+            const QDBusMessage reply = QDBusConnection::systemBus().call(msg, QDBus::Block, 35);
+            if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
+                const QVariant unwrapped = reply.arguments().at(0).value<QDBusVariant>().variant();
+                const QString prof = unwrapped.toString().trimmed();
+                if (!prof.isEmpty()) {
+                    m_cachedPowerProfile = prof;
+                }
             }
         }
+        snap.activePowerProfile = m_cachedPowerProfile;
     }
 
     return snap;

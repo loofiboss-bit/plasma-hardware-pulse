@@ -37,6 +37,12 @@ Kirigami.ScrollablePage {
                         Layout.fillWidth: true
                     }
                     QQC2.Label {
+                        text: powerPage.controller.raplExactAvailable ? "RAPL: Hardware Counter" : "RAPL: Estimated (see udev rule)"
+                        color: powerPage.controller.raplExactAvailable ? "#10b981" : "#38bdf8"
+                        font.bold: true
+                    }
+                    Item { Layout.preferredWidth: 12 }
+                    QQC2.Label {
                         text: powerPage.controller.onAcPower ? "Power Source: AC Adapter" : "Power Source: Battery"
                         color: "#10b981"
                         font.bold: true
@@ -56,16 +62,22 @@ Kirigami.ScrollablePage {
                         font.pixelSize: 16
                     }
                     QQC2.Label {
-                        text: "PL1 (Sustained): " + Math.round(powerPage.controller.pl1LimitWatts) + " W"
+                        text: "PL1 (Sustained): " + Math.round(powerPage.controller.pl1LimitWatts)
+                              + " W  |  PL2 (Burst): " + Math.round(powerPage.controller.pl2LimitWatts) + " W"
                         color: "#cbd5e1"
                     }
                     QQC2.Label {
-                        text: "PL2 (Burst): " + Math.round(powerPage.controller.pl2LimitWatts) + " W"
+                        text: "Cooling Fan: " + (powerPage.controller.primaryFanRpm > 0
+                              ? (powerPage.controller.primaryFanRpm + " RPM")
+                              : "0 RPM (Passive)")
                         color: "#cbd5e1"
                     }
                     QQC2.Label {
                         text: "Battery: " + Math.round(powerPage.controller.batteryPercent)
-                              + "% (" + (powerPage.controller.batteryStatus || "N/A") + ")"
+                              + "% • " + powerPage.controller.batteryTimeRemainingText
+                              + (powerPage.controller.batteryPresent
+                                 ? (" (" + Math.round(powerPage.controller.batteryHealthPercent) + "% health)")
+                                 : "")
                         color: "#cbd5e1"
                     }
                 }
@@ -125,7 +137,7 @@ Kirigami.ScrollablePage {
                     radius: 8
                     color: Qt.rgba(0.10, 0.14, 0.23, 0.85)
                     border.width: 1
-                    border.color: Qt.rgba(1, 1, 1, 0.12)
+                    border.color: modelData.throttleCount > 0 ? "#f97316" : Qt.rgba(1, 1, 1, 0.12)
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -142,6 +154,13 @@ Kirigami.ScrollablePage {
                             QQC2.Label {
                                 text: Math.round(modelData.loadPercent) + "% load"
                                 color: "#f8fafc"
+                                font.bold: true
+                            }
+                            QQC2.Label {
+                                visible: modelData.throttleCount > 0
+                                text: "⚠ " + modelData.throttleCount + " thr"
+                                color: "#f97316"
+                                font.pixelSize: 11
                                 font.bold: true
                             }
                             Item { Layout.fillWidth: true }

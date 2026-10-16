@@ -41,6 +41,9 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(int gpuBoostFreqMhz READ gpuBoostFreqMhz NOTIFY telemetryUpdated)
     Q_PROPERTY(double gpuBusyPercent READ gpuBusyPercent NOTIFY telemetryUpdated)
     Q_PROPERTY(double gpuTempCelsius READ gpuTempCelsius NOTIFY telemetryUpdated)
+    Q_PROPERTY(double gpuVramUsedMib READ gpuVramUsedMib NOTIFY telemetryUpdated)
+    Q_PROPERTY(double gpuVramTotalMib READ gpuVramTotalMib NOTIFY telemetryUpdated)
+    Q_PROPERTY(double gpuPowerWatts READ gpuPowerWatts NOTIFY telemetryUpdated)
 
     // PSI & ZRAM / Memory properties
     Q_PROPERTY(double psiCpuSome10 READ psiCpuSome10 NOTIFY telemetryUpdated)
@@ -48,6 +51,9 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(double psiMemFull10 READ psiMemFull10 NOTIFY telemetryUpdated)
     Q_PROPERTY(double psiIoSome10 READ psiIoSome10 NOTIFY telemetryUpdated)
     Q_PROPERTY(double psiIoFull10 READ psiIoFull10 NOTIFY telemetryUpdated)
+    Q_PROPERTY(double psiCpuStallMs READ psiCpuStallMs NOTIFY telemetryUpdated)
+    Q_PROPERTY(double psiMemStallMs READ psiMemStallMs NOTIFY telemetryUpdated)
+    Q_PROPERTY(double psiIoStallMs READ psiIoStallMs NOTIFY telemetryUpdated)
     Q_PROPERTY(double responsivenessScore READ responsivenessScore NOTIFY telemetryUpdated)
     Q_PROPERTY(double ramUsedPercent READ ramUsedPercent NOTIFY telemetryUpdated)
     Q_PROPERTY(double ramUsedGib READ ramUsedGib NOTIFY telemetryUpdated)
@@ -55,7 +61,10 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(bool zramActive READ zramActive NOTIFY telemetryUpdated)
     Q_PROPERTY(double zramOrigMib READ zramOrigMib NOTIFY telemetryUpdated)
     Q_PROPERTY(double zramComprMib READ zramComprMib NOTIFY telemetryUpdated)
+    Q_PROPERTY(double zramMemUsedMib READ zramMemUsedMib NOTIFY telemetryUpdated)
     Q_PROPERTY(double zramCompressionRatio READ zramCompressionRatio NOTIFY telemetryUpdated)
+    Q_PROPERTY(double swapUsedGib READ swapUsedGib NOTIFY telemetryUpdated)
+    Q_PROPERTY(double swapTotalGib READ swapTotalGib NOTIFY telemetryUpdated)
 
     // Power & Cooling properties
     Q_PROPERTY(bool onAcPower READ onAcPower NOTIFY telemetryUpdated)
@@ -63,6 +72,9 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(QString batteryStatus READ batteryStatus NOTIFY telemetryUpdated)
     Q_PROPERTY(double batteryPercent READ batteryPercent NOTIFY telemetryUpdated)
     Q_PROPERTY(double batteryWatts READ batteryWatts NOTIFY telemetryUpdated)
+    Q_PROPERTY(int batteryTimeRemainingMinutes READ batteryTimeRemainingMinutes NOTIFY telemetryUpdated)
+    Q_PROPERTY(QString batteryTimeRemainingText READ batteryTimeRemainingText NOTIFY telemetryUpdated)
+    Q_PROPERTY(double batteryHealthPercent READ batteryHealthPercent NOTIFY telemetryUpdated)
     Q_PROPERTY(bool raplExactAvailable READ raplExactAvailable NOTIFY telemetryUpdated)
     Q_PROPERTY(double packageWatts READ packageWatts NOTIFY telemetryUpdated)
     Q_PROPERTY(double pl1LimitWatts READ pl1LimitWatts NOTIFY telemetryUpdated)
@@ -82,16 +94,22 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(int culpritPid READ culpritPid NOTIFY telemetryUpdated)
     Q_PROPERTY(double culpritCpuPercent READ culpritCpuPercent NOTIFY telemetryUpdated)
     Q_PROPERTY(double culpritRssMb READ culpritRssMb NOTIFY telemetryUpdated)
+    Q_PROPERTY(QString memoryCulpritName READ memoryCulpritName NOTIFY telemetryUpdated)
+    Q_PROPERTY(int memoryCulpritPid READ memoryCulpritPid NOTIFY telemetryUpdated)
+    Q_PROPERTY(double memoryCulpritRssMb READ memoryCulpritRssMb NOTIFY telemetryUpdated)
 
     // Structured collections for QML views
     Q_PROPERTY(QVariantList domainSensors READ domainSensors NOTIFY telemetryUpdated)
     Q_PROPERTY(QVariantList coreItems READ coreItems NOTIFY telemetryUpdated)
+    Q_PROPERTY(QVariantList topProcesses READ topProcesses NOTIFY telemetryUpdated)
     Q_PROPERTY(QVariantList historySamples READ historySamples NOTIFY telemetryUpdated)
     Q_PROPERTY(int selectedHistoryIndex READ selectedHistoryIndex WRITE setSelectedHistoryIndex NOTIFY selectedHistoryChanged)
     Q_PROPERTY(QVariantMap selectedHistoryDetail READ selectedHistoryDetail NOTIFY selectedHistoryChanged)
 
     Q_PROPERTY(int pollIntervalMs READ pollIntervalMs WRITE setPollIntervalMs NOTIFY pollIntervalChanged)
     Q_PROPERTY(bool notificationsEnabled READ notificationsEnabled WRITE setNotificationsEnabled NOTIFY notificationsEnabledChanged)
+    Q_PROPERTY(bool recordingPaused READ recordingPaused WRITE setRecordingPaused NOTIFY recordingPausedChanged)
+    Q_PROPERTY(QString lastActionStatus READ lastActionStatus NOTIFY lastActionStatusChanged)
 
 public:
     explicit PulseTelemetryController(QObject *parent = nullptr);
@@ -112,12 +130,18 @@ public:
     int gpuBoostFreqMhz() const { return m_gpu.boostFreqMhz; }
     double gpuBusyPercent() const { return m_gpu.busyPercent; }
     double gpuTempCelsius() const { return m_gpu.tempCelsius; }
+    double gpuVramUsedMib() const { return m_gpu.vramUsedMegabytes; }
+    double gpuVramTotalMib() const { return m_gpu.vramTotalMegabytes; }
+    double gpuPowerWatts() const { return m_gpu.powerWatts; }
 
     double psiCpuSome10() const { return m_psiMem.cpuPsi.someAvg10; }
     double psiMemSome10() const { return m_psiMem.memoryPsi.someAvg10; }
     double psiMemFull10() const { return m_psiMem.memoryPsi.fullAvg10; }
     double psiIoSome10() const { return m_psiMem.ioPsi.someAvg10; }
     double psiIoFull10() const { return m_psiMem.ioPsi.fullAvg10; }
+    double psiCpuStallMs() const { return m_psiMem.cpuPsi.deltaStallMsPerSec; }
+    double psiMemStallMs() const { return m_psiMem.memoryPsi.deltaStallMsPerSec; }
+    double psiIoStallMs() const { return m_psiMem.ioPsi.deltaStallMsPerSec; }
     double responsivenessScore() const { return m_psiMem.responsivenessScore; }
     double ramUsedPercent() const { return m_psiMem.ramUsedPercent; }
     double ramUsedGib() const { return static_cast<double>(m_psiMem.ramUsedBytes) / (1024.0 * 1024.0 * 1024.0); }
@@ -125,13 +149,25 @@ public:
     bool zramActive() const { return m_psiMem.zramActive; }
     double zramOrigMib() const { return static_cast<double>(m_psiMem.zramOrigBytes) / (1024.0 * 1024.0); }
     double zramComprMib() const { return static_cast<double>(m_psiMem.zramCompressedBytes) / (1024.0 * 1024.0); }
+    double zramMemUsedMib() const { return static_cast<double>(m_psiMem.zramMemUsedTotalBytes) / (1024.0 * 1024.0); }
     double zramCompressionRatio() const { return m_psiMem.zramCompressionRatio; }
+    double swapUsedGib() const
+    {
+        const quint64 used = (m_psiMem.swapTotalBytes > m_psiMem.swapFreeBytes)
+            ? (m_psiMem.swapTotalBytes - m_psiMem.swapFreeBytes)
+            : 0ULL;
+        return static_cast<double>(used) / (1024.0 * 1024.0 * 1024.0);
+    }
+    double swapTotalGib() const { return static_cast<double>(m_psiMem.swapTotalBytes) / (1024.0 * 1024.0 * 1024.0); }
 
     bool onAcPower() const { return m_power.onAcPower; }
     bool batteryPresent() const { return m_power.batteryPresent; }
     QString batteryStatus() const { return m_power.batteryStatus; }
     double batteryPercent() const { return m_power.batteryPercent; }
     double batteryWatts() const { return m_power.batteryWatts; }
+    int batteryTimeRemainingMinutes() const { return m_power.batteryTimeRemainingMinutes; }
+    QString batteryTimeRemainingText() const;
+    double batteryHealthPercent() const { return m_power.batteryHealthPercent; }
     bool raplExactAvailable() const { return m_power.raplExactAvailable; }
     double packageWatts() const { return m_power.packageWatts; }
     double pl1LimitWatts() const { return m_power.pl1LimitWatts; }
@@ -150,9 +186,13 @@ public:
     int culpritPid() const { return m_verdict.topProcess.pid; }
     double culpritCpuPercent() const { return m_verdict.topProcess.cpuPercent; }
     double culpritRssMb() const { return m_verdict.topProcess.rssMegabytes; }
+    QString memoryCulpritName() const { return m_verdict.topMemoryProcess.name; }
+    int memoryCulpritPid() const { return m_verdict.topMemoryProcess.pid; }
+    double memoryCulpritRssMb() const { return m_verdict.topMemoryProcess.rssMegabytes; }
 
     QVariantList domainSensors() const { return m_domainSensorsVariant; }
     QVariantList coreItems() const { return m_coreItemsVariant; }
+    QVariantList topProcesses() const { return m_topProcessesVariant; }
     QVariantList historySamples() const { return m_historySamplesVariant; }
 
     int selectedHistoryIndex() const { return m_selectedHistoryIndex; }
@@ -165,20 +205,31 @@ public:
     bool notificationsEnabled() const { return m_notificationsEnabled; }
     void setNotificationsEnabled(bool enabled);
 
+    bool recordingPaused() const { return m_recordingPaused; }
+    void setRecordingPaused(bool paused);
+
+    QString lastActionStatus() const { return m_lastActionStatus; }
+
     Q_INVOKABLE void refreshNow();
     Q_INVOKABLE bool setPowerProfile(const QString &profile);
     Q_INVOKABLE void launchStudioApp();
     Q_INVOKABLE int jumpToPeakThermalSpike();
     Q_INVOKABLE int jumpToWorstStallSpike();
+    Q_INVOKABLE bool terminateProcess(int pid, const QString &name = QString());
+    Q_INVOKABLE QString copyIncidentReportToClipboard();
+    Q_INVOKABLE QString exportIncidentReportToFile();
 
 Q_SIGNALS:
     void telemetryUpdated();
     void selectedHistoryChanged();
     void pollIntervalChanged();
     void notificationsEnabledChanged();
+    void recordingPausedChanged();
+    void lastActionStatusChanged();
 
 private:
     void maybeEmitAlertNotifications();
+    void setLastActionStatus(const QString &status);
     static QVariantMap sampleToVariantMap(const FlightSample &s, int index);
 
     SysfsReader m_sysfsReader;
@@ -190,19 +241,23 @@ private:
     QTimer m_timer;
     QElapsedTimer m_elapsed;
     bool m_notificationsEnabled = true;
+    bool m_recordingPaused = false;
     qint64 m_lastAlertTimestampMs = 0;
+    QString m_lastActionStatus;
 
     QList<DomainSensorReading> m_domains;
     CpuSocSnapshot m_cpu;
     GpuSnapshot m_gpu;
     PsiAndMemorySnapshot m_psiMem;
     PowerFlowSnapshot m_power;
+    ProcessRadarSnapshot m_processRadar;
     CausalVerdict m_verdict;
     double m_nvmeTemp = 0.0;
     double m_wifiTemp = 0.0;
 
     QVariantList m_domainSensorsVariant;
     QVariantList m_coreItemsVariant;
+    QVariantList m_topProcessesVariant;
     QVariantList m_historySamplesVariant;
     int m_selectedHistoryIndex = -1;
 };

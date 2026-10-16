@@ -78,6 +78,9 @@ struct GpuSnapshot
     int boostFreqMhz = 0;
     double busyPercent = 0.0;
     double tempCelsius = 0.0;
+    double vramUsedMegabytes = 0.0;
+    double vramTotalMegabytes = 0.0;
+    double powerWatts = 0.0;
 };
 
 struct PsiMetric
@@ -121,6 +124,8 @@ struct PowerFlowSnapshot
     double batteryPercent = 100.0;
     double batteryWatts = 0.0;
     double batteryVoltageVolts = 0.0;
+    int batteryTimeRemainingMinutes = -1;
+    double batteryHealthPercent = 100.0;
 
     bool raplExactAvailable = false;
     double packageWatts = 0.0;
@@ -140,6 +145,13 @@ struct CulpritProcess
     double rssMegabytes = 0.0;
 };
 
+struct ProcessRadarSnapshot
+{
+    CulpritProcess topCpuProcess;
+    CulpritProcess topMemoryProcess;
+    QList<CulpritProcess> topProcesses;
+};
+
 struct CausalVerdict
 {
     VerdictSeverity severity = VerdictSeverity::Nominal;
@@ -148,6 +160,7 @@ struct CausalVerdict
     QString recommendation;
     QString primaryBottleneckDomain;
     CulpritProcess topProcess;
+    CulpritProcess topMemoryProcess;
 };
 
 struct FlightSample
@@ -158,6 +171,8 @@ struct FlightSample
     double wifiTempCelsius = 0.0;
     double cpuLoadPercent = 0.0;
     int cpuFreqMhz = 0;
+    double gpuBusyPercent = 0.0;
+    double gpuTempCelsius = 0.0;
     double psiCpuSome10 = 0.0;
     double psiMemSome10 = 0.0;
     double psiIoFull10 = 0.0;
@@ -169,6 +184,7 @@ struct FlightSample
     QString culpritName;
     int culpritPid = 0;
     double culpritCpuPercent = 0.0;
+    double culpritRssMb = 0.0;
 };
 
 } // namespace LoofiPulse

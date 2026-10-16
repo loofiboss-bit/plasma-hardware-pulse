@@ -19,6 +19,8 @@ private:
     SysfsRootConfig m_config;
     quint64 m_prevRaplEnergyUj = 0;
     bool m_hasPrevRapl = false;
+    QString m_cachedPowerProfile = QStringLiteral("balanced");
+    int m_dbusPollTick = 0;
 };
 
 } // namespace LoofiPulse

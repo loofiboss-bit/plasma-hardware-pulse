@@ -63,9 +63,10 @@ Kirigami.ScrollablePage {
                     anchors.margins: Kirigami.Units.largeSpacing
                     QQC2.Label { text: "CPU PRESSURE (/proc/pressure/cpu)"; color: "#94a3b8"; font.pixelSize: 11; font.bold: true }
                     QQC2.Label {
-                        text: "some avg10: " + psiPage.controller.psiCpuSome10.toFixed(2) + " %"
+                        text: "some: " + psiPage.controller.psiCpuSome10.toFixed(2) + "%  ("
+                              + Math.round(psiPage.controller.psiCpuStallMs) + " ms/s)"
                         color: "#f8fafc"
-                        font.pixelSize: 20
+                        font.pixelSize: 19
                         font.bold: true
                     }
                     QQC2.Label {
@@ -93,9 +94,10 @@ Kirigami.ScrollablePage {
                     QQC2.Label { text: "MEMORY PRESSURE (/proc/pressure/memory)"; color: "#94a3b8"; font.pixelSize: 11; font.bold: true }
                     QQC2.Label {
                         text: "some: " + psiPage.controller.psiMemSome10.toFixed(2)
-                              + "%  |  full: " + psiPage.controller.psiMemFull10.toFixed(2) + "%"
+                              + "% | full: " + psiPage.controller.psiMemFull10.toFixed(2)
+                              + "% (" + Math.round(psiPage.controller.psiMemStallMs) + " ms/s)"
                         color: "#f8fafc"
-                        font.pixelSize: 19
+                        font.pixelSize: 18
                         font.bold: true
                     }
                     QQC2.Label {
@@ -123,9 +125,10 @@ Kirigami.ScrollablePage {
                     QQC2.Label { text: "I/O PRESSURE (/proc/pressure/io)"; color: "#94a3b8"; font.pixelSize: 11; font.bold: true }
                     QQC2.Label {
                         text: "some: " + psiPage.controller.psiIoSome10.toFixed(2)
-                              + "%  |  full: " + psiPage.controller.psiIoFull10.toFixed(2) + "%"
+                              + "% | full: " + psiPage.controller.psiIoFull10.toFixed(2)
+                              + "% (" + Math.round(psiPage.controller.psiIoStallMs) + " ms/s)"
                         color: "#f8fafc"
-                        font.pixelSize: 19
+                        font.pixelSize: 18
                         font.bold: true
                     }
                     QQC2.Label {
@@ -142,7 +145,7 @@ Kirigami.ScrollablePage {
         // Visual Memory & ZRAM Pipeline
         Kirigami.Heading {
             level: 3
-            text: "Logical Memory Pipeline: Physical RAM ➔ ZRAM Compression Engine"
+            text: "Logical Memory Pipeline: Physical RAM ➔ ZRAM Compression Engine ➔ Swap"
         }
 
         Rectangle {
@@ -171,6 +174,14 @@ Kirigami.ScrollablePage {
                     }
                     Item { Layout.fillWidth: true }
                     QQC2.Label {
+                        text: "Swap Used: " + psiPage.controller.swapUsedGib.toFixed(2) + " / "
+                              + psiPage.controller.swapTotalGib.toFixed(2) + " GiB"
+                        color: "#38bdf8"
+                        font.bold: true
+                        font.pixelSize: 15
+                    }
+                    Item { Layout.preferredWidth: 16 }
+                    QQC2.Label {
                         text: psiPage.controller.zramActive
                               ? ("ZRAM Efficiency: " + psiPage.controller.zramCompressionRatio.toFixed(2) + "× compression")
                               : "ZRAM inactive"
@@ -198,10 +209,69 @@ Kirigami.ScrollablePage {
                     Layout.fillWidth: true
                     text: "ZRAM (/sys/block/zram0/mm_stat): Uncompressed data "
                           + Math.round(psiPage.controller.zramOrigMib) + " MiB compressed down to "
-                          + Math.round(psiPage.controller.zramComprMib) + " MiB in RAM (Physical RAM saved: "
+                          + Math.round(psiPage.controller.zramComprMib) + " MiB payload ("
+                          + Math.round(psiPage.controller.zramMemUsedMib) + " MiB total allocator RAM used • Physical RAM saved: "
                           + Math.max(0, Math.round(psiPage.controller.zramOrigMib - psiPage.controller.zramComprMib)) + " MiB)."
                     color: "#cbd5e1"
                     wrapMode: Text.WordWrap
+                }
+            }
+        }
+
+        // Top Resource Processes (CPU & RAM/RSS Culprits) with Terminate Action
+        Kirigami.Heading {
+            level: 3
+            text: "Top Resource Culprits (Live CPU & Memory RSS Radar)"
+        }
+
+        Repeater {
+            model: psiPage.controller.topProcesses
+
+            delegate: Rectangle {
+                required property var modelData
+                Layout.fillWidth: true
+                implicitHeight: 54
+                radius: 8
+                color: Qt.rgba(0.10, 0.14, 0.23, 0.85)
+                border.width: 1
+                border.color: Qt.rgba(1, 1, 1, 0.12)
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: Kirigami.Units.largeSpacing
+                    anchors.rightMargin: Kirigami.Units.largeSpacing
+                    spacing: Kirigami.Units.largeSpacing
+
+                    QQC2.Label {
+                        Layout.preferredWidth: 260
+                        text: modelData.name + "  (PID " + modelData.pid + ")"
+                        color: "#f8fafc"
+                        font.bold: true
+                        elide: Text.ElideRight
+                    }
+
+                    QQC2.Label {
+                        Layout.preferredWidth: 140
+                        text: "CPU: " + Number(modelData.cpuPercent || 0).toFixed(1) + "%"
+                        color: Number(modelData.cpuPercent || 0) >= 25.0 ? "#f59e0b" : "#38bdf8"
+                        font.bold: true
+                        font.family: "monospace"
+                    }
+
+                    QQC2.Label {
+                        Layout.preferredWidth: 180
+                        text: "Memory RSS: " + Math.round(Number(modelData.rssMegabytes || 0)) + " MiB"
+                        color: "#cbd5e1"
+                        font.family: "monospace"
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    QQC2.Button {
+                        icon.name: "process-stop"
+                        text: "Terminate (SIGTERM)"
+                        onClicked: psiPage.controller.terminateProcess(modelData.pid, modelData.name)
+                    }
                 }
             }
         }

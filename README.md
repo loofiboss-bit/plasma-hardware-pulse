@@ -4,18 +4,21 @@
 
 Instead of dumping dozens of disconnected raw numbers, Loofi Pulse correlates **driving process ➔ power draw / PSI stall ➔ clock frequency / throttling ➔ thermal headroom** in real time.
 
-## Architecture & Key Capabilities
+## Architecture & Key Capabilities (v0.2.0)
 
 1. **Causal Bottleneck & Thermal Diagnosis (`CausalDiagnosisEngine`)**:
    - Computes **Thermal Headroom ($\Delta T$)** relative to hardware `temp*_max`/`crit` limits alongside **Thermal Velocity ($\frac{dT}{dt}$ in °C/s)**.
-   - Reads hardware `thermal_throttle` counters (`/sys/devices/system/cpu/cpu*/thermal_throttle/*_throttle_count`) and attributes spikes to the top active process in `/proc/[pid]/stat`.
-2. **Linux PSI (Pressure Stall Information) & ZRAM Pipeline (`PsiMemorySampler`)**:
-   - Reads `/proc/pressure/{cpu,memory,io}` (`some` and `full`) to measure *actual user-perceivable stall time* rather than raw RAM allocation.
-   - Parses `/sys/block/zram0/mm_stat` to display real-time **ZRAM compression ratio** (e.g. `4.1× compression`) and physical RAM saved.
-3. **Energy Flow & Power Control (`PowerFlowSampler`)**:
-   - Displays Package/Battery Watts, Intel RAPL PL1/PL2 power limits, and provides 1-click **Power Profile** switching (`power-saver`, `balanced`, `performance`) over D-Bus (`net.hadess.PowerProfiles`).
-4. **Flight Recorder with Spike Attribution (`FlightRecorder`)**:
-   - Circular 5-minute history buffer (1-second resolution) recording both telemetry and the top driving process at every sample. Click or drag anywhere on the timeline to inspect historical spikes.
+   - Evaluates **CPU Thermal Throttling**, **Linux Memory/I/O PSI Bottlenecks**, and **GPU Compute/Thermal Saturation** (including DRM VRAM & GPU Power).
+   - Attributes CPU/thermal spikes to the top CPU consumer and **Memory PSI stalls to the top RAM/RSS consumer**, with 1-click **Process Termination (`SIGTERM`)** directly from the UI.
+2. **Linux PSI (Pressure Stall Information), ZRAM & Top-5 Process Radar (`PsiMemorySampler` & `CpuSocSampler`)**:
+   - Reads `/proc/pressure/{cpu,memory,io}` (`some`, `full`, and `ms/s` stall rates) to measure *actual user-perceivable stall time* rather than raw RAM allocation.
+   - Parses `/sys/block/zram0/mm_stat` and `/proc/meminfo` to display real-time **ZRAM compression ratio**, allocator overhead, physical RAM saved, and Swap usage alongside a live **Top-5 CPU & Memory RSS Process Radar**.
+3. **Energy Flow, Power Control & Battery Health (`PowerFlowSampler`)**:
+   - Displays Package/Battery Watts, **Hardware Exact vs Estimated RAPL** status, Intel RAPL PL1/PL2 power limits, **Primary Fan RPM**, **Battery ETA (time remaining)**, and **Battery Health / Wear %**.
+   - Provides non-blocking cached D-Bus polling and 1-click **Power Profile** switching (`power-saver`, `balanced`, `performance`) over `net.hadess.PowerProfiles`.
+4. **Flight Recorder 2.0 with Incident Markers & Report Export (`FlightRecorder`)**:
+   - Incremental 5-minute history buffer (configurable `500ms` / `1000ms` / `2000ms` poll rate + Pause/Resume) with toggleable multi-channel traces (**CPU Temp**, **CPU Load**, **PSI Score**, **System Power**) and visual **Throttle/Bottleneck bands**.
+   - 1-click **Markdown & JSON Diagnostic Report Export** to clipboard or `~/.local/share/loofi-pulse/reports/`.
 
 ## Build, Test, and Run
 

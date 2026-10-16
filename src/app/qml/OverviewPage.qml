@@ -8,6 +8,7 @@ Kirigami.ScrollablePage {
     title: "Causal Pulse & Physical Topology"
 
     required property var controller
+    property int selectedDomainFilter: -1
 
     function severityColor(sev) {
         if (sev >= 3) return "#ef4444"
@@ -79,11 +80,36 @@ Kirigami.ScrollablePage {
                     }
                 }
 
-                QQC2.Label {
+                RowLayout {
                     Layout.fillWidth: true
-                    text: "Diagnosis & Action: " + overviewPage.controller.verdictRecommendation
-                    color: "#cbd5e1"
-                    wrapMode: Text.WordWrap
+                    spacing: Kirigami.Units.mediumSpacing
+
+                    QQC2.Label {
+                        Layout.fillWidth: true
+                        text: "Diagnosis & Action: " + overviewPage.controller.verdictRecommendation
+                        color: "#cbd5e1"
+                        wrapMode: Text.WordWrap
+                    }
+
+                    QQC2.Button {
+                        visible: overviewPage.controller.culpritPid > 1 && overviewPage.controller.culpritCpuPercent >= 5.0
+                        icon.name: "process-stop"
+                        text: "Terminate " + overviewPage.controller.culpritName + " (" + overviewPage.controller.culpritPid + ")"
+                        onClicked: overviewPage.controller.terminateProcess(overviewPage.controller.culpritPid, overviewPage.controller.culpritName)
+                    }
+
+                    QQC2.Button {
+                        visible: overviewPage.controller.verdictSeverity >= 2 && overviewPage.controller.activePowerProfile === "performance"
+                        icon.name: "battery-profile-balanced"
+                        text: "Switch to Balanced"
+                        onClicked: overviewPage.controller.setPowerProfile("balanced")
+                    }
+
+                    QQC2.Button {
+                        icon.name: "edit-copy"
+                        text: "Copy Report"
+                        onClicked: overviewPage.controller.copyIncidentReportToClipboard()
+                    }
                 }
             }
         }
@@ -219,10 +245,89 @@ Kirigami.ScrollablePage {
             }
         }
 
+        // 2b. Secondary Hardware Strip (GPU, Cooling Fan, Battery ETA & RAPL Mode)
+        Rectangle {
+            Layout.fillWidth: true
+            implicitHeight: 54
+            radius: 10
+            color: Qt.rgba(0.09, 0.13, 0.21, 0.88)
+            border.width: 1
+            border.color: Qt.rgba(1, 1, 1, 0.12)
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: Kirigami.Units.largeSpacing
+                anchors.rightMargin: Kirigami.Units.largeSpacing
+                spacing: Kirigami.Units.largeSpacing
+
+                QQC2.Label {
+                    text: overviewPage.controller.gpuAvailable
+                          ? ("GPU (" + overviewPage.controller.gpuDriverName + "): "
+                             + Math.round(overviewPage.controller.gpuBusyPercent) + "% @ "
+                             + overviewPage.controller.gpuCurrentFreqMhz + " MHz • "
+                             + overviewPage.controller.gpuTempCelsius.toFixed(0) + "°C"
+                             + (overviewPage.controller.gpuVramTotalMib > 0
+                                ? (" • VRAM " + Math.round(overviewPage.controller.gpuVramUsedMib) + "/" + Math.round(overviewPage.controller.gpuVramTotalMib) + " MiB")
+                                : ""))
+                          : "GPU: Integrated / Sysfs DRM idle"
+                    color: "#38bdf8"
+                    font.bold: true
+                }
+
+                Item { Layout.fillWidth: true }
+
+                QQC2.Label {
+                    text: "Cooling Fan: " + (overviewPage.controller.primaryFanRpm > 0
+                          ? (overviewPage.controller.primaryFanRpm + " RPM")
+                          : "0 RPM (Passive)")
+                    color: "#cbd5e1"
+                }
+
+                QQC2.Label {
+                    text: "Battery: " + overviewPage.controller.batteryTimeRemainingText
+                          + (overviewPage.controller.batteryPresent
+                             ? (" (" + Math.round(overviewPage.controller.batteryHealthPercent) + "% health)")
+                             : "")
+                    color: "#cbd5e1"
+                }
+
+                QQC2.Label {
+                    text: overviewPage.controller.raplExactAvailable ? "RAPL: Hardware Exact" : "RAPL: Estimated"
+                    color: overviewPage.controller.raplExactAvailable ? "#10b981" : "#f59e0b"
+                    font.pixelSize: 12
+                    font.bold: true
+                }
+            }
+        }
+
         // 3. Topological Sensor Map (Grouped by Physical Hardware Domain)
-        Kirigami.Heading {
-            level: 3
-            text: "Physical Hardware Topology (Auto-Discovered Kernel Sensors)"
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Kirigami.Units.smallSpacing
+
+            Kirigami.Heading {
+                level: 3
+                text: "Physical Hardware Topology"
+                Layout.fillWidth: true
+            }
+
+            Repeater {
+                model: [
+                    { label: "All Domains", domainId: -1 },
+                    { label: "CPU & SoC", domainId: 0 },
+                    { label: "GPU", domainId: 1 },
+                    { label: "NVMe Storage", domainId: 3 },
+                    { label: "Wireless", domainId: 4 },
+                    { label: "Chassis", domainId: 6 }
+                ]
+                delegate: QQC2.Button {
+                    required property var modelData
+                    text: modelData.label
+                    checkable: true
+                    checked: overviewPage.selectedDomainFilter === modelData.domainId
+                    onClicked: overviewPage.selectedDomainFilter = modelData.domainId
+                }
+            }
         }
 
         Repeater {
@@ -230,8 +335,9 @@ Kirigami.ScrollablePage {
 
             delegate: Rectangle {
                 required property var modelData
+                visible: overviewPage.selectedDomainFilter < 0 || modelData.domainId === overviewPage.selectedDomainFilter
                 Layout.fillWidth: true
-                implicitHeight: 62
+                implicitHeight: visible ? 62 : 0
                 radius: 8
                 color: Qt.rgba(0.09, 0.13, 0.21, 0.78)
                 border.width: 1

@@ -22,6 +22,9 @@ public:
     int peakTemperatureIndex() const;
     int worstResponsivenessIndex() const;
 
+    QString exportSummaryMarkdown() const;
+    QString exportSamplesJson() const;
+
 private:
     int m_capacity = 300;
     QList<FlightSample> m_samples;
