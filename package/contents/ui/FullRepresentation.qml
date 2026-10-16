@@ -37,6 +37,12 @@ Item {
             }
 
             PlasmaComponents3.Button {
+                icon.name: "edit-copy"
+                text: "Copy Report"
+                onClicked: fullRoot.controller.copyIncidentReportToClipboard()
+            }
+
+            PlasmaComponents3.Button {
                 icon.name: "window-new"
                 text: "Open Studio"
                 onClicked: fullRoot.controller.launchStudioApp()
@@ -225,13 +231,14 @@ Item {
                     }
                     PlasmaComponents3.Label {
                         text: "~" + fullRoot.controller.packageWatts.toFixed(1) + " W  •  "
-                              + (fullRoot.controller.onAcPower ? "AC Power" : ("BAT " + Math.round(fullRoot.controller.batteryPercent) + "%"))
+                              + fullRoot.controller.batteryTimeRemainingText
                         font.bold: true
                         font.pixelSize: Kirigami.Theme.defaultFont.pixelSize + 2
                     }
                     PlasmaComponents3.Label {
-                        text: "PL1: " + Math.round(fullRoot.controller.pl1LimitWatts) + "W / PL2: "
-                              + Math.round(fullRoot.controller.pl2LimitWatts) + "W"
+                        text: "PL1/2: " + Math.round(fullRoot.controller.pl1LimitWatts) + "/"
+                              + Math.round(fullRoot.controller.pl2LimitWatts) + "W  |  Fan: "
+                              + (fullRoot.controller.primaryFanRpm > 0 ? (fullRoot.controller.primaryFanRpm + " RPM") : "0 RPM")
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                         opacity: 0.8
                     }

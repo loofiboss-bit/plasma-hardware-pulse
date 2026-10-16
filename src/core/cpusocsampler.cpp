@@ -6,6 +6,7 @@
 #include <QRegularExpression>
 
 #include <algorithm>
+#include <csignal>
 #include <unistd.h>
 
 namespace LoofiPulse
@@ -211,6 +212,31 @@ GpuSnapshot CpuSocSampler::sampleGpu(const QList<DomainSensorReading> &domainRea
                     gpu.busyPercent = std::clamp((static_cast<double>(actMhz) * 100.0) / static_cast<double>(boostMhz), 0.0, 100.0);
                 }
             }
+
+            bool vramUsedOk = false;
+            const qint64 vramUsedBytes = SysfsReader::readInt64(cardDir.filePath(QStringLiteral("device/mem_info_vram_used")), 0, &vramUsedOk);
+            const qint64 vramTotalBytes = SysfsReader::readInt64(cardDir.filePath(QStringLiteral("device/mem_info_vram_total")), 0);
+            if (vramUsedOk && vramTotalBytes > 0) {
+                gpu.vramUsedMegabytes = static_cast<double>(vramUsedBytes) / (1024.0 * 1024.0);
+                gpu.vramTotalMegabytes = static_cast<double>(vramTotalBytes) / (1024.0 * 1024.0);
+            }
+
+            const QDir gpuHwmonDir(cardDir.filePath(QStringLiteral("device/hwmon")));
+            if (gpuHwmonDir.exists()) {
+                const QStringList subHwmons = gpuHwmonDir.entryList(QStringList{QStringLiteral("hwmon*")}, QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+                for (const QString &sub : subHwmons) {
+                    const QDir subDir(gpuHwmonDir.filePath(sub));
+                    bool pOk = false;
+                    double pWatts = SysfsReader::readScaledDouble(subDir.filePath(QStringLiteral("power1_average")), 1000000.0, 0.0, &pOk);
+                    if (!pOk || pWatts <= 0.0) {
+                        pWatts = SysfsReader::readScaledDouble(subDir.filePath(QStringLiteral("power1_input")), 1000000.0, 0.0, &pOk);
+                    }
+                    if (pOk && pWatts > 0.0) {
+                        gpu.powerWatts = pWatts;
+                        break;
+                    }
+                }
+            }
             break;
         }
     }
@@ -236,10 +262,15 @@ GpuSnapshot CpuSocSampler::sampleGpu(const QList<DomainSensorReading> &domainRea
 
 CulpritProcess CpuSocSampler::sampleTopCulpritProcess()
 {
-    CulpritProcess top;
+    return sampleProcessRadar(1).topCpuProcess;
+}
+
+ProcessRadarSnapshot CpuSocSampler::sampleProcessRadar(int maxTopProcesses)
+{
+    ProcessRadarSnapshot radar;
     const QDir procDir(m_config.procRoot);
     if (!procDir.exists()) {
-        return top;
+        return radar;
     }
 
     const quint64 currentSysTicks = m_prevTotalJiffies.total;
@@ -250,7 +281,7 @@ CulpritProcess CpuSocSampler::sampleTopCulpritProcess()
 
     const QStringList entries = procDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
     QHash<int, quint64> nextProcTicks;
-    quint64 bestDeltaTicks = 0;
+    QList<CulpritProcess> candidates;
 
     const long pageSizeKb = std::max(4L, sysconf(_SC_PAGESIZE) / 1024L);
     const int numCpus = std::max(1, static_cast<int>(m_prevCoreJiffies.size()));
@@ -285,27 +316,68 @@ CulpritProcess CpuSocSampler::sampleTopCulpritProcess()
         const quint64 totalTicks = utime + stime;
         nextProcTicks.insert(pid, totalTicks);
 
+        const qint64 rssPages = std::max<qint64>(0, rest.at(21).toLongLong());
+        const double rssMb = static_cast<double>(rssPages * pageSizeKb) / 1024.0;
+
+        double cpuPct = 0.0;
         if (m_prevProcTicks.contains(pid)) {
             const quint64 prevTicks = m_prevProcTicks.value(pid);
             if (totalTicks > prevTicks) {
                 const quint64 dTicks = totalTicks - prevTicks;
-                if (dTicks > bestDeltaTicks) {
-                    bestDeltaTicks = dTicks;
-                    top.pid = pid;
-                    top.name = comm;
-                    top.cpuPercent = std::clamp(
-                        (static_cast<double>(dTicks) * 100.0 * static_cast<double>(numCpus)) / static_cast<double>(deltaSysTicks),
-                        0.0,
-                        100.0 * static_cast<double>(numCpus));
-                    const qint64 rssPages = rest.at(21).toLongLong();
-                    top.rssMegabytes = static_cast<double>(rssPages * pageSizeKb) / 1024.0;
-                }
+                cpuPct = std::clamp(
+                    (static_cast<double>(dTicks) * 100.0 * static_cast<double>(numCpus)) / static_cast<double>(deltaSysTicks),
+                    0.0,
+                    100.0 * static_cast<double>(numCpus));
             }
+        }
+
+        if (cpuPct > 0.05 || rssMb >= 8.0) {
+            CulpritProcess cp;
+            cp.pid = pid;
+            cp.name = comm;
+            cp.cpuPercent = cpuPct;
+            cp.rssMegabytes = rssMb;
+            candidates.append(cp);
+        }
+
+        if (cpuPct > radar.topCpuProcess.cpuPercent) {
+            radar.topCpuProcess.pid = pid;
+            radar.topCpuProcess.name = comm;
+            radar.topCpuProcess.cpuPercent = cpuPct;
+            radar.topCpuProcess.rssMegabytes = rssMb;
+        }
+
+        if (rssMb > radar.topMemoryProcess.rssMegabytes) {
+            radar.topMemoryProcess.pid = pid;
+            radar.topMemoryProcess.name = comm;
+            radar.topMemoryProcess.cpuPercent = cpuPct;
+            radar.topMemoryProcess.rssMegabytes = rssMb;
         }
     }
 
     m_prevProcTicks = std::move(nextProcTicks);
-    return top;
+
+    // Sort candidates by combined impact (CPU % weighted + RSS in GiB)
+    std::sort(candidates.begin(), candidates.end(), [](const CulpritProcess &a, const CulpritProcess &b) {
+        const double scoreA = a.cpuPercent * 2.0 + (a.rssMegabytes / 256.0);
+        const double scoreB = b.cpuPercent * 2.0 + (b.rssMegabytes / 256.0);
+        return scoreA > scoreB;
+    });
+
+    const int limit = std::min<int>(std::max(1, maxTopProcesses), static_cast<int>(candidates.size()));
+    for (int i = 0; i < limit; ++i) {
+        radar.topProcesses.append(candidates.at(i));
+    }
+
+    return radar;
+}
+
+bool CpuSocSampler::terminateProcess(int pid)
+{
+    if (pid <= 1) {
+        return false;
+    }
+    return ::kill(static_cast<pid_t>(pid), SIGTERM) == 0;
 }
 
 } // namespace LoofiPulse

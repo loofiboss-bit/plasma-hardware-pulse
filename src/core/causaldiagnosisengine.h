@@ -14,7 +14,8 @@ public:
         const PsiAndMemorySnapshot &psiMem,
         const PowerFlowSnapshot &power,
         const QList<DomainSensorReading> &domains,
-        const CulpritProcess &culprit);
+        const CulpritProcess &culprit,
+        const CulpritProcess &memoryCulprit = {});
 };
 
 } // namespace LoofiPulse

@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
     KAboutData aboutData(
         QStringLiteral("loofi-pulse"),
         QStringLiteral("Loofi Pulse"),
-        QStringLiteral("0.1.0"),
+        QStringLiteral("0.2.0"),
         QStringLiteral("Causal & Topological KDE Plasma 6 Hardware Monitor"),
         KAboutLicense::GPL_V3,
         QStringLiteral("© 2026 Loofi"));

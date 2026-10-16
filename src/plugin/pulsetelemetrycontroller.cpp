@@ -1,10 +1,13 @@
 #include "pulsetelemetrycontroller.h"
 
 #include <KNotification>
+#include <QClipboard>
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
+#include <QGuiApplication>
 #include <QProcess>
 #include <QStandardPaths>
 
@@ -46,6 +49,45 @@ void PulseTelemetryController::setNotificationsEnabled(bool enabled)
     Q_EMIT notificationsEnabledChanged();
 }
 
+void PulseTelemetryController::setRecordingPaused(bool paused)
+{
+    if (m_recordingPaused == paused) {
+        return;
+    }
+    m_recordingPaused = paused;
+    setLastActionStatus(paused ? QStringLiteral("Flight Recorder paused") : QStringLiteral("Flight Recorder resumed"));
+    Q_EMIT recordingPausedChanged();
+}
+
+void PulseTelemetryController::setLastActionStatus(const QString &status)
+{
+    if (m_lastActionStatus == status) {
+        return;
+    }
+    m_lastActionStatus = status;
+    Q_EMIT lastActionStatusChanged();
+}
+
+QString PulseTelemetryController::batteryTimeRemainingText() const
+{
+    if (!m_power.batteryPresent) {
+        return QStringLiteral("AC Desktop");
+    }
+    const int mins = m_power.batteryTimeRemainingMinutes;
+    if (mins > 0) {
+        const int h = mins / 60;
+        const int m = mins % 60;
+        if (h > 0) {
+            return QStringLiteral("~%1h %2m").arg(h).arg(m, 2, 10, QLatin1Char('0'));
+        }
+        return QStringLiteral("~%1m").arg(m);
+    }
+    if (m_power.onAcPower) {
+        return QStringLiteral("On AC (%1%)").arg(qRound(m_power.batteryPercent));
+    }
+    return m_power.batteryStatus.isEmpty() ? QStringLiteral("N/A") : m_power.batteryStatus;
+}
+
 void PulseTelemetryController::setSelectedHistoryIndex(int index)
 {
     const int clamped = (index < 0 || index >= m_recorder.count()) ? -1 : index;
@@ -67,6 +109,8 @@ QVariantMap PulseTelemetryController::sampleToVariantMap(const FlightSample &s, 
     m.insert(QStringLiteral("wifiTemp"), s.wifiTempCelsius);
     m.insert(QStringLiteral("cpuLoad"), s.cpuLoadPercent);
     m.insert(QStringLiteral("cpuFreqMhz"), s.cpuFreqMhz);
+    m.insert(QStringLiteral("gpuBusy"), s.gpuBusyPercent);
+    m.insert(QStringLiteral("gpuTemp"), s.gpuTempCelsius);
     m.insert(QStringLiteral("psiCpuSome10"), s.psiCpuSome10);
     m.insert(QStringLiteral("psiMemSome10"), s.psiMemSome10);
     m.insert(QStringLiteral("psiIoFull10"), s.psiIoFull10);
@@ -78,6 +122,7 @@ QVariantMap PulseTelemetryController::sampleToVariantMap(const FlightSample &s, 
     m.insert(QStringLiteral("culpritName"), s.culpritName.isEmpty() ? QStringLiteral("No single process") : s.culpritName);
     m.insert(QStringLiteral("culpritPid"), s.culpritPid);
     m.insert(QStringLiteral("culpritCpuPercent"), s.culpritCpuPercent);
+    m.insert(QStringLiteral("culpritRssMb"), s.culpritRssMb);
     return m;
 }
 
@@ -101,8 +146,15 @@ void PulseTelemetryController::refreshNow()
     m_gpu = m_cpuSampler.sampleGpu(m_domains);
     m_psiMem = m_psiSampler.sample(elapsedMs);
     m_power = m_powerSampler.sample(elapsedMs, m_cpu.totalLoadPercent, m_cpu.avgFreqMhz, m_cpu.maxFreqMhz);
-    const CulpritProcess culprit = m_cpuSampler.sampleTopCulpritProcess();
-    m_verdict = CausalDiagnosisEngine::evaluate(m_cpu, m_gpu, m_psiMem, m_power, m_domains, culprit);
+    m_processRadar = m_cpuSampler.sampleProcessRadar(5);
+    m_verdict = CausalDiagnosisEngine::evaluate(
+        m_cpu,
+        m_gpu,
+        m_psiMem,
+        m_power,
+        m_domains,
+        m_processRadar.topCpuProcess,
+        m_processRadar.topMemoryProcess);
 
     m_nvmeTemp = 0.0;
     m_wifiTemp = 0.0;
@@ -140,31 +192,49 @@ void PulseTelemetryController::refreshNow()
         m_coreItemsVariant.append(cm);
     }
 
-    FlightSample sample;
-    sample.timestampMs = QDateTime::currentMSecsSinceEpoch();
-    sample.cpuTempCelsius = m_cpu.packageTempCelsius;
-    sample.nvmeTempCelsius = m_nvmeTemp;
-    sample.wifiTempCelsius = m_wifiTemp;
-    sample.cpuLoadPercent = m_cpu.totalLoadPercent;
-    sample.cpuFreqMhz = m_cpu.avgFreqMhz;
-    sample.psiCpuSome10 = m_psiMem.cpuPsi.someAvg10;
-    sample.psiMemSome10 = m_psiMem.memoryPsi.someAvg10;
-    sample.psiIoFull10 = m_psiMem.ioPsi.fullAvg10;
-    sample.responsivenessScore = m_psiMem.responsivenessScore;
-    sample.systemWatts = (m_power.batteryWatts > 0.5) ? m_power.batteryWatts : m_power.packageWatts;
-    sample.throttled = (m_cpu.deltaThrottleEvents > 0);
-    sample.severity = m_verdict.severity;
-    sample.verdictHeadline = m_verdict.headline;
-    sample.culpritName = culprit.name;
-    sample.culpritPid = culprit.pid;
-    sample.culpritCpuPercent = culprit.cpuPercent;
+    m_topProcessesVariant.clear();
+    for (const CulpritProcess &p : std::as_const(m_processRadar.topProcesses)) {
+        QVariantMap pm;
+        pm.insert(QStringLiteral("pid"), p.pid);
+        pm.insert(QStringLiteral("name"), p.name);
+        pm.insert(QStringLiteral("cpuPercent"), p.cpuPercent);
+        pm.insert(QStringLiteral("rssMegabytes"), p.rssMegabytes);
+        m_topProcessesVariant.append(pm);
+    }
 
-    m_recorder.appendSample(sample);
+    if (!m_recordingPaused || m_recorder.count() == 0) {
+        const CulpritProcess &primaryCulprit = (m_verdict.primaryBottleneckDomain.contains(QStringLiteral("Memory")))
+            ? m_verdict.topMemoryProcess
+            : m_verdict.topProcess;
 
-    m_historySamplesVariant.clear();
-    const QList<FlightSample> &allSamples = m_recorder.samples();
-    for (int i = 0; i < allSamples.size(); ++i) {
-        m_historySamplesVariant.append(sampleToVariantMap(allSamples.at(i), i));
+        FlightSample sample;
+        sample.timestampMs = QDateTime::currentMSecsSinceEpoch();
+        sample.cpuTempCelsius = m_cpu.packageTempCelsius;
+        sample.nvmeTempCelsius = m_nvmeTemp;
+        sample.wifiTempCelsius = m_wifiTemp;
+        sample.cpuLoadPercent = m_cpu.totalLoadPercent;
+        sample.cpuFreqMhz = m_cpu.avgFreqMhz;
+        sample.gpuBusyPercent = m_gpu.busyPercent;
+        sample.gpuTempCelsius = m_gpu.tempCelsius;
+        sample.psiCpuSome10 = m_psiMem.cpuPsi.someAvg10;
+        sample.psiMemSome10 = m_psiMem.memoryPsi.someAvg10;
+        sample.psiIoFull10 = m_psiMem.ioPsi.fullAvg10;
+        sample.responsivenessScore = m_psiMem.responsivenessScore;
+        sample.systemWatts = (m_power.batteryWatts > 0.5) ? m_power.batteryWatts : m_power.packageWatts;
+        sample.throttled = (m_cpu.deltaThrottleEvents > 0);
+        sample.severity = m_verdict.severity;
+        sample.verdictHeadline = m_verdict.headline;
+        sample.culpritName = primaryCulprit.name;
+        sample.culpritPid = primaryCulprit.pid;
+        sample.culpritCpuPercent = primaryCulprit.cpuPercent;
+        sample.culpritRssMb = primaryCulprit.rssMegabytes;
+
+        m_recorder.appendSample(sample);
+
+        if (m_historySamplesVariant.size() >= m_recorder.capacity()) {
+            m_historySamplesVariant.removeFirst();
+        }
+        m_historySamplesVariant.append(sampleToVariantMap(sample, m_recorder.count() - 1));
     }
 
     maybeEmitAlertNotifications();
@@ -205,6 +275,7 @@ bool PulseTelemetryController::setPowerProfile(const QString &profile)
     const bool ok = PowerFlowSampler::setSystemPowerProfile(profile);
     if (ok) {
         m_power.activePowerProfile = profile;
+        setLastActionStatus(QStringLiteral("Power profile switched to '%1'").arg(profile));
         Q_EMIT telemetryUpdated();
     }
     return ok;
@@ -240,6 +311,55 @@ int PulseTelemetryController::jumpToWorstStallSpike()
         setSelectedHistoryIndex(idx);
     }
     return idx;
+}
+
+bool PulseTelemetryController::terminateProcess(int pid, const QString &name)
+{
+    const bool ok = CpuSocSampler::terminateProcess(pid);
+    const QString label = name.isEmpty() ? QStringLiteral("PID %1").arg(pid) : QStringLiteral("%1 (PID %2)").arg(name).arg(pid);
+    if (ok) {
+        setLastActionStatus(QStringLiteral("Sent SIGTERM to %1").arg(label));
+        QTimer::singleShot(350, this, &PulseTelemetryController::refreshNow);
+    } else {
+        setLastActionStatus(QStringLiteral("Failed to terminate %1 (permission denied or exited)").arg(label));
+    }
+    return ok;
+}
+
+QString PulseTelemetryController::copyIncidentReportToClipboard()
+{
+    const QString md = m_recorder.exportSummaryMarkdown();
+    if (QClipboard *cb = QGuiApplication::clipboard()) {
+        cb->setText(md);
+        setLastActionStatus(QStringLiteral("Copied Causal Incident Report (Markdown) to clipboard"));
+    }
+    return md;
+}
+
+QString PulseTelemetryController::exportIncidentReportToFile()
+{
+    const QString baseDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    const QString reportsDir = QDir(baseDir).filePath(QStringLiteral("reports"));
+    QDir().mkpath(reportsDir);
+
+    const QString stamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss"));
+    const QString mdPath = QDir(reportsDir).filePath(QStringLiteral("loofi-pulse-report-%1.md").arg(stamp));
+    const QString jsonPath = QDir(reportsDir).filePath(QStringLiteral("loofi-pulse-samples-%1.json").arg(stamp));
+
+    QFile mdFile(mdPath);
+    if (mdFile.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
+        mdFile.write(m_recorder.exportSummaryMarkdown().toUtf8());
+        mdFile.close();
+    }
+
+    QFile jsonFile(jsonPath);
+    if (jsonFile.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
+        jsonFile.write(m_recorder.exportSamplesJson().toUtf8());
+        jsonFile.close();
+    }
+
+    setLastActionStatus(QStringLiteral("Saved report & JSON to %1").arg(mdPath));
+    return mdPath;
 }
 
 } // namespace LoofiPulse

@@ -9,11 +9,12 @@ CausalVerdict CausalDiagnosisEngine::evaluate(
     const PsiAndMemorySnapshot &psiMem,
     const PowerFlowSnapshot &power,
     const QList<DomainSensorReading> &domains,
-    const CulpritProcess &culprit)
+    const CulpritProcess &culprit,
+    const CulpritProcess &memoryCulprit)
 {
-    Q_UNUSED(gpu)
     CausalVerdict verdict;
     verdict.topProcess = culprit;
+    verdict.topMemoryProcess = !memoryCulprit.name.isEmpty() ? memoryCulprit : culprit;
 
     double nvmeTemp = 0.0;
     for (const DomainSensorReading &d : domains) {
@@ -28,6 +29,18 @@ CausalVerdict CausalDiagnosisEngine::evaluate(
               .arg(culprit.pid)
               .arg(culprit.cpuPercent, 0, 'f', 1)
         : QStringLiteral("background activity");
+
+    const CulpritProcess &memProc = (!memoryCulprit.name.isEmpty() && memoryCulprit.rssMegabytes >= 16.0)
+        ? memoryCulprit
+        : culprit;
+    const QString memCulpritTag = (!memProc.name.isEmpty() && (memProc.rssMegabytes >= 16.0 || memProc.cpuPercent >= 3.0))
+        ? (memProc.rssMegabytes >= 16.0
+               ? QStringLiteral("%1 (PID %2, %3 MiB RSS)")
+                     .arg(memProc.name)
+                     .arg(memProc.pid)
+                     .arg(memProc.rssMegabytes, 0, 'f', 0)
+               : culpritTag)
+        : culpritTag;
 
     // 1. Check active Thermal Throttling or critical thermal headroom
     if (cpu.deltaThrottleEvents > 0 || (cpu.packageTempCelsius > 0.0 && cpu.thermalHeadroomCelsius <= 6.0)) {
@@ -57,8 +70,8 @@ CausalVerdict CausalDiagnosisEngine::evaluate(
                                   .arg(psiMem.ramUsedPercent, 0, 'f', 0)
                                   .arg(psiMem.zramCompressionRatio, 0, 'f', 1)
                                   .arg(psiMem.memoryPsi.deltaStallMsPerSec, 0, 'f', 0)
-                                  .arg(culpritTag);
-        verdict.recommendation = QStringLiteral("Threads are stalling on memory compaction/reclaim. Close memory-heavy processes to eliminate micro-stutters.");
+                                  .arg(memCulpritTag);
+        verdict.recommendation = QStringLiteral("Threads are stalling on memory compaction/reclaim. Close or terminate memory-heavy processes to eliminate micro-stutters.");
         return verdict;
     }
 
@@ -78,13 +91,32 @@ CausalVerdict CausalDiagnosisEngine::evaluate(
         return verdict;
     }
 
-    // 4. Check rapid thermal climb (dT/dt) or elevated CPU load/temperature
-    if (cpu.thermalVelocityCPerSec >= 0.8 || (cpu.packageTempCelsius > 0.0 && cpu.thermalHeadroomCelsius < 20.0) || cpu.totalLoadPercent >= 70.0) {
+    // 4. Check GPU Saturation or GPU Thermal Bottleneck
+    if (gpu.available && (gpu.tempCelsius >= 88.0 || (gpu.busyPercent >= 92.0 && gpu.tempCelsius >= 75.0))) {
+        verdict.severity = VerdictSeverity::Bottleneck;
+        verdict.primaryBottleneckDomain = QStringLiteral("Graphics & Display (GPU)");
+        verdict.headline = QStringLiteral("GPU Compute / Thermal Saturation — %1% Busy (%2°C)")
+                               .arg(gpu.busyPercent, 0, 'f', 0)
+                               .arg(gpu.tempCelsius, 0, 'f', 0);
+        verdict.causalChain = QStringLiteral("%1 ➔ GPU %2% @ %3 MHz (%4) ➔ %5°C GPU")
+                                  .arg(culpritTag)
+                                  .arg(gpu.busyPercent, 0, 'f', 0)
+                                  .arg(gpu.currentFreqMhz)
+                                  .arg(gpu.driverName.isEmpty() ? QStringLiteral("DRM") : gpu.driverName)
+                                  .arg(gpu.tempCelsius, 0, 'f', 1);
+        verdict.recommendation = QStringLiteral("Graphics pipeline is near saturation or thermal limit. Lower rendering load or frame-rate cap if frame pacing drops.");
+        return verdict;
+    }
+
+    // 5. Check rapid thermal climb (dT/dt) or elevated CPU/GPU load
+    if (cpu.thermalVelocityCPerSec >= 0.8 || (cpu.packageTempCelsius > 0.0 && cpu.thermalHeadroomCelsius < 20.0) || cpu.totalLoadPercent >= 70.0 || (gpu.available && gpu.busyPercent >= 85.0)) {
         verdict.severity = VerdictSeverity::Elevated;
-        verdict.primaryBottleneckDomain = QStringLiteral("CPU Boost & Thermal Dynamics");
+        verdict.primaryBottleneckDomain = (gpu.available && gpu.busyPercent >= 85.0 && cpu.totalLoadPercent < 70.0)
+            ? QStringLiteral("Graphics & Display (GPU)")
+            : QStringLiteral("CPU Boost & Thermal Dynamics");
         const QString velPrefix = (cpu.thermalVelocityCPerSec >= 0.2)
             ? QStringLiteral("Thermal Climb (+%1°C/s)").arg(cpu.thermalVelocityCPerSec, 0, 'f', 1)
-            : QStringLiteral("Elevated Thermal Load");
+            : QStringLiteral("Elevated Load");
         verdict.headline = QStringLiteral("%1 — %2°C (%3°C headroom remaining)")
                                .arg(velPrefix)
                                .arg(cpu.packageTempCelsius, 0, 'f', 0)
@@ -99,7 +131,7 @@ CausalVerdict CausalDiagnosisEngine::evaluate(
         return verdict;
     }
 
-    // 5. Nominal state
+    // 6. Nominal state
     verdict.severity = VerdictSeverity::Nominal;
     verdict.primaryBottleneckDomain = QStringLiteral("No Bottleneck");
     verdict.headline = QStringLiteral("Nominal — %1°C thermal headroom, %2% responsiveness")

@@ -125,12 +125,31 @@ private Q_SLOTS:
         const CausalVerdict nominal = CausalDiagnosisEngine::evaluate(cpu, gpu, psi, power, domains, culprit);
         QCOMPARE(nominal.severity, VerdictSeverity::Nominal);
 
-        // 2. Memory PSI Bottleneck verdict
+        // 2. Memory PSI Bottleneck verdict with separate Memory RSS culprit attribution
         psi.memoryPsi.someAvg10 = 14.5;
         psi.memoryPsi.fullAvg10 = 4.2;
-        const CausalVerdict memBottleneck = CausalDiagnosisEngine::evaluate(cpu, gpu, psi, power, domains, culprit);
+        CulpritProcess memHog;
+        memHog.pid = 7777;
+        memHog.name = QStringLiteral("firefox-bin");
+        memHog.cpuPercent = 2.0;
+        memHog.rssMegabytes = 4096.0;
+        const CausalVerdict memBottleneck = CausalDiagnosisEngine::evaluate(cpu, gpu, psi, power, domains, culprit, memHog);
         QCOMPARE(memBottleneck.severity, VerdictSeverity::Bottleneck);
         QVERIFY(memBottleneck.causalChain.contains(QStringLiteral("ZRAM")));
+        QVERIFY(memBottleneck.causalChain.contains(QStringLiteral("firefox-bin")));
+        QVERIFY(memBottleneck.causalChain.contains(QStringLiteral("4096 MiB RSS")));
+
+        // 2b. GPU Compute / Thermal Saturation verdict
+        psi.memoryPsi.someAvg10 = 0.0;
+        psi.memoryPsi.fullAvg10 = 0.0;
+        gpu.available = true;
+        gpu.driverName = QStringLiteral("amdgpu");
+        gpu.busyPercent = 96.0;
+        gpu.currentFreqMhz = 2400;
+        gpu.tempCelsius = 82.0;
+        const CausalVerdict gpuBottleneck = CausalDiagnosisEngine::evaluate(cpu, gpu, psi, power, domains, culprit);
+        QCOMPARE(gpuBottleneck.severity, VerdictSeverity::Bottleneck);
+        QCOMPARE(gpuBottleneck.primaryBottleneckDomain, QStringLiteral("Graphics & Display (GPU)"));
 
         // 3. Critical Thermal Throttling verdict with culprit attribution
         cpu.packageTempCelsius = 97.0;
@@ -140,6 +159,36 @@ private Q_SLOTS:
         QCOMPARE(throttleVerdict.severity, VerdictSeverity::CriticalThrottle);
         QVERIFY(throttleVerdict.causalChain.contains(QStringLiteral("cc1plus")));
         QVERIFY(throttleVerdict.causalChain.contains(QStringLiteral("+19 throttle-events")));
+    }
+
+    void testBatteryEtaAndHealthCalculation()
+    {
+        QTemporaryDir tempDir;
+        QVERIFY(tempDir.isValid());
+
+        const QString sysRoot = tempDir.filePath(QStringLiteral("sys"));
+        const QString procRoot = tempDir.filePath(QStringLiteral("proc"));
+
+        writeTextFile(sysRoot + QStringLiteral("/class/power_supply/AC0/type"), QStringLiteral("Mains\n"));
+        writeTextFile(sysRoot + QStringLiteral("/class/power_supply/AC0/online"), QStringLiteral("0\n"));
+
+        writeTextFile(sysRoot + QStringLiteral("/class/power_supply/BAT0/type"), QStringLiteral("Battery\n"));
+        writeTextFile(sysRoot + QStringLiteral("/class/power_supply/BAT0/status"), QStringLiteral("Discharging\n"));
+        writeTextFile(sysRoot + QStringLiteral("/class/power_supply/BAT0/capacity"), QStringLiteral("50\n"));
+        writeTextFile(sysRoot + QStringLiteral("/class/power_supply/BAT0/voltage_now"), QStringLiteral("12000000\n"));
+        // 15W discharge, 30Wh remaining -> 120 minutes remaining; 45Wh full / 50Wh design -> 90% health
+        writeTextFile(sysRoot + QStringLiteral("/class/power_supply/BAT0/power_now"), QStringLiteral("15000000\n"));
+        writeTextFile(sysRoot + QStringLiteral("/class/power_supply/BAT0/energy_now"), QStringLiteral("30000000\n"));
+        writeTextFile(sysRoot + QStringLiteral("/class/power_supply/BAT0/energy_full"), QStringLiteral("45000000\n"));
+        writeTextFile(sysRoot + QStringLiteral("/class/power_supply/BAT0/energy_full_design"), QStringLiteral("50000000\n"));
+
+        PowerFlowSampler sampler({sysRoot, procRoot});
+        const PowerFlowSnapshot snap = sampler.sample(1000, 25.0, 2000, 4000);
+        QVERIFY(!snap.onAcPower);
+        QVERIFY(snap.batteryPresent);
+        QCOMPARE(snap.batteryWatts, 15.0);
+        QCOMPARE(snap.batteryTimeRemainingMinutes, 120);
+        QCOMPARE(snap.batteryHealthPercent, 90.0);
     }
 
     void testFlightRecorderSpikeLookup()
@@ -157,7 +206,7 @@ private Q_SLOTS:
         // Inject spike at index 2
         FlightRecorder rec2(10);
         FlightSample s0; s0.cpuTempCelsius = 55.0; s0.responsivenessScore = 99.0;
-        FlightSample s1; s1.cpuTempCelsius = 94.0; s1.responsivenessScore = 72.0; s1.culpritName = QStringLiteral("rustc");
+        FlightSample s1; s1.cpuTempCelsius = 94.0; s1.responsivenessScore = 72.0; s1.culpritName = QStringLiteral("rustc"); s1.culpritPid = 1234; s1.throttled = true;
         FlightSample s2; s2.cpuTempCelsius = 62.0; s2.responsivenessScore = 98.0;
         rec2.appendSample(s0);
         rec2.appendSample(s1);
@@ -166,6 +215,13 @@ private Q_SLOTS:
         QCOMPARE(rec2.peakTemperatureIndex(), 1);
         QCOMPARE(rec2.worstResponsivenessIndex(), 1);
         QCOMPARE(rec2.sampleAt(1).culpritName, QStringLiteral("rustc"));
+
+        const QString md = rec2.exportSummaryMarkdown();
+        QVERIFY(md.contains(QStringLiteral("rustc")));
+        QVERIFY(md.contains(QStringLiteral("Peak Thermal Spike")));
+
+        const QString json = rec2.exportSamplesJson();
+        QVERIFY(json.contains(QStringLiteral("\"culpritName\": \"rustc\"")));
     }
 
     void testLiveHostTelemetrySanity()
@@ -178,6 +234,10 @@ private Q_SLOTS:
         const CpuSocSnapshot cpu = cpuSampler.sampleCpu(domains);
         QVERIFY(!cpu.cores.isEmpty());
         QVERIFY(cpu.packageTempCelsius > 10.0);
+
+        const ProcessRadarSnapshot radar = cpuSampler.sampleProcessRadar(5);
+        QVERIFY(!radar.topProcesses.isEmpty());
+        QVERIFY(radar.topMemoryProcess.rssMegabytes > 0.0);
 
         PsiMemorySampler psiSampler;
         const PsiAndMemorySnapshot psi = psiSampler.sample(1000);

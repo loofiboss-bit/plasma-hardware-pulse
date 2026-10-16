@@ -18,6 +18,9 @@ public:
     CpuSocSnapshot sampleCpu(const QList<DomainSensorReading> &domainReadings);
     GpuSnapshot sampleGpu(const QList<DomainSensorReading> &domainReadings);
     CulpritProcess sampleTopCulpritProcess();
+    ProcessRadarSnapshot sampleProcessRadar(int maxTopProcesses = 5);
+
+    static bool terminateProcess(int pid);
 
 private:
     struct CpuJiffies
