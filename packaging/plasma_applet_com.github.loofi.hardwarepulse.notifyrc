@@ -1,0 +1,13 @@
+[Global]
+IconName=com.github.loofi.hardwarepulse
+Comment=Loofi Pulse Hardware & Thermal Monitor
+
+[Event/thermalThrottle]
+Name=Thermal Throttling Detected
+Comment=Triggered when CPU or NVMe thermal throttling occurs
+Action=Popup
+
+[Event/psiBottleneck]
+Name=System Pressure Bottleneck
+Comment=Triggered when Linux PSI (CPU, Memory, or I/O stall) exceeds critical threshold
+Action=Popup

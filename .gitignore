@@ -1,0 +1,8 @@
+build/
+build-*/
+.cache/
+.clangd/
+.vscode/
+*.user
+*.plasmoid
+*.tar.gz

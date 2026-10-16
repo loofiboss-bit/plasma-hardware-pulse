@@ -1,0 +1,245 @@
+#include "pulsetelemetrycontroller.h"
+
+#include <KNotification>
+#include <QCoreApplication>
+#include <QDateTime>
+#include <QDir>
+#include <QFileInfo>
+#include <QProcess>
+#include <QStandardPaths>
+
+#include <algorithm>
+
+namespace LoofiPulse
+{
+
+PulseTelemetryController::PulseTelemetryController(QObject *parent)
+    : QObject(parent)
+    , m_recorder(300)
+{
+    m_elapsed.start();
+    m_timer.setInterval(1000);
+    connect(&m_timer, &QTimer::timeout, this, &PulseTelemetryController::refreshNow);
+
+    // Take two immediate initial samples so delta metrics (CPU load, PSI rate) are populated immediately
+    refreshNow();
+    refreshNow();
+    m_timer.start();
+}
+
+void PulseTelemetryController::setPollIntervalMs(int intervalMs)
+{
+    const int clamped = std::clamp(intervalMs, 250, 10000);
+    if (m_timer.interval() == clamped) {
+        return;
+    }
+    m_timer.setInterval(clamped);
+    Q_EMIT pollIntervalChanged();
+}
+
+void PulseTelemetryController::setNotificationsEnabled(bool enabled)
+{
+    if (m_notificationsEnabled == enabled) {
+        return;
+    }
+    m_notificationsEnabled = enabled;
+    Q_EMIT notificationsEnabledChanged();
+}
+
+void PulseTelemetryController::setSelectedHistoryIndex(int index)
+{
+    const int clamped = (index < 0 || index >= m_recorder.count()) ? -1 : index;
+    if (m_selectedHistoryIndex == clamped) {
+        return;
+    }
+    m_selectedHistoryIndex = clamped;
+    Q_EMIT selectedHistoryChanged();
+}
+
+QVariantMap PulseTelemetryController::sampleToVariantMap(const FlightSample &s, int index)
+{
+    QVariantMap m;
+    m.insert(QStringLiteral("index"), index);
+    m.insert(QStringLiteral("timestampMs"), s.timestampMs);
+    m.insert(QStringLiteral("timeString"), QDateTime::fromMSecsSinceEpoch(s.timestampMs).toString(QStringLiteral("HH:mm:ss")));
+    m.insert(QStringLiteral("cpuTemp"), s.cpuTempCelsius);
+    m.insert(QStringLiteral("nvmeTemp"), s.nvmeTempCelsius);
+    m.insert(QStringLiteral("wifiTemp"), s.wifiTempCelsius);
+    m.insert(QStringLiteral("cpuLoad"), s.cpuLoadPercent);
+    m.insert(QStringLiteral("cpuFreqMhz"), s.cpuFreqMhz);
+    m.insert(QStringLiteral("psiCpuSome10"), s.psiCpuSome10);
+    m.insert(QStringLiteral("psiMemSome10"), s.psiMemSome10);
+    m.insert(QStringLiteral("psiIoFull10"), s.psiIoFull10);
+    m.insert(QStringLiteral("responsivenessScore"), s.responsivenessScore);
+    m.insert(QStringLiteral("systemWatts"), s.systemWatts);
+    m.insert(QStringLiteral("throttled"), s.throttled);
+    m.insert(QStringLiteral("severity"), static_cast<int>(s.severity));
+    m.insert(QStringLiteral("verdictHeadline"), s.verdictHeadline);
+    m.insert(QStringLiteral("culpritName"), s.culpritName.isEmpty() ? QStringLiteral("No single process") : s.culpritName);
+    m.insert(QStringLiteral("culpritPid"), s.culpritPid);
+    m.insert(QStringLiteral("culpritCpuPercent"), s.culpritCpuPercent);
+    return m;
+}
+
+QVariantMap PulseTelemetryController::selectedHistoryDetail() const
+{
+    const int idx = (m_selectedHistoryIndex >= 0 && m_selectedHistoryIndex < m_recorder.count())
+        ? m_selectedHistoryIndex
+        : (m_recorder.count() - 1);
+    if (idx < 0) {
+        return {};
+    }
+    return sampleToVariantMap(m_recorder.sampleAt(idx), idx);
+}
+
+void PulseTelemetryController::refreshNow()
+{
+    const qint64 elapsedMs = std::max<qint64>(100, m_elapsed.restart());
+
+    m_domains = m_sysfsReader.sampleHwmonDomains(elapsedMs);
+    m_cpu = m_cpuSampler.sampleCpu(m_domains);
+    m_gpu = m_cpuSampler.sampleGpu(m_domains);
+    m_psiMem = m_psiSampler.sample(elapsedMs);
+    m_power = m_powerSampler.sample(elapsedMs, m_cpu.totalLoadPercent, m_cpu.avgFreqMhz, m_cpu.maxFreqMhz);
+    const CulpritProcess culprit = m_cpuSampler.sampleTopCulpritProcess();
+    m_verdict = CausalDiagnosisEngine::evaluate(m_cpu, m_gpu, m_psiMem, m_power, m_domains, culprit);
+
+    m_nvmeTemp = 0.0;
+    m_wifiTemp = 0.0;
+    m_domainSensorsVariant.clear();
+
+    for (const DomainSensorReading &d : std::as_const(m_domains)) {
+        if (d.domain == PhysicalDomain::StorageNvme && d.currentCelsius > m_nvmeTemp) {
+            m_nvmeTemp = d.currentCelsius;
+        } else if (d.domain == PhysicalDomain::NetworkWireless && d.currentCelsius > m_wifiTemp) {
+            m_wifiTemp = d.currentCelsius;
+        }
+
+        QVariantMap dm;
+        dm.insert(QStringLiteral("id"), d.id);
+        dm.insert(QStringLiteral("chipName"), d.chipName);
+        dm.insert(QStringLiteral("label"), d.label);
+        dm.insert(QStringLiteral("domainId"), static_cast<int>(d.domain));
+        dm.insert(QStringLiteral("domainName"), SysfsReader::domainDisplayName(d.domain));
+        dm.insert(QStringLiteral("currentCelsius"), d.currentCelsius);
+        dm.insert(QStringLiteral("maxCelsius"), d.maxCelsius);
+        dm.insert(QStringLiteral("headroomCelsius"), d.headroomCelsius);
+        dm.insert(QStringLiteral("velocityCelsiusPerSec"), d.velocityCelsiusPerSec);
+        m_domainSensorsVariant.append(dm);
+    }
+
+    m_coreItemsVariant.clear();
+    for (const CoreTelemetry &c : std::as_const(m_cpu.cores)) {
+        QVariantMap cm;
+        cm.insert(QStringLiteral("coreId"), c.coreId);
+        cm.insert(QStringLiteral("loadPercent"), c.loadPercent);
+        cm.insert(QStringLiteral("currentFreqMhz"), c.currentFreqMhz);
+        cm.insert(QStringLiteral("maxFreqMhz"), c.maxFreqMhz);
+        cm.insert(QStringLiteral("tempCelsius"), c.tempCelsius);
+        cm.insert(QStringLiteral("throttleCount"), c.throttleCount);
+        m_coreItemsVariant.append(cm);
+    }
+
+    FlightSample sample;
+    sample.timestampMs = QDateTime::currentMSecsSinceEpoch();
+    sample.cpuTempCelsius = m_cpu.packageTempCelsius;
+    sample.nvmeTempCelsius = m_nvmeTemp;
+    sample.wifiTempCelsius = m_wifiTemp;
+    sample.cpuLoadPercent = m_cpu.totalLoadPercent;
+    sample.cpuFreqMhz = m_cpu.avgFreqMhz;
+    sample.psiCpuSome10 = m_psiMem.cpuPsi.someAvg10;
+    sample.psiMemSome10 = m_psiMem.memoryPsi.someAvg10;
+    sample.psiIoFull10 = m_psiMem.ioPsi.fullAvg10;
+    sample.responsivenessScore = m_psiMem.responsivenessScore;
+    sample.systemWatts = (m_power.batteryWatts > 0.5) ? m_power.batteryWatts : m_power.packageWatts;
+    sample.throttled = (m_cpu.deltaThrottleEvents > 0);
+    sample.severity = m_verdict.severity;
+    sample.verdictHeadline = m_verdict.headline;
+    sample.culpritName = culprit.name;
+    sample.culpritPid = culprit.pid;
+    sample.culpritCpuPercent = culprit.cpuPercent;
+
+    m_recorder.appendSample(sample);
+
+    m_historySamplesVariant.clear();
+    const QList<FlightSample> &allSamples = m_recorder.samples();
+    for (int i = 0; i < allSamples.size(); ++i) {
+        m_historySamplesVariant.append(sampleToVariantMap(allSamples.at(i), i));
+    }
+
+    maybeEmitAlertNotifications();
+
+    Q_EMIT telemetryUpdated();
+    Q_EMIT selectedHistoryChanged();
+}
+
+void PulseTelemetryController::maybeEmitAlertNotifications()
+{
+    if (!m_notificationsEnabled) {
+        return;
+    }
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    if (nowMs - m_lastAlertTimestampMs < 60000) {
+        return; // 60s cooldown between alert popups
+    }
+
+    if (m_verdict.severity == VerdictSeverity::CriticalThrottle) {
+        m_lastAlertTimestampMs = nowMs;
+        auto *notif = new KNotification(QStringLiteral("thermalThrottle"), KNotification::CloseOnTimeout, this);
+        notif->setComponentName(QStringLiteral("plasma_applet_com.github.loofi.hardwarepulse"));
+        notif->setTitle(m_verdict.headline);
+        notif->setText(m_verdict.causalChain);
+        notif->sendEvent();
+    } else if (m_verdict.severity == VerdictSeverity::Bottleneck && m_psiMem.responsivenessScore < 85.0) {
+        m_lastAlertTimestampMs = nowMs;
+        auto *notif = new KNotification(QStringLiteral("psiBottleneck"), KNotification::CloseOnTimeout, this);
+        notif->setComponentName(QStringLiteral("plasma_applet_com.github.loofi.hardwarepulse"));
+        notif->setTitle(m_verdict.headline);
+        notif->setText(m_verdict.causalChain);
+        notif->sendEvent();
+    }
+}
+
+bool PulseTelemetryController::setPowerProfile(const QString &profile)
+{
+    const bool ok = PowerFlowSampler::setSystemPowerProfile(profile);
+    if (ok) {
+        m_power.activePowerProfile = profile;
+        Q_EMIT telemetryUpdated();
+    }
+    return ok;
+}
+
+void PulseTelemetryController::launchStudioApp()
+{
+    QString exe = QStandardPaths::findExecutable(QStringLiteral("loofi-pulse"));
+    if (exe.isEmpty()) {
+        const QString sibling = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("loofi-pulse"));
+        if (QFileInfo::exists(sibling)) {
+            exe = sibling;
+        }
+    }
+    if (!exe.isEmpty()) {
+        QProcess::startDetached(exe, {});
+    }
+}
+
+int PulseTelemetryController::jumpToPeakThermalSpike()
+{
+    const int idx = m_recorder.peakTemperatureIndex();
+    if (idx >= 0) {
+        setSelectedHistoryIndex(idx);
+    }
+    return idx;
+}
+
+int PulseTelemetryController::jumpToWorstStallSpike()
+{
+    const int idx = m_recorder.worstResponsivenessIndex();
+    if (idx >= 0) {
+        setSelectedHistoryIndex(idx);
+    }
+    return idx;
+}
+
+} // namespace LoofiPulse

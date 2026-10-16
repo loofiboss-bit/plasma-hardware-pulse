@@ -1,0 +1,4 @@
+# Optional udev rule to allow unprivileged reading of Intel RAPL energy_uj counters
+# Install to: /etc/udev/rules.d/99-loofi-pulse-rapl.rules
+# Reload with: sudo udevadm control --reload-rules && sudo udevadm trigger
+SUBSYSTEM=="powercap", KERNEL=="intel-rapl:*", ACTION=="add|change", RUN+="/bin/chmod a+r /sys/class/powercap/%k/energy_uj"
