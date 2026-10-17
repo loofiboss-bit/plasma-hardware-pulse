@@ -93,6 +93,26 @@ private Q_SLOTS:
         QVERIFY(controller.lastActionStatus().contains(QStringLiteral("could not be created")));
         qputenv("XDG_DATA_HOME", previousDataHome);
     }
+
+    void testHistoryRetentionAndClearHistory()
+    {
+        PulseTelemetryController controller;
+        QCOMPARE(controller.historyRetentionSeconds(), 300);
+        QVERIFY(!controller.historySamples().isEmpty());
+
+        controller.setHistoryRetentionSeconds(900);
+        QCOMPARE(controller.historyRetentionSeconds(), 900);
+        QVERIFY(controller.lastActionStatus().contains(QStringLiteral("15m")));
+
+        controller.setHistoryRetentionSeconds(5000);
+        QCOMPARE(controller.historyRetentionSeconds(), 1800);
+
+        controller.clearHistory();
+        QCOMPARE(controller.historySamples().size(), 0);
+        QCOMPARE(controller.incidentHistory().size(), 0);
+        QVERIFY(controller.lastActionSucceeded());
+        QVERIFY(controller.lastActionStatus().contains(QStringLiteral("Cleared")));
+    }
 };
 
 QTEST_MAIN(TestControllerActions)

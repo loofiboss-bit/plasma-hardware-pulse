@@ -145,6 +145,10 @@ struct PsiAndMemorySnapshot
     bool diskThroughputAvailable = false;
     double diskReadMibPerSec = 0.0;
     double diskWriteMibPerSec = 0.0;
+
+    bool netThroughputAvailable = false;
+    double netRxMibPerSec = 0.0;
+    double netTxMibPerSec = 0.0;
 };
 
 struct PowerFlowSnapshot
@@ -182,12 +186,16 @@ struct CulpritProcess
     QString name;
     double cpuPercent = 0.0;
     double rssMegabytes = 0.0;
+    QString state;
+    bool inDiskWait = false;
 };
 
 struct ProcessRadarSnapshot
 {
     CulpritProcess topCpuProcess;
     CulpritProcess topMemoryProcess;
+    CulpritProcess topDiskWaitProcess;
+    int diskWaitProcessCount = 0;
     QList<CulpritProcess> topProcesses;
 };
 
@@ -198,6 +206,7 @@ struct CausalVerdict
     QString causalChain;
     QString recommendation;
     QString primaryBottleneckDomain;
+    QStringList contributingSignals;
     CulpritProcess topProcess;
     CulpritProcess topMemoryProcess;
 };
@@ -252,6 +261,8 @@ struct FlightSample
     quint64 zramMemoryUsedBytes = 0;
     double diskReadMibPerSec = 0.0;
     double diskWriteMibPerSec = 0.0;
+    double netRxMibPerSec = 0.0;
+    double netTxMibPerSec = 0.0;
     qint64 throttleEventCount = 0;
     qint64 newThrottleEvents = 0;
     bool batteryPresent = false;

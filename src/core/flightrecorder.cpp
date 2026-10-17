@@ -59,6 +59,24 @@ int FlightRecorder::capacity() const
 void FlightRecorder::setRetentionMs(qint64 retentionMs)
 {
     m_retentionMs = std::clamp<qint64>(retentionMs, 1000, 60 * 60 * 1000);
+    if (m_samples.size() > 1) {
+        const FlightSample &latest = m_samples.last();
+        const qint64 latestTime = latest.monotonicMs > 0 ? latest.monotonicMs : latest.timestampMs;
+        const qint64 cutoff = latestTime - m_retentionMs;
+        while (m_samples.size() > 1) {
+            const FlightSample &oldest = m_samples.first();
+            const qint64 oldestTime = oldest.monotonicMs > 0 ? oldest.monotonicMs : oldest.timestampMs;
+            if (oldestTime >= cutoff) {
+                break;
+            }
+            m_samples.removeFirst();
+        }
+    }
+}
+
+qint64 FlightRecorder::retentionMs() const
+{
+    return m_retentionMs;
 }
 
 int FlightRecorder::indexOfSample(quint64 sampleId) const
@@ -257,6 +275,9 @@ QVariantMap FlightRecorder::sampleMetricMetadata(const FlightSample &s)
     result.insert(QStringLiteral("diskThroughput"),
                   metric(flag(QStringLiteral("diskThroughputAvailable")) ? QStringLiteral("available") : QStringLiteral("unavailable"),
                          QStringLiteral("/proc/diskstats sector deltas")));
+    result.insert(QStringLiteral("netThroughput"),
+                  metric(flag(QStringLiteral("netThroughputAvailable")) ? QStringLiteral("available") : QStringLiteral("unavailable"),
+                         QStringLiteral("/proc/net/dev byte deltas")));
     return result;
 }
 
@@ -331,6 +352,8 @@ QString FlightRecorder::exportSamplesJson() const
         obj.insert(QStringLiteral("zramMemoryUsedBytes"), valueOrNull(QStringLiteral("zramAvailable"), static_cast<double>(s.zramMemoryUsedBytes)));
         obj.insert(QStringLiteral("diskReadMibPerSec"), valueOrNull(QStringLiteral("diskThroughputAvailable"), s.diskReadMibPerSec));
         obj.insert(QStringLiteral("diskWriteMibPerSec"), valueOrNull(QStringLiteral("diskThroughputAvailable"), s.diskWriteMibPerSec));
+        obj.insert(QStringLiteral("netRxMibPerSec"), valueOrNull(QStringLiteral("netThroughputAvailable"), s.netRxMibPerSec));
+        obj.insert(QStringLiteral("netTxMibPerSec"), valueOrNull(QStringLiteral("netThroughputAvailable"), s.netTxMibPerSec));
         obj.insert(QStringLiteral("throttleEventCount"), valid(QStringLiteral("throttleCountersAvailable")) ? QJsonValue(s.throttleEventCount) : QJsonValue(QJsonValue::Null));
         obj.insert(QStringLiteral("newThrottleEvents"), valid(QStringLiteral("throttleCountersAvailable")) ? QJsonValue(s.newThrottleEvents) : QJsonValue(QJsonValue::Null));
         obj.insert(QStringLiteral("batteryPresent"), s.batteryPresent);

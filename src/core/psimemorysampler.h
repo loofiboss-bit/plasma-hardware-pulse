@@ -23,6 +23,9 @@ private:
     quint64 m_prevDiskReadSectors = 0;
     quint64 m_prevDiskWriteSectors = 0;
     bool m_hasPrevDiskStats = false;
+    quint64 m_prevNetRxBytes = 0;
+    quint64 m_prevNetTxBytes = 0;
+    bool m_hasPrevNetStats = false;
 };
 
 } // namespace LoofiPulse

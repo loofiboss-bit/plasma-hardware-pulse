@@ -25,6 +25,9 @@ void PsiMemorySampler::setRootConfig(const SysfsRootConfig &config)
     m_prevDiskReadSectors = 0;
     m_prevDiskWriteSectors = 0;
     m_hasPrevDiskStats = false;
+    m_prevNetRxBytes = 0;
+    m_prevNetTxBytes = 0;
+    m_hasPrevNetStats = false;
 }
 
 PsiMetric PsiMemorySampler::parsePsiContent(const QString &content, quint64 prevTotalUs, qint64 elapsedMs)
@@ -128,6 +131,9 @@ PsiAndMemorySnapshot PsiMemorySampler::sample(qint64 elapsedMs)
         m_prevDiskReadSectors = 0;
         m_prevDiskWriteSectors = 0;
         m_hasPrevDiskStats = false;
+        m_prevNetRxBytes = 0;
+        m_prevNetTxBytes = 0;
+        m_hasPrevNetStats = false;
     }
 
     snap.cpuPsi = parsePsiContent(cpuPsiText, m_prevCpuSomeUs, elapsedMs);
@@ -191,6 +197,61 @@ PsiAndMemorySnapshot PsiMemorySampler::sample(qint64 elapsedMs)
         }
     } else {
         m_hasPrevDiskStats = false;
+    }
+
+    // Parse /proc/net/dev for physical/active network interfaces
+    const QString netDevText = readWholeText(procDir.filePath(QStringLiteral("net/dev")));
+    if (!netDevText.isEmpty()) {
+        quint64 totalRxBytes = 0;
+        quint64 totalTxBytes = 0;
+        bool foundNet = false;
+        const QStringList netLines = netDevText.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+        for (const QString &nLine : netLines) {
+            const int colonIdx = nLine.indexOf(QLatin1Char(':'));
+            if (colonIdx <= 0) {
+                continue;
+            }
+            const QString iface = nLine.left(colonIdx).trimmed();
+            if (iface == QStringLiteral("lo")
+                || iface.startsWith(QStringLiteral("veth"))
+                || iface.startsWith(QStringLiteral("docker"))
+                || iface.startsWith(QStringLiteral("br-"))
+                || iface.startsWith(QStringLiteral("virbr"))) {
+                continue;
+            }
+            const QStringList cols = nLine.mid(colonIdx + 1).split(QLatin1Char(' '), Qt::SkipEmptyParts);
+            if (cols.size() < 9) {
+                continue;
+            }
+            bool rxOk = false;
+            bool txOk = false;
+            const quint64 rxBytes = cols.at(0).toULongLong(&rxOk);
+            const quint64 txBytes = cols.at(8).toULongLong(&txOk);
+            if (rxOk && txOk) {
+                totalRxBytes += rxBytes;
+                totalTxBytes += txBytes;
+                foundNet = true;
+            }
+        }
+        if (foundNet) {
+            if (m_hasPrevNetStats && elapsedMs > 50
+                && totalRxBytes >= m_prevNetRxBytes
+                && totalTxBytes >= m_prevNetTxBytes) {
+                const double dtSec = static_cast<double>(elapsedMs) / 1000.0;
+                const double dRx = static_cast<double>(totalRxBytes - m_prevNetRxBytes);
+                const double dTx = static_cast<double>(totalTxBytes - m_prevNetTxBytes);
+                snap.netRxMibPerSec = std::clamp((dRx / (1024.0 * 1024.0)) / dtSec, 0.0, 20000.0);
+                snap.netTxMibPerSec = std::clamp((dTx / (1024.0 * 1024.0)) / dtSec, 0.0, 20000.0);
+                snap.netThroughputAvailable = true;
+            }
+            m_prevNetRxBytes = totalRxBytes;
+            m_prevNetTxBytes = totalTxBytes;
+            m_hasPrevNetStats = true;
+        } else {
+            m_hasPrevNetStats = false;
+        }
+    } else {
+        m_hasPrevNetStats = false;
     }
 
     // Parse /proc/meminfo

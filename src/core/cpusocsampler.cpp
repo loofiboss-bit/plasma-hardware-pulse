@@ -397,6 +397,8 @@ ProcessRadarSnapshot CpuSocSampler::sampleProcessRadar(int maxTopProcesses)
             continue;
         }
 
+        const QString procState = rest.at(0);
+        const bool isDiskWait = (procState == QStringLiteral("D"));
         const quint64 utime = rest.at(11).toULongLong();
         const quint64 stime = rest.at(12).toULongLong();
         const quint64 totalTicks = utime + stime;
@@ -417,12 +419,28 @@ ProcessRadarSnapshot CpuSocSampler::sampleProcessRadar(int maxTopProcesses)
             }
         }
 
-        if (cpuPct > 0.05 || rssMb >= 8.0) {
+        if (isDiskWait) {
+            ++radar.diskWaitProcessCount;
+            if (radar.topDiskWaitProcess.pid == 0
+                || cpuPct > radar.topDiskWaitProcess.cpuPercent
+                || rssMb > radar.topDiskWaitProcess.rssMegabytes) {
+                radar.topDiskWaitProcess.pid = pid;
+                radar.topDiskWaitProcess.name = comm;
+                radar.topDiskWaitProcess.cpuPercent = cpuPct;
+                radar.topDiskWaitProcess.rssMegabytes = rssMb;
+                radar.topDiskWaitProcess.state = procState;
+                radar.topDiskWaitProcess.inDiskWait = true;
+            }
+        }
+
+        if (cpuPct > 0.05 || rssMb >= 8.0 || isDiskWait) {
             CulpritProcess cp;
             cp.pid = pid;
             cp.name = comm;
             cp.cpuPercent = cpuPct;
             cp.rssMegabytes = rssMb;
+            cp.state = procState;
+            cp.inDiskWait = isDiskWait;
             candidates.append(cp);
         }
 
@@ -431,6 +449,8 @@ ProcessRadarSnapshot CpuSocSampler::sampleProcessRadar(int maxTopProcesses)
             radar.topCpuProcess.name = comm;
             radar.topCpuProcess.cpuPercent = cpuPct;
             radar.topCpuProcess.rssMegabytes = rssMb;
+            radar.topCpuProcess.state = procState;
+            radar.topCpuProcess.inDiskWait = isDiskWait;
         }
 
         if (rssMb > radar.topMemoryProcess.rssMegabytes) {
@@ -438,15 +458,17 @@ ProcessRadarSnapshot CpuSocSampler::sampleProcessRadar(int maxTopProcesses)
             radar.topMemoryProcess.name = comm;
             radar.topMemoryProcess.cpuPercent = cpuPct;
             radar.topMemoryProcess.rssMegabytes = rssMb;
+            radar.topMemoryProcess.state = procState;
+            radar.topMemoryProcess.inDiskWait = isDiskWait;
         }
     }
 
     m_prevProcTicks = std::move(nextProcTicks);
 
-    // Sort candidates by combined impact (CPU % weighted + RSS in GiB)
+    // Sort candidates by combined impact (CPU % weighted + RSS in GiB + Disk Wait priority)
     std::sort(candidates.begin(), candidates.end(), [](const CulpritProcess &a, const CulpritProcess &b) {
-        const double scoreA = a.cpuPercent * 2.0 + (a.rssMegabytes / 256.0);
-        const double scoreB = b.cpuPercent * 2.0 + (b.rssMegabytes / 256.0);
+        const double scoreA = a.cpuPercent * 2.0 + (a.rssMegabytes / 256.0) + (a.inDiskWait ? 40.0 : 0.0);
+        const double scoreB = b.cpuPercent * 2.0 + (b.rssMegabytes / 256.0) + (b.inDiskWait ? 40.0 : 0.0);
         return scoreA > scoreB;
     });
 
