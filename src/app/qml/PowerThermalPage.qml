@@ -154,7 +154,7 @@ Kirigami.ScrollablePage {
 
         GridLayout {
             Layout.fillWidth: true
-            columns: width < 560 ? 1 : 2
+            columns: width < 560 ? 1 : (width < 900 ? 2 : 4)
             columnSpacing: Kirigami.Units.mediumSpacing
             rowSpacing: Kirigami.Units.mediumSpacing
 
@@ -165,22 +165,48 @@ Kirigami.ScrollablePage {
                     required property var modelData
                     Layout.fillWidth: true
                     contentItem: ColumnLayout {
-                        QQC2.Label {
-                            text: "CPU " + coreCard.modelData.coreId
-                            font.bold: true
-                            color: Kirigami.Theme.textColor
+                        spacing: 4
+                        RowLayout {
+                            Layout.fillWidth: true
+                            QQC2.Label {
+                                text: "CPU " + coreCard.modelData.coreId
+                                font.bold: true
+                                color: Kirigami.Theme.textColor
+                                Layout.fillWidth: true
+                            }
+                            QQC2.Label {
+                                visible: coreCard.modelData.tempCelsius > 0
+                                text: Math.round(coreCard.modelData.tempCelsius) + " °C"
+                                color: Kirigami.Theme.disabledTextColor
+                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                            }
+                        }
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 6
+                            radius: 3
+                            color: Kirigami.Theme.backgroundColor
+                            Rectangle {
+                                visible: coreCard.modelData.loadAvailable
+                                width: parent.width * Math.min(1.0, Math.max(0.0, coreCard.modelData.loadPercent / 100.0))
+                                height: parent.height
+                                radius: 3
+                                color: coreCard.modelData.loadPercent > 85 ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.highlightColor
+                            }
                         }
                         QQC2.Label {
                             Layout.fillWidth: true
                             wrapMode: Text.WordWrap
                             text: "Load: " + (coreCard.modelData.loadAvailable
                                   ? Math.round(coreCard.modelData.loadPercent) + "%" : "Unavailable")
-                                  + " · Frequency: " + (coreCard.modelData.currentFreqMhz > 0
+                                  + " · " + (coreCard.modelData.currentFreqMhz > 0
                                   ? coreCard.modelData.currentFreqMhz + " MHz" : "Unavailable")
                         }
                         QQC2.Label {
                             Layout.fillWidth: true
                             wrapMode: Text.WordWrap
+                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                            color: Kirigami.Theme.disabledTextColor
                             text: "Throttle count: " + (coreCard.modelData.throttleCountersAvailable
                                   ? coreCard.modelData.throttleCount : "Unavailable")
                         }

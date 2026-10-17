@@ -15,17 +15,70 @@ Kirigami.ScrollablePage {
         return available ? value + suffix : "Unavailable"
     }
 
+    function severityColor(sev) {
+        if (sev === 4) return Kirigami.Theme.neutralTextColor
+        if (sev === 3) return Kirigami.Theme.negativeTextColor
+        if (sev === 2) return Kirigami.Theme.neutralTextColor
+        if (sev === 1) return Kirigami.Theme.neutralTextColor
+        return Kirigami.Theme.positiveTextColor
+    }
+
     ColumnLayout {
         Layout.fillWidth: true
         spacing: Kirigami.Units.largeSpacing
 
-        Kirigami.Card {
+        Rectangle {
             Layout.fillWidth: true
-            contentItem: ColumnLayout {
+            implicitHeight: verdictCol.implicitHeight + Kirigami.Units.largeSpacing * 2
+            radius: 10
+            color: Kirigami.Theme.backgroundColor
+            border.width: 2
+            border.color: page.severityColor(page.controller.verdictSeverity)
+
+            ColumnLayout {
+                id: verdictCol
+                anchors.fill: parent
+                anchors.margins: Kirigami.Units.largeSpacing
                 spacing: Kirigami.Units.smallSpacing
-                Kirigami.Heading { text: page.controller.verdictHeadline; level: 2; Layout.fillWidth: true; wrapMode: Text.WordWrap }
-                QQC2.Label { text: page.controller.verdictCausalChain || "No contributing signal is currently available."; Layout.fillWidth: true; wrapMode: Text.WordWrap; color: Kirigami.Theme.textColor }
-                QQC2.Label { text: page.controller.verdictRecommendation || "Review the available measurements below."; Layout.fillWidth: true; wrapMode: Text.WordWrap; color: Kirigami.Theme.textColor }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: Kirigami.Units.smallSpacing
+
+                    Rectangle {
+                        Layout.preferredWidth: 12
+                        Layout.preferredHeight: 12
+                        radius: 6
+                        color: page.severityColor(page.controller.verdictSeverity)
+                    }
+
+                    Kirigami.Heading {
+                        text: page.controller.verdictHeadline
+                        level: 2
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                    }
+
+                    QQC2.Label {
+                        text: page.controller.primaryBottleneckDomain || "System"
+                        color: Kirigami.Theme.disabledTextColor
+                        font.bold: true
+                    }
+                }
+
+                QQC2.Label {
+                    text: page.controller.verdictCausalChain || "No contributing signal is currently available."
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: Kirigami.Theme.textColor
+                }
+
+                QQC2.Label {
+                    text: "Next step: " + (page.controller.verdictRecommendation || "Review the available measurements below.")
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: Kirigami.Theme.disabledTextColor
+                }
             }
         }
 
@@ -36,12 +89,44 @@ Kirigami.ScrollablePage {
             rowSpacing: Kirigami.Units.mediumSpacing
             Repeater {
                 model: [
-                    { title: "CPU load", value: page.metric(page.controller.cpuLoadAvailable, page.controller.cpuLoadPercent.toFixed(1), "%") },
-                    { title: "CPU temperature", value: page.metric(page.controller.cpuTempAvailable, page.controller.cpuPackageTemp.toFixed(1), " °C") },
-                    { title: "Memory pressure", value: page.metric(page.controller.psiMemoryAvailable, page.controller.psiMemSome10.toFixed(1), "% time waiting") },
-                    { title: "Package power", value: page.controller.packagePowerAvailable
-                        ? page.controller.packageWatts.toFixed(1) + " W · " + (page.controller.packagePowerEstimated ? "Estimated" : "Measured")
-                        : "Unavailable" }
+                    {
+                        title: "CPU load",
+                        value: page.metric(page.controller.cpuLoadAvailable, page.controller.cpuLoadPercent.toFixed(1), "%"),
+                        subtitle: page.controller.cpuAvgFreqMhz > 0
+                            ? page.controller.cpuAvgFreqMhz + " MHz avg · " + page.controller.cpuPeakFreqMhz + " MHz peak"
+                            : "Frequency unavailable",
+                        ratio: page.controller.cpuLoadAvailable ? Math.min(1.0, Math.max(0.0, page.controller.cpuLoadPercent / 100.0)) : 0.0,
+                        barAvailable: page.controller.cpuLoadAvailable
+                    },
+                    {
+                        title: "CPU temperature",
+                        value: page.metric(page.controller.cpuTempAvailable, page.controller.cpuPackageTemp.toFixed(1), " °C"),
+                        subtitle: page.controller.thermalHeadroomAvailable
+                            ? page.controller.thermalHeadroom.toFixed(1) + " °C headroom"
+                            : "Thermal limit unavailable",
+                        ratio: page.controller.cpuTempAvailable ? Math.min(1.0, Math.max(0.0, (page.controller.cpuPackageTemp - 25.0) / 75.0)) : 0.0,
+                        barAvailable: page.controller.cpuTempAvailable
+                    },
+                    {
+                        title: "Memory pressure",
+                        value: page.metric(page.controller.psiMemoryAvailable, page.controller.psiMemSome10.toFixed(1), "% time waiting"),
+                        subtitle: page.controller.memoryAvailable
+                            ? "RAM: " + page.controller.ramUsedGib.toFixed(1) + " / " + page.controller.ramTotalGib.toFixed(1) + " GiB"
+                            : "RAM reading unavailable",
+                        ratio: page.controller.psiMemoryAvailable ? Math.min(1.0, Math.max(0.0, page.controller.psiMemSome10 / 25.0)) : 0.0,
+                        barAvailable: page.controller.psiMemoryAvailable
+                    },
+                    {
+                        title: "Package power",
+                        value: page.controller.packagePowerAvailable
+                            ? page.controller.packageWatts.toFixed(1) + " W · " + (page.controller.packagePowerEstimated ? "Estimated" : "Measured")
+                            : "Unavailable",
+                        subtitle: "Profile: " + (page.controller.activePowerProfile || "Unavailable"),
+                        ratio: page.controller.packagePowerAvailable
+                            ? Math.min(1.0, Math.max(0.0, page.controller.packageWatts / Math.max(25.0, page.controller.pl1LimitWatts > 0 ? page.controller.pl1LimitWatts : 45.0)))
+                            : 0.0,
+                        barAvailable: page.controller.packagePowerAvailable
+                    }
                 ]
                 delegate: Kirigami.Card {
                     id: metricCard
@@ -49,8 +134,38 @@ Kirigami.ScrollablePage {
                     Layout.fillWidth: true
                     Layout.minimumWidth: 140
                     contentItem: ColumnLayout {
-                        QQC2.Label { text: metricCard.modelData.title; color: Kirigami.Theme.disabledTextColor }
-                        Kirigami.Heading { text: metricCard.modelData.value; level: 3; Layout.fillWidth: true; wrapMode: Text.WordWrap }
+                        spacing: Kirigami.Units.smallSpacing
+                        QQC2.Label {
+                            text: metricCard.modelData.title
+                            color: Kirigami.Theme.disabledTextColor
+                            font.bold: true
+                        }
+                        Kirigami.Heading {
+                            text: metricCard.modelData.value
+                            level: 3
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                        }
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 6
+                            radius: 3
+                            color: Kirigami.Theme.backgroundColor
+                            Rectangle {
+                                visible: metricCard.modelData.barAvailable
+                                width: parent.width * metricCard.modelData.ratio
+                                height: parent.height
+                                radius: 3
+                                color: Kirigami.Theme.highlightColor
+                            }
+                        }
+                        QQC2.Label {
+                            text: metricCard.modelData.subtitle
+                            color: Kirigami.Theme.disabledTextColor
+                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                        }
                     }
                 }
             }
@@ -69,11 +184,14 @@ Kirigami.ScrollablePage {
             spacing: Kirigami.Units.smallSpacing
             QQC2.Button { text: "Open System Monitor"; icon.name: "utilities-system-monitor"; onClicked: page.controller.openSystemMonitor() }
             QQC2.Button { text: "Copy report"; icon.name: "edit-copy"; onClicked: page.controller.copyIncidentReportToClipboard() }
+            QQC2.Button { text: "Save report + JSON"; icon.name: "document-save"; onClicked: page.controller.exportIncidentReportToFile() }
         }
 
         QQC2.Label {
             Layout.fillWidth: true
-            text: "Top process: " + (page.controller.culpritName || "Unavailable") + (page.controller.culpritName ? " · concurrent CPU load, not proof of cause" : "")
+            text: "Top process: " + (page.controller.culpritName
+                  ? page.controller.culpritName + " (" + page.controller.culpritCpuPercent.toFixed(1) + "% CPU, " + Math.round(page.controller.culpritRssMb) + " MiB RSS) · concurrent CPU load, not proof of cause"
+                  : "Unavailable")
             color: Kirigami.Theme.textColor
             wrapMode: Text.WordWrap
         }
