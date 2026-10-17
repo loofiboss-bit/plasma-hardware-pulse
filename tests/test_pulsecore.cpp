@@ -687,6 +687,12 @@ private Q_SLOTS:
         QCOMPARE(exported.value(QStringLiteral("gpuTempCelsius")).toDouble(), 73.0);
         QCOMPARE(exported.value(QStringLiteral("nvmeTempCelsius")).toDouble(), 44.0);
         QVERIFY(exported.value(QStringLiteral("metricQuality")).isObject());
+        const QJsonObject metaObj = exported.value(QStringLiteral("metricMetadata")).toObject();
+        QCOMPARE(metaObj.value(QStringLiteral("cpuTemperature")).toObject().value(QStringLiteral("state")).toString(), QStringLiteral("available"));
+        QCOMPARE(metaObj.value(QStringLiteral("pressureIndex")).toObject().value(QStringLiteral("state")).toString(), QStringLiteral("calculated"));
+        const QString md = recorder.exportSummaryMarkdown();
+        QVERIFY(md.contains(QStringLiteral("## Data quality at latest sample")));
+        QVERIFY(md.contains(QStringLiteral("**cpuTemperature**: available")));
     }
 
     void testVerdictStabilityAndImmediateUnknown()

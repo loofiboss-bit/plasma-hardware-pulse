@@ -140,7 +140,13 @@ void PulseTelemetryController::setSelectedHistoryIndex(int index)
     }
     m_selectedHistoryIndex = clamped;
     m_selectedHistorySampleId = clamped < 0 ? 0 : m_recorder.sampleAt(clamped).sampleId;
-    m_selectedHistorySnapshot = clamped < 0 ? QVariantMap{} : sampleToVariantMap(m_recorder.sampleAt(clamped), clamped);
+    if (clamped < 0) {
+        m_selectedHistorySnapshot.clear();
+    } else {
+        const FlightSample s = m_recorder.sampleAt(clamped);
+        m_selectedHistorySnapshot = sampleToVariantMap(s, clamped);
+        m_selectedHistorySnapshot.insert(QStringLiteral("metricMetadata"), FlightRecorder::sampleMetricMetadata(s));
+    }
     Q_EMIT selectedHistoryChanged();
 }
 
@@ -154,7 +160,9 @@ void PulseTelemetryController::setSelectedHistorySampleId(qulonglong sampleId)
     } else {
         m_selectedHistoryIndex = m_recorder.indexOfSample(sampleId);
         if (m_selectedHistoryIndex >= 0) {
-            m_selectedHistorySnapshot = sampleToVariantMap(m_recorder.sampleAt(m_selectedHistoryIndex), m_selectedHistoryIndex);
+            const FlightSample s = m_recorder.sampleAt(m_selectedHistoryIndex);
+            m_selectedHistorySnapshot = sampleToVariantMap(s, m_selectedHistoryIndex);
+            m_selectedHistorySnapshot.insert(QStringLiteral("metricMetadata"), FlightRecorder::sampleMetricMetadata(s));
         }
     }
     Q_EMIT selectedHistoryChanged();
@@ -189,7 +197,6 @@ QVariantMap PulseTelemetryController::sampleToVariantMap(const FlightSample &s, 
     m.insert(QStringLiteral("culpritCpuPercent"), s.culpritCpuPercent);
     m.insert(QStringLiteral("culpritRssMb"), s.culpritRssMb);
     m.insert(QStringLiteral("metricQuality"), s.metricQuality);
-    m.insert(QStringLiteral("metricMetadata"), s.metricQuality.value(QStringLiteral("metricMetadata")));
     for (auto it = s.metricQuality.cbegin(); it != s.metricQuality.cend(); ++it) {
         m.insert(it.key(), it.value());
     }
@@ -200,14 +207,22 @@ QVariantMap PulseTelemetryController::selectedHistoryDetail() const
 {
     if (m_selectedHistorySampleId != 0) {
         const int idx = m_recorder.indexOfSample(m_selectedHistorySampleId);
-        if (idx >= 0) return sampleToVariantMap(m_recorder.sampleAt(idx), idx);
+        if (idx >= 0) {
+            const FlightSample s = m_recorder.sampleAt(idx);
+            QVariantMap detail = sampleToVariantMap(s, idx);
+            detail.insert(QStringLiteral("metricMetadata"), FlightRecorder::sampleMetricMetadata(s));
+            return detail;
+        }
         return m_selectedHistorySnapshot;
     }
     const int idx = m_recorder.count() - 1;
     if (idx < 0) {
         return {};
     }
-    return sampleToVariantMap(m_recorder.sampleAt(idx), idx);
+    const FlightSample s = m_recorder.sampleAt(idx);
+    QVariantMap detail = sampleToVariantMap(s, idx);
+    detail.insert(QStringLiteral("metricMetadata"), FlightRecorder::sampleMetricMetadata(s));
+    return detail;
 }
 
 QVariantMap PulseTelemetryController::metricMetadata() const
@@ -283,7 +298,32 @@ void PulseTelemetryController::refreshNow()
     m_power = m_powerSampler.sample(elapsedMs, validCpuLoad, m_cpu.avgFreqMhz, m_cpu.maxFreqMhz);
     m_power.activePowerProfile = m_activePowerProfile;
     m_power.availablePowerProfiles = m_availablePowerProfiles;
-    m_processRadar = m_cpuSampler.sampleProcessRadar(5);
+    const bool elevatedActivity = (m_cpu.loadAvailable && m_cpu.totalLoadPercent >= 35.0)
+        || m_cpu.deltaThrottleEvents > 0
+        || (m_psiMem.responsivenessAvailable && m_psiMem.responsivenessScore < 92.0)
+        || m_psiMem.memoryPsi.someAvg10 >= 2.0
+        || m_psiMem.ioPsi.fullAvg10 >= 4.0;
+    const bool shouldScanProcesses = m_processScanWarmupCount < 2
+        || elevatedActivity
+        || m_lastProcessScanBoottimeMs == 0
+        || (sampleBoottimeMs - m_lastProcessScanBoottimeMs) >= 2500;
+    if (shouldScanProcesses) {
+        m_processRadar = m_cpuSampler.sampleProcessRadar(5);
+        m_lastProcessScanBoottimeMs = sampleBoottimeMs;
+        if (m_processScanWarmupCount < 2) {
+            ++m_processScanWarmupCount;
+        }
+        m_topProcessesVariant.clear();
+        for (const CulpritProcess &p : std::as_const(m_processRadar.topProcesses)) {
+            QVariantMap pm;
+            pm.insert(QStringLiteral("pid"), p.pid);
+            pm.insert(QStringLiteral("name"), p.name);
+            pm.insert(QStringLiteral("cpuPercent"), p.cpuPercent);
+            pm.insert(QStringLiteral("rssMegabytes"), p.rssMegabytes);
+            m_topProcessesVariant.append(pm);
+        }
+    }
+
     const CausalVerdict candidateVerdict = CausalDiagnosisEngine::evaluate(
         m_cpu,
         m_gpu,
@@ -339,16 +379,6 @@ void PulseTelemetryController::refreshNow()
         cm.insert(QStringLiteral("throttleCount"), c.throttleCount);
         cm.insert(QStringLiteral("throttleCountersAvailable"), m_cpu.throttleCountersAvailable);
         m_coreItemsVariant.append(cm);
-    }
-
-    m_topProcessesVariant.clear();
-    for (const CulpritProcess &p : std::as_const(m_processRadar.topProcesses)) {
-        QVariantMap pm;
-        pm.insert(QStringLiteral("pid"), p.pid);
-        pm.insert(QStringLiteral("name"), p.name);
-        pm.insert(QStringLiteral("cpuPercent"), p.cpuPercent);
-        pm.insert(QStringLiteral("rssMegabytes"), p.rssMegabytes);
-        m_topProcessesVariant.append(pm);
     }
 
     if (!m_recordingPaused || m_recorder.count() == 0) {
@@ -427,12 +457,8 @@ void PulseTelemetryController::refreshNow()
         sample.metricQuality.insert(QStringLiteral("gpuTempAvailable"), m_gpu.temperatureAvailable);
         sample.metricQuality.insert(QStringLiteral("gpuPowerAvailable"), m_gpu.powerAvailable);
         sample.metricQuality.insert(QStringLiteral("gpuVramAvailable"), m_gpu.vramAvailable);
-        sample.metricQuality.insert(QStringLiteral("nvmeTempAvailable"), std::any_of(m_domains.cbegin(), m_domains.cend(), [](const DomainSensorReading &d) {
-            return d.domain == PhysicalDomain::StorageNvme && d.available;
-        }));
-        sample.metricQuality.insert(QStringLiteral("wifiTempAvailable"), std::any_of(m_domains.cbegin(), m_domains.cend(), [](const DomainSensorReading &d) {
-            return d.domain == PhysicalDomain::NetworkWireless && d.available;
-        }));
+        sample.metricQuality.insert(QStringLiteral("nvmeTempAvailable"), m_nvmeTempAvailable);
+        sample.metricQuality.insert(QStringLiteral("wifiTempAvailable"), m_wifiTempAvailable);
         sample.metricQuality.insert(QStringLiteral("psiAvailable"), m_psiMem.responsivenessAvailable);
         sample.metricQuality.insert(QStringLiteral("psiCpuSomeAvailable"), m_psiMem.cpuPsi.someAvailable);
         sample.metricQuality.insert(QStringLiteral("psiMemorySomeAvailable"), m_psiMem.memoryPsi.someAvailable);
@@ -455,22 +481,30 @@ void PulseTelemetryController::refreshNow()
         sample.metricQuality.insert(QStringLiteral("powerLimitsAvailable"), m_power.pl1LimitWatts > 0.0 || m_power.pl2LimitWatts > 0.0);
         sample.metricQuality.insert(QStringLiteral("throttleCountersAvailable"), m_cpu.throttleCountersAvailable);
         sample.metricQuality.insert(QStringLiteral("fanAvailable"), m_power.fanAvailable);
-        sample.metricQuality.insert(QStringLiteral("metricMetadata"), metricMetadata());
-        if (m_recorder.count() > 0) {
-            sample.metricQuality.insert(QStringLiteral("gapBefore"), m_gapPending);
-        } else {
-            sample.metricQuality.insert(QStringLiteral("gapBefore"), false);
-        }
+        sample.metricQuality.insert(QStringLiteral("gapBefore"), m_recorder.count() > 0 ? m_gapPending : false);
 
         if (m_selectedHistorySampleId != 0) {
             const int selectedIndex = m_recorder.indexOfSample(m_selectedHistorySampleId);
-            if (selectedIndex >= 0) m_selectedHistorySnapshot = sampleToVariantMap(m_recorder.sampleAt(selectedIndex), selectedIndex);
+            if (selectedIndex >= 0) {
+                const FlightSample sel = m_recorder.sampleAt(selectedIndex);
+                m_selectedHistorySnapshot = sampleToVariantMap(sel, selectedIndex);
+                m_selectedHistorySnapshot.insert(QStringLiteral("metricMetadata"), FlightRecorder::sampleMetricMetadata(sel));
+            }
         }
         sample.sampleId = m_recorder.appendSample(sample);
         m_gapPending = false;
-        m_historySamplesVariant.clear();
-        for (int i = 0; i < m_recorder.count(); ++i) {
-            m_historySamplesVariant.append(sampleToVariantMap(m_recorder.sampleAt(i), i));
+        const int latestIdx = m_recorder.count() - 1;
+        m_historySamplesVariant.append(sampleToVariantMap(m_recorder.sampleAt(latestIdx), latestIdx));
+        while (m_historySamplesVariant.size() > m_recorder.count()) {
+            m_historySamplesVariant.removeFirst();
+        }
+        if (m_recorder.count() > 0
+            && (m_historySamplesVariant.size() != m_recorder.count()
+                || m_historySamplesVariant.first().toMap().value(QStringLiteral("sampleId")).toULongLong() != m_recorder.sampleAt(0).sampleId)) {
+            m_historySamplesVariant.clear();
+            for (int i = 0; i < m_recorder.count(); ++i) {
+                m_historySamplesVariant.append(sampleToVariantMap(m_recorder.sampleAt(i), i));
+            }
         }
         m_selectedHistoryIndex = m_recorder.indexOfSample(m_selectedHistorySampleId);
     }

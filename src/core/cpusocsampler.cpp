@@ -2,6 +2,7 @@
 #include "sysfsreader.h"
 
 #include <QDir>
+#include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
 #include <QRegularExpression>
@@ -355,21 +356,24 @@ ProcessRadarSnapshot CpuSocSampler::sampleProcessRadar(int maxTopProcesses)
         : 100ULL;
     m_prevSystemTotalTicks = currentSysTicks;
 
-    const QStringList entries = procDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+    QDirIterator procIt(m_config.procRoot, QDir::Dirs | QDir::NoDotAndDotDot);
     QHash<int, quint64> nextProcTicks;
+    nextProcTicks.reserve(m_prevProcTicks.size());
     QList<CulpritProcess> candidates;
 
     const long pageSizeKb = std::max(4L, sysconf(_SC_PAGESIZE) / 1024L);
     const int numCpus = std::max(1, static_cast<int>(m_prevCoreJiffies.size()));
 
-    for (const QString &entry : entries) {
+    while (procIt.hasNext()) {
+        procIt.next();
+        const QString entry = procIt.fileName();
         bool pidOk = false;
         const int pid = entry.toInt(&pidOk);
         if (!pidOk || pid <= 1) {
             continue;
         }
 
-        const QString statLine = SysfsReader::readTrimmedLine(procDir.filePath(entry + QStringLiteral("/stat")));
+        const QString statLine = SysfsReader::readTrimmedLine(procIt.filePath() + QStringLiteral("/stat"));
         if (statLine.isEmpty()) {
             continue;
         }

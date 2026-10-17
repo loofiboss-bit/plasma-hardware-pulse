@@ -153,7 +153,7 @@ QString FlightRecorder::exportSummaryMarkdown() const
                        ? QStringLiteral("%1 MHz").arg(latest.cpuFreqMhz) : QStringLiteral("Unavailable"),
                    metricText(latest, QStringLiteral("systemPowerAvailable"), latest.systemWatts, 1, QStringLiteral(" W")));
 
-    const QVariantMap metadata = latest.metricQuality.value(QStringLiteral("metricMetadata")).toMap();
+    const QVariantMap metadata = sampleMetricMetadata(latest);
     if (!metadata.isEmpty()) {
         md += QStringLiteral("## Data quality at latest sample\n");
         for (const QString &key : {QStringLiteral("cpuLoad"), QStringLiteral("cpuTemperature"),
@@ -209,6 +209,48 @@ QString FlightRecorder::exportSummaryMarkdown() const
     return md;
 }
 
+QVariantMap FlightRecorder::sampleMetricMetadata(const FlightSample &s)
+{
+    const QVariant explicitMeta = s.metricQuality.value(QStringLiteral("metricMetadata"));
+    if (explicitMeta.isValid() && !explicitMeta.toMap().isEmpty()) {
+        return explicitMeta.toMap();
+    }
+    if (s.metricQuality.isEmpty()) {
+        return {};
+    }
+
+    const qint64 sampledAt = s.timestampMs;
+    const auto flag = [&s](const QString &key) { return s.metricQuality.value(key).toBool(); };
+    const auto metric = [sampledAt](const QString &state, const QString &source, const QString &detail = QString()) {
+        return QVariantMap{{QStringLiteral("state"), state},
+                           {QStringLiteral("source"), source},
+                           {QStringLiteral("detail"), detail},
+                           {QStringLiteral("sampledAtMs"), sampledAt}};
+    };
+
+    QVariantMap result;
+    const bool loadAvail = flag(QStringLiteral("cpuLoadAvailable"));
+    const bool loadWarm = flag(QStringLiteral("cpuLoadWarmedUp"));
+    result.insert(QStringLiteral("cpuLoad"),
+                  metric(loadAvail ? QStringLiteral("available") : (loadWarm ? QStringLiteral("warming-up") : QStringLiteral("unavailable")),
+                         QStringLiteral("/proc/stat"),
+                         loadAvail ? QString() : QStringLiteral("CPU counters could not be read.")));
+    result.insert(QStringLiteral("cpuTemperature"),
+                  metric(flag(QStringLiteral("cpuTempAvailable")) ? QStringLiteral("available") : QStringLiteral("unavailable"),
+                         QStringLiteral("/sys/class/hwmon temp*_input"),
+                         flag(QStringLiteral("cpuTempAvailable")) ? QString() : QStringLiteral("No CPU temperature sensor was found.")));
+    result.insert(QStringLiteral("pressureIndex"),
+                  metric(flag(QStringLiteral("psiAvailable")) ? QStringLiteral("calculated") : QStringLiteral("unavailable"),
+                         QStringLiteral("Calculated from PSI avg10 values"),
+                         QStringLiteral("This index is not a measured response time.")));
+    const bool pkgPowerAvail = flag(QStringLiteral("packagePowerAvailable"));
+    const bool pkgPowerEst = flag(QStringLiteral("packagePowerEstimated"));
+    result.insert(QStringLiteral("packagePower"),
+                  metric(!pkgPowerAvail ? QStringLiteral("unavailable") : (pkgPowerEst ? QStringLiteral("estimated") : QStringLiteral("available")),
+                         pkgPowerEst ? QStringLiteral("Estimated from CPU load and frequency") : QStringLiteral("Hardware power sensor")));
+    return result;
+}
+
 QString FlightRecorder::exportSamplesJson() const
 {
     QJsonArray arr;
@@ -257,7 +299,7 @@ QString FlightRecorder::exportSamplesJson() const
         obj.insert(QStringLiteral("psiMemStallMsPerSec"), valueOrNull(QStringLiteral("psiMemorySomeAvailable"), s.psiMemStallMsPerSec));
         obj.insert(QStringLiteral("psiIoStallMsPerSec"), valueOrNull(QStringLiteral("psiIoSomeAvailable"), s.psiIoStallMsPerSec));
         obj.insert(QStringLiteral("metricQuality"), QJsonObject::fromVariantMap(s.metricQuality));
-        obj.insert(QStringLiteral("metricMetadata"), QJsonObject::fromVariantMap(s.metricQuality.value(QStringLiteral("metricMetadata")).toMap()));
+        obj.insert(QStringLiteral("metricMetadata"), QJsonObject::fromVariantMap(sampleMetricMetadata(s)));
         obj.insert(QStringLiteral("responsivenessScore"), valueOrNull(QStringLiteral("psiAvailable"), s.responsivenessScore));
         obj.insert(QStringLiteral("responseIndexAvailable"), valid(QStringLiteral("psiAvailable")));
         obj.insert(QStringLiteral("systemWatts"), valueOrNull(QStringLiteral("systemPowerAvailable"), s.systemWatts));

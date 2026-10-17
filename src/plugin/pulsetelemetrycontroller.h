@@ -316,6 +316,8 @@ private:
     QElapsedTimer m_uptime;
     qint64 m_lastBoottimeMs = 0;
     qint64 m_lastSampleWallTimeMs = 0;
+    qint64 m_lastProcessScanBoottimeMs = 0;
+    int m_processScanWarmupCount = 0;
     bool m_gapPending = false;
     bool m_notificationsEnabled = true;
     bool m_recordingPaused = false;
