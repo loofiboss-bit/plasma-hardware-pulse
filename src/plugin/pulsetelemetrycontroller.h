@@ -91,6 +91,8 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(bool netThroughputAvailable READ netThroughputAvailable NOTIFY telemetryUpdated)
     Q_PROPERTY(double netRxMibPerSec READ netRxMibPerSec NOTIFY telemetryUpdated)
     Q_PROPERTY(double netTxMibPerSec READ netTxMibPerSec NOTIFY telemetryUpdated)
+    Q_PROPERTY(QVariantList networkInterfaces READ networkInterfaces NOTIFY telemetryUpdated)
+    Q_PROPERTY(QStringList selectedNetworkInterfaces READ selectedNetworkInterfaces WRITE setSelectedNetworkInterfaces NOTIFY selectedNetworkInterfacesChanged)
 
     // Power & Cooling properties
     Q_PROPERTY(bool onAcPower READ onAcPower NOTIFY telemetryUpdated)
@@ -127,6 +129,10 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(QString verdictHeadline READ verdictHeadline NOTIFY telemetryUpdated)
     Q_PROPERTY(QString verdictCausalChain READ verdictCausalChain NOTIFY telemetryUpdated)
     Q_PROPERTY(QString verdictRecommendation READ verdictRecommendation NOTIFY telemetryUpdated)
+    Q_PROPERTY(QString verdictRuleId READ verdictRuleId NOTIFY telemetryUpdated)
+    Q_PROPERTY(double verdictDurationSeconds READ verdictDurationSeconds NOTIFY telemetryUpdated)
+    Q_PROPERTY(QStringList verdictEvidence READ verdictEvidence NOTIFY telemetryUpdated)
+    Q_PROPERTY(QStringList verdictMissingEvidence READ verdictMissingEvidence NOTIFY telemetryUpdated)
     Q_PROPERTY(QString primaryBottleneckDomain READ primaryBottleneckDomain NOTIFY telemetryUpdated)
     Q_PROPERTY(QStringList verdictContributingSignals READ verdictContributingSignals NOTIFY telemetryUpdated)
     Q_PROPERTY(QString culpritName READ culpritName NOTIFY telemetryUpdated)
@@ -154,6 +160,8 @@ class PulseTelemetryController : public QObject
 
     Q_PROPERTY(int pollIntervalMs READ pollIntervalMs WRITE setPollIntervalMs NOTIFY pollIntervalChanged)
     Q_PROPERTY(int historyRetentionSeconds READ historyRetentionSeconds WRITE setHistoryRetentionSeconds NOTIFY historyRetentionChanged)
+    Q_PROPERTY(double actualHistorySeconds READ actualHistorySeconds NOTIFY telemetryUpdated)
+    Q_PROPERTY(bool exportIncludeProcessDetails READ exportIncludeProcessDetails WRITE setExportIncludeProcessDetails NOTIFY exportIncludeProcessDetailsChanged)
     Q_PROPERTY(bool notificationsEnabled READ notificationsEnabled WRITE setNotificationsEnabled NOTIFY notificationsEnabledChanged)
     Q_PROPERTY(bool recordingPaused READ recordingPaused WRITE setRecordingPaused NOTIFY recordingPausedChanged)
     Q_PROPERTY(QString lastActionStatus READ lastActionStatus NOTIFY lastActionStatusChanged)
@@ -235,6 +243,9 @@ public:
     bool netThroughputAvailable() const { return m_psiMem.netThroughputAvailable; }
     double netRxMibPerSec() const { return m_psiMem.netRxMibPerSec; }
     double netTxMibPerSec() const { return m_psiMem.netTxMibPerSec; }
+    QVariantList networkInterfaces() const;
+    QStringList selectedNetworkInterfaces() const { return m_selectedNetworkInterfaces; }
+    void setSelectedNetworkInterfaces(const QStringList &interfaces);
 
     bool onAcPower() const { return m_power.onAcPower; }
     bool batteryPresent() const { return m_power.batteryPresent; }
@@ -269,6 +280,10 @@ public:
     QString verdictHeadline() const { return m_verdict.headline; }
     QString verdictCausalChain() const { return m_verdict.causalChain; }
     QString verdictRecommendation() const { return m_verdict.recommendation; }
+    QString verdictRuleId() const { return m_verdict.ruleId; }
+    double verdictDurationSeconds() const { return m_verdict.durationMs / 1000.0; }
+    QStringList verdictEvidence() const { return m_verdict.evidence; }
+    QStringList verdictMissingEvidence() const;
     QString primaryBottleneckDomain() const { return m_verdict.primaryBottleneckDomain; }
     QStringList verdictContributingSignals() const { return m_verdict.contributingSignals; }
     QString culpritName() const { return m_verdict.topProcess.name; }
@@ -301,6 +316,9 @@ public:
 
     int historyRetentionSeconds() const { return static_cast<int>(m_recorder.retentionMs() / 1000LL); }
     void setHistoryRetentionSeconds(int seconds);
+    double actualHistorySeconds() const;
+    bool exportIncludeProcessDetails() const { return m_exportIncludeProcessDetails; }
+    void setExportIncludeProcessDetails(bool include);
 
     bool notificationsEnabled() const { return m_notificationsEnabled; }
     void setNotificationsEnabled(bool enabled);
@@ -316,7 +334,9 @@ public:
     Q_INVOKABLE void refreshNow();
     Q_INVOKABLE void clearHistory();
     Q_INVOKABLE bool setPowerProfile(const QString &profile);
-    Q_INVOKABLE void launchStudioApp(const QString &pageName = QString());
+    Q_INVOKABLE void launchStudioApp(const QString &pageName = QString(), const QString &sectionName = QString());
+    static QString normalizedPageName(const QString &page);
+    static QString validatedSectionName(const QString &page, const QString &section);
     Q_INVOKABLE bool openSystemMonitor();
     Q_INVOKABLE bool openReportsFolder();
     Q_INVOKABLE int jumpToPeakThermalSpike();
@@ -325,6 +345,8 @@ public:
     Q_INVOKABLE QString exportIncidentReportToFile();
 
 Q_SIGNALS:
+    void selectedNetworkInterfacesChanged();
+    void exportIncludeProcessDetailsChanged();
     void telemetryUpdated();
     void selectedHistoryChanged();
     void pollIntervalChanged();
@@ -357,6 +379,8 @@ private:
     bool m_gapPending = false;
     bool m_notificationsEnabled = true;
     bool m_recordingPaused = false;
+    bool m_exportIncludeProcessDetails = false;
+    QStringList m_selectedNetworkInterfaces;
     qint64 m_lastAlertTimestampMs = 0;
     QString m_lastActionStatus;
     bool m_lastActionSucceeded = false;

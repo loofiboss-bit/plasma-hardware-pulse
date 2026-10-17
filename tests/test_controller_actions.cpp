@@ -26,6 +26,53 @@ class TestControllerActions : public QObject
     Q_OBJECT
 
 private Q_SLOTS:
+    void testNavigationValidationAndPrivacyDefaults()
+    {
+        QCOMPARE(PulseTelemetryController::normalizedPageName(QStringLiteral(" power ")), QStringLiteral("power"));
+        QCOMPARE(PulseTelemetryController::normalizedPageName(QStringLiteral("unknown")), QStringLiteral("overview"));
+        QCOMPARE(PulseTelemetryController::validatedSectionName(QStringLiteral("power"), QStringLiteral("gpu")), QStringLiteral("gpu"));
+        QCOMPARE(PulseTelemetryController::validatedSectionName(QStringLiteral("pressure"), QStringLiteral("network")), QStringLiteral("network"));
+        QVERIFY(PulseTelemetryController::validatedSectionName(QStringLiteral("power"), QStringLiteral("processes")).isEmpty());
+        PulseTelemetryController controller;
+        QVERIFY(!controller.exportIncludeProcessDetails());
+        QSignalSpy changes(&controller, &PulseTelemetryController::exportIncludeProcessDetailsChanged);
+        controller.setExportIncludeProcessDetails(true);
+        QVERIFY(controller.exportIncludeProcessDetails());
+        QCOMPARE(changes.count(), 1);
+        controller.setExportIncludeProcessDetails(true);
+        QCOMPARE(changes.count(), 1);
+    }
+
+    void testNetworkSelectionAndHistoryMetadata()
+    {
+        PulseTelemetryController controller;
+        QVERIFY(controller.selectedNetworkInterfaces().isEmpty());
+        QSignalSpy changes(&controller, &PulseTelemetryController::selectedNetworkInterfacesChanged);
+        controller.setSelectedNetworkInterfaces({QStringLiteral(" tun0 "), QStringLiteral("eth0"), QStringLiteral("tun0"), QString()});
+        QCOMPARE(controller.selectedNetworkInterfaces(), QStringList({QStringLiteral("eth0"), QStringLiteral("tun0")}));
+        QCOMPARE(changes.count(), 1);
+        controller.setSelectedNetworkInterfaces({QStringLiteral("tun0"), QStringLiteral("eth0")});
+        QCOMPARE(changes.count(), 1);
+        const auto sample = controller.historySamples().last().toMap();
+        QVERIFY(sample.contains(QStringLiteral("packageWatts")));
+        QVERIFY(sample.contains(QStringLiteral("batteryWatts")));
+        const auto quality = sample.value(QStringLiteral("metricQuality")).toMap();
+        const auto metadata = quality.value(QStringLiteral("metricMetadata")).toMap();
+        QVERIFY(metadata.contains(QStringLiteral("batteryDischarge")));
+        QVERIFY(metadata.contains(QStringLiteral("processes")));
+        QCOMPARE(metadata.value(QStringLiteral("packagePower")).toMap().value(QStringLiteral("source")),
+            controller.metricMetadata().value(QStringLiteral("packagePower")).toMap().value(QStringLiteral("source")));
+        controller.setRecordingPaused(true);
+        controller.refreshNow();
+        controller.setRecordingPaused(false);
+        controller.refreshNow();
+        QVERIFY(controller.historySamples().last().toMap().value(QStringLiteral("gapBefore")).toBool());
+        controller.clearHistory();
+        QCOMPARE(controller.actualHistorySeconds(), 0.0);
+        controller.setSelectedNetworkInterfaces({});
+        QVERIFY(controller.selectedNetworkInterfaces().isEmpty());
+    }
+
     void testMissingSystemMonitorReportsFailure()
     {
         const QByteArray previousPath = qgetenv("PATH");

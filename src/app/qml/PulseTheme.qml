@@ -43,6 +43,7 @@ QtObject {
     readonly property color cpuAccent: isDark ? "#38bdf8" : "#0284c7"
     readonly property color psiAccent: isDark ? "#34d399" : "#059669"
     readonly property color powerAccent: isDark ? "#a78bfa" : "#7c3aed"
+    readonly property color batteryAccent: isDark ? "#facc15" : "#a16207"
     readonly property color gpuAccent: isDark ? "#f472b6" : "#db2777"
     readonly property color storageAccent: isDark ? "#2dd4bf" : "#0d9488"
 
@@ -86,14 +87,11 @@ QtObject {
         if (key === "cpu") return cpuAccent
         if (key === "psi") return psiAccent
         if (key === "power") return powerAccent
+        if (key === "battery") return batteryAccent
         if (key === "gpu") return gpuAccent
         if (key === "storage") return storageAccent
         return cpuAccent
     }
 
-    function ratioColor(ratio, defaultAccent) {
-        if (ratio >= 0.85) return negativeColor
-        if (ratio >= 0.68) return neutralColor
-        return defaultAccent
-    }
+
 }

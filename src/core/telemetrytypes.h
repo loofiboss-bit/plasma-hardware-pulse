@@ -115,6 +115,17 @@ struct PsiMetric
     double deltaStallMsPerSec = 0.0;
 };
 
+struct NetworkInterfaceTelemetry
+{
+    QString identity;
+    QString name;
+    bool isPhysical = false;
+    bool included = false;
+    bool throughputAvailable = false;
+    double rxMibPerSec = 0.0;
+    double txMibPerSec = 0.0;
+};
+
 struct PsiAndMemorySnapshot
 {
     PsiMetric cpuPsi;
@@ -146,6 +157,7 @@ struct PsiAndMemorySnapshot
     double diskReadMibPerSec = 0.0;
     double diskWriteMibPerSec = 0.0;
 
+    QList<NetworkInterfaceTelemetry> networkInterfaces;
     bool netThroughputAvailable = false;
     double netRxMibPerSec = 0.0;
     double netTxMibPerSec = 0.0;
@@ -182,6 +194,8 @@ struct PowerFlowSnapshot
 
 struct CulpritProcess
 {
+    quint64 startTimeTicks = 0;
+    qint64 observedAtMs = 0;
     int pid = 0;
     QString name;
     double cpuPercent = 0.0;
@@ -192,6 +206,7 @@ struct CulpritProcess
 
 struct ProcessRadarSnapshot
 {
+    qint64 observedAtMs = 0;
     CulpritProcess topCpuProcess;
     CulpritProcess topMemoryProcess;
     CulpritProcess topDiskWaitProcess;
@@ -201,6 +216,10 @@ struct ProcessRadarSnapshot
 
 struct CausalVerdict
 {
+    QString ruleId;
+    QStringList evidence;
+    qint64 observedSinceMs = 0;
+    qint64 durationMs = 0;
     VerdictSeverity severity = VerdictSeverity::Unknown;
     QString headline;
     QString causalChain;
@@ -271,8 +290,13 @@ struct FlightSample
     bool throttled = false;
     VerdictSeverity severity = VerdictSeverity::Nominal;
     QString verdictHeadline;
+    QString verdictRuleId;
+    QStringList verdictEvidence;
+    qint64 verdictDurationMs = 0;
     QString culpritName;
     int culpritPid = 0;
+    quint64 culpritStartTimeTicks = 0;
+    qint64 processObservedAtMs = 0;
     double culpritCpuPercent = 0.0;
     double culpritRssMb = 0.0;
     QVariantMap metricQuality;

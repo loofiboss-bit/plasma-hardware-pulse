@@ -163,8 +163,9 @@ private Q_SLOTS:
         const CausalVerdict memBottleneck = CausalDiagnosisEngine::evaluate(cpu, gpu, psi, power, domains, culprit, memHog);
         QCOMPARE(memBottleneck.severity, VerdictSeverity::Bottleneck);
         QVERIFY(memBottleneck.causalChain.contains(QStringLiteral("Memory pressure")));
-        QVERIFY(memBottleneck.causalChain.contains(QStringLiteral("firefox-bin")));
-        QVERIFY(memBottleneck.causalChain.contains(QStringLiteral("4096 MiB RSS")));
+        QVERIFY(!memBottleneck.causalChain.contains(QStringLiteral("firefox-bin")));
+        QCOMPARE(memBottleneck.topMemoryProcess.name, QStringLiteral("firefox-bin"));
+        QCOMPARE(memBottleneck.topMemoryProcess.rssMegabytes, 4096.0);
 
         // 2b. GPU Compute / Thermal Saturation verdict
         psi.memoryPsi.someAvg10 = 0.0;
@@ -347,11 +348,11 @@ private Q_SLOTS:
         QCOMPARE(rec2.worstResponsivenessIndex(), 1);
         QCOMPARE(rec2.sampleAt(1).culpritName, QStringLiteral("rustc"));
 
-        const QString md = rec2.exportSummaryMarkdown();
+        const QString md = rec2.exportSummaryMarkdown(true);
         QVERIFY(md.contains(QStringLiteral("rustc")));
         QVERIFY(md.contains(QStringLiteral("Peak Thermal Spike")));
 
-        const QString json = rec2.exportSamplesJson();
+        const QString json = rec2.exportSamplesJson(true);
         QVERIFY(json.contains(QStringLiteral("\"culpritName\": \"rustc\"")));
     }
 
@@ -721,7 +722,7 @@ private Q_SLOTS:
         const QJsonDocument document = QJsonDocument::fromJson(recorder.exportSamplesJson().toUtf8());
         QVERIFY(document.isArray());
         const QJsonObject exported = document.array().first().toObject();
-        QCOMPARE(exported.value(QStringLiteral("schemaVersion")).toInt(), 1);
+        QCOMPARE(exported.value(QStringLiteral("schemaVersion")).toInt(), 2);
         QCOMPARE(exported.value(QStringLiteral("responsivenessScore")).toDouble(), 0.0);
         QCOMPARE(exported.value(QStringLiteral("cpuTempCelsius")).toDouble(), 0.0);
         QCOMPARE(exported.value(QStringLiteral("gpuTempCelsius")).toDouble(), 73.0);
@@ -834,6 +835,7 @@ private Q_SLOTS:
                                      "docker0: 52428800 50 0 0 0 0 0 0 52428800 50 0 0 0 0 0 0\n"
                                      " wlan0: 1048576 10 0 0 0 0 0 0 2097152 20 0 0 0 0 0 0\n"));
 
+        writeTextFile(sysRoot + QStringLiteral("/class/net/wlan0/device/uevent"), QStringLiteral("PHYSICAL=1\n"));
         PsiMemorySampler psiSampler({sysRoot, procRoot});
         const PsiAndMemorySnapshot firstPsi = psiSampler.sample(1000);
         QVERIFY(!firstPsi.netThroughputAvailable);
@@ -954,6 +956,217 @@ private Q_SLOTS:
         recorder.setRetentionMs(3000);
         QCOMPARE(recorder.count(), 4);
         QCOMPARE(recorder.sampleAt(0).monotonicMs, qint64(7000));
+    }
+
+    void testIncidentEpisodesRespectRecordingGaps()
+    {
+        FlightRecorder recorder;
+        for (qint64 time : {1000, 2000, 63000, 64000}) {
+            FlightSample sample;
+            sample.timestampMs = 1700000000000LL + time;
+            sample.monotonicMs = time;
+            sample.severity = VerdictSeverity::Elevated;
+            sample.verdictHeadline = QStringLiteral("Pressure observed");
+            sample.elapsedSincePreviousMs = time == 63000 ? 61000 : 1000;
+            sample.metricQuality.insert(QStringLiteral("gapBefore"), time == 63000);
+            recorder.appendSample(sample);
+        }
+        const auto episodes = recorder.incidentEpisodes();
+        QCOMPARE(episodes.size(), 2);
+        QCOMPARE(episodes[0].toMap().value(QStringLiteral("durationSeconds")).toInt(), 1);
+        QCOMPARE(episodes[1].toMap().value(QStringLiteral("durationSeconds")).toInt(), 1);
+        QVERIFY(episodes[0].toMap().value(QStringLiteral("sampleId")) != episodes[1].toMap().value(QStringLiteral("sampleId")));
+    }
+
+    void testHighActivityWithoutRiskIsNeutral()
+    {
+        CpuSocSnapshot cpu;
+        cpu.loadAvailable = true;
+        cpu.loadWarmedUp = true;
+        cpu.temperatureAvailable = true;
+        cpu.thermalLimitAvailable = true;
+        cpu.totalLoadPercent = 98;
+        cpu.packageTempCelsius = 45;
+        cpu.thermalHeadroomCelsius = 55;
+        cpu.thermalVelocityCPerSec = 1.5;
+        PsiAndMemorySnapshot psi;
+        psi.responsivenessAvailable = true;
+        psi.cpuPsi.someAvailable = true;
+        GpuSnapshot gpu;
+        gpu.busyAvailable = true;
+        gpu.temperatureAvailable = true;
+        gpu.busyPercent = 99;
+        gpu.tempCelsius = 45;
+        auto verdict = CausalDiagnosisEngine::evaluate(cpu, gpu, psi, {}, {}, {});
+        QCOMPARE(verdict.severity, VerdictSeverity::Nominal);
+        VerdictStabilizer stabilizer;
+        stabilizer.update(verdict, 1000);
+        QCOMPARE(stabilizer.update(verdict, 6000).severity, VerdictSeverity::Nominal);
+        cpu.totalLoadPercent = 10;
+        QCOMPARE(CausalDiagnosisEngine::evaluate(cpu, gpu, psi, {}, {}, {}).severity, VerdictSeverity::Nominal);
+        psi.cpuPsi.someAvg10 = 15;
+        QCOMPARE(CausalDiagnosisEngine::evaluate(cpu, gpu, psi, {}, {}, {}).severity, VerdictSeverity::Elevated);
+    }
+
+    void testRetentionMatrixAndCapacity()
+    {
+        for (const int interval : {250, 1000, 10000}) {
+            for (const int seconds : {60, 300, 1800}) {
+                FlightRecorder recorder;
+                recorder.setRetentionMs(seconds * 1000LL);
+                const qint64 total = (seconds + 20) * 1000LL;
+                for (qint64 time = 1000; time <= total + 1000; time += interval) {
+                    FlightSample sample;
+                    sample.monotonicMs = time;
+                    recorder.appendSample(sample);
+                }
+                const auto &samples = recorder.samples();
+                QCOMPARE(samples.last().monotonicMs - samples.first().monotonicMs, qint64(seconds * 1000));
+                QVERIFY(samples.size() <= recorder.capacity());
+            }
+        }
+        FlightRecorder bounded;
+        for (int i = 0; i < 50; ++i) bounded.appendSample({});
+        bounded.setCapacity(10);
+        QCOMPARE(bounded.count(), 10);
+        QCOMPARE(bounded.sampleAt(0).sampleId, quint64(41));
+    }
+
+    void testDeviceBaselinesHotplugResetAndVirtualSelection()
+    {
+        QTemporaryDir temp;
+        const QString sys = temp.filePath(QStringLiteral("sys"));
+        const QString proc = temp.filePath(QStringLiteral("proc"));
+        writeTextFile(sys + QStringLiteral("/class/net/eth0/device/uevent"), QStringLiteral("DRIVER=test"));
+        writeTextFile(sys + QStringLiteral("/class/net/eth0/ifindex"), QStringLiteral("2"));
+        writeTextFile(sys + QStringLiteral("/class/net/tun0/ifindex"), QStringLiteral("3"));
+        const auto netLine = [](const QString &name, quint64 value) {
+            return QStringLiteral("%1: %2 0 0 0 0 0 0 0 %2 0 0 0 0 0 0 0\n").arg(name).arg(value);
+        };
+        const auto diskLine = [](int minor, const QString &name, quint64 value) {
+            return QStringLiteral("8 %1 %2 0 0 %3 0 0 0 %3 0 0\n").arg(minor).arg(name).arg(value);
+        };
+        writeTextFile(proc + QStringLiteral("/net/dev"), netLine(QStringLiteral("eth0"), 1048576) + netLine(QStringLiteral("tun0"), 1048576));
+        writeTextFile(proc + QStringLiteral("/diskstats"), diskLine(0, QStringLiteral("sda"), 2048));
+        PsiMemorySampler sampler({sys, proc});
+        sampler.sample(1000);
+        writeTextFile(proc + QStringLiteral("/net/dev"), netLine(QStringLiteral("eth0"), 2097152) + netLine(QStringLiteral("tun0"), 2097152) + netLine(QStringLiteral("eth1"), 999999999));
+        writeTextFile(proc + QStringLiteral("/diskstats"), diskLine(0, QStringLiteral("sda"), 4096) + diskLine(16, QStringLiteral("sdb"), 999999999));
+        const auto hotplug = sampler.sample(1000);
+        QCOMPARE(hotplug.netRxMibPerSec, 1.0);
+        QCOMPARE(hotplug.diskReadMibPerSec, 1.0);
+        QCOMPARE(hotplug.networkInterfaces.size(), 3);
+        QVERIFY(hotplug.networkInterfaces.first().isPhysical);
+        sampler.setIncludedNetworkInterfaces({QStringLiteral("tun0")});
+        QVERIFY(!sampler.sample(1000).netThroughputAvailable);
+        writeTextFile(proc + QStringLiteral("/net/dev"), netLine(QStringLiteral("eth0"), 3145728) + netLine(QStringLiteral("tun0"), 4194304));
+        QCOMPARE(sampler.sample(1000).netRxMibPerSec, 2.0);
+        writeTextFile(proc + QStringLiteral("/net/dev"), netLine(QStringLiteral("tun0"), 10));
+        writeTextFile(proc + QStringLiteral("/diskstats"), diskLine(0, QStringLiteral("sda"), 10));
+        const auto reset = sampler.sample(1000);
+        QVERIFY(!reset.netThroughputAvailable);
+        QVERIFY(!reset.diskThroughputAvailable);
+        writeTextFile(proc + QStringLiteral("/net/dev"), netLine(QStringLiteral("tun0"), 1048586));
+        QCOMPARE(sampler.sample(1000).netRxMibPerSec, 1.0);
+        writeTextFile(sys + QStringLiteral("/class/net/tun0/ifindex"), QStringLiteral("4"));
+        QVERIFY(!sampler.sample(1000).netThroughputAvailable);
+    }
+
+    void testProcessIdentityAndObservedTimestamp()
+    {
+        QTemporaryDir temp;
+        const QString proc = temp.filePath(QStringLiteral("proc"));
+        const auto process = [](quint64 ticks, quint64 start) {
+            QStringList fields;
+            for (int i = 0; i <= 21; ++i) fields.append(QStringLiteral("0"));
+            fields[0] = QStringLiteral("R"); fields[11] = QString::number(ticks);
+            fields[19] = QString::number(start); fields[21] = QStringLiteral("4096");
+            return QStringLiteral("123 (worker) ") + fields.join(QLatin1Char(' '));
+        };
+        const auto stat = [&proc](int ticks) {
+            writeTextFile(proc + QStringLiteral("/stat"), QStringLiteral("cpu %1 0 0 100 0 0 0 0\ncpu0 %1 0 0 100 0 0 0 0\n").arg(ticks));
+        };
+        CpuSocSampler sampler({temp.filePath(QStringLiteral("sys")), proc});
+        stat(100); writeTextFile(proc + QStringLiteral("/123/stat"), process(100, 1));
+        sampler.sampleCpu({}); sampler.sampleProcessRadar();
+        stat(200); writeTextFile(proc + QStringLiteral("/123/stat"), process(150, 1));
+        sampler.sampleCpu({}); const auto original = sampler.sampleProcessRadar();
+        QCOMPARE(original.topCpuProcess.cpuPercent, 50.0);
+        QVERIFY(original.observedAtMs > 0);
+        QCOMPARE(original.topCpuProcess.observedAtMs, original.observedAtMs);
+        stat(300); writeTextFile(proc + QStringLiteral("/123/stat"), process(200, 2));
+        sampler.sampleCpu({}); const auto reused = sampler.sampleProcessRadar();
+        QCOMPARE(reused.topCpuProcess.pid, 0);
+        QCOMPARE(reused.topMemoryProcess.startTimeTicks, quint64(2));
+        QCOMPARE(reused.topMemoryProcess.cpuPercent, 0.0);
+    }
+
+    void testRuleIdentityStabilizationAndEvidence()
+    {
+        VerdictStabilizer stabilizer;
+        CausalVerdict first;
+        first.ruleId = QStringLiteral("cpu.elevated"); first.severity = VerdictSeverity::Elevated;
+        first.evidence = {QStringLiteral("CPU load 90%")};
+        stabilizer.update(first, 0);
+        QCOMPARE(stabilizer.update(first, 3000).ruleId, first.ruleId);
+        CausalVerdict second = first;
+        second.ruleId = QStringLiteral("gpu.temperature");
+        QCOMPARE(stabilizer.update(second, 3100).ruleId, first.ruleId);
+        QCOMPARE(stabilizer.update(first, 4000).ruleId, first.ruleId);
+        QCOMPARE(stabilizer.update(second, 5000).ruleId, first.ruleId);
+        const auto confirmed = stabilizer.update(second, 8000);
+        QCOMPARE(confirmed.ruleId, second.ruleId);
+        QCOMPARE(confirmed.observedSinceMs, qint64(5000));
+        QCOMPARE(confirmed.durationMs, qint64(3000));
+        QCOMPARE(confirmed.evidence, first.evidence);
+        second.severity = VerdictSeverity::CriticalThrottle;
+        second.ruleId = QStringLiteral("cpu.thermal-throttle");
+        QCOMPARE(stabilizer.update(second, 8001).ruleId, second.ruleId);
+        CpuSocSnapshot cpu;
+        cpu.throttleCountersAvailable = true; cpu.deltaThrottleEvents = 2;
+        const auto verdict = CausalDiagnosisEngine::evaluate(cpu, {}, {}, {}, {}, {});
+        QCOMPARE(verdict.ruleId, QStringLiteral("cpu.thermal-throttle"));
+        QVERIFY(!verdict.evidence.isEmpty());
+        PsiAndMemorySnapshot pressure;
+        pressure.memoryPsi.someAvailable = true; pressure.memoryPsi.someAvg10 = 10.0;
+        CulpritProcess privateProcess; privateProcess.name = QStringLiteral("private-memory-worker");
+        const auto memory = CausalDiagnosisEngine::evaluate({}, {}, pressure, {}, {}, {}, privateProcess);
+        QVERIFY(!memory.causalChain.contains(privateProcess.name));
+        QVERIFY(!memory.evidence.join(QLatin1Char(' ')).contains(privateProcess.name));
+    }
+
+    void testExportV2PowerDomainsAndProcessRedaction()
+    {
+        FlightRecorder recorder;
+        FlightSample sample;
+        sample.timestampMs = 1000; sample.cpuTempCelsius = 90.0; sample.responsivenessScore = 70;
+        sample.packageWatts = 12.0; sample.batteryWatts = 25.0; sample.systemWatts = 25.0;
+        sample.culpritName = QStringLiteral("private-worker"); sample.culpritPid = 1234;
+        sample.culpritStartTimeTicks = 987654321; sample.processObservedAtMs = 876543210;
+        sample.verdictRuleId = QStringLiteral("cpu.elevated");
+        sample.verdictEvidence = {QStringLiteral("Concurrent private-worker")};
+        sample.verdictDurationMs = 3000;
+        for (const auto &key : {"cpuTempAvailable", "psiAvailable", "packagePowerAvailable", "batteryPowerAvailable", "batteryDischargeAvailable"})
+            sample.metricQuality.insert(QString::fromLatin1(key), true);
+        recorder.appendSample(sample);
+        const QString json = recorder.exportSamplesJson();
+        const QString md = recorder.exportSummaryMarkdown();
+        QVERIFY(!json.contains(QStringLiteral("private-worker")));
+        QVERIFY(!json.contains(QStringLiteral("1234")));
+        QVERIFY(!json.contains(QStringLiteral("987654321")));
+        QVERIFY(!json.contains(QStringLiteral("876543210")));
+        QVERIFY(!md.contains(QStringLiteral("private-worker")));
+        QVERIFY(!md.contains(QStringLiteral("1234")));
+        QVERIFY(md.contains(QStringLiteral("CPU package power 12.0 W")));
+        QVERIFY(md.contains(QStringLiteral("Battery discharge**: 25.0 W")));
+        QVERIFY(!md.contains(QStringLiteral("system power")));
+        const auto object = QJsonDocument::fromJson(json.toUtf8()).array().first().toObject();
+        QCOMPARE(object.value(QStringLiteral("schemaVersion")).toInt(), 2);
+        QCOMPARE(object.value(QStringLiteral("verdictRuleId")).toString(), sample.verdictRuleId);
+        QCOMPARE(object.value(QStringLiteral("verdictDurationMs")).toInteger(), qint64(3000));
+        QVERIFY(object.contains(QStringLiteral("powerSources")));
+        QVERIFY(recorder.exportSamplesJson(true).contains(QStringLiteral("private-worker")));
+        QVERIFY(recorder.exportSummaryMarkdown(true).contains(QStringLiteral("private-worker")));
     }
 
     void testLiveHostTelemetrySanity()

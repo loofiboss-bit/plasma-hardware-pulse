@@ -16,6 +16,7 @@ Kirigami.ApplicationWindow {
     minimumHeight: 480
 
     property string initialPageName: "overview"
+    property string initialSectionName: ""
     property string currentPageName: "overview"
 
     readonly property PulseTheme theme: PulseTheme {
@@ -33,6 +34,8 @@ Kirigami.ApplicationWindow {
         property int savedPollInterval: 1000
         property int savedHistoryRetentionSeconds: 300
         property bool savedNotificationsEnabled: true
+        property var savedNetworkInterfaces: []
+        property bool savedExportIncludeProcessDetails: false
     }
 
     PulseTelemetryController {
@@ -40,6 +43,10 @@ Kirigami.ApplicationWindow {
         pollIntervalMs: appSettings.savedPollInterval
         historyRetentionSeconds: appSettings.savedHistoryRetentionSeconds
         notificationsEnabled: appSettings.savedNotificationsEnabled
+        selectedNetworkInterfaces: appSettings.savedNetworkInterfaces
+        exportIncludeProcessDetails: appSettings.savedExportIncludeProcessDetails
+        onSelectedNetworkInterfacesChanged: appSettings.savedNetworkInterfaces = selectedNetworkInterfaces
+        onExportIncludeProcessDetailsChanged: appSettings.savedExportIncludeProcessDetails = exportIncludeProcessDetails
         onPollIntervalChanged: appSettings.savedPollInterval = pollIntervalMs
         onHistoryRetentionChanged: appSettings.savedHistoryRetentionSeconds = historyRetentionSeconds
         onNotificationsEnabledChanged: appSettings.savedNotificationsEnabled = notificationsEnabled
@@ -74,7 +81,11 @@ Kirigami.ApplicationWindow {
         onActivated: telemetry.copyIncidentReportToClipboard()
     }
 
-    function switchToPage(name) {
+    function focusPageSection(item: var, section: string): void {
+        if (item && typeof item.focusSection === "function") item.focusSection(section)
+    }
+
+    function switchToPage(name, section) {
         var targetComp = overviewComp
         var normalized = "overview"
         if (name === "flight") {
@@ -88,16 +99,102 @@ Kirigami.ApplicationWindow {
             normalized = "power"
         }
         appWindow.currentPageName = normalized
-        if (appWindow.pageStack.depth > 0) {
-            appWindow.pageStack.replace(targetComp)
-        } else {
-            appWindow.pageStack.push(targetComp)
-        }
+        var targetPage = appWindow.pageStack.depth > 0
+            ? appWindow.pageStack.replace(targetComp) : appWindow.pageStack.push(targetComp)
+        Qt.callLater(function() { appWindow.focusPageSection(targetPage, section || "") })
     }
 
-    onInitialPageNameChanged: {
-        if (initialPageName !== "overview") {
-            switchToPage(initialPageName)
+    function applyInitialNavigation() { switchToPage(initialPageName, initialSectionName) }
+    onInitialPageNameChanged: Qt.callLater(applyInitialNavigation)
+    onInitialSectionNameChanged: Qt.callLater(applyInitialNavigation)
+
+    QQC2.Dialog {
+        id: settingsDialog
+        objectName: "settingsDialog"
+        title: "Settings"
+        modal: true
+        anchors.centerIn: parent
+        width: Math.min(appWindow.width - 40, 560)
+        height: Math.min(appWindow.height - 60, settingsContent.implicitHeight + 100)
+        standardButtons: QQC2.Dialog.Close
+        QQC2.ScrollView {
+            anchors.fill: parent
+            clip: true
+            contentWidth: availableWidth
+            ColumnLayout {
+                id: settingsContent
+                width: parent.width
+                spacing: Kirigami.Units.mediumSpacing
+                QQC2.Label { text: "Sampling interval (ms)"; font.bold: true }
+                QQC2.SpinBox {
+                    objectName: "samplingIntervalSetting"
+                    from: 250; to: 10000; stepSize: 250
+                    value: telemetry.pollIntervalMs
+                    onValueModified: telemetry.pollIntervalMs = value
+                    Accessible.name: "Sampling interval in milliseconds"
+                }
+                QQC2.Label { text: "History retention"; font.bold: true }
+                QQC2.ComboBox {
+                    objectName: "historyRetentionSetting"
+                    model: ["5 minutes", "15 minutes", "30 minutes"]
+                    currentIndex: telemetry.historyRetentionSeconds === 1800 ? 2 : telemetry.historyRetentionSeconds === 900 ? 1 : 0
+                    onActivated: telemetry.historyRetentionSeconds = [300, 900, 1800][currentIndex]
+                    Accessible.name: "History retention"
+                }
+                QQC2.CheckBox {
+                    text: "Enable incident notifications"
+                    checked: telemetry.notificationsEnabled
+                    onToggled: telemetry.notificationsEnabled = checked
+                }
+                QQC2.CheckBox {
+                    text: "Include process names and IDs in reports"
+                    checked: telemetry.exportIncludeProcessDetails
+                    onToggled: telemetry.exportIncludeProcessDetails = checked
+                }
+                QQC2.Label { text: "Network interfaces"; font.bold: true }
+                QQC2.CheckBox {
+                    text: "Automatically use physical interfaces"
+                    checked: telemetry.selectedNetworkInterfaces.length === 0
+                    onToggled: {
+                        if (checked) telemetry.selectedNetworkInterfaces = []
+                        else {
+                            var ids = []
+                            for (var i = 0; i < telemetry.networkInterfaces.length; ++i) {
+                                var iface = telemetry.networkInterfaces[i]
+                                if (iface.physical && iface.available) ids.push(iface.id)
+                            }
+                            if (ids.length > 0) telemetry.selectedNetworkInterfaces = ids
+                        }
+                    }
+                }
+                Repeater {
+                    model: telemetry.networkInterfaces
+                    delegate: QQC2.CheckBox {
+                        required property var modelData
+                        text: modelData.name + (modelData.physical ? " (physical)" : " (virtual)")
+                              + (modelData.available ? "" : " · unavailable")
+                        checked: modelData.included
+                        onToggled: {
+                            var ids = telemetry.selectedNetworkInterfaces.slice()
+                            if (ids.length === 0) {
+                                for (var i = 0; i < telemetry.networkInterfaces.length; ++i) {
+                                    var candidate = telemetry.networkInterfaces[i]
+                                    if (candidate.included) ids.push(candidate.id)
+                                }
+                            }
+                            var index = ids.indexOf(modelData.id)
+                            if (checked && index < 0) ids.push(modelData.id)
+                            else if (!checked && index >= 0) ids.splice(index, 1)
+                            telemetry.selectedNetworkInterfaces = ids
+                        }
+                    }
+                }
+                QQC2.Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    text: "An empty selection uses physical interfaces automatically. Reports include process details only when explicitly enabled."
+                }
+            }
         }
     }
 
@@ -144,47 +241,12 @@ Kirigami.ApplicationWindow {
                 onTriggered: telemetry.recordingPaused = !telemetry.recordingPaused
             },
             Kirigami.Action {
-                text: telemetry.notificationsEnabled ? "Disable notifications" : "Enable notifications"
-                icon.name: telemetry.notificationsEnabled ? "notifications-disabled" : "notifications"
-                onTriggered: telemetry.notificationsEnabled = !telemetry.notificationsEnabled
-            },
-            Kirigami.Action {
-                text: "Copy Incident Report (MD)"
-                icon.name: "edit-copy"
-                onTriggered: telemetry.copyIncidentReportToClipboard()
-            },
-            Kirigami.Action {
-                text: "Poll Rate (" + telemetry.pollIntervalMs + " ms)"
-                icon.name: "speedometer"
-                Kirigami.Action {
-                    text: "Fast (500 ms)"
-                    onTriggered: telemetry.pollIntervalMs = 500
-                }
-                Kirigami.Action {
-                    text: "Standard (1000 ms)"
-                    onTriggered: telemetry.pollIntervalMs = 1000
-                }
-                Kirigami.Action {
-                    text: "Eco (2000 ms)"
-                    onTriggered: telemetry.pollIntervalMs = 2000
-                }
-            },
-            Kirigami.Action {
-                text: "History Window (" + Math.round(telemetry.historyRetentionSeconds / 60) + "m)"
-                icon.name: "chronometer"
-                Kirigami.Action {
-                    text: "5 minutes"
-                    onTriggered: telemetry.historyRetentionSeconds = 300
-                }
-                Kirigami.Action {
-                    text: "15 minutes"
-                    onTriggered: telemetry.historyRetentionSeconds = 900
-                }
-                Kirigami.Action {
-                    text: "30 minutes"
-                    onTriggered: telemetry.historyRetentionSeconds = 1800
-                }
+                objectName: "openSettings"
+                text: "Settings"
+                icon.name: "configure"
+                onTriggered: settingsDialog.open()
             }
+
         ]
     }
 
@@ -256,10 +318,12 @@ Kirigami.ApplicationWindow {
                         }
                     }
 
-                    MouseArea {
+                    QQC2.AbstractButton {
+                        objectName: "statusExplanationButton"
                         anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: appWindow.switchToPage("overview")
+                        Accessible.name: telemetry.verdictHeadline + ". Open status explanation"
+                        onClicked: appWindow.switchToPage("overview", "status")
+                        background: Rectangle { color: "transparent"; border.width: parent.activeFocus ? 2 : 0; border.color: Kirigami.Theme.focusColor }
                     }
                 }
 
@@ -269,7 +333,7 @@ Kirigami.ApplicationWindow {
 
                 // Quick telemetry readout pills on wide screens
                 Rectangle {
-                    visible: appWindow.width >= 720
+                    visible: appWindow.width >= 1000
                     radius: theme.pillRadius
                     color: theme.subtleSurfaceColor
                     border.width: 1
@@ -312,8 +376,8 @@ Kirigami.ApplicationWindow {
 
                         QQC2.Label {
                             text: telemetry.psiAvailable
-                                  ? Math.round(telemetry.responsivenessScore) + "% PSI"
-                                  : "PSI N/A"
+                                  ? "Responsiveness " + Math.round(telemetry.responsivenessScore) + "/100"
+                                  : "Index unavailable"
                             color: theme.psiAccent
                             font.bold: true
                             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
@@ -321,7 +385,8 @@ Kirigami.ApplicationWindow {
 
                         QQC2.Label {
                             visible: telemetry.packagePowerAvailable
-                            text: "· " + telemetry.packageWatts.toFixed(1) + "W"
+                            text: "· CPU package " + telemetry.packageWatts.toFixed(1) + " W"
+                                  + (telemetry.packagePowerEstimated ? " (est.)" : "")
                             color: theme.powerAccent
                             font.bold: true
                             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
@@ -359,6 +424,8 @@ Kirigami.ApplicationWindow {
                         implicitHeight: tabContentRow.implicitHeight + 10
                         hoverEnabled: true
                         Accessible.name: navTabBtn.modelData.label + " tab"
+                        checkable: true
+                        checked: navTabBtn.isCurrent
                         onClicked: appWindow.switchToPage(navTabBtn.modelData.id)
 
                         background: Rectangle {
@@ -367,7 +434,7 @@ Kirigami.ApplicationWindow {
                                    ? theme.accentTint(Kirigami.Theme.highlightColor, theme.isDark ? 0.22 : 0.14)
                                    : (navTabBtn.hovered ? theme.elevatedSurfaceColor : "transparent")
                             border.width: navTabBtn.isCurrent ? 1.5 : 1
-                            border.color: navTabBtn.isCurrent
+                            border.color: navTabBtn.activeFocus ? Kirigami.Theme.focusColor : navTabBtn.isCurrent
                                           ? Kirigami.Theme.highlightColor
                                           : (navTabBtn.hovered ? theme.cardBorderColor : "transparent")
                         }
@@ -448,7 +515,7 @@ Kirigami.ApplicationWindow {
         id: overviewComp
         OverviewPage {
             controller: telemetry
-            onNavigateRequested: (pageName) => appWindow.switchToPage(pageName)
+            onNavigateRequested: (pageName, section) => appWindow.switchToPage(pageName, section)
         }
     }
 

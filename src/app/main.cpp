@@ -52,9 +52,11 @@ int main(int argc, char *argv[])
     QCommandLineOption smokeOpt(QStringLiteral("smoke-test"), QStringLiteral("Run automated QML & telemetry verification and exit."));
     QCommandLineOption screenshotOpt(QStringLiteral("screenshot"), QStringLiteral("Render window to PNG file and exit."), QStringLiteral("path"));
     QCommandLineOption pageOpt(QStringLiteral("page"), QStringLiteral("Initial view to open (overview, flight, pressure, power)."), QStringLiteral("name"));
+    QCommandLineOption sectionOpt(QStringLiteral("section"), QStringLiteral("Section to focus within the initial view."), QStringLiteral("name"));
     parser.addOption(smokeOpt);
     parser.addOption(screenshotOpt);
     parser.addOption(pageOpt);
+    parser.addOption(sectionOpt);
     parser.process(app);
     aboutData.processCommandLine(&parser);
 
@@ -85,9 +87,10 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if (parser.isSet(pageOpt)) {
-        engine.rootObjects().constFirst()->setProperty("initialPageName", parser.value(pageOpt));
-    }
+    const QString page = LoofiPulse::PulseTelemetryController::normalizedPageName(parser.value(pageOpt));
+    engine.rootObjects().constFirst()->setProperty("initialSectionName",
+        LoofiPulse::PulseTelemetryController::validatedSectionName(page, parser.value(sectionOpt)));
+    engine.rootObjects().constFirst()->setProperty("initialPageName", page);
 
     if (parser.isSet(smokeOpt)) {
         LoofiPulse::PulseTelemetryController probe;

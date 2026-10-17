@@ -9,8 +9,25 @@ Kirigami.ScrollablePage {
     objectName: "overviewPage"
     title: "Overview"
     required property var controller
+
+    function focusSection(section) {
+        if (!section) return true
+        var targets = {"status": verdictHeading, "measurements": detailsCol}
+        var target = targets[section]
+        if (!target) return false
+        if (section === "measurements") page.detailsExpanded = true
+        Qt.callLater(function() {
+            var position = target.mapToItem(page.flickable.contentItem, 0, 0)
+            page.flickable.contentY = Math.max(0, Math.min(position.y - 12,
+                page.flickable.contentHeight - page.flickable.height))
+            target.forceActiveFocus(Qt.TabFocusReason)
+        })
+        return true
+    }
+
     property bool detailsExpanded: false
-    signal navigateRequested(string pageName)
+    property bool whyExpanded: false
+    signal navigateRequested(string pageName, string section)
 
     readonly property PulseTheme theme: PulseTheme {
         id: theme
@@ -23,6 +40,16 @@ Kirigami.ScrollablePage {
 
     function metric(available, value, suffix) {
         return available ? value + suffix : "Unavailable"
+    }
+
+    function sectionForDomain(domain) {
+        var d = String(domain || "").toLowerCase()
+        if (d.indexOf("memory") >= 0) return "memory"
+        if (d.indexOf("storage") >= 0) return "storage"
+        if (d.indexOf("graphics") >= 0) return "gpu"
+        if (d.indexOf("battery") >= 0) return "battery"
+        if (d.indexOf("power") >= 0) return "profile"
+        return "cpu"
     }
 
     function targetPageForDomain(domain) {
@@ -114,6 +141,9 @@ Kirigami.ScrollablePage {
                     }
 
                     Kirigami.Heading {
+                        id: verdictHeading
+                objectName: "section_status"
+                        activeFocusOnTab: true
                         text: page.controller.verdictHeadline
                         level: 2
                         Layout.fillWidth: true
@@ -125,6 +155,46 @@ Kirigami.ScrollablePage {
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                         color: Kirigami.Theme.textColor
+                    }
+
+                    QQC2.Button {
+                        objectName: "whyStatusButton"
+                        text: "Why this status?"
+                        checkable: true
+                        checked: page.whyExpanded
+                        onClicked: page.whyExpanded = checked
+                    }
+                    ColumnLayout {
+                        visible: page.whyExpanded
+                        Layout.fillWidth: true
+                        QQC2.Label {
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                            text: "Rule: " + page.controller.verdictRuleId + " · observed for " + page.controller.verdictDurationSeconds.toFixed(1) + " s"
+                        }
+                        Repeater {
+                            model: page.controller.verdictEvidence
+                            delegate: QQC2.Label {
+                                required property string modelData
+                                Layout.fillWidth: true
+                                wrapMode: Text.WordWrap
+                                text: "Evidence: " + modelData
+                            }
+                        }
+                        Repeater {
+                            model: page.controller.verdictMissingEvidence
+                            delegate: QQC2.Label {
+                                required property string modelData
+                                Layout.fillWidth: true
+                                wrapMode: Text.WordWrap
+                                text: "Missing evidence: " + modelData
+                            }
+                        }
+                        QQC2.Label {
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                            text: "Recommendation: " + page.controller.verdictRecommendation
+                        }
                     }
 
                     Flow {
@@ -184,19 +254,19 @@ Kirigami.ScrollablePage {
                             text: page.controller.verdictSeverity > 0 && page.controller.verdictSeverity < 4
                                   ? "Inspect " + (page.controller.primaryBottleneckDomain || "details")
                                   : "Power & Cooling"
-                            onClicked: page.navigateRequested(page.targetPageForDomain(page.controller.primaryBottleneckDomain))
+                            onClicked: page.navigateRequested(page.targetPageForDomain(page.controller.primaryBottleneckDomain), page.sectionForDomain(page.controller.primaryBottleneckDomain))
                         }
 
                         QQC2.Button {
                             icon.name: "chronometer"
                             text: "Open History"
-                            onClicked: page.navigateRequested("flight")
+                            onClicked: page.navigateRequested("flight", "timeline")
                         }
 
                         QQC2.Button {
                             icon.name: "memory"
                             text: "Memory & Pressure"
-                            onClicked: page.navigateRequested("pressure")
+                            onClicked: page.navigateRequested("pressure", "overview")
                         }
 
                         QQC2.Button {
@@ -273,7 +343,7 @@ Kirigami.ScrollablePage {
                         QQC2.Label {
                             Layout.alignment: Qt.AlignHCenter
                             text: page.controller.psiAvailable
-                                  ? page.controller.responsivenessScore.toFixed(0) + "%"
+                                  ? page.controller.responsivenessScore.toFixed(0) + "/100"
                                   : "N/A"
                             font.bold: true
                             font.pixelSize: Kirigami.Theme.defaultFont.pixelSize + 6
@@ -282,17 +352,19 @@ Kirigami.ScrollablePage {
 
                         QQC2.Label {
                             Layout.alignment: Qt.AlignHCenter
-                            text: "PRESSURE IDX"
+                            text: "RESPONSIVENESS"
                             font.bold: true
                             font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 2)
                             color: Kirigami.Theme.disabledTextColor
                         }
                     }
 
-                    MouseArea {
+                    QQC2.AbstractButton {
+                        objectName: "responsivenessButton"
                         anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: page.navigateRequested("pressure")
+                        Accessible.name: "Responsiveness index " + (page.controller.psiAvailable ? page.controller.responsivenessScore.toFixed(0) + " out of 100; higher is better" : "unavailable") + ". Open pressure details"
+                        onClicked: page.navigateRequested("pressure", "overview")
+                        background: Rectangle { color: "transparent"; border.width: parent.activeFocus ? 2 : 0; border.color: Kirigami.Theme.focusColor }
                     }
                 }
             }
@@ -321,7 +393,7 @@ Kirigami.ScrollablePage {
                             : "Frequency unavailable",
                         ratio: page.controller.cpuLoadAvailable ? Math.min(1.0, Math.max(0.0, page.controller.cpuLoadPercent / 100.0)) : 0.0,
                         barAvailable: page.controller.cpuLoadAvailable,
-                        targetPage: "power"
+                        targetPage: "power", section: "cpu"
                     },
                     {
                         title: "CPU temperature",
@@ -337,7 +409,7 @@ Kirigami.ScrollablePage {
                             : "Thermal limit unavailable",
                         ratio: page.controller.cpuTempAvailable ? Math.min(1.0, Math.max(0.0, (page.controller.cpuPackageTemp - 25.0) / 75.0)) : 0.0,
                         barAvailable: page.controller.cpuTempAvailable,
-                        targetPage: "power"
+                        targetPage: "power", section: "cpu"
                     },
                     {
                         title: "Graphics (GPU)",
@@ -358,7 +430,7 @@ Kirigami.ScrollablePage {
                             : (page.controller.gpuFrequencyAvailable && page.controller.gpuBoostFreqMhz > 0
                                ? Math.min(1.0, Math.max(0.0, page.controller.gpuCurrentFreqMhz / page.controller.gpuBoostFreqMhz)) : 0.0),
                         barAvailable: page.controller.gpuBusyAvailable || (page.controller.gpuFrequencyAvailable && page.controller.gpuBoostFreqMhz > 0),
-                        targetPage: "power"
+                        targetPage: "power", section: "gpu"
                     },
                     {
                         title: "Memory pressure",
@@ -375,7 +447,7 @@ Kirigami.ScrollablePage {
                             : "RAM reading unavailable",
                         ratio: page.controller.psiMemoryAvailable ? Math.min(1.0, Math.max(0.0, page.controller.psiMemSome10 / 25.0)) : 0.0,
                         barAvailable: page.controller.psiMemoryAvailable,
-                        targetPage: "pressure"
+                        targetPage: "pressure", section: "memory"
                     },
                     {
                         title: "Storage & I/O",
@@ -399,14 +471,14 @@ Kirigami.ScrollablePage {
                             ? Math.min(1.0, Math.max(0.0, (page.controller.diskReadMibPerSec + page.controller.diskWriteMibPerSec) / 500.0))
                             : (page.controller.psiIoFullAvailable ? Math.min(1.0, Math.max(0.0, page.controller.psiIoFull10 / 25.0)) : 0.0),
                         barAvailable: page.controller.diskThroughputAvailable || page.controller.psiIoFullAvailable,
-                        targetPage: "pressure"
+                        targetPage: "pressure", section: "storage"
                     },
                     {
                         title: "Package power",
                         icon: "battery-profile-performance",
                         accentKey: "power",
-                        sampleKey: "systemWatts",
-                        sampleAvailKey: "systemPowerAvailable",
+                        sampleKey: "packageWatts",
+                        sampleAvailKey: "packagePowerAvailable",
                         sampleMin: 0.0,
                         sampleMax: Math.max(45.0, page.controller.historyMaxWatts),
                         value: page.controller.packagePowerAvailable
@@ -418,7 +490,7 @@ Kirigami.ScrollablePage {
                             ? Math.min(1.0, Math.max(0.0, page.controller.packageWatts / Math.max(25.0, page.controller.pl1LimitWatts > 0 ? page.controller.pl1LimitWatts : 45.0)))
                             : 0.0,
                         barAvailable: page.controller.packagePowerAvailable,
-                        targetPage: "power"
+                        targetPage: "power", section: "cpu"
                     }
                 ]
 
@@ -486,16 +558,19 @@ Kirigami.ScrollablePage {
                             var pts = []
                             for (var i = 0; i < count; ++i) {
                                 var s = samples[startIdx + i]
-                                if (!s[aKey] || !isFinite(s[sKey])) continue
+                                if (!s[aKey] || !isFinite(s[sKey]) || s.gapBefore) { pts.push(null); continue }
                                 var px = (i / Math.max(1, count - 1)) * width
                                 var norm = Math.min(1, Math.max(0, (s[sKey] - sMin) / (sMax - sMin)))
                                 var py = height - norm * (height - 6) - 3
                                 pts.push({ x: px, y: py })
                             }
                             if (pts.length < 2) return
-                            ctx.moveTo(pts[0].x, pts[0].y)
-                            for (var j = 1; j < pts.length; ++j) {
-                                ctx.lineTo(pts[j].x, pts[j].y)
+                            var continuous = false
+                            for (var j = 0; j < pts.length; ++j) {
+                                if (!pts[j]) { continuous = false; continue }
+                                if (continuous) ctx.lineTo(pts[j].x, pts[j].y)
+                                else ctx.moveTo(pts[j].x, pts[j].y)
+                                continuous = true
                             }
                             ctx.stroke()
                         }
@@ -507,7 +582,7 @@ Kirigami.ScrollablePage {
                         cursorShape: Qt.PointingHandCursor
                         onEntered: metricCard.cardHovered = true
                         onExited: metricCard.cardHovered = false
-                        onClicked: page.navigateRequested(metricCard.modelData.targetPage)
+                        onClicked: page.navigateRequested(metricCard.modelData.targetPage, metricCard.modelData.section)
                     }
 
                     ColumnLayout {
@@ -546,7 +621,7 @@ Kirigami.ScrollablePage {
                                 icon.name: "go-next"
                                 display: QQC2.AbstractButton.IconOnly
                                 Accessible.name: "Open " + metricCard.modelData.title + " details"
-                                onClicked: page.navigateRequested(metricCard.modelData.targetPage)
+                                onClicked: page.navigateRequested(metricCard.modelData.targetPage, metricCard.modelData.section)
                             }
                         }
 
@@ -568,7 +643,7 @@ Kirigami.ScrollablePage {
                                 width: parent.width * metricCard.modelData.ratio
                                 height: parent.height
                                 radius: 3.5
-                                color: theme.ratioColor(metricCard.modelData.ratio, metricCard.cardAccent)
+                                color: metricCard.cardAccent
                             }
                         }
 
@@ -588,8 +663,8 @@ Kirigami.ScrollablePage {
         Kirigami.InlineMessage {
             Layout.fillWidth: true
             type: Kirigami.MessageType.Information
-            text: "Calculated pressure index: " + page.controller.responsivenessScore.toFixed(1)
-                  + "%. 100 means little observed pressure; lower values mean more stalled work. This PSI-based index is not a measured response time."
+            text: "Responsiveness index: " + page.controller.responsivenessScore.toFixed(1)
+                  + "/100. Higher is better: 100 means little observed pressure; lower values mean more stalled work. This calculated index is not a measured response time."
             visible: page.controller.psiAvailable
         }
 
@@ -680,12 +755,15 @@ Kirigami.ScrollablePage {
 
             ColumnLayout {
                 id: detailsCol
+                objectName: "section_measurements"
+                activeFocusOnTab: true
+                Accessible.name: "measurements section"
                 anchors.fill: parent
                 anchors.margins: Kirigami.Units.largeSpacing
                 spacing: Kirigami.Units.mediumSpacing
 
                 Kirigami.Heading {
-                    text: "Sensor and diagnostic details"
+                    text: "Measurement details"
                     level: 3
                     Layout.fillWidth: true
                 }
@@ -737,15 +815,7 @@ Kirigami.ScrollablePage {
                     rowSpacing: Kirigami.Units.smallSpacing
 
                     Repeater {
-                        model: [
-                            { key: "cpuLoad", label: "CPU load" },
-                            { key: "cpuTemperature", label: "CPU temperature" },
-                            { key: "gpuLoad", label: "GPU load" },
-                            { key: "pressureIndex", label: "Pressure index" },
-                            { key: "diskThroughput", label: "Disk throughput" },
-                            { key: "netThroughput", label: "Network throughput" },
-                            { key: "packagePower", label: "Package power" }
-                        ]
+                        model: Object.keys(page.controller.metricMetadata).map(function(key) { return { key: key, label: key } })
                         delegate: Rectangle {
                             id: qCard
                             required property var modelData
@@ -790,7 +860,7 @@ Kirigami.ScrollablePage {
                                     text: qCard.quality
                                           ? qCard.quality.source + " · "
                                             + (qCard.quality.sampledAtMs > 0 ? new Date(qCard.quality.sampledAtMs).toLocaleTimeString() : "Not sampled")
-                                            + (qCard.quality.detail ? " · " + qCard.quality.detail : "")
+                                            + " · Reason: " + (qCard.quality.detail || "No additional detail")
                                           : "Unavailable"
                                 }
                             }

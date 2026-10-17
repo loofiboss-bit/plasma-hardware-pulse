@@ -12,6 +12,22 @@ Kirigami.ScrollablePage {
 
     required property var controller
 
+    function focusSection(section) {
+        if (!section) return true
+        var targets = {"timeline": timelineCanvas, "incidents": incCol, "inspector": inspectorCol}
+        var target = targets[section]
+        if (!target) return false
+
+        Qt.callLater(function() {
+            var position = target.mapToItem(flightPage.flickable.contentItem, 0, 0)
+            flightPage.flickable.contentY = Math.max(0, Math.min(position.y - 12,
+                flightPage.flickable.contentHeight - flightPage.flickable.height))
+            target.forceActiveFocus(Qt.TabFocusReason)
+        })
+        return true
+    }
+
+
     readonly property PulseTheme theme: PulseTheme {
         id: theme
         bgColor: flightPage.Kirigami.Theme.backgroundColor
@@ -28,6 +44,7 @@ Kirigami.ScrollablePage {
         property bool showLoad: true
         property bool showPressure: true
         property bool showPower: false
+        property bool showBatteryPower: false
         property bool showGpu: false
         property bool showDisk: false
     }
@@ -36,6 +53,8 @@ Kirigami.ScrollablePage {
     property bool showLoadTrace: historySettings.showLoad
     property bool showPsiTrace: historySettings.showPressure
     property bool showWattsTrace: historySettings.showPower
+    property bool showBatteryTrace: historySettings.showBatteryPower
+    onShowBatteryTraceChanged: historySettings.showBatteryPower = showBatteryTrace
     property bool showGpuTrace: historySettings.showGpu
     property bool showDiskTrace: historySettings.showDisk
     property int hoveredSampleIndex: -1
@@ -63,7 +82,7 @@ Kirigami.ScrollablePage {
         if (flightPage.showTempTrace && (fraction === 0 || fraction === 0.5 || fraction === 1.0)) {
             parts.push(Math.round(25 + fraction * 75) + "°")
         }
-        if (flightPage.showWattsTrace && (fraction === 0.5 || fraction === 1.0)) {
+        if ((flightPage.showWattsTrace || flightPage.showBatteryTrace) && (fraction === 0.5 || fraction === 1.0)) {
             parts.push(Math.round(fraction * Math.max(65, flightPage.controller.historyMaxWatts)) + "W")
         }
         if (flightPage.showDiskTrace && (fraction === 0.5 || fraction === 1.0)) {
@@ -81,8 +100,9 @@ Kirigami.ScrollablePage {
         var parts = ["Hover @ " + (s.timeString || "--:--:--")]
         if (s.cpuTempAvailable) parts.push("CPU " + Number(s.cpuTemp).toFixed(1) + " °C")
         if (s.cpuLoadAvailable) parts.push("Load " + Number(s.cpuLoad).toFixed(0) + "%")
-        if (s.psiAvailable) parts.push("Pressure idx " + Number(s.responsivenessScore).toFixed(1) + "%")
-        if (s.systemPowerAvailable) parts.push(Number(s.systemWatts).toFixed(1) + " W")
+        if (s.psiAvailable) parts.push("Responsiveness index " + Number(s.responsivenessScore).toFixed(1) + "/100")
+        if (s.packagePowerAvailable) parts.push("Package " + Number(s.packageWatts).toFixed(1) + " W")
+        if (s.batteryDischargeAvailable) parts.push("Battery discharge " + Number(s.batteryWatts).toFixed(1) + " W")
         if (s.diskThroughputAvailable) parts.push("Disk " + Number(s.diskReadMibPerSec + s.diskWriteMibPerSec).toFixed(1) + " MiB/s")
         parts.push("Click to freeze moment")
         return parts.join("  ·  ")
@@ -112,18 +132,6 @@ Kirigami.ScrollablePage {
                     spacing: Kirigami.Units.smallSpacing
 
                     QQC2.Button {
-                        icon.name: "dialog-warning"
-                        text: "Peak Thermal Spike"
-                        onClicked: flightPage.controller.jumpToPeakThermalSpike()
-                    }
-
-                    QQC2.Button {
-                        icon.name: "chronometer"
-                        text: "Worst PSI Stall"
-                        onClicked: flightPage.controller.jumpToWorstStallSpike()
-                    }
-
-                    QQC2.Button {
                         icon.name: "media-playback-start"
                         text: "Follow Live"
                         enabled: flightPage.controller.selectedHistorySampleId !== 0
@@ -139,46 +147,49 @@ Kirigami.ScrollablePage {
                     }
 
                     QQC2.Button {
-                        objectName: "clearHistoryButton"
-                        icon.name: "edit-clear-history"
-                        text: "Clear History"
-                        enabled: flightPage.controller.historySamples.length > 0
-                        onClicked: flightPage.controller.clearHistory()
-                    }
-
-                    QQC2.Button {
-                        icon.name: "edit-copy"
-                        text: "Copy Report (MD)"
-                        onClicked: flightPage.controller.copyIncidentReportToClipboard()
-                    }
-
-                    QQC2.Button {
                         icon.name: "document-save"
-                        text: "Save Report + JSON"
+                        text: "Save report + JSON"
                         onClicked: flightPage.controller.exportIncidentReportToFile()
                     }
-
-                    QQC2.Button {
-                        visible: flightPage.controller.lastActionPath.length > 0
-                        icon.name: "folder-open"
-                        text: "Open reports folder"
-                        onClicked: flightPage.controller.openReportsFolder()
-                    }
-
-                    Repeater {
-                        model: [
-                            { seconds: 300, label: "5m" },
-                            { seconds: 900, label: "15m" },
-                            { seconds: 1800, label: "30m" }
-                        ]
-                        delegate: QQC2.Button {
-                            id: retentionBtn
-                            required property var modelData
-                            text: retentionBtn.modelData.label + " window"
-                            checkable: true
-                            checked: flightPage.controller.historyRetentionSeconds === retentionBtn.modelData.seconds
-                            onClicked: flightPage.controller.historyRetentionSeconds = retentionBtn.modelData.seconds
+                    QQC2.ToolButton {
+                        text: "More"
+                        icon.name: "overflow-menu"
+                        onClicked: historyMenu.popup()
+                        QQC2.Menu {
+                            id: historyMenu
+                            QQC2.MenuItem {
+                                text: "Peak thermal spike"
+                                onTriggered: flightPage.controller.jumpToPeakThermalSpike()
+                            }
+                            QQC2.MenuItem {
+                                text: "Worst PSI wait"
+                                onTriggered: flightPage.controller.jumpToWorstStallSpike()
+                            }
+                            QQC2.MenuItem {
+                                text: "Copy report"
+                                onTriggered: flightPage.controller.copyIncidentReportToClipboard()
+                            }
+                            QQC2.MenuItem {
+                                text: "Open reports folder"
+                                enabled: flightPage.controller.lastActionPath.length > 0
+                                onTriggered: flightPage.controller.openReportsFolder()
+                            }
+                            QQC2.MenuSeparator {}
+                            QQC2.MenuItem {
+                                objectName: "clearHistoryButton"
+                                text: "Clear history"
+                                enabled: flightPage.controller.historySamples.length > 0
+                                onTriggered: clearHistoryDialog.open()
+                            }
                         }
+                    }
+                    QQC2.Dialog {
+                        id: clearHistoryDialog
+                        title: "Clear recorded history?"
+                        modal: true
+                        standardButtons: QQC2.Dialog.Cancel | QQC2.Dialog.Ok
+                        onAccepted: flightPage.controller.clearHistory()
+                        QQC2.Label { text: "This clears the current in-memory recording and incidents."; wrapMode: Text.WordWrap }
                     }
 
                     Rectangle {
@@ -193,7 +204,8 @@ Kirigami.ScrollablePage {
                             id: sampleCountLbl
                             anchors.centerIn: parent
                             text: flightPage.controller.historySamples.length + " samples · "
-                                  + Math.round(flightPage.controller.historyRetentionSeconds / 60) + " min window"
+                                  + flightPage.controller.actualHistorySeconds.toFixed(0) + " s recorded / "
+                                  + Math.round(flightPage.controller.historyRetentionSeconds / 60) + " min configured"
                             color: Kirigami.Theme.disabledTextColor
                             font.bold: true
                             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
@@ -222,15 +234,21 @@ Kirigami.ScrollablePage {
                             },
                             {
                                 key: "psi",
-                                label: "Pressure index (0–100%)",
+                                label: "Responsiveness index (0–100; higher is better)",
                                 accentKey: "psi",
                                 active: flightPage.showPsiTrace
                             },
                             {
                                 key: "watts",
-                                label: "Power (0–" + Math.round(flightPage.controller.historyMaxWatts) + " W)",
+                                label: "Package power (0–" + Math.round(flightPage.controller.historyMaxWatts) + " W)",
                                 accentKey: "power",
                                 active: flightPage.showWattsTrace
+                            },
+                            {
+                                key: "battery",
+                                label: "Battery discharge (0–" + Math.round(flightPage.controller.historyMaxWatts) + " W)",
+                                accentKey: "battery",
+                                active: flightPage.showBatteryTrace
                             },
                             {
                                 key: "gpu",
@@ -263,6 +281,7 @@ Kirigami.ScrollablePage {
                                 else if (k === "load") flightPage.showLoadTrace = checked
                                 else if (k === "psi") flightPage.showPsiTrace = checked
                                 else if (k === "watts") flightPage.showWattsTrace = checked
+                                else if (k === "battery") flightPage.showBatteryTrace = checked
                                 else if (k === "gpu") flightPage.showGpuTrace = checked
                                 else if (k === "disk") flightPage.showDiskTrace = checked
                                 timelineCanvas.requestPaint()
@@ -274,7 +293,7 @@ Kirigami.ScrollablePage {
                                        ? theme.accentTint(channelChip.chipAccent, theme.isDark ? 0.20 : 0.12)
                                        : theme.subtleSurfaceColor
                                 border.width: channelChip.checked ? 1.5 : 1
-                                border.color: channelChip.checked ? channelChip.chipAccent : theme.subtleBorderColor
+                                border.color: channelChip.activeFocus ? Kirigami.Theme.focusColor : channelChip.checked ? channelChip.chipAccent : theme.subtleBorderColor
                             }
 
                             contentItem: RowLayout {
@@ -391,7 +410,8 @@ Kirigami.ScrollablePage {
 
             Canvas {
                 id: timelineCanvas
-                objectName: "historyTimeline"
+                activeFocusOnTab: true
+                objectName: "section_timeline"
                 anchors.fill: parent
                 anchors.topMargin: 18
                 anchors.leftMargin: 88
@@ -399,7 +419,20 @@ Kirigami.ScrollablePage {
                 anchors.bottomMargin: 30
                 focus: true
                 property real hoverX: -1
+                Accessible.role: Accessible.Graphic
                 Accessible.name: "Hardware history timeline. Select a sample with left and right arrow keys."
+                Accessible.description: "Inspected sample " + (flightPage.controller.selectedHistoryDetail.timeString || "unavailable")
+                    + ". Responsiveness index " + (flightPage.controller.selectedHistoryDetail.psiAvailable
+                      ? Number(flightPage.controller.selectedHistoryDetail.responsivenessScore).toFixed(1) + " out of 100; higher is better" : "unavailable")
+                Keys.onPressed: (event) => {
+                    if (event.key === Qt.Key_Home && flightPage.controller.historySamples.length) {
+                        flightPage.controller.selectedHistorySampleId = flightPage.controller.historySamples[0].sampleId
+                        event.accepted = true
+                    } else if (event.key === Qt.Key_End) {
+                        flightPage.controller.selectedHistorySampleId = 0
+                        event.accepted = true
+                    }
+                }
                 Keys.onLeftPressed: flightPage.selectStep(-1)
                 Keys.onRightPressed: flightPage.selectStep(1)
 
@@ -540,7 +573,9 @@ Kirigami.ScrollablePage {
                     if (flightPage.showPsiTrace)
                         drawTrace(ctx, samples, firstTime, timeSpan, "responsivenessScore", "psiAvailable", 0, 100, theme.psiAccent, 0.08)
                     if (flightPage.showWattsTrace)
-                        drawTrace(ctx, samples, firstTime, timeSpan, "systemWatts", "systemPowerAvailable", 0, maxWatts, theme.powerAccent, 0.10)
+                        drawTrace(ctx, samples, firstTime, timeSpan, "packageWatts", "packagePowerAvailable", 0, maxWatts, theme.powerAccent, 0.10)
+                    if (flightPage.showBatteryTrace)
+                        drawTrace(ctx, samples, firstTime, timeSpan, "batteryWatts", "batteryDischargeAvailable", 0, maxWatts, theme.batteryAccent, 0.06)
                     if (flightPage.showGpuTrace)
                         drawTrace(ctx, samples, firstTime, timeSpan, "gpuBusy", "gpuBusyAvailable", 0, 100, theme.gpuAccent, 0.10)
                     if (flightPage.showDiskTrace)
@@ -579,7 +614,9 @@ Kirigami.ScrollablePage {
                         if (flightPage.showPsiTrace)
                             drawMarkerAtSample(ctx, actSample, firstTime, timeSpan, "responsivenessScore", "psiAvailable", 0, 100, theme.psiAccent)
                         if (flightPage.showWattsTrace)
-                            drawMarkerAtSample(ctx, actSample, firstTime, timeSpan, "systemWatts", "systemPowerAvailable", 0, maxWatts, theme.powerAccent)
+                            drawMarkerAtSample(ctx, actSample, firstTime, timeSpan, "packageWatts", "packagePowerAvailable", 0, maxWatts, theme.powerAccent)
+                        if (flightPage.showBatteryTrace)
+                            drawMarkerAtSample(ctx, actSample, firstTime, timeSpan, "batteryWatts", "batteryDischargeAvailable", 0, maxWatts, theme.batteryAccent)
                         if (flightPage.showGpuTrace)
                             drawMarkerAtSample(ctx, actSample, firstTime, timeSpan, "gpuBusy", "gpuBusyAvailable", 0, 100, theme.gpuAccent)
                         if (flightPage.showDiskTrace)
@@ -675,6 +712,9 @@ Kirigami.ScrollablePage {
 
             ColumnLayout {
                 id: incCol
+                objectName: "section_incidents"
+                activeFocusOnTab: true
+                Accessible.name: "incidents section"
                 anchors.fill: parent
                 anchors.margins: Kirigami.Units.largeSpacing
                 spacing: Kirigami.Units.smallSpacing
@@ -720,6 +760,9 @@ Kirigami.ScrollablePage {
 
             ColumnLayout {
                 id: inspectorCol
+                objectName: "section_inspector"
+                activeFocusOnTab: true
+                Accessible.name: "inspector section"
                 anchors.fill: parent
                 anchors.margins: Kirigami.Units.largeSpacing
                 spacing: Kirigami.Units.mediumSpacing
@@ -817,14 +860,21 @@ Kirigami.ScrollablePage {
                                     ? Number(flightPage.controller.selectedHistoryDetail.nvmeTemp).toFixed(1) + " °C" : "Unavailable")
                             },
                             {
-                                label: "System power draw",
+                                label: "Package power",
                                 accentKey: "power",
-                                value: flightPage.controller.selectedHistoryDetail.systemPowerAvailable
-                                    ? Number(flightPage.controller.selectedHistoryDetail.systemWatts).toFixed(1) + " W"
+                                value: flightPage.controller.selectedHistoryDetail.packagePowerAvailable
+                                    ? Number(flightPage.controller.selectedHistoryDetail.packageWatts).toFixed(1) + " W"
                                     : "Unavailable",
-                                sub: flightPage.controller.selectedHistoryDetail.systemPowerAvailable
-                                    ? (flightPage.controller.selectedHistoryDetail.systemPowerEstimated ? "Estimated power" : "Measured hardware power")
+                                sub: flightPage.controller.selectedHistoryDetail.packagePowerAvailable
+                                    ? (flightPage.controller.selectedHistoryDetail.packagePowerEstimated ? "Estimated power" : "Measured hardware power")
                                     : "No power channel"
+                            },
+                            {
+                                label: "Battery discharge",
+                                accentKey: "battery",
+                                value: flightPage.controller.selectedHistoryDetail.batteryDischargeAvailable
+                                    ? Number(flightPage.controller.selectedHistoryDetail.batteryWatts).toFixed(1) + " W" : "Unavailable",
+                                sub: "Battery discharge channel; separate from CPU package power"
                             },
                             {
                                 label: "Graphics (GPU)",
@@ -838,8 +888,8 @@ Kirigami.ScrollablePage {
                             {
                                 label: "Pressure & Disk I/O",
                                 accentKey: "psi",
-                                value: "Pressure idx: " + (flightPage.controller.selectedHistoryDetail.psiAvailable
-                                    ? Number(flightPage.controller.selectedHistoryDetail.responsivenessScore).toFixed(1) + "%" : "Unavailable"),
+                                value: "Responsiveness index: " + (flightPage.controller.selectedHistoryDetail.psiAvailable
+                                    ? Number(flightPage.controller.selectedHistoryDetail.responsivenessScore).toFixed(1) + "/100" : "Unavailable"),
                                 sub: flightPage.controller.selectedHistoryDetail.diskThroughputAvailable
                                     ? "Disk R " + Number(flightPage.controller.selectedHistoryDetail.diskReadMibPerSec).toFixed(1)
                                       + " · W " + Number(flightPage.controller.selectedHistoryDetail.diskWriteMibPerSec).toFixed(1) + " MiB/s"
