@@ -2,6 +2,7 @@
 <RCC version="1.0">
     <qresource prefix="/loofipulse">
         <file>qml/PulseTheme.qml</file>
+        <file>qml/MeasurementDetails.qml</file>
         <file>qml/Main.qml</file>
         <file>qml/OverviewPage.qml</file>
         <file>qml/FlightRecorderPage.qml</file>

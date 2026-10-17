@@ -3,6 +3,7 @@
 
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QRegularExpression>
 
 #include <algorithm>
@@ -22,12 +23,15 @@ void PsiMemorySampler::setRootConfig(const SysfsRootConfig &config)
     m_prevCpuSomeUs = 0;
     m_prevMemSomeUs = 0;
     m_prevIoSomeUs = 0;
-    m_prevDiskReadSectors = 0;
-    m_prevDiskWriteSectors = 0;
-    m_hasPrevDiskStats = false;
-    m_prevNetRxBytes = 0;
-    m_prevNetTxBytes = 0;
-    m_hasPrevNetStats = false;
+    m_diskCounters.clear();
+    m_netCounters.clear();
+}
+
+void PsiMemorySampler::setIncludedNetworkInterfaces(const QStringList &interfaces)
+{
+    if (m_includedNetworkInterfaces == interfaces) return;
+    m_includedNetworkInterfaces = interfaces;
+    m_netCounters.clear();
 }
 
 PsiMetric PsiMemorySampler::parsePsiContent(const QString &content, quint64 prevTotalUs, qint64 elapsedMs)
@@ -117,7 +121,7 @@ PsiAndMemorySnapshot PsiMemorySampler::sample(qint64 elapsedMs)
         if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
             return {};
         }
-        return QString::fromUtf8(f.read(4096));
+        return QString::fromUtf8(f.readAll());
     };
 
     const QString cpuPsiText = readWholeText(procDir.filePath(QStringLiteral("pressure/cpu")));
@@ -128,12 +132,8 @@ PsiAndMemorySnapshot PsiMemorySampler::sample(qint64 elapsedMs)
         m_prevCpuSomeUs = 0;
         m_prevMemSomeUs = 0;
         m_prevIoSomeUs = 0;
-        m_prevDiskReadSectors = 0;
-        m_prevDiskWriteSectors = 0;
-        m_hasPrevDiskStats = false;
-        m_prevNetRxBytes = 0;
-        m_prevNetTxBytes = 0;
-        m_hasPrevNetStats = false;
+        m_diskCounters.clear();
+        m_netCounters.clear();
     }
 
     snap.cpuPsi = parsePsiContent(cpuPsiText, m_prevCpuSomeUs, elapsedMs);
@@ -151,108 +151,65 @@ PsiAndMemorySnapshot PsiMemorySampler::sample(qint64 elapsedMs)
     updateCounter(snap.memoryPsi, m_prevMemSomeUs);
     updateCounter(snap.ioPsi, m_prevIoSomeUs);
 
-    // Parse /proc/diskstats for whole physical block devices (nvme*n*, sd[a-z]+, vd[a-z]+, mmcblk[0-9]+)
+    // Keep baselines per device: hotplug must never add a device's lifetime counters.
+    const double mibPerSecond = elapsedMs > 50 ? 1000.0 / elapsedMs / (1024.0 * 1024.0) : 0.0;
+    QHash<QString, Counters> nextDisks;
+    static const QRegularExpression wholeDiskRe(QStringLiteral("^(nvme\\d+n\\d+|sd[a-z]+|vd[a-z]+|mmcblk\\d+)$"));
     const QString diskStatsText = readWholeText(procDir.filePath(QStringLiteral("diskstats")));
-    if (!diskStatsText.isEmpty()) {
-        static const QRegularExpression wholeDiskRe(QStringLiteral("^(nvme\\d+n\\d+|sd[a-z]+|vd[a-z]+|mmcblk\\d+)$"));
-        quint64 totalReadSectors = 0;
-        quint64 totalWriteSectors = 0;
-        bool foundDisk = false;
-        const QStringList diskLines = diskStatsText.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
-        for (const QString &dLine : diskLines) {
-            const QStringList cols = dLine.split(QLatin1Char(' '), Qt::SkipEmptyParts);
-            if (cols.size() < 10) {
-                continue;
-            }
-            const QString devName = cols.at(2);
-            if (!wholeDiskRe.match(devName).hasMatch()) {
-                continue;
-            }
-            bool rOk = false;
-            bool wOk = false;
-            const quint64 rSec = cols.at(5).toULongLong(&rOk);
-            const quint64 wSec = cols.at(9).toULongLong(&wOk);
-            if (rOk && wOk) {
-                totalReadSectors += rSec;
-                totalWriteSectors += wSec;
-                foundDisk = true;
-            }
-        }
-        if (foundDisk) {
-            if (m_hasPrevDiskStats && elapsedMs > 50
-                && totalReadSectors >= m_prevDiskReadSectors
-                && totalWriteSectors >= m_prevDiskWriteSectors) {
-                const double dtSec = static_cast<double>(elapsedMs) / 1000.0;
-                const double readBytes = static_cast<double>(totalReadSectors - m_prevDiskReadSectors) * 512.0;
-                const double writeBytes = static_cast<double>(totalWriteSectors - m_prevDiskWriteSectors) * 512.0;
-                snap.diskReadMibPerSec = std::clamp((readBytes / (1024.0 * 1024.0)) / dtSec, 0.0, 20000.0);
-                snap.diskWriteMibPerSec = std::clamp((writeBytes / (1024.0 * 1024.0)) / dtSec, 0.0, 20000.0);
-                snap.diskThroughputAvailable = true;
-            }
-            m_prevDiskReadSectors = totalReadSectors;
-            m_prevDiskWriteSectors = totalWriteSectors;
-            m_hasPrevDiskStats = true;
-        } else {
-            m_hasPrevDiskStats = false;
-        }
-    } else {
-        m_hasPrevDiskStats = false;
+    for (const QString &line : diskStatsText.split(QLatin1Char('\n'), Qt::SkipEmptyParts)) {
+        const QStringList cols = line.split(QRegularExpression(QStringLiteral("\\s+")), Qt::SkipEmptyParts);
+        if (cols.size() < 10 || !wholeDiskRe.match(cols.at(2)).hasMatch()) continue;
+        bool readOk = false, writeOk = false;
+        Counters current{cols.at(5).toULongLong(&readOk), cols.at(9).toULongLong(&writeOk)};
+        if (!readOk || !writeOk) continue;
+        // major:minor distinguishes replacement devices sharing a name.
+        const QString diskSequence = SysfsReader::readTrimmedLine(QDir(m_config.sysRoot).filePath(QStringLiteral("class/block/") + cols.at(2) + QStringLiteral("/diskseq")));
+        const QString identity = cols.at(0) + QLatin1Char(':') + cols.at(1) + QLatin1Char(':') + cols.at(2) + QLatin1Char(':') + diskSequence;
+        nextDisks.insert(identity, current);
+        if (!m_diskCounters.contains(identity) || mibPerSecond == 0.0) continue;
+        const Counters previous = m_diskCounters.value(identity);
+        if (current.received < previous.received || current.sent < previous.sent) continue;
+        snap.diskReadMibPerSec += (current.received - previous.received) * 512.0 * mibPerSecond;
+        snap.diskWriteMibPerSec += (current.sent - previous.sent) * 512.0 * mibPerSecond;
+        snap.diskThroughputAvailable = true;
     }
+    m_diskCounters = std::move(nextDisks);
 
-    // Parse /proc/net/dev for physical/active network interfaces
+    QHash<QString, Counters> nextInterfaces;
     const QString netDevText = readWholeText(procDir.filePath(QStringLiteral("net/dev")));
-    if (!netDevText.isEmpty()) {
-        quint64 totalRxBytes = 0;
-        quint64 totalTxBytes = 0;
-        bool foundNet = false;
-        const QStringList netLines = netDevText.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
-        for (const QString &nLine : netLines) {
-            const int colonIdx = nLine.indexOf(QLatin1Char(':'));
-            if (colonIdx <= 0) {
-                continue;
-            }
-            const QString iface = nLine.left(colonIdx).trimmed();
-            if (iface == QStringLiteral("lo")
-                || iface.startsWith(QStringLiteral("veth"))
-                || iface.startsWith(QStringLiteral("docker"))
-                || iface.startsWith(QStringLiteral("br-"))
-                || iface.startsWith(QStringLiteral("virbr"))) {
-                continue;
-            }
-            const QStringList cols = nLine.mid(colonIdx + 1).split(QLatin1Char(' '), Qt::SkipEmptyParts);
-            if (cols.size() < 9) {
-                continue;
-            }
-            bool rxOk = false;
-            bool txOk = false;
-            const quint64 rxBytes = cols.at(0).toULongLong(&rxOk);
-            const quint64 txBytes = cols.at(8).toULongLong(&txOk);
-            if (rxOk && txOk) {
-                totalRxBytes += rxBytes;
-                totalTxBytes += txBytes;
-                foundNet = true;
+    for (const QString &line : netDevText.split(QLatin1Char('\n'), Qt::SkipEmptyParts)) {
+        const int colon = line.indexOf(QLatin1Char(':'));
+        if (colon < 0) continue;
+        const QString name = line.left(colon).trimmed();
+        const QStringList cols = line.mid(colon + 1).split(QRegularExpression(QStringLiteral("\\s+")), Qt::SkipEmptyParts);
+        if (cols.size() < 9) continue;
+        bool rxOk = false, txOk = false;
+        Counters current{cols.at(0).toULongLong(&rxOk), cols.at(8).toULongLong(&txOk)};
+        if (!rxOk || !txOk) continue;
+        const QDir interfaceDir(QDir(m_config.sysRoot).filePath(QStringLiteral("class/net/") + name));
+        NetworkInterfaceTelemetry item;
+        item.name = name;
+        item.isPhysical = QFileInfo::exists(interfaceDir.filePath(QStringLiteral("device")));
+        const QString ifindex = SysfsReader::readTrimmedLine(interfaceDir.filePath(QStringLiteral("ifindex")));
+        item.identity = name + QLatin1Char(':') + ifindex;
+        item.included = m_includedNetworkInterfaces.isEmpty() ? item.isPhysical : m_includedNetworkInterfaces.contains(name);
+        nextInterfaces.insert(item.identity, current);
+        if (m_netCounters.contains(item.identity) && mibPerSecond > 0.0) {
+            const Counters previous = m_netCounters.value(item.identity);
+            if (current.received >= previous.received && current.sent >= previous.sent) {
+                item.throughputAvailable = true;
+                item.rxMibPerSec = (current.received - previous.received) * mibPerSecond;
+                item.txMibPerSec = (current.sent - previous.sent) * mibPerSecond;
+                if (item.included) {
+                    snap.netThroughputAvailable = true;
+                    snap.netRxMibPerSec += item.rxMibPerSec;
+                    snap.netTxMibPerSec += item.txMibPerSec;
+                }
             }
         }
-        if (foundNet) {
-            if (m_hasPrevNetStats && elapsedMs > 50
-                && totalRxBytes >= m_prevNetRxBytes
-                && totalTxBytes >= m_prevNetTxBytes) {
-                const double dtSec = static_cast<double>(elapsedMs) / 1000.0;
-                const double dRx = static_cast<double>(totalRxBytes - m_prevNetRxBytes);
-                const double dTx = static_cast<double>(totalTxBytes - m_prevNetTxBytes);
-                snap.netRxMibPerSec = std::clamp((dRx / (1024.0 * 1024.0)) / dtSec, 0.0, 20000.0);
-                snap.netTxMibPerSec = std::clamp((dTx / (1024.0 * 1024.0)) / dtSec, 0.0, 20000.0);
-                snap.netThroughputAvailable = true;
-            }
-            m_prevNetRxBytes = totalRxBytes;
-            m_prevNetTxBytes = totalTxBytes;
-            m_hasPrevNetStats = true;
-        } else {
-            m_hasPrevNetStats = false;
-        }
-    } else {
-        m_hasPrevNetStats = false;
+        snap.networkInterfaces.append(item);
     }
+    m_netCounters = std::move(nextInterfaces);
 
     // Parse /proc/meminfo
     const QString memInfoText = readWholeText(procDir.filePath(QStringLiteral("meminfo")));

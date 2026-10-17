@@ -7,6 +7,7 @@
 #include <QQuickItem>
 #include <QQuickWindow>
 #include <QTest>
+#include <QSignalSpy>
 
 class TestQmlUi : public QObject
 {
@@ -24,6 +25,12 @@ private:
     {
         engine.addImportPath(QStringLiteral(PULSE_BUILD_BIN));
         engine.addImportPath(QStringLiteral(PULSE_APP_QML));
+    }
+
+    static QQuickItem *currentPage(QQuickWindow *window)
+    {
+        auto *stack = qvariant_cast<QObject *>(window->property("pageStack"));
+        return stack ? qobject_cast<QQuickItem *>(qvariant_cast<QObject *>(stack->property("currentItem"))) : nullptr;
     }
 
     static QQuickItem *findVisualChild(QQuickItem *root, const QString &name)
@@ -47,6 +54,12 @@ private:
     }
 
 private Q_SLOTS:
+    void initTestCase()
+    {
+        QCoreApplication::setOrganizationName(QStringLiteral("LoofiPulseTests"));
+        QCoreApplication::setOrganizationDomain(QStringLiteral("tests.invalid"));
+    }
+
     void testAppNavigationKeyboardAndResponsiveRendering()
     {
         QQmlApplicationEngine engine;
@@ -88,11 +101,12 @@ private Q_SLOTS:
             QVERIFY2(action, entry.action);
             QVERIFY(QMetaObject::invokeMethod(action, "trigger"));
             QCoreApplication::processEvents();
-            auto *page = window->findChild<QQuickItem *>(QLatin1String(entry.page));
+            auto *page = currentPage(window);
             QVERIFY2(page, entry.page);
+            QCOMPARE(page->objectName(), QLatin1String(entry.page));
             QVERIFY2(page->width() <= window->width() + 1, "Current page extends beyond narrow viewport");
             if (QLatin1String(entry.page) == QStringLiteral("overviewPage")) {
-                auto *details = window->findChild<QQuickItem *>(QStringLiteral("measurementDetailsButton"));
+                auto *details = findVisualChild(page, QStringLiteral("measurementDetailsButton"));
                 QVERIFY(details);
                 details->forceActiveFocus();
                 QTest::keyClick(window, Qt::Key_Space);
@@ -103,20 +117,40 @@ private Q_SLOTS:
         QObject *overviewAction = window->findChild<QObject *>(QStringLiteral("navigateOverview"));
         QVERIFY(QMetaObject::invokeMethod(overviewAction, "trigger"));
         QCoreApplication::processEvents();
-        QObject *overviewPage = window->findChild<QObject *>(QStringLiteral("overviewPage"));
+        QObject *overviewPage = currentPage(window);
         QVERIFY(overviewPage);
-        QVERIFY(QMetaObject::invokeMethod(overviewPage, "navigateRequested", Q_ARG(QString, QStringLiteral("power"))));
+        QVERIFY(QMetaObject::invokeMethod(overviewPage, "navigateRequested", Q_ARG(QString, QStringLiteral("power")), Q_ARG(QString, QStringLiteral("gpu"))));
         QCoreApplication::processEvents();
         QVERIFY(window->findChild<QQuickItem *>(QStringLiteral("powerPage")) != nullptr);
+        auto *gpuSection = findVisualChild(currentPage(window), QStringLiteral("section_gpu"));
+        QVERIFY(gpuSection);
+        QTRY_VERIFY(gpuSection->hasActiveFocus());
+        QVERIFY(QMetaObject::invokeMethod(window, "switchToPage", Q_ARG(QVariant, QStringLiteral("pressure")), Q_ARG(QVariant, QStringLiteral("network"))));
+        QCoreApplication::processEvents();
+        auto *networkSection = findVisualChild(currentPage(window), QStringLiteral("section_network"));
+        QVERIFY(networkSection);
+        QTRY_VERIFY(networkSection->hasActiveFocus());
+        QVERIFY(QMetaObject::invokeMethod(window, "switchToPage", Q_ARG(QVariant, QStringLiteral("power")), Q_ARG(QVariant, QStringLiteral("invalid-section"))));
+        QCoreApplication::processEvents();
+        QVERIFY(window->findChild<QQuickItem *>(QStringLiteral("powerPage")));
+        auto *settingsAction = window->findChild<QObject *>(QStringLiteral("openSettings"));
+        QVERIFY(settingsAction);
+        QVERIFY(QMetaObject::invokeMethod(settingsAction, "trigger"));
+        QCoreApplication::processEvents();
+        auto *settingsDialog = window->findChild<QObject *>(QStringLiteral("settingsDialog"));
+        QVERIFY(settingsDialog);
+        QVERIFY(settingsDialog->property("visible").toBool());
+        QVERIFY(window->findChild<QObject *>(QStringLiteral("samplingIntervalSetting")));
+        QVERIFY(QMetaObject::invokeMethod(settingsDialog, "close"));
 
         QObject *historyAction = window->findChild<QObject *>(QStringLiteral("navigateHistory"));
         QVERIFY(QMetaObject::invokeMethod(historyAction, "trigger"));
         QCoreApplication::processEvents();
-        auto *timeline = window->findChild<QQuickItem *>(QStringLiteral("historyTimeline"));
+        auto *timeline = findVisualChild(currentPage(window), QStringLiteral("section_timeline"));
         QVERIFY(timeline);
         timeline->forceActiveFocus();
         QVERIFY(timeline->hasActiveFocus());
-        QObject *historyPage = window->findChild<QObject *>(QStringLiteral("historyPage"));
+        QObject *historyPage = currentPage(window);
         QVERIFY(historyPage);
         QObject *controller = qvariant_cast<QObject *>(historyPage->property("controller"));
         QVERIFY(controller);
@@ -144,7 +178,11 @@ private Q_SLOTS:
         const QImage image = window->grabWindow();
         QVERIFY(!image.isNull());
         QVERIFY(image.save(artifacts() + QStringLiteral("/app-history-narrow-large-font.png")));
-        QVERIFY(image.save(artifacts() + QStringLiteral("/app-history-light.png")));
+        window->setWidth(1160);
+        window->setHeight(850);
+        QGuiApplication::setFont(originalFont);
+        QTest::qWait(80);
+        QVERIFY(window->grabWindow().save(artifacts() + QStringLiteral("/app-history-light.png")));
 
         QPalette darkPalette = originalPalette;
         darkPalette.setColor(QPalette::Window, QColor(QStringLiteral("#20232a")));
@@ -157,6 +195,32 @@ private Q_SLOTS:
         QGuiApplication::setPalette(originalPalette);
         QGuiApplication::setFont(originalFont);
         QVERIFY2(runtimeErrors.isEmpty(), qPrintable(runtimeErrors.join(QLatin1Char('\n'))));
+    }
+
+    void testPanelPresetsPreserveCustomMetrics()
+    {
+        QQmlEngine engine;
+        addImportPaths(engine);
+        QQmlComponent component(&engine, QUrl::fromLocalFile(QStringLiteral(PULSE_WIDGET_QML "/configGeneral.qml")));
+        QVERIFY2(component.isReady(), qPrintable(component.errorString()));
+        QScopedPointer<QObject> config(component.create());
+        QVERIFY2(config, qPrintable(component.errorString()));
+        config->setProperty("cfg_showCpuLoadInPanel", true);
+        config->setProperty("cfg_showGpuInPanel", false);
+        QVERIFY(QMetaObject::invokeMethod(config.data(), "applyPreset", Q_ARG(QVariant, 3)));
+        QVERIFY(config->property("cfg_showCpuLoadInPanel").toBool());
+        QVERIFY(!config->property("cfg_showGpuInPanel").toBool());
+        QVERIFY(QMetaObject::invokeMethod(config.data(), "applyPreset", Q_ARG(QVariant, 0)));
+        QVERIFY(!config->property("cfg_showWattsInPanel").toBool());
+        QVERIFY(!config->property("cfg_showPsiInPanel").toBool());
+        QVERIFY(QMetaObject::invokeMethod(config.data(), "applyPreset", Q_ARG(QVariant, 1)));
+        QVERIFY(config->property("cfg_showWattsInPanel").toBool());
+        QVERIFY(config->property("cfg_showPsiInPanel").toBool());
+        QVERIFY(!config->property("cfg_showGpuInPanel").toBool());
+        QVERIFY(QMetaObject::invokeMethod(config.data(), "applyPreset", Q_ARG(QVariant, 2)));
+        QVERIFY(config->property("cfg_showGpuInPanel").toBool());
+        QVERIFY(config->property("cfg_showIoInPanel").toBool());
+        QCOMPARE(config->property("cfg_panelPreset").toString(), QStringLiteral("detailed"));
     }
 
     void testWidgetComponentsLoad()
@@ -213,6 +277,24 @@ private Q_SLOTS:
                 item->setProperty("showRamInPanel", true);
                 item->setProperty("showIoInPanel", true);
                 QCoreApplication::processEvents();
+                QVERIFY(!item->property("panelText").toString().contains(QStringLiteral("% PSI")));
+                QVERIFY(item->property("panelText").toString().contains(QStringLiteral("Responsiveness")));
+                auto *button = findVisualChild(item, QStringLiteral("panelStatusButton"));
+                QVERIFY(button);
+                QSignalSpy activation(root.data(), SIGNAL(activationRequested()));
+                button->forceActiveFocus();
+                QTest::keyClick(&window, Qt::Key_Space);
+                QCOMPARE(activation.count(), 1);
+                item->setProperty("verticalPanel", true);
+                window.setWidth(60);
+                window.setHeight(90);
+                item->setWidth(60);
+                item->setHeight(90);
+                QTest::qWait(30);
+                QVERIFY(window.grabWindow().save(artifacts() + QStringLiteral("/widget-vertical.png")));
+                item->setProperty("verticalPanel", false);
+                window.setWidth(360);
+                item->setWidth(360);
             }
             const QImage image = window.grabWindow();
             QVERIFY(!image.isNull());

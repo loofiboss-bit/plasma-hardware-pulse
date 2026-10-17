@@ -13,6 +13,13 @@ option(BUILD_LIVE_HARDWARE_TESTS "Run tests that require live host telemetry" OF
 
 # Run deterministic tests individually so live host telemetry remains opt-in.
 set(PULSECORE_PORTABLE_TESTS
+    testIncidentEpisodesRespectRecordingGaps
+    testHighActivityWithoutRiskIsNeutral
+    testRetentionMatrixAndCapacity
+    testDeviceBaselinesHotplugResetAndVirtualSelection
+    testProcessIdentityAndObservedTimestamp
+    testRuleIdentityStabilizationAndEvidence
+    testExportV2PowerDomainsAndProcessRedaction
     testHwmonDiscoveryAndVelocity
     testPsiAndZramCompression
     testCausalDiagnosisEngineVerdicts
@@ -71,7 +78,7 @@ target_link_libraries(test_controller_actions PRIVATE
     loofipulsecore Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::DBus Qt6::Widgets Qt6::Test
     KF6::Notifications KF6::I18n
 )
-foreach(test_name IN ITEMS testMissingSystemMonitorReportsFailure testUnsupportedProfileNeverStartsChange testUnwritableReportLocationReportsFailure testHistoryRetentionAndClearHistory)
+foreach(test_name IN ITEMS testNavigationValidationAndPrivacyDefaults testNetworkSelectionAndHistoryMetadata testMissingSystemMonitorReportsFailure testUnsupportedProfileNeverStartsChange testUnwritableReportLocationReportsFailure testHistoryRetentionAndClearHistory)
     add_test(NAME controller_${test_name} COMMAND test_controller_actions ${test_name})
     set_tests_properties(controller_${test_name} PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;${PULSE_TEST_XDG_ENV}")
 endforeach()
@@ -90,7 +97,7 @@ target_compile_definitions(test_qml_ui PRIVATE
 )
 target_link_libraries(test_qml_ui PRIVATE Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::Test)
 add_dependencies(test_qml_ui hardwarepulseplugin)
-foreach(test_name IN ITEMS testAppNavigationKeyboardAndResponsiveRendering testWidgetComponentsLoad)
+foreach(test_name IN ITEMS testAppNavigationKeyboardAndResponsiveRendering testWidgetComponentsLoad testPanelPresetsPreserveCustomMetrics)
     add_test(NAME qml_${test_name} COMMAND test_qml_ui ${test_name})
     set_tests_properties(qml_${test_name} PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}/bin;PULSE_TEST_ARTIFACT_DIR=${CMAKE_BINARY_DIR}/test-artifacts;${PULSE_TEST_XDG_ENV}"

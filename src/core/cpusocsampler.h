@@ -30,6 +30,7 @@ private:
     struct ProcSample
     {
         quint64 ticks = 0;
+        quint64 startTimeTicks = 0;
         QString comm;
         double rssMb = 0.0;
     };
@@ -39,7 +40,7 @@ private:
     CpuJiffies m_prevTotalJiffies;
     QHash<QString, qint64> m_prevThrottleCounters;
 
-    QHash<int, quint64> m_prevProcTicks;
+    QHash<int, ProcSample> m_prevProcTicks;
     quint64 m_prevSystemTotalTicks = 0;
 };
 

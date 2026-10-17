@@ -19,12 +19,15 @@ CausalVerdict CausalDiagnosisEngine::evaluate(
 
     QList<CausalVerdict> matches;
     const auto addCandidate = [&matches, &cpuProcess, &memoryProcess](
+                                  const QString &ruleId,
                                   VerdictSeverity severity,
                                   const QString &domain,
                                   const QString &headline,
                                   const QString &details,
                                   const QString &recommendation) {
         CausalVerdict v;
+        v.ruleId = ruleId;
+        v.evidence.append(details);
         v.severity = severity;
         v.primaryBottleneckDomain = domain;
         v.headline = headline;
@@ -37,7 +40,7 @@ CausalVerdict CausalDiagnosisEngine::evaluate(
 
     // Counters are direct evidence of throttling and should not wait for debounce.
     if (cpu.throttleCountersAvailable && cpu.deltaThrottleEvents > 0) {
-        addCandidate(VerdictSeverity::CriticalThrottle,
+        addCandidate(QStringLiteral("cpu.thermal-throttle"), VerdictSeverity::CriticalThrottle,
                      QStringLiteral("CPU & SoC"),
                      QStringLiteral("CPU thermal throttling observed"),
                      cpu.temperatureAvailable
@@ -52,11 +55,7 @@ CausalVerdict CausalDiagnosisEngine::evaluate(
         QString details = QStringLiteral("Memory pressure: %1% some pressure, %2 ms/s stalled")
                               .arg(psiMem.memoryPsi.someAvg10, 0, 'f', 1)
                               .arg(psiMem.memoryPsi.deltaStallMsPerSec, 0, 'f', 0);
-        if (!memoryProcess.name.isEmpty()) {
-            details += QStringLiteral("; highest observed memory use is %1 (%2 MiB RSS)")
-                           .arg(memoryProcess.name).arg(memoryProcess.rssMegabytes, 0, 'f', 0);
-        }
-        addCandidate(VerdictSeverity::Bottleneck,
+        addCandidate(QStringLiteral("memory.pressure"), VerdictSeverity::Bottleneck,
                      QStringLiteral("Memory"),
                      QStringLiteral("Memory pressure is slowing the system"),
                      details,
@@ -81,7 +80,7 @@ CausalVerdict CausalDiagnosisEngine::evaluate(
                 .arg(psiMem.diskReadMibPerSec, 0, 'f', 1)
                 .arg(psiMem.diskWriteMibPerSec, 0, 'f', 1);
         }
-        addCandidate(VerdictSeverity::Bottleneck,
+        addCandidate(QStringLiteral("storage.pressure"), VerdictSeverity::Bottleneck,
                      QStringLiteral("Storage"),
                      QStringLiteral("Storage pressure is blocking work"),
                      storageDetails,
@@ -90,14 +89,14 @@ CausalVerdict CausalDiagnosisEngine::evaluate(
 
     if (gpu.busyAvailable && gpu.temperatureAvailable
         && (gpu.tempCelsius >= 88.0 || (gpu.busyPercent >= 92.0 && gpu.tempCelsius >= 75.0))) {
-        addCandidate(VerdictSeverity::Bottleneck,
+        addCandidate(QStringLiteral("gpu.load-temperature"), VerdictSeverity::Bottleneck,
                      QStringLiteral("Graphics"),
                      QStringLiteral("GPU load and temperature are high"),
                      QStringLiteral("Measured GPU load: %1%; measured GPU temperature: %2°C (%3)")
                          .arg(gpu.busyPercent, 0, 'f', 0).arg(gpu.tempCelsius, 0, 'f', 1).arg(gpu.driverName),
                      QStringLiteral("Reduce graphics work or lower the frame-rate limit if display performance is affected."));
     } else if (!gpu.busyAvailable && gpu.temperatureAvailable && gpu.tempCelsius >= 88.0) {
-        addCandidate(VerdictSeverity::Elevated,
+        addCandidate(QStringLiteral("gpu.temperature"), VerdictSeverity::Elevated,
                      QStringLiteral("Graphics"),
                      QStringLiteral("GPU temperature is high"),
                      QStringLiteral("Measured GPU temperature: %1°C (%2). GPU busy counter is unavailable.")
@@ -106,7 +105,7 @@ CausalVerdict CausalDiagnosisEngine::evaluate(
     }
 
     if (cpu.temperatureAvailable && cpu.thermalLimitAvailable && cpu.thermalHeadroomCelsius <= 6.0) {
-        addCandidate(VerdictSeverity::Elevated,
+        addCandidate(QStringLiteral("cpu.thermal-headroom"), VerdictSeverity::Elevated,
                      QStringLiteral("CPU & SoC"),
                      QStringLiteral("CPU is close to its reported thermal limit"),
                      QStringLiteral("Measured temperature: %1°C; remaining headroom: %2°C. %3")
@@ -118,7 +117,7 @@ CausalVerdict CausalDiagnosisEngine::evaluate(
 
     for (const DomainSensorReading &sensor : domains) {
         if (sensor.domain == PhysicalDomain::StorageNvme && sensor.available && sensor.currentCelsius >= 70.0) {
-            addCandidate(VerdictSeverity::Elevated,
+            addCandidate(QStringLiteral("storage.temperature"), VerdictSeverity::Elevated,
                          QStringLiteral("Storage temperature"),
                          QStringLiteral("NVMe temperature is elevated"),
                          QStringLiteral("Measured NVMe temperature: %1°C. %2")
@@ -141,7 +140,7 @@ CausalVerdict CausalDiagnosisEngine::evaluate(
         if (gpu.busyAvailable && gpu.busyPercent >= 75.0) {
             details += QStringLiteral("; measured GPU load is %1%").arg(gpu.busyPercent, 0, 'f', 0);
         }
-        addCandidate(VerdictSeverity::Elevated,
+        addCandidate(QStringLiteral("power.saver-workload"), VerdictSeverity::Elevated,
                      QStringLiteral("Power & Cooling"),
                      QStringLiteral("High workload while power-saver profile is active"),
                      details,
@@ -151,7 +150,7 @@ CausalVerdict CausalDiagnosisEngine::evaluate(
     if (cpuLoadValid && cpu.totalLoadPercent >= 75.0
         && power.packagePowerAvailable && !power.packagePowerEstimated
         && power.pl1LimitWatts > 5.0 && power.packageWatts >= power.pl1LimitWatts * 0.95) {
-        addCandidate(VerdictSeverity::Elevated,
+        addCandidate(QStringLiteral("cpu.sustained-power-limit"), VerdictSeverity::Elevated,
                      QStringLiteral("Power & Cooling"),
                      QStringLiteral("CPU is operating at its sustained power limit (PL1)"),
                      QStringLiteral("Measured package power: %1 W at %2% CPU load (PL1 limit: %3 W)")
@@ -161,18 +160,7 @@ CausalVerdict CausalDiagnosisEngine::evaluate(
                      QStringLiteral("Sustained performance is capped by the power envelope. Use 'performance' profile if higher limits are supported."));
     }
 
-    if (gpu.busyAvailable && gpu.temperatureAvailable
-        && cpuLoadValid && gpu.busyPercent >= 85.0 && cpu.totalLoadPercent < 70.0) {
-        addCandidate(VerdictSeverity::Elevated,
-                     QStringLiteral("Graphics"),
-                     QStringLiteral("GPU load is high"),
-                     QStringLiteral("Measured GPU load: %1% at %2°C (%3)")
-                         .arg(gpu.busyPercent, 0, 'f', 0).arg(gpu.tempCelsius, 0, 'f', 1).arg(gpu.driverName),
-                     QStringLiteral("Check whether graphics work is expected."));
-    }
-
-    if ((cpuLoadValid && cpu.totalLoadPercent >= 70.0)
-        || (cpu.temperatureAvailable && cpu.thermalVelocityCPerSec >= 0.8)
+    if ((psiMem.cpuPsi.someAvailable && psiMem.cpuPsi.someAvg10 >= 10.0)
         || (cpu.temperatureAvailable && cpu.thermalLimitAvailable && cpu.thermalHeadroomCelsius < 20.0)) {
         QString details;
         if (cpuLoadValid) {
@@ -183,15 +171,13 @@ CausalVerdict CausalDiagnosisEngine::evaluate(
             if (!details.isEmpty()) details += QStringLiteral("; ");
             details += QStringLiteral("Measured CPU temperature: %1°C").arg(cpu.packageTempCelsius, 0, 'f', 1);
         }
-        if (!cpuProcess.name.isEmpty()) {
-            if (!details.isEmpty()) details += QStringLiteral("; ");
-            details += QStringLiteral("highest observed CPU use is %1 at %2%")
-                           .arg(cpuProcess.name).arg(cpuProcess.cpuPercent, 0, 'f', 1);
+        if (psiMem.cpuPsi.someAvailable) {
+            details += QStringLiteral("; CPU wait: %1%").arg(psiMem.cpuPsi.someAvg10, 0, 'f', 1);
         }
-        if (details.isEmpty()) details = QStringLiteral("A CPU or thermal reading is elevated.");
-        addCandidate(VerdictSeverity::Elevated,
+        if (details.isEmpty()) details = QStringLiteral("CPU pressure or thermal risk is elevated.");
+        addCandidate(QStringLiteral("cpu.elevated"), VerdictSeverity::Elevated,
                      QStringLiteral("CPU & SoC"),
-                     QStringLiteral("CPU load or temperature is elevated"),
+                     QStringLiteral("CPU pressure or thermal risk is elevated"),
                      details,
                      QStringLiteral("Check whether the current workload is expected."));
     }
@@ -202,7 +188,7 @@ CausalVerdict CausalDiagnosisEngine::evaluate(
         if (power.batteryLevelAvailable) {
             details += QStringLiteral(" (%1% remaining)").arg(power.batteryPercent, 0, 'f', 0);
         }
-        addCandidate(VerdictSeverity::Elevated,
+        addCandidate(QStringLiteral("battery.high-discharge"), VerdictSeverity::Elevated,
                      QStringLiteral("Power & Cooling"),
                      QStringLiteral("High battery power draw"),
                      details,
@@ -228,25 +214,60 @@ CausalVerdict CausalDiagnosisEngine::evaluate(
             : QStringLiteral("CPU load"));
         if (!cpu.temperatureAvailable) unavailable.append(QStringLiteral("CPU temperature"));
         if (!psiMem.responsivenessAvailable) unavailable.append(QStringLiteral("system pressure"));
+        verdict.ruleId = QStringLiteral("system.incomplete");
         verdict.severity = VerdictSeverity::Unknown;
         verdict.primaryBottleneckDomain = QStringLiteral("Limited data");
         verdict.headline = QStringLiteral("Some system readings are unavailable");
         verdict.causalChain = QStringLiteral("Unavailable or incomplete readings: %1. Overall system status is not confirmed.")
             .arg(unavailable.join(QStringLiteral(" and ")));
         verdict.recommendation = QStringLiteral("Review the data quality details for missing sensors and interfaces.");
+        verdict.evidence.append(verdict.causalChain);
         return verdict;
     }
 
+    verdict.ruleId = QStringLiteral("system.nominal");
     verdict.severity = VerdictSeverity::Nominal;
     verdict.primaryBottleneckDomain = QStringLiteral("No current pressure");
     verdict.headline = QStringLiteral("No current system pressure detected");
-    verdict.causalChain = QStringLiteral("CPU load and system pressure are within normal ranges.");
+    verdict.causalChain = QStringLiteral("No sustained pressure or thermal risk was observed in the available readings.");
     verdict.recommendation = QStringLiteral("No action is needed.");
+    verdict.evidence.append(verdict.causalChain);
     return verdict;
 }
 
 CausalVerdict VerdictStabilizer::update(const CausalVerdict &candidate, qint64 monotonicMs)
 {
+    // Explicit rule identities must remain present continuously before replacing a verdict.
+    // Legacy callers without IDs retain the previous severity-based contract below.
+    if (!candidate.ruleId.isEmpty()) {
+        const bool immediate = candidate.severity == VerdictSeverity::Unknown
+            || candidate.severity == VerdictSeverity::CriticalThrottle;
+        const QString identity = candidate.ruleId + QLatin1Char(':') + QString::number(static_cast<int>(candidate.severity));
+        const bool sameCurrent = candidate.ruleId == m_current.ruleId && candidate.severity == m_current.severity;
+        if (immediate || sameCurrent) {
+            const qint64 since = sameCurrent ? m_current.observedSinceMs : monotonicMs;
+            m_current = candidate;
+            m_current.observedSinceMs = since;
+            m_current.durationMs = qMax<qint64>(0, monotonicMs - since);
+            m_pendingRuleId.clear();
+            return m_current;
+        }
+        if (m_pendingRuleId != identity) {
+            m_pendingRuleId = identity;
+            m_pendingSinceMs = monotonicMs;
+        }
+        const bool warning = candidate.severity == VerdictSeverity::Elevated
+            || candidate.severity == VerdictSeverity::Bottleneck;
+        const qint64 requiredMs = warning ? 3000 : 5000;
+        if (monotonicMs - m_pendingSinceMs >= requiredMs) {
+            m_current = candidate;
+            m_current.observedSinceMs = m_pendingSinceMs;
+            m_current.durationMs = monotonicMs - m_pendingSinceMs;
+            m_pendingRuleId.clear();
+        }
+        return m_current;
+    }
+
     if (candidate.severity == VerdictSeverity::Unknown
         || candidate.severity == VerdictSeverity::CriticalThrottle) {
         m_current = candidate;

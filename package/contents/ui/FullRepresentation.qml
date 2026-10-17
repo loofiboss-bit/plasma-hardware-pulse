@@ -46,6 +46,7 @@ Item {
         if (key === "cpu") return cpuAccent
         if (key === "psi") return psiAccent
         if (key === "power") return powerAccent
+        if (key === "battery") return cpuAccent
         if (key === "gpu") return gpuAccent
         return cpuAccent
     }
@@ -53,8 +54,9 @@ Item {
     function sparkChannelDescription() {
         const mins = Math.round((fullRoot.controller.historyRetentionSeconds || 300) / 60)
         if (sparkChannel === "cpu") return "CPU load · last " + mins + "m · 0–100%"
-        if (sparkChannel === "psi") return "Pressure index · last " + mins + "m · 0–100%"
-        if (sparkChannel === "power") return "Package power · last " + mins + "m · W"
+        if (sparkChannel === "psi") return "Responsiveness index · last " + mins + "m · 0–100 (higher is better)"
+        if (sparkChannel === "power") return "CPU package power · last " + mins + "m · W"
+        if (sparkChannel === "battery") return "Battery discharge · last " + mins + "m · W"
         return "CPU temperature · last " + mins + "m · 30–100°C"
     }
 
@@ -65,7 +67,11 @@ Item {
         }
         if (sparkChannel === "psi") {
             return fullRoot.controller.psiAvailable
-                   ? fullRoot.controller.responsivenessScore.toFixed(1) + "% now" : ""
+                   ? fullRoot.controller.responsivenessScore.toFixed(1) + "/100 now" : ""
+        }
+        if (sparkChannel === "battery") {
+            return fullRoot.controller.batteryPowerAvailable && fullRoot.controller.batteryStatus === "Discharging"
+                   ? fullRoot.controller.batteryWatts.toFixed(1) + " W now" : "Unavailable or not discharging"
         }
         if (sparkChannel === "power") {
             return fullRoot.controller.packagePowerAvailable
@@ -274,8 +280,28 @@ Item {
                         }
                     }
 
+                    PlasmaComponents3.Button {
+                        id: explanationToggle
+                        objectName: "widgetStatusExplanationButton"
+                        text: "Why this status?"
+                        checkable: true
+                        Accessible.description: "Expand observed signals, diagnosis duration, missing evidence, and next step."
+                    }
+
                     PlasmaComponents3.Label {
                         Layout.fillWidth: true
+                        visible: explanationToggle.checked
+                        text: "Rule: " + fullRoot.controller.verdictRuleId + " · Observed for "
+                              + fullRoot.controller.verdictDurationSeconds.toFixed(1) + " s"
+                              + "\nSignals: " + (fullRoot.controller.verdictEvidence || []).join("; ")
+                              + "\nMissing evidence: " + ((fullRoot.controller.verdictMissingEvidence || []).join("; ") || "No missing signals reported")
+                        wrapMode: Text.WordWrap
+                        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                    }
+
+                    PlasmaComponents3.Label {
+                        Layout.fillWidth: true
+                        visible: explanationToggle.checked
                         text: fullRoot.controller.verdictCausalChain
                         font.family: Kirigami.Theme.defaultFont.family
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
@@ -334,6 +360,7 @@ Item {
                         {
                             title: "CPU & SoC Package",
                             targetPage: "power",
+                            targetSection: "cpu",
                             accessibleName: "Open CPU and Power details",
                             accentKey: "cpu",
                             headline: (fullRoot.controller.cpuTempAvailable ? Math.round(fullRoot.controller.cpuPackageTemp) + "°C" : "Temp unavailable")
@@ -348,13 +375,14 @@ Item {
                         {
                             title: "Memory, Disk I/O & Pressure",
                             targetPage: "pressure",
+                            targetSection: "overview",
                             accessibleName: "Open Memory and Pressure details",
                             accentKey: "psi",
-                            headline: "Pressure index: " + (fullRoot.controller.psiAvailable ? fullRoot.controller.responsivenessScore.toFixed(1) + "%" : "Unavailable")
+                            headline: "Responsiveness index: " + (fullRoot.controller.psiAvailable ? fullRoot.controller.responsivenessScore.toFixed(1) + "/100" : "Unavailable")
                                       + " · ZRAM: " + (fullRoot.controller.zramCompressionAvailable
                                       ? fullRoot.controller.zramCompressionRatio.toFixed(1) + "×"
                                       : (fullRoot.controller.zramAvailable ? "Idle" : "Unavailable")),
-                            subtitle: "Wait · CPU " + (fullRoot.controller.psiCpuAvailable ? fullRoot.controller.psiCpuSome10.toFixed(1) + "%" : "N/A")
+                            subtitle: "Higher is better. PSI wait · CPU " + (fullRoot.controller.psiCpuAvailable ? fullRoot.controller.psiCpuSome10.toFixed(1) + "%" : "N/A")
                                       + " · Mem " + (fullRoot.controller.psiMemoryAvailable ? fullRoot.controller.psiMemSome10.toFixed(1) + "%" : "N/A")
                                       + (fullRoot.controller.diskThroughputAvailable
                                          ? " · Disk " + Number(fullRoot.controller.diskReadMibPerSec + fullRoot.controller.diskWriteMibPerSec).toFixed(1) + " MiB/s"
@@ -369,6 +397,7 @@ Item {
                         {
                             title: "GPU, NVMe & Wireless",
                             targetPage: "power",
+                            targetSection: "gpu",
                             accessibleName: "Open GPU and sensor details",
                             accentKey: "gpu",
                             headline: "GPU " + (fullRoot.controller.gpuBusyAvailable ? Math.round(fullRoot.controller.gpuBusyPercent) + "%" : "N/A")
@@ -381,15 +410,18 @@ Item {
                             barVisible: fullRoot.controller.gpuBusyAvailable
                         },
                         {
-                            title: "Energy Flow & Envelope",
+                            title: "CPU package & battery",
                             targetPage: "power",
+                            targetSection: "battery",
                             accessibleName: "Open Power and Cooling details",
                             accentKey: "power",
-                            headline: (fullRoot.controller.packagePowerAvailable
+                            headline: "CPU package: " + (fullRoot.controller.packagePowerAvailable
                                        ? fullRoot.controller.packageWatts.toFixed(1) + " W" + (fullRoot.controller.packagePowerEstimated ? " · Est." : " · Measured")
                                        : "Power unavailable") + "  •  "
                                       + (fullRoot.controller.batteryStateAvailable ? fullRoot.controller.batteryTimeRemainingText : "Battery unavailable"),
-                            subtitle: "Power limits: " + (fullRoot.controller.powerLimitsAvailable
+                            subtitle: "Battery discharge: " + (fullRoot.controller.batteryPowerAvailable && fullRoot.controller.batteryStatus === "Discharging"
+                                      ? fullRoot.controller.batteryWatts.toFixed(1) + " W" : "Unavailable or not discharging")
+                                      + " · Power limits: " + (fullRoot.controller.powerLimitsAvailable
                                       ? Math.round(fullRoot.controller.pl1LimitWatts) + "/" + Math.round(fullRoot.controller.pl2LimitWatts) + " W"
                                       : "Unavailable") + " · Fan: "
                                       + (fullRoot.controller.fanAvailable ? (fullRoot.controller.primaryFanRpm + " RPM") : "Fan unavailable"),
@@ -408,9 +440,20 @@ Item {
                         Layout.fillHeight: true
                         implicitHeight: domCardCol.implicitHeight + Kirigami.Units.mediumSpacing * 2
                         radius: 10
-                        color: domCard.hovered ? fullRoot.cardHoverSurface : fullRoot.cardSurface
-                        border.width: domCard.hovered ? 1.5 : 1
-                        border.color: domCard.hovered ? domCard.accentColor : fullRoot.cardBorder
+                        color: domCard.hovered || domCard.activeFocus ? fullRoot.cardHoverSurface : fullRoot.cardSurface
+                        border.width: domCard.hovered || domCard.activeFocus ? 2 : 1
+                        border.color: domCard.hovered || domCard.activeFocus ? Kirigami.Theme.focusColor : fullRoot.cardBorder
+                        activeFocusOnTab: true
+                        Accessible.role: Accessible.Button
+                        Accessible.name: domCard.modelData.accessibleName
+                        Accessible.description: domCard.modelData.headline + ". " + domCard.modelData.subtitle
+                        Accessible.onPressAction: fullRoot.controller.launchStudioApp(domCard.modelData.targetPage, domCard.modelData.targetSection)
+                        Keys.onReturnPressed: fullRoot.controller.launchStudioApp(domCard.modelData.targetPage, domCard.modelData.targetSection)
+                        Keys.onEnterPressed: fullRoot.controller.launchStudioApp(domCard.modelData.targetPage, domCard.modelData.targetSection)
+                        Keys.onSpacePressed: event => {
+                            fullRoot.controller.launchStudioApp(domCard.modelData.targetPage, domCard.modelData.targetSection)
+                            event.accepted = true
+                        }
 
                         MouseArea {
                             anchors.fill: parent
@@ -418,7 +461,10 @@ Item {
                             cursorShape: Qt.PointingHandCursor
                             onEntered: domCard.hovered = true
                             onExited: domCard.hovered = false
-                            onClicked: fullRoot.controller.launchStudioApp(domCard.modelData.targetPage)
+                            onClicked: {
+                                domCard.forceActiveFocus()
+                                fullRoot.controller.launchStudioApp(domCard.modelData.targetPage, domCard.modelData.targetSection)
+                            }
                         }
 
                         ColumnLayout {
@@ -451,7 +497,7 @@ Item {
                                     icon.name: "go-next"
                                     display: PlasmaComponents3.AbstractButton.IconOnly
                                     Accessible.name: domCard.modelData.accessibleName
-                                    onClicked: fullRoot.controller.launchStudioApp(domCard.modelData.targetPage)
+                                    onClicked: fullRoot.controller.launchStudioApp(domCard.modelData.targetPage, domCard.modelData.targetSection)
                                 }
                             }
 
@@ -523,15 +569,16 @@ Item {
                         }
                     }
 
-                    RowLayout {
+                    Flow {
                         Layout.fillWidth: true
                         spacing: 4
                         Repeater {
                             model: [
                                 { key: "temp", label: "Temp", objName: "sparkChannelTempButton" },
                                 { key: "cpu", label: "CPU", objName: "sparkChannelCpuButton" },
-                                { key: "psi", label: "PSI", objName: "sparkChannelPsiButton" },
-                                { key: "power", label: "Power", objName: "sparkChannelPowerButton" }
+                                { key: "psi", label: "Responsiveness", objName: "sparkChannelPsiButton" },
+                                { key: "power", label: "CPU package", objName: "sparkChannelPowerButton" },
+                                { key: "battery", label: "Battery", objName: "sparkChannelBatteryButton" }
                             ]
                             delegate: PlasmaComponents3.ToolButton {
                                 id: sparkBtn
@@ -548,13 +595,15 @@ Item {
                                 }
                             }
                         }
-                        Item { Layout.fillWidth: true }
                     }
 
                     Canvas {
                         id: miniSparkCanvas
                         Layout.fillWidth: true
                         Layout.preferredHeight: Kirigami.Units.gridUnit * 3.5
+                        Accessible.role: Accessible.Graphic
+                        Accessible.name: fullRoot.sparkChannelDescription()
+                        Accessible.description: fullRoot.sparkChannelNowText() + ". Missing readings and recording pauses appear as gaps."
 
                         Connections {
                             target: fullRoot.controller
@@ -574,55 +623,50 @@ Item {
                             const ch = fullRoot.sparkChannel
                             const accent = fullRoot.channelColor(ch)
 
+                            const powerKey = ch === "battery" ? "batteryWatts" : "packageWatts"
+                            const powerAvailableKey = ch === "battery" ? "batteryDischargeAvailable" : "packagePowerAvailable"
                             let maxPower = 45.0
-                            if (ch === "power") {
+                            if (ch === "power" || ch === "battery") {
                                 for (let m = 0; m < samples.length; ++m) {
-                                    if (samples[m].powerAvailable && samples[m].packageWatts > maxPower) {
-                                        maxPower = samples[m].packageWatts * 1.15
-                                    }
+                                    if (samples[m][powerAvailableKey] && samples[m][powerKey] > maxPower)
+                                        maxPower = samples[m][powerKey] * 1.15
                                 }
                             }
 
-                            let pts = []
+                            const segments = []
+                            let points = []
                             for (let i = 0; i < samples.length; ++i) {
                                 const sample = samples[i]
-                                let norm = 0.0
-                                if (ch === "cpu") {
-                                    if (!sample.cpuLoadAvailable) continue
-                                    norm = Math.min(1, Math.max(0, (sample.cpuLoadPercent || 0) / 100.0))
-                                } else if (ch === "psi") {
-                                    if (!sample.psiAvailable) continue
-                                    norm = Math.min(1, Math.max(0, (sample.psiScore || 0) / 100.0))
-                                } else if (ch === "power") {
-                                    if (!sample.powerAvailable) continue
-                                    norm = Math.min(1, Math.max(0, (sample.packageWatts || 0) / maxPower))
-                                } else {
-                                    if (!sample.cpuTempAvailable) continue
-                                    norm = Math.min(1, Math.max(0, (sample.cpuTemp - 30) / 70))
+                                const available = ch === "cpu" ? sample.cpuLoadAvailable
+                                                : ch === "psi" ? sample.psiAvailable
+                                                : ch === "power" || ch === "battery" ? sample[powerAvailableKey]
+                                                : sample.cpuTempAvailable
+                                if ((!available || sample.gapBefore) && points.length > 0) {
+                                    segments.push(points)
+                                    points = []
                                 }
+                                if (!available) continue
+                                let norm = 0.0
+                                if (ch === "cpu") norm = sample.cpuLoad / 100.0
+                                else if (ch === "psi") norm = sample.responsivenessScore / 100.0
+                                else if (ch === "power" || ch === "battery") norm = sample[powerKey] / maxPower
+                                else norm = (sample.cpuTemp - 30) / 70
+                                norm = Math.min(1, Math.max(0, norm))
                                 const x = (sample.monotonicMs - firstTime) / duration * width
                                 const y = height - (norm * (height - 8)) - 4
-                                pts.push({ x: x, y: y })
+                                points.push({ x: x, y: y })
                             }
-                            if (pts.length < 2) return
-
-                            const grad = ctx.createLinearGradient(0, 0, 0, height)
-                            grad.addColorStop(0, Qt.rgba(accent.r, accent.g, accent.b, 0.22).toString())
-                            grad.addColorStop(1, Qt.rgba(accent.r, accent.g, accent.b, 0.0).toString())
-                            ctx.fillStyle = grad
-                            ctx.beginPath()
-                            ctx.moveTo(pts[0].x, height)
-                            for (let j = 0; j < pts.length; ++j) ctx.lineTo(pts[j].x, pts[j].y)
-                            ctx.lineTo(pts[pts.length - 1].x, height)
-                            ctx.closePath()
-                            ctx.fill()
-
+                            if (points.length) segments.push(points)
                             ctx.lineWidth = 2
                             ctx.strokeStyle = accent.toString()
-                            ctx.beginPath()
-                            ctx.moveTo(pts[0].x, pts[0].y)
-                            for (let k = 1; k < pts.length; ++k) ctx.lineTo(pts[k].x, pts[k].y)
-                            ctx.stroke()
+                            for (let segment of segments) {
+                                if (segment.length < 2) continue
+                                ctx.beginPath()
+                                ctx.moveTo(segment[0].x, segment[0].y)
+                                for (let point = 1; point < segment.length; ++point)
+                                    ctx.lineTo(segment[point].x, segment[point].y)
+                                ctx.stroke()
+                            }
                         }
                     }
                 }
@@ -670,10 +714,10 @@ Item {
                 id: qualityToggle
                 Layout.fillWidth: true
                 icon.name: qualityToggle.checked ? "collapse-all" : "expand-all"
-                text: "Data quality"
+                text: "Measurement details"
                 checkable: true
-                Accessible.name: "Show data quality, sources, and sample times"
-                Accessible.description: "Expand details for CPU load, CPU temperature, pressure index, and package power"
+                Accessible.name: "Show measurement details, sources, and sample times"
+                Accessible.description: "Expand details for CPU load, CPU temperature, responsiveness index, and CPU package power"
             }
 
             ColumnLayout {
@@ -694,13 +738,25 @@ Item {
                 }
                 PlasmaComponents3.Label {
                     Layout.fillWidth: true
-                    text: fullRoot.qualityText("pressureIndex", "Pressure index")
+                    text: fullRoot.qualityText("pressureIndex", "Responsiveness index")
                     wrapMode: Text.WordWrap
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                 }
                 PlasmaComponents3.Label {
                     Layout.fillWidth: true
                     text: fullRoot.qualityText("packagePower", "CPU package power")
+                    wrapMode: Text.WordWrap
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                }
+                PlasmaComponents3.Label {
+                    Layout.fillWidth: true
+                    text: fullRoot.qualityText("batteryDischarge", "Battery discharge")
+                    wrapMode: Text.WordWrap
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                }
+                PlasmaComponents3.Label {
+                    Layout.fillWidth: true
+                    text: fullRoot.qualityText("netThroughput", "Network throughput")
                     wrapMode: Text.WordWrap
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                 }

@@ -10,6 +10,7 @@ Item {
 
     required property var controller
     required property bool expanded
+    property bool verticalPanel: false
     property bool showCpuLoadInPanel: false
     property bool showGpuInPanel: false
     property bool showRamInPanel: false
@@ -19,176 +20,72 @@ Item {
     property bool alwaysShowStatusInPanel: false
     signal activationRequested()
 
-    Layout.minimumWidth: pillContentRow.implicitWidth + Kirigami.Units.smallSpacing * 5
-    Layout.preferredWidth: Layout.minimumWidth
-    Layout.minimumHeight: Kirigami.Units.iconSizes.small
-
-    function badgeColor(sev) {
-        if (sev === 4) return Kirigami.Theme.disabledTextColor
-        if (sev === 3) return Kirigami.Theme.negativeTextColor
-        if (sev === 2) return Kirigami.Theme.negativeTextColor
-        if (sev === 1) return Kirigami.Theme.neutralTextColor
-        return Kirigami.Theme.positiveTextColor
+    readonly property string temperatureText: controller.cpuTempAvailable
+        ? Math.round(controller.cpuPackageTemp) + "°C" : "Temp N/A"
+    readonly property string panelText: {
+        let values = [temperatureText]
+        if (alwaysShowStatusInPanel || (controller.verdictSeverity >= 1 && controller.verdictSeverity <= 3))
+            values.push(controller.verdictHeadline)
+        if (showPsiInPanel)
+            values.push(controller.psiAvailable ? "Responsiveness " + Math.round(controller.responsivenessScore) + "/100" : "Responsiveness N/A")
+        if (showCpuLoadInPanel)
+            values.push(controller.cpuLoadAvailable ? Math.round(controller.cpuLoadPercent) + "% CPU" : "CPU N/A")
+        if (showGpuInPanel)
+            values.push(controller.gpuBusyAvailable ? Math.round(controller.gpuBusyPercent) + "% GPU"
+                        : (controller.gpuTempAvailable ? Math.round(controller.gpuTempCelsius) + "°C GPU" : "GPU N/A"))
+        if (showRamInPanel)
+            values.push(controller.memoryAvailable ? Math.round(controller.ramUsedPercent) + "% RAM" : "RAM N/A")
+        if (showIoInPanel)
+            values.push(controller.diskThroughputAvailable
+                        ? Number(controller.diskReadMibPerSec + controller.diskWriteMibPerSec).toFixed(1) + " MiB/s disk"
+                        : controller.netThroughputAvailable ? Number(controller.netRxMibPerSec + controller.netTxMibPerSec).toFixed(1) + " MiB/s net" : "I/O N/A")
+        if (showWattsInPanel)
+            values.push(controller.packagePowerAvailable
+                        ? controller.packageWatts.toFixed(1) + " W CPU package" + (controller.packagePowerEstimated ? " (est.)" : "") : "CPU package W N/A")
+        return values.join(" · ")
     }
 
-    function velocityArrow(vel) {
-        if (vel >= 0.4) return "↑"
-        if (vel >= 0.15) return "↗"
-        if (vel <= -0.4) return "↓"
-        if (vel <= -0.15) return "↘"
-        return "•"
+    Layout.minimumWidth: verticalPanel ? Kirigami.Units.gridUnit * 2 : Kirigami.Units.gridUnit * 4
+    Layout.preferredWidth: verticalPanel ? Kirigami.Units.gridUnit * 2.5
+                          : Math.min(panelLabel.implicitWidth + Kirigami.Units.largeSpacing * 3, Kirigami.Units.gridUnit * 18)
+    Layout.maximumWidth: verticalPanel ? -1 : Kirigami.Units.gridUnit * 18
+    Layout.minimumHeight: Kirigami.Units.iconSizes.smallMedium
+    Layout.preferredHeight: verticalPanel ? Kirigami.Units.gridUnit * 2.5 : Kirigami.Units.iconSizes.smallMedium
+
+    function badgeColor(severity) {
+        if (severity === 4) return Kirigami.Theme.disabledTextColor
+        if (severity === 3 || severity === 2) return Kirigami.Theme.negativeTextColor
+        if (severity === 1) return Kirigami.Theme.neutralTextColor
+        return Kirigami.Theme.positiveTextColor
     }
 
     PlasmaComponents3.Button {
         id: pillButton
+        objectName: "panelStatusButton"
         anchors.fill: parent
         anchors.margins: 2
         checkable: true
         checked: compactRoot.expanded
-        Accessible.name: compactRoot.controller.verdictHeadline + ". Activate to open hardware details."
-        Accessible.description: "Loofi Pulse status and current hardware readings."
+        Accessible.name: compactRoot.controller.verdictHeadline + ". " + compactRoot.panelText
+        Accessible.description: "Activate to open hardware details. Higher responsiveness is better. Additional current readings are available in the tooltip."
         onClicked: compactRoot.activationRequested()
 
         contentItem: Item {
-            implicitWidth: pillContentRow.implicitWidth
-            implicitHeight: pillContentRow.implicitHeight
-
+            clip: true
             RowLayout {
-                id: pillContentRow
-                anchors.centerIn: parent
-                spacing: 8
-
+                anchors.fill: parent
+                spacing: Kirigami.Units.smallSpacing
                 Rectangle {
-                    Layout.preferredWidth: 9
-                    Layout.preferredHeight: 9
-                    radius: 4.5
+                    Layout.preferredWidth: 7
+                    Layout.preferredHeight: 7
+                    radius: 3.5
                     color: compactRoot.badgeColor(compactRoot.controller.verdictSeverity)
                 }
-
                 PlasmaComponents3.Label {
-                    visible: compactRoot.alwaysShowStatusInPanel
-                             || (compactRoot.controller.verdictSeverity >= 1 && compactRoot.controller.verdictSeverity <= 3)
-                    text: compactRoot.controller.verdictHeadline
+                    id: panelLabel
+                    Layout.fillWidth: true
+                    text: compactRoot.verticalPanel ? compactRoot.temperatureText : compactRoot.panelText
                     elide: Text.ElideRight
-                    Layout.maximumWidth: Kirigami.Units.gridUnit * 9
-                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                    font.bold: compactRoot.controller.verdictSeverity >= 2
-                }
-
-                PlasmaComponents3.Label {
-                    text: compactRoot.controller.cpuTempAvailable
-                          ? Math.round(compactRoot.controller.cpuPackageTemp) + "°C " + compactRoot.velocityArrow(compactRoot.controller.thermalVelocity)
-                          : "CPU temp N/A"
-                    font.bold: true
-                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize + 1
-                }
-
-                Rectangle {
-                    visible: compactRoot.showCpuLoadInPanel
-                    Layout.preferredWidth: 1
-                    Layout.preferredHeight: 12
-                    color: Kirigami.Theme.disabledTextColor
-                    opacity: 0.45
-                }
-
-                PlasmaComponents3.Label {
-                    visible: compactRoot.showCpuLoadInPanel
-                    text: compactRoot.controller.cpuLoadAvailable
-                          ? Math.round(compactRoot.controller.cpuLoadPercent) + "% CPU"
-                          : "CPU N/A"
-                    opacity: 0.9
-                    font.bold: true
-                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                }
-
-                Rectangle {
-                    visible: compactRoot.showGpuInPanel
-                    Layout.preferredWidth: 1
-                    Layout.preferredHeight: 12
-                    color: Kirigami.Theme.disabledTextColor
-                    opacity: 0.45
-                }
-
-                PlasmaComponents3.Label {
-                    visible: compactRoot.showGpuInPanel
-                    text: compactRoot.controller.gpuBusyAvailable
-                          ? Math.round(compactRoot.controller.gpuBusyPercent) + "% GPU"
-                          : (compactRoot.controller.gpuTempAvailable
-                             ? Math.round(compactRoot.controller.gpuTempCelsius) + "°C GPU"
-                             : "GPU N/A")
-                    opacity: 0.9
-                    font.bold: true
-                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                }
-
-                Rectangle {
-                    visible: compactRoot.showRamInPanel
-                    Layout.preferredWidth: 1
-                    Layout.preferredHeight: 12
-                    color: Kirigami.Theme.disabledTextColor
-                    opacity: 0.45
-                }
-
-                PlasmaComponents3.Label {
-                    visible: compactRoot.showRamInPanel
-                    text: compactRoot.controller.memoryAvailable
-                          ? Math.round(compactRoot.controller.ramUsedPercent) + "% RAM"
-                          : "RAM N/A"
-                    opacity: 0.9
-                    font.bold: true
-                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                }
-
-                Rectangle {
-                    visible: compactRoot.showIoInPanel
-                    Layout.preferredWidth: 1
-                    Layout.preferredHeight: 12
-                    color: Kirigami.Theme.disabledTextColor
-                    opacity: 0.45
-                }
-
-                PlasmaComponents3.Label {
-                    visible: compactRoot.showIoInPanel
-                    text: compactRoot.controller.diskThroughputAvailable
-                          ? Number(compactRoot.controller.diskReadMibPerSec + compactRoot.controller.diskWriteMibPerSec).toFixed(1) + "M I/O"
-                          : (compactRoot.controller.netThroughputAvailable
-                             ? Number(compactRoot.controller.netRxMibPerSec + compactRoot.controller.netTxMibPerSec).toFixed(1) + "M Net"
-                             : "I/O N/A")
-                    opacity: 0.9
-                    font.bold: true
-                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                }
-
-                Rectangle {
-                    visible: compactRoot.showPsiInPanel
-                    Layout.preferredWidth: 1
-                    Layout.preferredHeight: 12
-                    color: Kirigami.Theme.disabledTextColor
-                    opacity: 0.45
-                }
-
-                PlasmaComponents3.Label {
-                    visible: compactRoot.showPsiInPanel
-                    text: compactRoot.controller.psiAvailable ? Math.round(compactRoot.controller.responsivenessScore) + "% PSI" : "PSI N/A"
-                    opacity: 0.9
-                    font.bold: true
-                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                }
-
-                Rectangle {
-                    visible: compactRoot.showWattsInPanel
-                    Layout.preferredWidth: 1
-                    Layout.preferredHeight: 12
-                    color: Kirigami.Theme.disabledTextColor
-                    opacity: 0.45
-                }
-
-                PlasmaComponents3.Label {
-                    visible: compactRoot.showWattsInPanel
-                    text: compactRoot.controller.packagePowerAvailable
-                          ? compactRoot.controller.packageWatts.toFixed(1) + "W" + (compactRoot.controller.packagePowerEstimated ? "~" : "")
-                          : "W N/A"
-                    opacity: 0.9
                     font.bold: true
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                 }

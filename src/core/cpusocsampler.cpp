@@ -2,6 +2,7 @@
 #include "sysfsreader.h"
 
 #include <QDir>
+#include <QDateTime>
 #include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
@@ -351,6 +352,7 @@ CulpritProcess CpuSocSampler::sampleTopCulpritProcess()
 ProcessRadarSnapshot CpuSocSampler::sampleProcessRadar(int maxTopProcesses)
 {
     ProcessRadarSnapshot radar;
+    radar.observedAtMs = QDateTime::currentMSecsSinceEpoch();
     const QDir procDir(m_config.procRoot);
     if (!procDir.exists()) {
         return radar;
@@ -363,7 +365,7 @@ ProcessRadarSnapshot CpuSocSampler::sampleProcessRadar(int maxTopProcesses)
     m_prevSystemTotalTicks = currentSysTicks;
 
     QDirIterator procIt(m_config.procRoot, QDir::Dirs | QDir::NoDotAndDotDot);
-    QHash<int, quint64> nextProcTicks;
+    QHash<int, ProcSample> nextProcTicks;
     nextProcTicks.reserve(m_prevProcTicks.size());
     QList<CulpritProcess> candidates;
 
@@ -399,17 +401,20 @@ ProcessRadarSnapshot CpuSocSampler::sampleProcessRadar(int maxTopProcesses)
 
         const QString procState = rest.at(0);
         const bool isDiskWait = (procState == QStringLiteral("D"));
-        const quint64 utime = rest.at(11).toULongLong();
-        const quint64 stime = rest.at(12).toULongLong();
+        bool userOk = false, systemOk = false, startOk = false;
+        const quint64 utime = rest.at(11).toULongLong(&userOk);
+        const quint64 stime = rest.at(12).toULongLong(&systemOk);
+        const quint64 startTime = rest.at(19).toULongLong(&startOk);
+        if (!userOk || !systemOk || !startOk) continue;
         const quint64 totalTicks = utime + stime;
-        nextProcTicks.insert(pid, totalTicks);
+        nextProcTicks.insert(pid, {totalTicks, startTime, comm, 0.0});
 
         const qint64 rssPages = std::max<qint64>(0, rest.at(21).toLongLong());
         const double rssMb = static_cast<double>(rssPages * pageSizeKb) / 1024.0;
 
         double cpuPct = 0.0;
-        if (m_prevProcTicks.contains(pid)) {
-            const quint64 prevTicks = m_prevProcTicks.value(pid);
+        if (m_prevProcTicks.contains(pid) && m_prevProcTicks.value(pid).startTimeTicks == startTime) {
+            const quint64 prevTicks = m_prevProcTicks.value(pid).ticks;
             if (totalTicks > prevTicks) {
                 const quint64 dTicks = totalTicks - prevTicks;
                 cpuPct = std::clamp(
@@ -424,6 +429,8 @@ ProcessRadarSnapshot CpuSocSampler::sampleProcessRadar(int maxTopProcesses)
             if (radar.topDiskWaitProcess.pid == 0
                 || cpuPct > radar.topDiskWaitProcess.cpuPercent
                 || rssMb > radar.topDiskWaitProcess.rssMegabytes) {
+                radar.topDiskWaitProcess.startTimeTicks = startTime;
+                radar.topDiskWaitProcess.observedAtMs = radar.observedAtMs;
                 radar.topDiskWaitProcess.pid = pid;
                 radar.topDiskWaitProcess.name = comm;
                 radar.topDiskWaitProcess.cpuPercent = cpuPct;
@@ -435,6 +442,8 @@ ProcessRadarSnapshot CpuSocSampler::sampleProcessRadar(int maxTopProcesses)
 
         if (cpuPct > 0.05 || rssMb >= 8.0 || isDiskWait) {
             CulpritProcess cp;
+            cp.startTimeTicks = startTime;
+            cp.observedAtMs = radar.observedAtMs;
             cp.pid = pid;
             cp.name = comm;
             cp.cpuPercent = cpuPct;
@@ -445,6 +454,8 @@ ProcessRadarSnapshot CpuSocSampler::sampleProcessRadar(int maxTopProcesses)
         }
 
         if (cpuPct > radar.topCpuProcess.cpuPercent) {
+            radar.topCpuProcess.startTimeTicks = startTime;
+            radar.topCpuProcess.observedAtMs = radar.observedAtMs;
             radar.topCpuProcess.pid = pid;
             radar.topCpuProcess.name = comm;
             radar.topCpuProcess.cpuPercent = cpuPct;
@@ -454,6 +465,8 @@ ProcessRadarSnapshot CpuSocSampler::sampleProcessRadar(int maxTopProcesses)
         }
 
         if (rssMb > radar.topMemoryProcess.rssMegabytes) {
+            radar.topMemoryProcess.startTimeTicks = startTime;
+            radar.topMemoryProcess.observedAtMs = radar.observedAtMs;
             radar.topMemoryProcess.pid = pid;
             radar.topMemoryProcess.name = comm;
             radar.topMemoryProcess.cpuPercent = cpuPct;

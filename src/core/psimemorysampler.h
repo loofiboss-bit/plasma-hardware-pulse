@@ -1,6 +1,7 @@
 #pragma once
 
 #include "telemetrytypes.h"
+#include <QHash>
 
 namespace LoofiPulse
 {
@@ -11,6 +12,7 @@ public:
     explicit PsiMemorySampler(SysfsRootConfig config = {});
 
     void setRootConfig(const SysfsRootConfig &config);
+    void setIncludedNetworkInterfaces(const QStringList &interfaces);
     PsiAndMemorySnapshot sample(qint64 elapsedMs);
 
     static PsiMetric parsePsiContent(const QString &content, quint64 prevTotalUs, qint64 elapsedMs);
@@ -20,12 +22,11 @@ private:
     quint64 m_prevCpuSomeUs = 0;
     quint64 m_prevMemSomeUs = 0;
     quint64 m_prevIoSomeUs = 0;
-    quint64 m_prevDiskReadSectors = 0;
-    quint64 m_prevDiskWriteSectors = 0;
-    bool m_hasPrevDiskStats = false;
-    quint64 m_prevNetRxBytes = 0;
-    quint64 m_prevNetTxBytes = 0;
-    bool m_hasPrevNetStats = false;
+    struct Counters { quint64 received = 0; quint64 sent = 0; };
+    QHash<QString, Counters> m_diskCounters;
+    QHash<QString, Counters> m_netCounters;
+    QStringList m_includedNetworkInterfaces;
+
 };
 
 } // namespace LoofiPulse

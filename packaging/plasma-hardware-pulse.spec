@@ -1,5 +1,5 @@
 Name:           plasma-hardware-pulse
-Version:        0.7.0
+Version:        0.8.0
 Release:        1%{?dist}
 Summary:        Hardware, temperature, memory pressure, and power monitor for KDE Plasma 6
 
@@ -18,7 +18,6 @@ BuildRequires:  kf6-knotifications-devel
 BuildRequires:  kf6-kpackage
 BuildRequires:  kf6-qqc2-desktop-style
 BuildRequires:  libplasma-devel
-BuildRequires:  plasma-workspace-devel
 BuildRequires:  qt6-qtbase-devel
 BuildRequires:  qt6-qtdeclarative-devel
 BuildRequires:  qt6-qttools-devel
@@ -51,7 +50,7 @@ QT_QPA_PLATFORM=offscreen QML_IMPORT_PATH="%{_vpath_builddir}/bin" ctest --test-
 
 %files
 %license LICENSE
-%doc README.md
+%doc README.md ROADMAP.md
 %{_bindir}/loofi-pulse
 %{_libdir}/qt6/qml/com/github/loofi/hardwarepulse/
 %{_datadir}/plasma/plasmoids/com.github.loofi.hardwarepulse/
@@ -61,6 +60,8 @@ QT_QPA_PLATFORM=offscreen QML_IMPORT_PATH="%{_vpath_builddir}/bin" ctest --test-
 %{_kf6_metainfodir}/com.github.loofi.hardwarepulse.metainfo.xml
 
 %changelog
+* Sat Oct 17 2026 Loofi <loofi@github.com> - 0.8.0-1
+- Clarify measurement semantics, stabilize diagnoses, harden telemetry identity and history, and simplify application and panel workflows
 * Sat Oct 17 2026 Loofi <loofi@github.com> - 0.7.0-1
 - Release 0.7.0 with network RX/TX throughput, D-state process I/O wait radar, multi-domain causal contributing signals, configurable 5/15/30-minute history retention, and configurable Plasma 6 panel metrics and sparkline channels
 * Sat Oct 17 2026 Loofi <loofi@github.com> - 0.6.0-1

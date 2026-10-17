@@ -9,6 +9,22 @@ Kirigami.ScrollablePage {
     objectName: "powerPage"
     title: "Power & Cooling"
     required property var controller
+
+    function focusSection(section) {
+        if (!section) return true
+        var targets = {"cpu": pkgCol, "gpu": gpuCol, "battery": batCol, "cooling": coolCol, "profile": profCol, "cores": coresHeading, "sensors": sensorsCol}
+        var target = targets[section]
+        if (!target) return false
+
+        Qt.callLater(function() {
+            var position = target.mapToItem(powerPage.flickable.contentItem, 0, 0)
+            powerPage.flickable.contentY = Math.max(0, Math.min(position.y - 12,
+                powerPage.flickable.contentHeight - powerPage.flickable.height))
+            target.forceActiveFocus(Qt.TabFocusReason)
+        })
+        return true
+    }
+
     property bool sortCoresByLoad: false
 
     readonly property PulseTheme theme: PulseTheme {
@@ -71,6 +87,9 @@ Kirigami.ScrollablePage {
 
                 ColumnLayout {
                     id: pkgCol
+                objectName: "section_cpu"
+                activeFocusOnTab: true
+                Accessible.name: "cpu section"
                     anchors.fill: parent
                     anchors.margins: Kirigami.Units.largeSpacing
                     spacing: Kirigami.Units.smallSpacing
@@ -172,6 +191,9 @@ Kirigami.ScrollablePage {
 
                 ColumnLayout {
                     id: gpuCol
+                objectName: "section_gpu"
+                activeFocusOnTab: true
+                Accessible.name: "gpu section"
                     anchors.fill: parent
                     anchors.margins: Kirigami.Units.largeSpacing
                     spacing: Kirigami.Units.smallSpacing
@@ -221,7 +243,7 @@ Kirigami.ScrollablePage {
                             width: parent.width * Math.min(1.0, Math.max(0.0, powerPage.controller.gpuBusyPercent / 100.0))
                             height: parent.height
                             radius: 4
-                            color: powerPage.controller.gpuBusyPercent > 85 ? Kirigami.Theme.negativeTextColor : theme.gpuAccent
+                            color: theme.gpuAccent
                         }
                     }
 
@@ -274,6 +296,9 @@ Kirigami.ScrollablePage {
 
                 ColumnLayout {
                     id: batCol
+                objectName: "section_battery"
+                activeFocusOnTab: true
+                Accessible.name: "battery section"
                     anchors.fill: parent
                     anchors.margins: Kirigami.Units.largeSpacing
                     spacing: Kirigami.Units.smallSpacing
@@ -373,6 +398,9 @@ Kirigami.ScrollablePage {
 
                 ColumnLayout {
                     id: coolCol
+                objectName: "section_cooling"
+                activeFocusOnTab: true
+                Accessible.name: "cooling section"
                     anchors.fill: parent
                     anchors.margins: Kirigami.Units.largeSpacing
                     spacing: Kirigami.Units.smallSpacing
@@ -455,6 +483,9 @@ Kirigami.ScrollablePage {
 
             ColumnLayout {
                 id: profCol
+                objectName: "section_profile"
+                activeFocusOnTab: true
+                Accessible.name: "profile section"
                 anchors.fill: parent
                 anchors.margins: Kirigami.Units.largeSpacing
                 spacing: Kirigami.Units.smallSpacing
@@ -506,6 +537,9 @@ Kirigami.ScrollablePage {
             Kirigami.Heading {
                 Layout.fillWidth: true
                 level: 2
+                id: coresHeading
+                objectName: "section_cores"
+                activeFocusOnTab: true
                 text: "CPU cores and sensors"
                 wrapMode: Text.WordWrap
             }
@@ -536,10 +570,8 @@ Kirigami.ScrollablePage {
                     implicitHeight: coreInnerCol.implicitHeight + Kirigami.Units.mediumSpacing * 2
                     radius: theme.innerRadius
                     color: theme.surfaceColor
-                    border.width: coreCard.loadRatio > 0.85 ? 1.5 : 1
-                    border.color: coreCard.loadRatio > 0.85
-                                  ? Kirigami.Theme.negativeTextColor
-                                  : theme.cardBorderColor
+                    border.width: 1
+                    border.color: theme.cardBorderColor
 
                     ColumnLayout {
                         id: coreInnerCol
@@ -565,9 +597,7 @@ Kirigami.ScrollablePage {
                                     id: coreTempLbl
                                     anchors.centerIn: parent
                                     text: Math.round(coreCard.modelData.tempCelsius) + " °C"
-                                    color: coreCard.modelData.tempCelsius >= 85
-                                           ? Kirigami.Theme.negativeTextColor
-                                           : theme.tempAccent
+                                    color: theme.tempAccent
                                     font.bold: true
                                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                                 }
@@ -584,7 +614,7 @@ Kirigami.ScrollablePage {
                                 width: parent.width * coreCard.loadRatio
                                 height: parent.height
                                 radius: 3.5
-                                color: theme.ratioColor(coreCard.loadRatio, theme.cpuAccent)
+                                color: theme.cpuAccent
                             }
                         }
 
@@ -623,6 +653,9 @@ Kirigami.ScrollablePage {
 
             ColumnLayout {
                 id: sensorsCol
+                objectName: "section_sensors"
+                activeFocusOnTab: true
+                Accessible.name: "sensors section"
                 anchors.fill: parent
                 anchors.margins: Kirigami.Units.largeSpacing
                 spacing: Kirigami.Units.mediumSpacing
@@ -688,7 +721,8 @@ Kirigami.ScrollablePage {
                                         width: parent.width * sensorTile.tempRatio
                                         height: parent.height
                                         radius: 2.5
-                                        color: theme.ratioColor(sensorTile.tempRatio, theme.tempAccent)
+                                        color: Number(sensorTile.modelData.headroomCelsius) <= 5 && sensorTile.modelData.limitsAvailable
+                                               ? Kirigami.Theme.neutralTextColor : theme.tempAccent
                                     }
                                 }
                             }
@@ -705,5 +739,9 @@ Kirigami.ScrollablePage {
                 }
             }
         }
+        MeasurementDetails {
+            metadata: powerPage.controller.metricMetadata
+        }
+
     }
 }

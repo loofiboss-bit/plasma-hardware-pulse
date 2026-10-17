@@ -56,6 +56,13 @@ int FlightRecorder::capacity() const
     return m_capacity;
 }
 
+void FlightRecorder::setCapacity(int capacity)
+{
+    m_capacity = std::max(10, capacity);
+    while (m_samples.size() > m_capacity) m_samples.removeFirst();
+    m_samples.reserve(m_capacity);
+}
+
 void FlightRecorder::setRetentionMs(qint64 retentionMs)
 {
     m_retentionMs = std::clamp<qint64>(retentionMs, 1000, 60 * 60 * 1000);
@@ -130,7 +137,47 @@ int FlightRecorder::worstResponsivenessIndex() const
     return worstIdx;
 }
 
-QString FlightRecorder::exportSummaryMarkdown() const
+QVariantList FlightRecorder::incidentEpisodes() const
+{
+    QVariantList episodes;
+    QVariantMap current;
+    qint64 startMs = 0;
+    int peakRank = -1;
+    const auto finish = [&]() {
+        if (!current.isEmpty()) episodes.append(current);
+        current.clear();
+        peakRank = -1;
+    };
+    for (const FlightSample &sample : m_samples) {
+        // No incident duration or causality is inferred across unrecorded time.
+        if (sample.metricQuality.value(QStringLiteral("gapBefore")).toBool()) finish();
+        const bool warning = sample.severity == VerdictSeverity::Elevated
+            || sample.severity == VerdictSeverity::Bottleneck
+            || sample.severity == VerdictSeverity::CriticalThrottle;
+        if ((!warning && !sample.throttled) || sample.severity == VerdictSeverity::Unknown) {
+            finish();
+            continue;
+        }
+        const qint64 timeMs = sample.monotonicMs > 0 ? sample.monotonicMs : sample.timestampMs;
+        if (current.isEmpty()) startMs = timeMs;
+        const int rank = sample.throttled ? 4 : static_cast<int>(sample.severity);
+        if (rank > peakRank) {
+            current.insert(QStringLiteral("sampleId"), static_cast<qulonglong>(sample.sampleId));
+            current.insert(QStringLiteral("timeString"), QDateTime::fromMSecsSinceEpoch(sample.timestampMs).toString(QStringLiteral("HH:mm:ss")));
+            current.insert(QStringLiteral("headline"), sample.verdictHeadline);
+            current.insert(QStringLiteral("severity"), static_cast<int>(sample.severity));
+            current.insert(QStringLiteral("throttled"), sample.throttled);
+            peakRank = rank;
+        }
+        current.insert(QStringLiteral("durationSeconds"), std::max<qint64>(1, (timeMs - startMs) / 1000));
+        current.insert(QStringLiteral("endTimeString"), QDateTime::fromMSecsSinceEpoch(sample.timestampMs).toString(QStringLiteral("HH:mm:ss")));
+    }
+    finish();
+    while (episodes.size() > 8) episodes.removeFirst();
+    return episodes;
+}
+
+QString FlightRecorder::exportSummaryMarkdown(bool includeProcessDetails) const
 {
     if (m_samples.isEmpty()) {
         return QStringLiteral("# Loofi Pulse — Flight Recorder Report\n\nNo telemetry samples recorded.");
@@ -164,13 +211,15 @@ QString FlightRecorder::exportSummaryMarkdown() const
             ? QStringLiteral("%1%2").arg(value, 0, 'f', precision).arg(unit)
             : QStringLiteral("Unavailable");
     };
-    md += QStringLiteral("- **Latest CPU / Power**: temperature %1; load %2; frequency %3; system power %4\n\n")
+    md += QStringLiteral("- **Latest CPU / Power**: temperature %1; load %2; frequency %3; CPU package power %4\n\n")
               .arg(metricText(latest, QStringLiteral("cpuTempAvailable"), latest.cpuTempCelsius, 1, QStringLiteral("°C")),
                    metricText(latest, QStringLiteral("cpuLoadAvailable"), latest.cpuLoadPercent, 1, QStringLiteral("%")),
                    latest.metricQuality.value(QStringLiteral("cpuFrequencyAvailable")).toBool()
                        ? QStringLiteral("%1 MHz").arg(latest.cpuFreqMhz) : QStringLiteral("Unavailable"),
-                   metricText(latest, QStringLiteral("systemPowerAvailable"), latest.systemWatts, 1, QStringLiteral(" W")));
+                   metricText(latest, QStringLiteral("packagePowerAvailable"), latest.packageWatts, 1, QStringLiteral(" W")));
 
+    md += QStringLiteral("- **Battery discharge**: %1\n\n")
+              .arg(metricText(latest, QStringLiteral("batteryDischargeAvailable"), latest.batteryWatts, 1, QStringLiteral(" W")));
     const QVariantMap metadata = sampleMetricMetadata(latest);
     if (!metadata.isEmpty()) {
         md += QStringLiteral("## Data quality at latest sample\n");
@@ -199,7 +248,7 @@ QString FlightRecorder::exportSummaryMarkdown() const
         md += QStringLiteral("- **CPU Package Temp**: %1\n")
                   .arg(metricText(p, QStringLiteral("cpuTempAvailable"), p.cpuTempCelsius, 1, QStringLiteral("°C")));
         md += QStringLiteral("- **Concurrent load observation**: %1\n\n")
-                  .arg(p.culpritName.isEmpty()
+                  .arg((!includeProcessDetails || p.culpritName.isEmpty())
                        ? QStringLiteral("Unavailable; process activity is not evidence of causation.")
                        : QStringLiteral("%1 (PID %2, %3% CPU, %4 MiB RSS); concurrent activity, not a confirmed cause.")
                              .arg(p.culpritName).arg(p.culpritPid)
@@ -210,18 +259,18 @@ QString FlightRecorder::exportSummaryMarkdown() const
         const FlightSample &w = m_samples.at(worstIdx);
         const QString tStr = QDateTime::fromMSecsSinceEpoch(w.timestampMs).toString(QStringLiteral("HH:mm:ss"));
         md += QStringLiteral("## Worst PSI Stall / Responsiveness Drop (%1)\n").arg(tStr);
-        md += QStringLiteral("- **Calculated pressure index**: %1\n")
-                  .arg(metricText(w, QStringLiteral("psiAvailable"), w.responsivenessScore, 1, QStringLiteral("%")));
+        md += QStringLiteral("- **Responsiveness index (higher is better)**: %1\n")
+                  .arg(metricText(w, QStringLiteral("psiAvailable"), w.responsivenessScore, 1, QStringLiteral("/100")));
         md += QStringLiteral("- **PSI averages**: CPU some %1; memory some %2; I/O full %3\n")
                   .arg(metricText(w, QStringLiteral("psiCpuSomeAvailable"), w.psiCpuSome10, 2, QStringLiteral("%")),
                        metricText(w, QStringLiteral("psiMemorySomeAvailable"), w.psiMemSome10, 2, QStringLiteral("%")),
                        metricText(w, QStringLiteral("psiIoFullAvailable"), w.psiIoFull10, 2, QStringLiteral("%")));
         md += QStringLiteral("- **Concurrent load observation**: %1; this does not establish a cause.\n")
-                  .arg(w.culpritName.isEmpty() ? QStringLiteral("Unavailable") : w.culpritName);
+                  .arg((!includeProcessDetails || w.culpritName.isEmpty()) ? QStringLiteral("Unavailable") : w.culpritName);
     } else if (latest.metricQuality.value(QStringLiteral("psiAvailable")).toBool()) {
-        md += QStringLiteral("No pressure-index drop below 100% was recorded.\n");
+        md += QStringLiteral("No responsiveness-index drop below 100/100 was recorded.\n");
     } else {
-        md += QStringLiteral("Pressure index: Unavailable; required PSI readings were incomplete.\n");
+        md += QStringLiteral("Responsiveness index: Unavailable; required PSI readings were incomplete.\n");
     }
 
     return md;
@@ -257,6 +306,29 @@ QVariantMap FlightRecorder::sampleMetricMetadata(const FlightSample &s)
                   metric(flag(QStringLiteral("cpuTempAvailable")) ? QStringLiteral("available") : QStringLiteral("unavailable"),
                          QStringLiteral("/sys/class/hwmon temp*_input"),
                          flag(QStringLiteral("cpuTempAvailable")) ? QString() : QStringLiteral("No CPU temperature sensor was found.")));
+    result.insert(QStringLiteral("thermalHeadroom"),
+                  metric(flag(QStringLiteral("thermalHeadroomAvailable")) ? QStringLiteral("available") : QStringLiteral("unavailable"),
+                         QStringLiteral("/sys/class/hwmon temp*_max or temp*_crit")));
+    for (const auto &entry : {qMakePair(QStringLiteral("cpuPressure"), QStringLiteral("psiCpuSomeAvailable")),
+                              qMakePair(QStringLiteral("memoryPressure"), QStringLiteral("psiMemorySomeAvailable")),
+                              qMakePair(QStringLiteral("ioPressure"), QStringLiteral("psiIoSomeAvailable"))}) {
+        result.insert(entry.first, metric(flag(entry.second) ? QStringLiteral("available") : QStringLiteral("unavailable"),
+                                         QStringLiteral("/proc/pressure/") + entry.first.left(entry.first.indexOf(QStringLiteral("Pressure")))));
+    }
+    result.insert(QStringLiteral("memoryUsage"), metric(flag(QStringLiteral("ramAvailable")) ? QStringLiteral("available") : QStringLiteral("unavailable"),
+                                                        QStringLiteral("/proc/meminfo MemTotal and MemAvailable")));
+    result.insert(QStringLiteral("zram"), metric(flag(QStringLiteral("zramAvailable")) ? QStringLiteral("available") : QStringLiteral("unavailable"),
+                                                QStringLiteral("/sys/block/zram*/mm_stat")));
+    result.insert(QStringLiteral("battery"), metric(flag(QStringLiteral("batteryAvailable")) ? QStringLiteral("available") : QStringLiteral("unavailable"),
+                                                   QStringLiteral("/sys/class/power_supply")));
+    result.insert(QStringLiteral("batteryDischarge"), metric(flag(QStringLiteral("batteryDischargeAvailable")) ? QStringLiteral("available") : QStringLiteral("unavailable"),
+        QStringLiteral("/sys/class/power_supply battery power"), QStringLiteral("Battery discharge is separate from CPU package power.")));
+    result.insert(QStringLiteral("batteryPower"), metric(flag(QStringLiteral("batteryPowerAvailable")) ? QStringLiteral("available") : QStringLiteral("unavailable"),
+                                                        QStringLiteral("/sys/class/power_supply power_now or current_now × voltage_now")));
+    result.insert(QStringLiteral("processActivity"), QVariantMap{
+        {QStringLiteral("state"), s.processObservedAtMs > 0 ? QStringLiteral("available") : QStringLiteral("unavailable")},
+        {QStringLiteral("source"), QStringLiteral("/proc/PID/stat; concurrent observation, not a confirmed cause")},
+        {QStringLiteral("sampledAtMs"), s.processObservedAtMs}});
     result.insert(QStringLiteral("pressureIndex"),
                   metric(flag(QStringLiteral("psiAvailable")) ? QStringLiteral("calculated") : QStringLiteral("unavailable"),
                          QStringLiteral("Calculated from PSI avg10 values"),
@@ -281,7 +353,7 @@ QVariantMap FlightRecorder::sampleMetricMetadata(const FlightSample &s)
     return result;
 }
 
-QString FlightRecorder::exportSamplesJson() const
+QString FlightRecorder::exportSamplesJson(bool includeProcessDetails) const
 {
     QJsonArray arr;
     const qint64 recordedFromMs = m_samples.isEmpty() ? 0 : m_samples.first().timestampMs;
@@ -328,14 +400,23 @@ QString FlightRecorder::exportSamplesJson() const
         obj.insert(QStringLiteral("psiCpuStallMsPerSec"), valueOrNull(QStringLiteral("psiCpuSomeAvailable"), s.psiCpuStallMsPerSec));
         obj.insert(QStringLiteral("psiMemStallMsPerSec"), valueOrNull(QStringLiteral("psiMemorySomeAvailable"), s.psiMemStallMsPerSec));
         obj.insert(QStringLiteral("psiIoStallMsPerSec"), valueOrNull(QStringLiteral("psiIoSomeAvailable"), s.psiIoStallMsPerSec));
-        obj.insert(QStringLiteral("metricQuality"), QJsonObject::fromVariantMap(s.metricQuality));
-        obj.insert(QStringLiteral("metricMetadata"), QJsonObject::fromVariantMap(sampleMetricMetadata(s)));
+        QVariantMap exportedQuality = s.metricQuality;
+        if (!includeProcessDetails) {
+            QVariantMap nestedMetadata = exportedQuality.value(QStringLiteral("metricMetadata")).toMap();
+            nestedMetadata.remove(QStringLiteral("processActivity"));
+            if (exportedQuality.contains(QStringLiteral("metricMetadata"))) exportedQuality.insert(QStringLiteral("metricMetadata"), nestedMetadata);
+        }
+        obj.insert(QStringLiteral("metricQuality"), QJsonObject::fromVariantMap(exportedQuality));
+        QVariantMap metadata = sampleMetricMetadata(s);
+        if (!includeProcessDetails) metadata.remove(QStringLiteral("processActivity"));
+        obj.insert(QStringLiteral("metricMetadata"), QJsonObject::fromVariantMap(metadata));
         obj.insert(QStringLiteral("responsivenessScore"), valueOrNull(QStringLiteral("psiAvailable"), s.responsivenessScore));
         obj.insert(QStringLiteral("responseIndexAvailable"), valid(QStringLiteral("psiAvailable")));
         obj.insert(QStringLiteral("systemWatts"), valueOrNull(QStringLiteral("systemPowerAvailable"), s.systemWatts));
         obj.insert(QStringLiteral("systemPowerEstimated"), s.metricQuality.value(QStringLiteral("systemPowerEstimated")).toBool());
         obj.insert(QStringLiteral("packageWatts"), valueOrNull(QStringLiteral("packagePowerAvailable"), s.packageWatts));
         obj.insert(QStringLiteral("batteryWatts"), valueOrNull(QStringLiteral("batteryPowerAvailable"), s.batteryWatts));
+        obj.insert(QStringLiteral("batteryDischargeWatts"), valueOrNull(QStringLiteral("batteryDischargeAvailable"), s.batteryWatts));
         obj.insert(QStringLiteral("batteryPercent"), valueOrNull(QStringLiteral("batteryLevelAvailable"), s.batteryPercent));
         obj.insert(QStringLiteral("batteryHealthPercent"), valueOrNull(QStringLiteral("batteryHealthAvailable"), s.batteryHealthPercent));
         obj.insert(QStringLiteral("pl1LimitWatts"), valueOrNull(QStringLiteral("powerLimitsAvailable"), s.pl1LimitWatts));
@@ -362,11 +443,21 @@ QString FlightRecorder::exportSamplesJson() const
         obj.insert(QStringLiteral("throttled"), s.throttled);
         obj.insert(QStringLiteral("severity"), static_cast<int>(s.severity));
         obj.insert(QStringLiteral("verdictHeadline"), s.verdictHeadline);
-        obj.insert(QStringLiteral("culpritName"), s.culpritName);
-        obj.insert(QStringLiteral("culpritPid"), s.culpritPid);
-        obj.insert(QStringLiteral("culpritCpuPercent"), s.culpritCpuPercent);
-        obj.insert(QStringLiteral("culpritRssMb"), s.culpritRssMb);
-        obj.insert(QStringLiteral("schemaVersion"), 1);
+        obj.insert(QStringLiteral("culpritName"), includeProcessDetails ? s.culpritName : QString());
+        obj.insert(QStringLiteral("culpritPid"), includeProcessDetails ? s.culpritPid : 0);
+        obj.insert(QStringLiteral("culpritStartTimeTicks"), includeProcessDetails ? QJsonValue(static_cast<qint64>(s.culpritStartTimeTicks)) : QJsonValue(QJsonValue::Null));
+        obj.insert(QStringLiteral("processObservedAtMs"), includeProcessDetails ? QJsonValue(s.processObservedAtMs) : QJsonValue(QJsonValue::Null));
+        obj.insert(QStringLiteral("culpritCpuPercent"), includeProcessDetails ? s.culpritCpuPercent : 0.0);
+        obj.insert(QStringLiteral("culpritRssMb"), includeProcessDetails ? s.culpritRssMb : 0.0);
+        obj.insert(QStringLiteral("schemaVersion"), 2);
+        obj.insert(QStringLiteral("processDetailsIncluded"), includeProcessDetails);
+        obj.insert(QStringLiteral("verdictRuleId"), s.verdictRuleId);
+        obj.insert(QStringLiteral("verdictEvidence"), QJsonArray::fromStringList(includeProcessDetails ? s.verdictEvidence : QStringList()));
+        obj.insert(QStringLiteral("verdictDurationMs"), s.verdictDurationMs);
+        obj.insert(QStringLiteral("powerSources"), QJsonObject{
+            {QStringLiteral("packageWatts"), QStringLiteral("CPU package only; see metricMetadata.packagePower")},
+            {QStringLiteral("batteryWatts"), QStringLiteral("Battery discharge or charge power")},
+            {QStringLiteral("systemWatts"), QStringLiteral("Legacy composite field; do not interpret as measured whole-system power")}});
         arr.append(obj);
     }
     return QString::fromUtf8(QJsonDocument(arr).toJson(QJsonDocument::Indented));

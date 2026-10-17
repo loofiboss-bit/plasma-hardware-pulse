@@ -27,6 +27,7 @@ public:
 
 private:
     CausalVerdict m_current;
+    QString m_pendingRuleId;
     VerdictSeverity m_pendingSeverity = VerdictSeverity::Unknown;
     qint64 m_pendingSinceMs = 0;
 };
