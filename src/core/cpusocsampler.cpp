@@ -3,10 +3,11 @@
 
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QRegularExpression>
+#include <QSet>
 
 #include <algorithm>
-#include <csignal>
 #include <unistd.h>
 
 namespace LoofiPulse
@@ -22,18 +23,29 @@ void CpuSocSampler::setRootConfig(const SysfsRootConfig &config)
     m_config = config;
     m_prevCoreJiffies.clear();
     m_prevTotalJiffies = {};
-    m_prevThrottleEvents = -1;
+    m_prevThrottleCounters.clear();
     m_prevProcTicks.clear();
     m_prevSystemTotalTicks = 0;
 }
 
-CpuSocSnapshot CpuSocSampler::sampleCpu(const QList<DomainSensorReading> &domainReadings)
+CpuSocSnapshot CpuSocSampler::sampleCpu(const QList<DomainSensorReading> &domainReadings, qint64 elapsedMs)
 {
     CpuSocSnapshot snap;
+
+    if (elapsedMs > 30000) {
+        m_prevTotalJiffies = {};
+        m_prevCoreJiffies.clear();
+        m_prevThrottleCounters.clear();
+        m_prevProcTicks.clear();
+        m_prevSystemTotalTicks = 0;
+    }
 
     // 1. Parse /proc/stat for aggregate and per-core load
     QFile statFile(QDir(m_config.procRoot).filePath(QStringLiteral("stat")));
     QHash<int, double> coreLoads;
+    QHash<int, CpuJiffies> currentCoreJiffies;
+    QSet<int> validCoreLoads;
+    bool aggregateCountersRead = false;
 
     if (statFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
         const QString content = QString::fromUtf8(statFile.read(16384));
@@ -48,20 +60,32 @@ CpuSocSnapshot CpuSocSampler::sampleCpu(const QList<DomainSensorReading> &domain
                 continue;
             }
             const QString cpuTag = cols.at(0);
-            const quint64 user = cols.at(1).toULongLong();
-            const quint64 nice = cols.at(2).toULongLong();
-            const quint64 system = cols.at(3).toULongLong();
-            const quint64 idle = cols.at(4).toULongLong();
-            const quint64 iowait = cols.at(5).toULongLong();
-            const quint64 irq = cols.at(6).toULongLong();
-            const quint64 softirq = cols.at(7).toULongLong();
-            const quint64 steal = (cols.size() > 8) ? cols.at(8).toULongLong() : 0ULL;
+            bool ok = false;
+            const quint64 user = cols.at(1).toULongLong(&ok);
+            if (!ok) continue;
+            const quint64 nice = cols.at(2).toULongLong(&ok);
+            if (!ok) continue;
+            const quint64 system = cols.at(3).toULongLong(&ok);
+            if (!ok) continue;
+            const quint64 idle = cols.at(4).toULongLong(&ok);
+            if (!ok) continue;
+            const quint64 iowait = cols.at(5).toULongLong(&ok);
+            if (!ok) continue;
+            const quint64 irq = cols.at(6).toULongLong(&ok);
+            if (!ok) continue;
+            const quint64 softirq = cols.at(7).toULongLong(&ok);
+            if (!ok) continue;
+            const quint64 steal = (cols.size() > 8) ? cols.at(8).toULongLong(&ok) : 0ULL;
+            if (!ok) continue;
 
             const quint64 active = user + nice + system + irq + softirq + steal;
             const quint64 total = active + idle + iowait;
 
             if (cpuTag == QStringLiteral("cpu")) {
-                if (m_prevTotalJiffies.total > 0 && total > m_prevTotalJiffies.total) {
+                snap.loadAvailable = true;
+                aggregateCountersRead = true;
+                if (m_prevTotalJiffies.total > 0 && total > m_prevTotalJiffies.total && active >= m_prevTotalJiffies.active) {
+                    snap.loadWarmedUp = true;
                     const double dActive = static_cast<double>(active - m_prevTotalJiffies.active);
                     const double dTotal = static_cast<double>(total - m_prevTotalJiffies.total);
                     snap.totalLoadPercent = std::clamp((dActive * 100.0) / dTotal, 0.0, 100.0);
@@ -72,38 +96,59 @@ CpuSocSnapshot CpuSocSampler::sampleCpu(const QList<DomainSensorReading> &domain
                 const int coreIdx = cpuTag.mid(3).toInt(&ok);
                 if (ok) {
                     double coreLoad = 0.0;
+                    bool coreLoadAvailable = false;
                     if (m_prevCoreJiffies.contains(coreIdx)) {
                         const CpuJiffies prev = m_prevCoreJiffies.value(coreIdx);
-                        if (total > prev.total) {
+                        if (total > prev.total && active >= prev.active) {
                             const double dActive = static_cast<double>(active - prev.active);
                             const double dTotal = static_cast<double>(total - prev.total);
                             coreLoad = std::clamp((dActive * 100.0) / dTotal, 0.0, 100.0);
+                            coreLoadAvailable = true;
                         }
                     }
-                    m_prevCoreJiffies.insert(coreIdx, {active, total});
+                    currentCoreJiffies.insert(coreIdx, {active, total});
                     coreLoads.insert(coreIdx, coreLoad);
+                    if (coreLoadAvailable) {
+                        validCoreLoads.insert(coreIdx);
+                    }
                 }
             }
         }
     }
 
+    if (aggregateCountersRead) {
+        m_prevCoreJiffies = std::move(currentCoreJiffies);
+    } else {
+        // A missing or malformed aggregate row breaks both aggregate and per-core deltas.
+        m_prevTotalJiffies = {};
+        m_prevCoreJiffies.clear();
+        m_prevProcTicks.clear();
+        m_prevSystemTotalTicks = 0;
+        coreLoads.clear();
+        validCoreLoads.clear();
+        snap.loadAvailable = false;
+        snap.loadWarmedUp = false;
+    }
+
     // 2. Match package & per-core temperatures from hwmon readings
     QHash<int, double> coreTemps;
+    bool packageSensorPreferred = false;
     for (const DomainSensorReading &r : domainReadings) {
-        if (r.domain != PhysicalDomain::CpuSoc) {
+        if (r.domain != PhysicalDomain::CpuSoc || !r.available) {
             continue;
         }
         const QString lowerLabel = r.label.toLower();
-        if (lowerLabel.contains(QStringLiteral("package")) ||
-            lowerLabel.contains(QStringLiteral("tctl")) ||
-            lowerLabel.contains(QStringLiteral("tdie")) ||
-            snap.packageTempCelsius <= 0.0) {
-            if (r.currentCelsius >= snap.packageTempCelsius) {
-                snap.packageTempCelsius = r.currentCelsius;
-                snap.packageMaxCelsius = r.maxCelsius;
-                snap.thermalHeadroomCelsius = r.headroomCelsius;
-                snap.thermalVelocityCPerSec = r.velocityCelsiusPerSec;
-            }
+        const bool preferred = lowerLabel.contains(QStringLiteral("package"))
+            || lowerLabel.contains(QStringLiteral("tctl")) || lowerLabel.contains(QStringLiteral("tdie"));
+        if (!snap.temperatureAvailable || (preferred && !packageSensorPreferred)
+            || (preferred == packageSensorPreferred && r.currentCelsius > snap.packageTempCelsius)) {
+            snap.packageTempCelsius = r.currentCelsius;
+            snap.packageMaxCelsius = r.maxCelsius;
+            snap.thermalHeadroomCelsius = r.headroomCelsius;
+            snap.thermalVelocityCPerSec = r.velocityCelsiusPerSec;
+            snap.temperatureAvailable = true;
+            snap.thermalLimitAvailable = r.limitsAvailable;
+            packageSensorPreferred = preferred;
         }
         if (lowerLabel.startsWith(QStringLiteral("core "))) {
             bool ok = false;
@@ -124,6 +169,7 @@ CpuSocSnapshot CpuSocSampler::sampleCpu(const QList<DomainSensorReading> &domain
     int freqCount = 0;
     qint64 maxPackageThrottle = 0;
     qint64 totalCoreThrottle = 0;
+    QHash<QString, qint64> currentThrottleCounters;
 
     for (int coreId : coreIds) {
         const QString cpuDir = cpuRoot.filePath(QStringLiteral("cpu%1").arg(coreId));
@@ -142,31 +188,56 @@ CpuSocSnapshot CpuSocSampler::sampleCpu(const QList<DomainSensorReading> &domain
             snap.peakCoreFreqMhz = std::max(snap.peakCoreFreqMhz, curMhz);
         }
 
-        const qint64 coreThr = SysfsReader::readInt64(cpuDir + QStringLiteral("/thermal_throttle/core_throttle_count"), 0);
-        const qint64 pkgThr = SysfsReader::readInt64(cpuDir + QStringLiteral("/thermal_throttle/package_throttle_count"), 0);
-        totalCoreThrottle += coreThr;
-        maxPackageThrottle = std::max(maxPackageThrottle, pkgThr);
+        bool coreThrOk = false;
+        bool pkgThrOk = false;
+        const qint64 coreThr = SysfsReader::readInt64(cpuDir + QStringLiteral("/thermal_throttle/core_throttle_count"), 0, &coreThrOk);
+        const qint64 pkgThr = SysfsReader::readInt64(cpuDir + QStringLiteral("/thermal_throttle/package_throttle_count"), 0, &pkgThrOk);
+        coreThrOk = coreThrOk && coreThr >= 0;
+        pkgThrOk = pkgThrOk && pkgThr >= 0;
+        snap.throttleCountersAvailable = snap.throttleCountersAvailable || coreThrOk || pkgThrOk;
+        if (coreThrOk) {
+            currentThrottleCounters.insert(QStringLiteral("core/%1").arg(coreId), coreThr);
+            totalCoreThrottle += coreThr;
+        }
+        if (pkgThrOk) {
+            currentThrottleCounters.insert(QStringLiteral("package/%1").arg(coreId), pkgThr);
+            maxPackageThrottle = std::max(maxPackageThrottle, pkgThr);
+        }
 
         CoreTelemetry ct;
         ct.coreId = coreId;
+        ct.loadAvailable = validCoreLoads.contains(coreId);
         ct.loadPercent = coreLoads.value(coreId, 0.0);
         ct.currentFreqMhz = curMhz;
         ct.maxFreqMhz = maxMhz;
         ct.tempCelsius = coreTemps.value(coreId, snap.packageTempCelsius);
-        ct.throttleCount = coreThr + pkgThr;
+        ct.throttleCount = (coreThrOk ? coreThr : 0) + (pkgThrOk ? pkgThr : 0);
         snap.cores.append(ct);
     }
 
     if (freqCount > 0) {
+        snap.frequencyAvailable = true;
         snap.avgFreqMhz = static_cast<int>(freqSum / freqCount);
         snap.maxFreqMhz = static_cast<int>(maxFreqSum / freqCount);
     }
 
     snap.totalThrottleEvents = std::max(maxPackageThrottle, totalCoreThrottle);
-    if (m_prevThrottleEvents >= 0 && snap.totalThrottleEvents >= m_prevThrottleEvents) {
-        snap.deltaThrottleEvents = snap.totalThrottleEvents - m_prevThrottleEvents;
+    const bool sameCounterSet = currentThrottleCounters.size() == m_prevThrottleCounters.size()
+        && std::all_of(currentThrottleCounters.keyBegin(), currentThrottleCounters.keyEnd(), [this, &currentThrottleCounters](const QString &key) {
+            return m_prevThrottleCounters.contains(key)
+                && currentThrottleCounters.value(key) >= m_prevThrottleCounters.value(key);
+        });
+    if (snap.throttleCountersAvailable && sameCounterSet) {
+        qint64 coreDelta = 0;
+        qint64 packageDelta = 0;
+        for (auto it = currentThrottleCounters.cbegin(); it != currentThrottleCounters.cend(); ++it) {
+            const qint64 delta = it.value() - m_prevThrottleCounters.value(it.key());
+            if (it.key().startsWith(QStringLiteral("core/"))) coreDelta += delta;
+            else packageDelta = std::max(packageDelta, delta);
+        }
+        snap.deltaThrottleEvents = std::max(coreDelta, packageDelta);
     }
-    m_prevThrottleEvents = snap.totalThrottleEvents;
+    m_prevThrottleCounters = std::move(currentThrottleCounters);
 
     return snap;
 }
@@ -185,6 +256,7 @@ GpuSnapshot CpuSocSampler::sampleGpu(const QList<DomainSensorReading> &domainRea
             continue; // skip connector subdirectories like card1-eDP-1
         }
         const QDir cardDir(drmRoot.filePath(card));
+        const QString devicePath = QFileInfo(cardDir.filePath(QStringLiteral("device"))).canonicalFilePath();
 
         bool actOk = false;
         int actMhz = static_cast<int>(SysfsReader::readInt64(cardDir.filePath(QStringLiteral("gt_act_freq_mhz")), 0, &actOk));
@@ -201,22 +273,22 @@ GpuSnapshot CpuSocSampler::sampleGpu(const QList<DomainSensorReading> &domainRea
 
         if (actOk || busyOk) {
             gpu.available = true;
+            gpu.sysfsPath = devicePath;
             gpu.currentFreqMhz = actMhz;
+            gpu.frequencyAvailable = actOk;
             gpu.boostFreqMhz = boostMhz;
             if (busyOk) {
                 gpu.busyPercent = static_cast<double>(amdBusy);
-                gpu.driverName = QStringLiteral("amdgpu");
-            } else {
-                gpu.driverName = QStringLiteral("Intel Graphics");
-                if (boostMhz > 0) {
-                    gpu.busyPercent = std::clamp((static_cast<double>(actMhz) * 100.0) / static_cast<double>(boostMhz), 0.0, 100.0);
-                }
+                gpu.busyAvailable = amdBusy >= 0 && amdBusy <= 100;
             }
+            gpu.driverName = QFileInfo(cardDir.filePath(QStringLiteral("device/driver"))).symLinkTarget().section(QLatin1Char('/'), -1);
+            if (gpu.driverName.isEmpty()) gpu.driverName = QStringLiteral("DRM");
 
             bool vramUsedOk = false;
             const qint64 vramUsedBytes = SysfsReader::readInt64(cardDir.filePath(QStringLiteral("device/mem_info_vram_used")), 0, &vramUsedOk);
             const qint64 vramTotalBytes = SysfsReader::readInt64(cardDir.filePath(QStringLiteral("device/mem_info_vram_total")), 0);
             if (vramUsedOk && vramTotalBytes > 0) {
+                gpu.vramAvailable = true;
                 gpu.vramUsedMegabytes = static_cast<double>(vramUsedBytes) / (1024.0 * 1024.0);
                 gpu.vramTotalMegabytes = static_cast<double>(vramTotalBytes) / (1024.0 * 1024.0);
             }
@@ -228,32 +300,36 @@ GpuSnapshot CpuSocSampler::sampleGpu(const QList<DomainSensorReading> &domainRea
                     const QDir subDir(gpuHwmonDir.filePath(sub));
                     bool pOk = false;
                     double pWatts = SysfsReader::readScaledDouble(subDir.filePath(QStringLiteral("power1_average")), 1000000.0, 0.0, &pOk);
-                    if (!pOk || pWatts <= 0.0) {
+                    if (!pOk || pWatts < 0.0) {
                         pWatts = SysfsReader::readScaledDouble(subDir.filePath(QStringLiteral("power1_input")), 1000000.0, 0.0, &pOk);
                     }
-                    if (pOk && pWatts > 0.0) {
+                    if (pOk && pWatts >= 0.0) {
                         gpu.powerWatts = pWatts;
+                        gpu.powerAvailable = true;
                         break;
                     }
                 }
             }
-            break;
         }
-    }
 
-    for (const DomainSensorReading &r : domainReadings) {
-        if (r.domain == PhysicalDomain::Graphics) {
-            gpu.tempCelsius = r.currentCelsius;
-            gpu.available = true;
-            break;
+        const QDir hwmonDir(cardDir.filePath(QStringLiteral("device/hwmon")));
+        QSet<QString> deviceHwmonPaths;
+        const QStringList hwmonDirs = hwmonDir.entryList(QStringList{QStringLiteral("hwmon*")}, QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+        for (const QString &hwmon : hwmonDirs) {
+            deviceHwmonPaths.insert(QFileInfo(hwmonDir.filePath(hwmon)).canonicalFilePath());
         }
-    }
-    if (gpu.available && gpu.tempCelsius <= 0.0) {
-        for (const DomainSensorReading &r : domainReadings) {
-            if (r.domain == PhysicalDomain::CpuSoc) {
-                gpu.tempCelsius = r.currentCelsius;
-                break;
+        for (const DomainSensorReading &reading : domainReadings) {
+            if (reading.domain == PhysicalDomain::Graphics && !reading.sysfsPath.isEmpty()
+                && deviceHwmonPaths.contains(reading.sysfsPath)) {
+                gpu.tempCelsius = reading.currentCelsius;
+                gpu.temperatureAvailable = reading.available;
+                gpu.available = true;
+                gpu.sysfsPath = devicePath;
+                if (gpu.driverName.isEmpty()) gpu.driverName = reading.chipName;
             }
+        }
+        if (gpu.available && gpu.sysfsPath == devicePath) {
+            break;
         }
     }
 
@@ -370,14 +446,6 @@ ProcessRadarSnapshot CpuSocSampler::sampleProcessRadar(int maxTopProcesses)
     }
 
     return radar;
-}
-
-bool CpuSocSampler::terminateProcess(int pid)
-{
-    if (pid <= 1) {
-        return false;
-    }
-    return ::kill(static_cast<pid_t>(pid), SIGTERM) == 0;
 }
 
 } // namespace LoofiPulse

@@ -6,6 +6,7 @@
 #include <QRegularExpression>
 
 #include <algorithm>
+#include <cmath>
 
 namespace LoofiPulse
 {
@@ -21,12 +22,13 @@ void PsiMemorySampler::setRootConfig(const SysfsRootConfig &config)
     m_prevCpuSomeUs = 0;
     m_prevMemSomeUs = 0;
     m_prevIoSomeUs = 0;
-    m_hasPrevTotals = false;
 }
 
 PsiMetric PsiMemorySampler::parsePsiContent(const QString &content, quint64 prevTotalUs, qint64 elapsedMs)
 {
     PsiMetric metric;
+    bool someTotalValid = false;
+    bool fullTotalValid = false;
     const QStringList lines = content.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
 
     for (const QString &rawLine : lines) {
@@ -47,27 +49,48 @@ PsiMetric PsiMemorySampler::parsePsiContent(const QString &content, quint64 prev
             const QString key = token.left(eqIdx);
             const QString valStr = token.mid(eqIdx + 1);
 
+            bool ok = false;
             if (key == QStringLiteral("avg10")) {
+                const double value = valStr.toDouble(&ok);
+                if (!ok || !std::isfinite(value) || value < 0.0 || value > 100.0) {
+                    continue;
+                }
                 if (isSome) {
-                    metric.someAvg10 = valStr.toDouble();
+                    metric.someAvg10 = value;
+                    metric.someAvailable = true;
                 } else {
-                    metric.fullAvg10 = valStr.toDouble();
+                    metric.fullAvg10 = value;
+                    metric.fullAvailable = true;
                 }
             } else if (key == QStringLiteral("avg60")) {
+                const double value = valStr.toDouble(&ok);
+                if (!ok || !std::isfinite(value) || value < 0.0 || value > 100.0) {
+                    continue;
+                }
                 if (isSome) {
-                    metric.someAvg60 = valStr.toDouble();
+                    metric.someAvg60 = value;
                 } else {
-                    metric.fullAvg60 = valStr.toDouble();
+                    metric.fullAvg60 = value;
                 }
             } else if (key == QStringLiteral("total")) {
+                const quint64 value = valStr.toULongLong(&ok);
+                if (!ok) {
+                    continue;
+                }
                 if (isSome) {
-                    metric.someTotalUs = valStr.toULongLong();
+                    metric.someTotalUs = value;
+                    someTotalValid = true;
                 } else {
-                    metric.fullTotalUs = valStr.toULongLong();
+                    metric.fullTotalUs = value;
+                    fullTotalValid = true;
                 }
             }
         }
     }
+
+    metric.someAvailable = metric.someAvailable && someTotalValid;
+    metric.fullAvailable = metric.fullAvailable && fullTotalValid;
+    metric.available = metric.someAvailable || metric.fullAvailable;
 
     if (prevTotalUs > 0 && metric.someTotalUs >= prevTotalUs && elapsedMs > 50) {
         const double deltaMs = static_cast<double>(metric.someTotalUs - prevTotalUs) / 1000.0;
@@ -95,43 +118,65 @@ PsiAndMemorySnapshot PsiMemorySampler::sample(qint64 elapsedMs)
     const QString memPsiText = readWholeText(procDir.filePath(QStringLiteral("pressure/memory")));
     const QString ioPsiText = readWholeText(procDir.filePath(QStringLiteral("pressure/io")));
 
-    snap.cpuPsi = parsePsiContent(cpuPsiText, m_hasPrevTotals ? m_prevCpuSomeUs : 0, elapsedMs);
-    snap.memoryPsi = parsePsiContent(memPsiText, m_hasPrevTotals ? m_prevMemSomeUs : 0, elapsedMs);
-    snap.ioPsi = parsePsiContent(ioPsiText, m_hasPrevTotals ? m_prevIoSomeUs : 0, elapsedMs);
+    if (elapsedMs > 30000) {
+        m_prevCpuSomeUs = 0;
+        m_prevMemSomeUs = 0;
+        m_prevIoSomeUs = 0;
+    }
 
-    m_prevCpuSomeUs = snap.cpuPsi.someTotalUs;
-    m_prevMemSomeUs = snap.memoryPsi.someTotalUs;
-    m_prevIoSomeUs = snap.ioPsi.someTotalUs;
-    m_hasPrevTotals = true;
+    snap.cpuPsi = parsePsiContent(cpuPsiText, m_prevCpuSomeUs, elapsedMs);
+    snap.memoryPsi = parsePsiContent(memPsiText, m_prevMemSomeUs, elapsedMs);
+    snap.ioPsi = parsePsiContent(ioPsiText, m_prevIoSomeUs, elapsedMs);
+
+    const auto updateCounter = [](const PsiMetric &metric, quint64 &previous) {
+        if (!metric.someAvailable || metric.someTotalUs < previous) {
+            previous = 0;
+            return;
+        }
+        previous = metric.someTotalUs;
+    };
+    updateCounter(snap.cpuPsi, m_prevCpuSomeUs);
+    updateCounter(snap.memoryPsi, m_prevMemSomeUs);
+    updateCounter(snap.ioPsi, m_prevIoSomeUs);
 
     // Parse /proc/meminfo
     const QString memInfoText = readWholeText(procDir.filePath(QStringLiteral("meminfo")));
     const QStringList memLines = memInfoText.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+    bool totalOk = false;
+    bool availableOk = false;
+    bool swapTotalOk = false;
+    bool swapFreeOk = false;
     for (const QString &line : memLines) {
         if (line.startsWith(QStringLiteral("MemTotal:"))) {
             const QStringList tokens = line.split(QLatin1Char(' '), Qt::SkipEmptyParts);
             if (tokens.size() >= 2) {
-                snap.ramTotalBytes = tokens.at(1).toULongLong() * 1024ULL;
+                const quint64 value = tokens.at(1).toULongLong(&totalOk);
+                if (totalOk) snap.ramTotalBytes = value * 1024ULL;
             }
         } else if (line.startsWith(QStringLiteral("MemAvailable:"))) {
             const QStringList tokens = line.split(QLatin1Char(' '), Qt::SkipEmptyParts);
             if (tokens.size() >= 2) {
-                snap.ramAvailableBytes = tokens.at(1).toULongLong() * 1024ULL;
+                const quint64 value = tokens.at(1).toULongLong(&availableOk);
+                if (availableOk) snap.ramAvailableBytes = value * 1024ULL;
             }
         } else if (line.startsWith(QStringLiteral("SwapTotal:"))) {
             const QStringList tokens = line.split(QLatin1Char(' '), Qt::SkipEmptyParts);
             if (tokens.size() >= 2) {
-                snap.swapTotalBytes = tokens.at(1).toULongLong() * 1024ULL;
+                const quint64 value = tokens.at(1).toULongLong(&swapTotalOk);
+                if (swapTotalOk) snap.swapTotalBytes = value * 1024ULL;
             }
         } else if (line.startsWith(QStringLiteral("SwapFree:"))) {
             const QStringList tokens = line.split(QLatin1Char(' '), Qt::SkipEmptyParts);
             if (tokens.size() >= 2) {
-                snap.swapFreeBytes = tokens.at(1).toULongLong() * 1024ULL;
+                const quint64 value = tokens.at(1).toULongLong(&swapFreeOk);
+                if (swapFreeOk) snap.swapFreeBytes = value * 1024ULL;
             }
         }
     }
 
-    if (snap.ramTotalBytes > 0) {
+    snap.swapAvailable = swapTotalOk && swapFreeOk && snap.swapFreeBytes <= snap.swapTotalBytes;
+    snap.ramAvailable = totalOk && availableOk && snap.ramTotalBytes > 0 && snap.ramAvailableBytes <= snap.ramTotalBytes;
+    if (snap.ramAvailable) {
         snap.ramUsedBytes = (snap.ramTotalBytes > snap.ramAvailableBytes)
             ? (snap.ramTotalBytes - snap.ramAvailableBytes)
             : 0ULL;
@@ -147,15 +192,23 @@ PsiAndMemorySnapshot PsiMemorySampler::sample(qint64 elapsedMs)
             continue;
         }
         const QStringList cols = mmStatLine.split(QRegularExpression(QStringLiteral("\\s+")), Qt::SkipEmptyParts);
-        if (cols.size() >= 3) {
+        bool origOk = false;
+        bool compressedOk = false;
+        bool usedOk = false;
+        const quint64 orig = cols.value(0).toULongLong(&origOk);
+        const quint64 compressed = cols.value(1).toULongLong(&compressedOk);
+        const quint64 used = cols.value(2).toULongLong(&usedOk);
+        if (cols.size() >= 3 && origOk && compressedOk && usedOk) {
+            snap.zramAvailable = true;
             snap.zramActive = true;
-            snap.zramOrigBytes += cols.at(0).toULongLong();
-            snap.zramCompressedBytes += cols.at(1).toULongLong();
-            snap.zramMemUsedTotalBytes += cols.at(2).toULongLong();
+            snap.zramOrigBytes += orig;
+            snap.zramCompressedBytes += compressed;
+            snap.zramMemUsedTotalBytes += used;
         }
     }
 
     if (snap.zramCompressedBytes > 0 && snap.zramOrigBytes > 0) {
+        snap.zramCompressionAvailable = true;
         snap.zramCompressionRatio = static_cast<double>(snap.zramOrigBytes) / static_cast<double>(snap.zramCompressedBytes);
     }
 
@@ -166,7 +219,15 @@ PsiAndMemorySnapshot PsiMemorySampler::sample(qint64 elapsedMs)
         + (snap.memoryPsi.fullAvg10 * 2.5)
         + (snap.ioPsi.someAvg10 * 0.8)
         + (snap.ioPsi.fullAvg10 * 1.6);
-    snap.responsivenessScore = std::clamp(100.0 - penalty, 0.0, 100.0);
+    // The index uses memory/io full-stall values as well as all three some-stall values.
+    // Do not silently substitute zero for a missing or malformed input.
+    snap.responsivenessAvailable = snap.cpuPsi.someAvailable
+        && snap.memoryPsi.someAvailable && snap.memoryPsi.fullAvailable
+        && snap.ioPsi.someAvailable && snap.ioPsi.fullAvailable;
+    snap.sampledAtLeastOnce = true;
+    if (snap.responsivenessAvailable) {
+        snap.responsivenessScore = std::clamp(100.0 - penalty, 0.0, 100.0);
+    }
 
     return snap;
 }

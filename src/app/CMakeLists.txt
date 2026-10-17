@@ -12,6 +12,8 @@ set_target_properties(loofi-pulse PROPERTIES
 
 add_dependencies(loofi-pulse hardwarepulseplugin)
 
+target_compile_definitions(loofi-pulse PRIVATE LOOFI_PULSE_VERSION="${PROJECT_VERSION}")
+
 target_include_directories(loofi-pulse PRIVATE
     ${CMAKE_SOURCE_DIR}/src/plugin
 )

@@ -3,6 +3,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QSet>
 #include <QtMath>
 
 #include <algorithm>
@@ -151,11 +152,14 @@ QList<DomainSensorReading> SysfsReader::sampleHwmonDomains(qint64 elapsedMs)
     QList<DomainSensorReading> readings;
     const QDir hwmonRoot(QDir(m_config.sysRoot).filePath(QStringLiteral("class/hwmon")));
     if (!hwmonRoot.exists()) {
+        m_previousTemps.clear();
+        m_smoothedVelocities.clear();
         return readings;
     }
 
     const double dtSec = (elapsedMs > 50) ? (static_cast<double>(elapsedMs) / 1000.0) : 1.0;
     const QStringList hwmonDirs = hwmonRoot.entryList(QStringList{QStringLiteral("hwmon*")}, QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+    QSet<QString> currentSensorIds;
 
     for (const QString &dirName : hwmonDirs) {
         const QDir chipDir(hwmonRoot.filePath(dirName));
@@ -168,7 +172,7 @@ QList<DomainSensorReading> SysfsReader::sampleHwmonDomains(qint64 elapsedMs)
         for (const QString &inputFile : tempInputs) {
             bool tempOk = false;
             const double currentC = readScaledDouble(chipDir.filePath(inputFile), 1000.0, 0.0, &tempOk);
-            if (!tempOk || currentC <= 0.5 || currentC > 150.0) {
+            if (!tempOk || currentC < 0.0 || currentC > 150.0) {
                 continue;
             }
 
@@ -183,16 +187,20 @@ QList<DomainSensorReading> SysfsReader::sampleHwmonDomains(qint64 elapsedMs)
             bool critOk = false;
             double critC = readScaledDouble(chipDir.filePath(prefix + QStringLiteral("_crit")), 1000.0, 0.0, &critOk);
 
-            if (!maxOk || maxC <= 10.0 || maxC > 150.0) {
-                maxC = (critOk && critC > 10.0 && critC <= 150.0) ? critC : 95.0;
+            maxOk = maxOk && maxC > 10.0 && maxC <= 150.0;
+            critOk = critOk && critC > 10.0 && critC <= 150.0;
+            const bool limitsOk = maxOk || critOk;
+            if (!maxOk) {
+                maxC = critOk ? critC : 0.0;
             }
-            if (!critOk || critC <= 10.0 || critC > 150.0) {
+            if (!critOk) {
                 critC = maxC;
             }
 
             const QString sensorId = QStringLiteral("%1/%2:%3").arg(dirName, chipName, prefix);
+            currentSensorIds.insert(sensorId);
             double velocity = 0.0;
-            if (m_previousTemps.contains(sensorId)) {
+            if (m_previousTemps.contains(sensorId) && elapsedMs <= 30000) {
                 const double instVel = (currentC - m_previousTemps.value(sensorId)) / dtSec;
                 const double prevSmoothed = m_smoothedVelocities.value(sensorId, 0.0);
                 velocity = 0.35 * instVel + 0.65 * prevSmoothed;
@@ -204,13 +212,25 @@ QList<DomainSensorReading> SysfsReader::sampleHwmonDomains(qint64 elapsedMs)
             item.id = sensorId;
             item.chipName = chipName;
             item.label = label;
+            item.sysfsPath = QFileInfo(chipDir.filePath(prefix + QStringLiteral("_input"))).canonicalPath();
             item.domain = classifyChipDomain(chipName, label);
+            item.available = true;
+            item.limitsAvailable = limitsOk;
             item.currentCelsius = currentC;
             item.maxCelsius = maxC;
             item.critCelsius = critC;
-            item.headroomCelsius = std::max(0.0, maxC - currentC);
+            item.headroomCelsius = limitsOk ? std::max(0.0, maxC - currentC) : 0.0;
             item.velocityCelsiusPerSec = velocity;
             readings.append(item);
+        }
+    }
+
+    for (auto it = m_previousTemps.begin(); it != m_previousTemps.end();) {
+        if (!currentSensorIds.contains(it.key())) {
+            m_smoothedVelocities.remove(it.key());
+            it = m_previousTemps.erase(it);
+        } else {
+            ++it;
         }
     }
 

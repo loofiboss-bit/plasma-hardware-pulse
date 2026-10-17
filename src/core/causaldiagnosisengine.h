@@ -18,4 +18,17 @@ public:
         const CulpritProcess &memoryCulprit = {});
 };
 
+class VerdictStabilizer
+{
+public:
+    VerdictStabilizer();
+    CausalVerdict update(const CausalVerdict &candidate, qint64 monotonicMs);
+    const CausalVerdict &current() const { return m_current; }
+
+private:
+    CausalVerdict m_current;
+    VerdictSeverity m_pendingSeverity = VerdictSeverity::Unknown;
+    qint64 m_pendingSinceMs = 0;
+};
+
 } // namespace LoofiPulse

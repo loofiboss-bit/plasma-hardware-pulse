@@ -1,35 +1,52 @@
-# Loofi Pulse (`plasma-hardware-pulse`)
+# Loofi Pulse
 
-**Loofi Pulse** is a causal and topological hardware monitor for **KDE Plasma 6**, built with **C++20, Qt6/QML, libplasma, and Kirigami**.
+Loofi Pulse is a Linux hardware monitor for KDE Plasma 6. It includes a Plasma panel applet and a standalone Kirigami application, built with C++20 and Qt 6.
 
-Instead of dumping dozens of disconnected raw numbers, Loofi Pulse correlates **driving process ➔ power draw / PSI stall ➔ clock frequency / throttling ➔ thermal headroom** in real time.
+## Version 0.3.0 (unreleased)
 
-## Architecture & Key Capabilities (v0.2.0)
+The application and panel widget read CPU and GPU activity, temperatures, Linux Pressure Stall Information (PSI), memory and ZRAM data, power and battery information, and concurrent process activity. Missing or invalid measurements are marked **Unavailable**. Measurement details include their source, quality and sample time; calculated pressure indices and estimated package power are labelled explicitly.
 
-1. **Causal Bottleneck & Thermal Diagnosis (`CausalDiagnosisEngine`)**:
-   - Computes **Thermal Headroom ($\Delta T$)** relative to hardware `temp*_max`/`crit` limits alongside **Thermal Velocity ($\frac{dT}{dt}$ in °C/s)**.
-   - Evaluates **CPU Thermal Throttling**, **Linux Memory/I/O PSI Bottlenecks**, and **GPU Compute/Thermal Saturation** (including DRM VRAM & GPU Power).
-   - Attributes CPU/thermal spikes to the top CPU consumer and **Memory PSI stalls to the top RAM/RSS consumer**, with 1-click **Process Termination (`SIGTERM`)** directly from the UI.
-2. **Linux PSI (Pressure Stall Information), ZRAM & Top-5 Process Radar (`PsiMemorySampler` & `CpuSocSampler`)**:
-   - Reads `/proc/pressure/{cpu,memory,io}` (`some`, `full`, and `ms/s` stall rates) to measure *actual user-perceivable stall time* rather than raw RAM allocation.
-   - Parses `/sys/block/zram0/mm_stat` and `/proc/meminfo` to display real-time **ZRAM compression ratio**, allocator overhead, physical RAM saved, and Swap usage alongside a live **Top-5 CPU & Memory RSS Process Radar**.
-3. **Energy Flow, Power Control & Battery Health (`PowerFlowSampler`)**:
-   - Displays Package/Battery Watts, **Hardware Exact vs Estimated RAPL** status, Intel RAPL PL1/PL2 power limits, **Primary Fan RPM**, **Battery ETA (time remaining)**, and **Battery Health / Wear %**.
-   - Provides non-blocking cached D-Bus polling and 1-click **Power Profile** switching (`power-saver`, `balanced`, `performance`) over `net.hadess.PowerProfiles`.
-4. **Flight Recorder 2.0 with Incident Markers & Report Export (`FlightRecorder`)**:
-   - Incremental 5-minute history buffer (configurable `500ms` / `1000ms` / `2000ms` poll rate + Pause/Resume) with toggleable multi-channel traces (**CPU Temp**, **CPU Load**, **PSI Score**, **System Power**) and visual **Throttle/Bottleneck bands**.
-   - 1-click **Markdown & JSON Diagnostic Report Export** to clipboard or `~/.local/share/loofi-pulse/reports/`.
+- **Overview** presents the current status, explanation, next step and primary measurements. Additional sensor and data-quality details can be expanded.
+- **History** keeps five minutes by elapsed time at 500, 1,000 or 2,000 ms intervals. Curves use recorded timestamps and break across missing data, pauses and sleep. Selected samples remain frozen even after they leave the rolling chart.
+- **Memory & Pressure** explains time spent waiting for CPU, memory or I/O. The calculated pressure index is not a measured response time.
+- **Power & Cooling** shows available power, battery, cooling and sensor data. Power profiles come from the system service; profile changes are asynchronous and verified before success is reported.
 
-## Build, Test, and Run
+Ordinary warnings require three seconds of consistent observations, and recovery requires five seconds. New hardware throttle-counter events appear immediately. Temperature risk and storage temperature do not by themselves establish throttling or an I/O bottleneck. Process activity is shown as context, without claiming causation.
 
-```bash
-# Configure and build
-cmake -B build -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo
-cmake --build build -j$(nproc)
+Markdown and versioned JSON reports include recorded values, data quality and the covered period. Each file is saved atomically, export errors identify the affected file, and successful exports offer an **Open folder** action. **Open System Monitor** opens KDE's process view for further investigation.
 
-# Run unit tests + headless QML smoke test
+The standalone app remembers its polling interval, notification preference and selected chart curves. The widget keeps its separate Plasma settings. Layouts follow the KDE theme and support keyboard navigation. Hardware support depends on the interfaces exposed by the running Linux kernel; unavailable sensors require no additional permissions.
+
+## Build
+
+On Fedora, install the KDE Frameworks, Plasma, Qt, and CMake development packages required by the project, then run:
+
+```sh
+cmake -S . -B build -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo
+cmake --build build --parallel
+```
+
+Run portable tests with:
+
+```sh
 ctest --test-dir build --output-on-failure
+```
 
-# Launch the standalone Kirigami Studio application
+QML and metadata checks can also be run directly:
+
+```sh
+qmllint --ignore-settings -i build/bin/com/github/loofi/hardwarepulse/qmldir -I build/bin src/app/qml/*.qml package/contents/ui/*.qml
+appstreamcli validate --no-net packaging/com.github.loofi.hardwarepulse.metainfo.xml
+```
+
+The live host telemetry sanity check is excluded by default because it depends on the sensors and interfaces of the machine running it. Enable it explicitly with `-DBUILD_LIVE_HARDWARE_TESTS=ON` when testing on a suitable Linux host.
+
+To launch the standalone application from the build tree:
+
+```sh
 QML_IMPORT_PATH="$PWD/build/bin" ./build/bin/loofi-pulse
 ```
+
+## Project status
+
+Loofi Pulse targets KDE Plasma 6 on Linux. Fedora is the primary development and verification environment. Distribution packaging and clean-install/upgrade verification are planned after the 0.3.0 reliability work.

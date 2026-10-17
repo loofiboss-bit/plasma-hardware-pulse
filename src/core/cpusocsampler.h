@@ -15,12 +15,10 @@ public:
 
     void setRootConfig(const SysfsRootConfig &config);
 
-    CpuSocSnapshot sampleCpu(const QList<DomainSensorReading> &domainReadings);
+    CpuSocSnapshot sampleCpu(const QList<DomainSensorReading> &domainReadings, qint64 elapsedMs = 1000);
     GpuSnapshot sampleGpu(const QList<DomainSensorReading> &domainReadings);
     CulpritProcess sampleTopCulpritProcess();
     ProcessRadarSnapshot sampleProcessRadar(int maxTopProcesses = 5);
-
-    static bool terminateProcess(int pid);
 
 private:
     struct CpuJiffies
@@ -39,7 +37,7 @@ private:
     SysfsRootConfig m_config;
     QHash<int, CpuJiffies> m_prevCoreJiffies;
     CpuJiffies m_prevTotalJiffies;
-    qint64 m_prevThrottleEvents = -1;
+    QHash<QString, qint64> m_prevThrottleCounters;
 
     QHash<int, quint64> m_prevProcTicks;
     quint64 m_prevSystemTotalTicks = 0;

@@ -2,15 +2,15 @@
 <component type="desktop-application">
   <id>com.github.loofi.hardwarepulse</id>
   <name>Loofi Pulse</name>
-  <summary>Causal KDE Plasma 6 hardware, thermal, and PSI stall monitor</summary>
+  <summary>Hardware, temperature, memory pressure, and power monitor for KDE Plasma 6</summary>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
   <description>
     <p>
-      Loofi Pulse is a hybrid KDE Plasma 6 hardware monitor (Panel Applet + Kirigami Studio App)
-      designed around causal telemetry rather than raw sensor dumps. It correlates process activity,
-      power flow, Linux PSI (Pressure Stall Information), ZRAM compression efficiency, CPU/GPU
-      clock frequencies, and thermal headroom into clear human-readable diagnostics.
+      Loofi Pulse provides a KDE Plasma 6 panel applet and a Kirigami desktop application for
+      viewing system hardware readings, temperatures, Linux memory and I/O pressure, power,
+      and recent telemetry history. Available readings depend on the sensors and interfaces
+      exposed by the running Linux system.
     </p>
   </description>
   <launchable type="desktop-id">com.github.loofi.hardwarepulse.desktop</launchable>
@@ -20,6 +20,7 @@
   </developer>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.3.0" date="2026-10-17" type="development" />
     <release version="0.2.0" date="2026-10-17" />
     <release version="0.1.0" date="2026-10-16" />
   </releases>

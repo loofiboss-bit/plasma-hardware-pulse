@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
@@ -5,191 +6,214 @@ import org.kde.kirigami as Kirigami
 
 Kirigami.ScrollablePage {
     id: powerPage
-    title: "Energy Flow, Power Control & CPU Core Matrix"
-
+    objectName: "powerPage"
+    title: "Power & Cooling"
     required property var controller
 
     ColumnLayout {
         Layout.fillWidth: true
         spacing: Kirigami.Units.largeSpacing
 
-        // 1. Power Flow & D-Bus Profile Switcher
-        Rectangle {
+        Kirigami.Card {
             Layout.fillWidth: true
-            implicitHeight: pwrCol.implicitHeight + Kirigami.Units.largeSpacing * 2
-            radius: 12
-            color: Qt.rgba(0.09, 0.13, 0.21, 0.92)
-            border.width: 1
-            border.color: "#f59e0b"
-
-            ColumnLayout {
-                id: pwrCol
-                anchors.fill: parent
-                anchors.margins: Kirigami.Units.largeSpacing
+            contentItem: ColumnLayout {
                 spacing: Kirigami.Units.mediumSpacing
 
-                RowLayout {
+                Kirigami.Heading {
+                    text: "Power and cooling"
+                    level: 2
                     Layout.fillWidth: true
-                    Kirigami.Heading {
-                        level: 3
-                        text: "Energy Flow & Thermal Power Envelope (RAPL PL1 / PL2)"
-                        color: "#f8fafc"
-                        Layout.fillWidth: true
-                    }
-                    QQC2.Label {
-                        text: powerPage.controller.raplExactAvailable ? "RAPL: Hardware Counter" : "RAPL: Estimated (see udev rule)"
-                        color: powerPage.controller.raplExactAvailable ? "#10b981" : "#38bdf8"
-                        font.bold: true
-                    }
-                    Item { Layout.preferredWidth: 12 }
-                    QQC2.Label {
-                        text: powerPage.controller.onAcPower ? "Power Source: AC Adapter" : "Power Source: Battery"
-                        color: "#10b981"
-                        font.bold: true
-                    }
                 }
 
                 GridLayout {
                     Layout.fillWidth: true
-                    columns: 4
-                    columnSpacing: 16
-                    rowSpacing: 8
+                    columns: width < 620 ? 1 : 2
+                    columnSpacing: Kirigami.Units.largeSpacing
+                    rowSpacing: Kirigami.Units.mediumSpacing
 
                     QQC2.Label {
-                        text: "Package Power: ~" + powerPage.controller.packageWatts.toFixed(1) + " W"
-                        color: "#f59e0b"
-                        font.bold: true
-                        font.pixelSize: 16
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        text: powerPage.controller.packagePowerAvailable
+                              ? "CPU package power: " + powerPage.controller.packageWatts.toFixed(1) + " W · "
+                                + (powerPage.controller.packagePowerEstimated ? "Estimated" : "Measured")
+                              : "CPU package power: Unavailable"
                     }
                     QQC2.Label {
-                        text: "PL1 (Sustained): " + Math.round(powerPage.controller.pl1LimitWatts)
-                              + " W  |  PL2 (Burst): " + Math.round(powerPage.controller.pl2LimitWatts) + " W"
-                        color: "#cbd5e1"
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        text: powerPage.controller.powerLimitsAvailable
+                              ? "Power limits: PL1 " + Math.round(powerPage.controller.pl1LimitWatts) + " W · PL2 "
+                                + Math.round(powerPage.controller.pl2LimitWatts) + " W"
+                              : "Power limits: Unavailable"
                     }
                     QQC2.Label {
-                        text: "Cooling Fan: " + (powerPage.controller.primaryFanRpm > 0
-                              ? (powerPage.controller.primaryFanRpm + " RPM")
-                              : "0 RPM (Passive)")
-                        color: "#cbd5e1"
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        text: "Fan speed: " + (powerPage.controller.fanAvailable
+                              ? powerPage.controller.primaryFanRpm + " RPM" : "Unavailable")
                     }
                     QQC2.Label {
-                        text: "Battery: " + Math.round(powerPage.controller.batteryPercent)
-                              + "% • " + powerPage.controller.batteryTimeRemainingText
-                              + (powerPage.controller.batteryPresent
-                                 ? (" (" + Math.round(powerPage.controller.batteryHealthPercent) + "% health)")
-                                 : "")
-                        color: "#cbd5e1"
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        text: "Power source: " + (powerPage.controller.batteryStateAvailable
+                              ? (powerPage.controller.onAcPower ? "AC power" : "Battery") : "Unavailable")
                     }
-                }
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: Kirigami.Units.mediumSpacing
-
                     QQC2.Label {
-                        text: "Active Power Profile (D-Bus):"
-                        color: "#cbd5e1"
-                        font.bold: true
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        text: !powerPage.controller.batteryStateAvailable ? "Battery: Unavailable"
+                              : (!powerPage.controller.batteryPresent ? "Battery: Not present · " + powerPage.controller.batteryTimeRemainingText
+                                 : "Battery: " + (powerPage.controller.batteryLevelAvailable
+                                   ? Math.round(powerPage.controller.batteryPercent) + "%" : "Level unavailable")
+                                   + " · " + powerPage.controller.batteryTimeRemainingText)
                     }
-
-                    Repeater {
-                        model: ["power-saver", "balanced", "performance"]
-                        delegate: QQC2.Button {
-                            required property string modelData
-                            text: modelData
-                            checkable: true
-                            checked: powerPage.controller.activePowerProfile === modelData
-                            onClicked: powerPage.controller.setPowerProfile(modelData)
-                        }
-                    }
-
-                    Item { Layout.fillWidth: true }
-
                     QQC2.Label {
-                        text: "Total Throttle Events since boot: " + powerPage.controller.totalThrottleEvents
-                              + " (Δ/s: +" + powerPage.controller.deltaThrottleEvents + ")"
-                        color: powerPage.controller.deltaThrottleEvents > 0 ? "#ef4444" : "#94a3b8"
-                        font.bold: true
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        text: powerPage.controller.batteryPresent
+                              ? "Battery health: " + (powerPage.controller.batteryHealthAvailable
+                                ? Math.round(powerPage.controller.batteryHealthPercent) + "%" : "Unavailable")
+                              : "Battery health: Unavailable"
+                    }
+                    QQC2.Label {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        text: "NVMe temperature: " + (powerPage.controller.nvmeTempAvailable
+                              ? Math.round(powerPage.controller.nvmeTempCelsius) + " °C" : "Unavailable")
+                    }
+                    QQC2.Label {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        text: "Wireless temperature: " + (powerPage.controller.wifiTempAvailable
+                              ? Math.round(powerPage.controller.wifiTempCelsius) + " °C" : "Unavailable")
+                    }
+                    QQC2.Label {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        text: "GPU load: " + (powerPage.controller.gpuBusyAvailable
+                              ? Math.round(powerPage.controller.gpuBusyPercent) + "%" : "Unavailable")
+                              + " · GPU temperature: " + (powerPage.controller.gpuTempAvailable
+                              ? Math.round(powerPage.controller.gpuTempCelsius) + " °C" : "Unavailable")
+                    }
+                    QQC2.Label {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        text: powerPage.controller.throttleCountersAvailable
+                              ? "Throttle events since boot: " + powerPage.controller.totalThrottleEvents
+                                + " · New this interval: " + powerPage.controller.deltaThrottleEvents
+                              : "Throttle event counters: Unavailable"
                     }
                 }
             }
         }
 
-        // 2. Per-Core Frequency, Load & Thermal Matrix
+        QQC2.GroupBox {
+            Layout.fillWidth: true
+            title: "Power profile"
+
+            ColumnLayout {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                spacing: Kirigami.Units.smallSpacing
+
+                QQC2.Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    text: !powerPage.controller.powerProfileServiceAvailable
+                          ? "Power profile service unavailable"
+                          : "Active profile: " + (powerPage.controller.activePowerProfile || "Unavailable")
+                }
+
+                Flow {
+                    Layout.fillWidth: true
+                    spacing: Kirigami.Units.smallSpacing
+
+                    Repeater {
+                        model: powerPage.controller.availablePowerProfiles
+                        delegate: QQC2.Button {
+                            required property string modelData
+                            text: powerPage.controller.powerProfileChangePending ? "Applying…" : modelData
+                            checkable: true
+                            checked: powerPage.controller.activePowerProfile === modelData
+                            enabled: powerPage.controller.powerProfileServiceAvailable
+                                     && !powerPage.controller.powerProfileChangePending
+                            Accessible.name: modelData + (checked ? ", active profile" : ", change power profile")
+                            onClicked: powerPage.controller.setPowerProfile(modelData)
+                        }
+                    }
+                }
+            }
+        }
+
         Kirigami.Heading {
-            level: 3
-            text: "Logical CPU Threads / Cores (Clock Frequency, Load & Throttling)"
+            Layout.fillWidth: true
+            level: 2
+            text: "CPU cores and sensors"
         }
 
         GridLayout {
             Layout.fillWidth: true
-            columns: 2
+            columns: width < 560 ? 1 : 2
             columnSpacing: Kirigami.Units.mediumSpacing
             rowSpacing: Kirigami.Units.mediumSpacing
 
             Repeater {
                 model: powerPage.controller.coreItems
-
-                delegate: Rectangle {
+                delegate: Kirigami.Card {
+                    id: coreCard
                     required property var modelData
                     Layout.fillWidth: true
-                    implicitHeight: 74
-                    radius: 8
-                    color: Qt.rgba(0.10, 0.14, 0.23, 0.85)
-                    border.width: 1
-                    border.color: modelData.throttleCount > 0 ? "#f97316" : Qt.rgba(1, 1, 1, 0.12)
-
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: Kirigami.Units.mediumSpacing
-                        spacing: 6
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            QQC2.Label {
-                                text: "CPU #" + modelData.coreId
-                                color: "#38bdf8"
-                                font.bold: true
-                            }
-                            QQC2.Label {
-                                text: Math.round(modelData.loadPercent) + "% load"
-                                color: "#f8fafc"
-                                font.bold: true
-                            }
-                            QQC2.Label {
-                                visible: modelData.throttleCount > 0
-                                text: "⚠ " + modelData.throttleCount + " thr"
-                                color: "#f97316"
-                                font.pixelSize: 11
-                                font.bold: true
-                            }
-                            Item { Layout.fillWidth: true }
-                            QQC2.Label {
-                                text: modelData.currentFreqMhz + " / " + modelData.maxFreqMhz + " MHz"
-                                color: "#cbd5e1"
-                                font.family: "monospace"
-                            }
-                            QQC2.Label {
-                                text: Math.round(modelData.tempCelsius) + "°C"
-                                color: modelData.tempCelsius >= 85 ? "#ef4444" : "#10b981"
-                                font.bold: true
-                            }
+                    contentItem: ColumnLayout {
+                        QQC2.Label {
+                            text: "CPU " + coreCard.modelData.coreId
+                            font.bold: true
+                            color: Kirigami.Theme.textColor
                         }
-
-                        Rectangle {
+                        QQC2.Label {
                             Layout.fillWidth: true
-                            height: 7
-                            radius: 3.5
-                            color: Qt.rgba(1, 1, 1, 0.12)
-
-                            Rectangle {
-                                width: parent.width * Math.min(1.0, Math.max(0.02, modelData.loadPercent / 100.0))
-                                height: parent.height
-                                radius: 3.5
-                                color: modelData.loadPercent > 80 ? "#f59e0b" : "#06b6d4"
-                            }
+                            wrapMode: Text.WordWrap
+                            text: "Load: " + (coreCard.modelData.loadAvailable
+                                  ? Math.round(coreCard.modelData.loadPercent) + "%" : "Unavailable")
+                                  + " · Frequency: " + (coreCard.modelData.currentFreqMhz > 0
+                                  ? coreCard.modelData.currentFreqMhz + " MHz" : "Unavailable")
+                        }
+                        QQC2.Label {
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                            text: "Throttle count: " + (coreCard.modelData.throttleCountersAvailable
+                                  ? coreCard.modelData.throttleCount : "Unavailable")
                         }
                     }
+                }
+            }
+        }
+
+        QQC2.GroupBox {
+            Layout.fillWidth: true
+            title: "Detected sensors"
+
+            ColumnLayout {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                spacing: Kirigami.Units.smallSpacing
+
+                Repeater {
+                    model: powerPage.controller.domainSensors
+                    delegate: QQC2.Label {
+                        required property var modelData
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        text: modelData.domainName + " · " + modelData.label + ": "
+                              + (modelData.available ? Number(modelData.currentCelsius).toFixed(1) + " °C" : "Unavailable")
+                        Accessible.name: text
+                    }
+                }
+                QQC2.Label {
+                    visible: powerPage.controller.domainSensors.length === 0
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    text: "No supported temperature sensors were found."
                 }
             }
         }
