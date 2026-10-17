@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import org.kde.plasma.plasmoid
 import org.kde.plasma.components as PlasmaComponents3
 import org.kde.kirigami as Kirigami
 
@@ -8,16 +7,21 @@ Item {
     id: compactRoot
 
     required property var controller
+    required property bool expanded
+    property bool showPsiInPanel: true
+    property bool showWattsInPanel: true
+    signal activationRequested()
 
     Layout.minimumWidth: pillRow.implicitWidth + Kirigami.Units.smallSpacing * 4
     Layout.preferredWidth: Layout.minimumWidth
     Layout.minimumHeight: Kirigami.Units.iconSizes.small
 
     function badgeColor(sev) {
-        if (sev >= 3) return "#ef4444"
-        if (sev === 2) return "#f97316"
-        if (sev === 1) return "#f59e0b"
-        return "#10b981"
+        if (sev === 4) return Kirigami.Theme.neutralTextColor
+        if (sev === 3) return Kirigami.Theme.negativeTextColor
+        if (sev === 2) return Kirigami.Theme.neutralTextColor
+        if (sev === 1) return Kirigami.Theme.neutralTextColor
+        return Kirigami.Theme.positiveTextColor
     }
 
     function velocityArrow(vel) {
@@ -28,17 +32,16 @@ Item {
         return "•"
     }
 
-    Rectangle {
+    PlasmaComponents3.Button {
+        id: pillRow
         anchors.fill: parent
         anchors.margins: 2
-        radius: height / 2
-        color: Qt.rgba(0.08, 0.11, 0.18, 0.55)
-        border.width: 1
-        border.color: compactRoot.badgeColor(compactRoot.controller.verdictSeverity)
-
-        RowLayout {
-            id: pillRow
-            anchors.centerIn: parent
+        checkable: true
+        checked: compactRoot.expanded
+        Accessible.name: compactRoot.controller.verdictHeadline + ". Activate to open hardware details."
+        Accessible.description: "Loofi Pulse status and current hardware readings."
+        onClicked: compactRoot.activationRequested()
+        contentItem: RowLayout {
             spacing: Kirigami.Units.smallSpacing
 
             Rectangle {
@@ -49,30 +52,33 @@ Item {
             }
 
             PlasmaComponents3.Label {
-                text: Math.round(compactRoot.controller.cpuPackageTemp) + "°C "
-                      + compactRoot.velocityArrow(compactRoot.controller.thermalVelocity)
+                text: "Status: " + compactRoot.controller.verdictHeadline
+                elide: Text.ElideRight
+                Layout.maximumWidth: Kirigami.Units.gridUnit * 10
+                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+            }
+
+            PlasmaComponents3.Label {
+                text: compactRoot.controller.cpuTempAvailable
+                      ? Math.round(compactRoot.controller.cpuPackageTemp) + "°C " + compactRoot.velocityArrow(compactRoot.controller.thermalVelocity)
+                      : "CPU temp unavailable"
                 font.bold: true
                 font.pixelSize: Kirigami.Theme.smallFont.pixelSize + 1
             }
 
             PlasmaComponents3.Label {
-                visible: Plasmoid.configuration.showPsiInPanel !== false
-                text: "PSI " + Math.round(compactRoot.controller.responsivenessScore) + "%"
+                visible: compactRoot.showPsiInPanel
+                text: compactRoot.controller.psiAvailable ? "Pressure index " + Math.round(compactRoot.controller.responsivenessScore) + "%" : "Pressure unavailable"
                 opacity: 0.85
                 font.pixelSize: Kirigami.Theme.smallFont.pixelSize
             }
 
             PlasmaComponents3.Label {
-                visible: Plasmoid.configuration.showWattsInPanel !== false
-                text: compactRoot.controller.packageWatts.toFixed(1) + "W"
+                visible: compactRoot.showWattsInPanel
+                text: compactRoot.controller.packagePowerAvailable ? compactRoot.controller.packageWatts.toFixed(1) + "W" + (compactRoot.controller.packagePowerEstimated ? " est." : "") : "Power unavailable"
                 opacity: 0.85
                 font.pixelSize: Kirigami.Theme.smallFont.pixelSize
             }
         }
-    }
-
-    MouseArea {
-        anchors.fill: parent
-        onClicked: root.expanded = !root.expanded
     }
 }

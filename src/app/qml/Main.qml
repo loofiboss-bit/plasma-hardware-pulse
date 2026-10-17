@@ -1,22 +1,35 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
+import Qt.labs.settings
 import com.github.loofi.hardwarepulse 1.0
 
 Kirigami.ApplicationWindow {
     id: appWindow
-    title: "Loofi Pulse — Causal Hardware & Thermal Studio"
+    objectName: "pulseWindow"
+    title: "Loofi Pulse"
     width: 1120
     height: 760
-    minimumWidth: 860
-    minimumHeight: 600
+    minimumWidth: 600
+    minimumHeight: 480
 
     property string initialPageName: "overview"
 
+    Settings {
+        id: appSettings
+        category: "LoofiPulse"
+        property int savedPollInterval: 1000
+        property bool savedNotificationsEnabled: true
+    }
+
     PulseTelemetryController {
         id: telemetry
-        pollIntervalMs: 1000
+        pollIntervalMs: appSettings.savedPollInterval
+        notificationsEnabled: appSettings.savedNotificationsEnabled
+        onPollIntervalChanged: appSettings.savedPollInterval = pollIntervalMs
+        onNotificationsEnabledChanged: appSettings.savedNotificationsEnabled = notificationsEnabled
     }
 
     function switchToPage(name) {
@@ -48,22 +61,26 @@ Kirigami.ApplicationWindow {
 
         actions: [
             Kirigami.Action {
-                text: "Causal Pulse & Topology"
+                objectName: "navigateOverview"
+                text: "Overview"
                 icon.name: "view-statistics"
                 onTriggered: appWindow.switchToPage("overview")
             },
             Kirigami.Action {
-                text: "Flight Recorder (Time Machine)"
+                objectName: "navigateHistory"
+                text: "History"
                 icon.name: "chronometer"
                 onTriggered: appWindow.switchToPage("flight")
             },
             Kirigami.Action {
-                text: "PSI Pressure & ZRAM Memory"
+                objectName: "navigatePressure"
+                text: "Memory & Pressure"
                 icon.name: "memory"
                 onTriggered: appWindow.switchToPage("pressure")
             },
             Kirigami.Action {
-                text: "Energy & Thermal Envelope"
+                objectName: "navigatePower"
+                text: "Power & Cooling"
                 icon.name: "battery-profile-performance"
                 onTriggered: appWindow.switchToPage("power")
             },
@@ -74,6 +91,11 @@ Kirigami.ApplicationWindow {
                 text: telemetry.recordingPaused ? "Resume Flight Recorder" : "Pause Flight Recorder"
                 icon.name: telemetry.recordingPaused ? "media-playback-start" : "media-playback-pause"
                 onTriggered: telemetry.recordingPaused = !telemetry.recordingPaused
+            },
+            Kirigami.Action {
+                text: telemetry.notificationsEnabled ? "Disable notifications" : "Enable notifications"
+                icon.name: telemetry.notificationsEnabled ? "notifications-disabled" : "notifications"
+                onTriggered: telemetry.notificationsEnabled = !telemetry.notificationsEnabled
             },
             Kirigami.Action {
                 text: "Copy Incident Report (MD)"
@@ -101,27 +123,29 @@ Kirigami.ApplicationWindow {
 
     footer: Rectangle {
         visible: telemetry.lastActionStatus.length > 0
-        height: visible ? 30 : 0
-        color: Qt.rgba(0.07, 0.11, 0.19, 0.95)
+        height: visible ? statusRow.implicitHeight + Kirigami.Units.smallSpacing * 2 : 0
+        color: Kirigami.Theme.backgroundColor
         border.width: 1
-        border.color: Qt.rgba(0.22, 0.74, 0.97, 0.35)
+        border.color: Kirigami.Theme.focusColor
 
         RowLayout {
+            id: statusRow
             anchors.fill: parent
             anchors.leftMargin: 14
             anchors.rightMargin: 14
             QQC2.Label {
-                text: "Status: " + telemetry.lastActionStatus
-                color: "#38bdf8"
-                font.pixelSize: 12
+                text: (telemetry.powerProfileChangePending ? "Working: "
+                       : telemetry.lastActionSucceeded ? "Completed: " : "Could not complete: ")
+                      + telemetry.lastActionStatus
+                wrapMode: Text.WordWrap
+                color: Kirigami.Theme.textColor
                 font.bold: true
                 Layout.fillWidth: true
             }
             QQC2.Label {
                 text: "Poll: " + telemetry.pollIntervalMs + "ms"
                       + (telemetry.recordingPaused ? " • PAUSED" : " • LIVE")
-                color: telemetry.recordingPaused ? "#f59e0b" : "#10b981"
-                font.pixelSize: 12
+                color: telemetry.recordingPaused ? Kirigami.Theme.neutralTextColor : Kirigami.Theme.positiveTextColor
                 font.bold: true
             }
         }

@@ -1,10 +1,6 @@
 #include "powerflowsampler.h"
 #include "sysfsreader.h"
 
-#include <QDBusConnection>
-#include <QDBusInterface>
-#include <QDBusMessage>
-#include <QDBusVariant>
 #include <QDir>
 
 #include <algorithm>
@@ -22,18 +18,11 @@ void PowerFlowSampler::setRootConfig(const SysfsRootConfig &config)
     m_config = config;
     m_prevRaplEnergyUj = 0;
     m_hasPrevRapl = false;
-    m_dbusPollTick = 0;
 }
 
 PowerFlowSnapshot PowerFlowSampler::sample(qint64 elapsedMs, double cpuLoadPercent, int avgFreqMhz, int maxFreqMhz)
 {
     PowerFlowSnapshot snap;
-    snap.availablePowerProfiles = {
-        QStringLiteral("power-saver"),
-        QStringLiteral("balanced"),
-        QStringLiteral("performance")
-    };
-
     const QDir psyRoot(QDir(m_config.sysRoot).filePath(QStringLiteral("class/power_supply")));
     if (psyRoot.exists()) {
         const QStringList entries = psyRoot.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
@@ -45,12 +34,23 @@ PowerFlowSnapshot PowerFlowSampler::sample(qint64 elapsedMs, double cpuLoadPerce
                 bool ok = false;
                 const qint64 online = SysfsReader::readInt64(devDir.filePath(QStringLiteral("online")), 1, &ok);
                 if (ok) {
+                    snap.batteryStateAvailable = true;
                     snap.onAcPower = (online != 0);
                 }
             } else if (type == QStringLiteral("battery") || entry.startsWith(QStringLiteral("BAT"))) {
                 snap.batteryPresent = true;
                 snap.batteryStatus = SysfsReader::readTrimmedLine(devDir.filePath(QStringLiteral("status")));
-                snap.batteryPercent = SysfsReader::readScaledDouble(devDir.filePath(QStringLiteral("capacity")), 1.0, 100.0);
+                const QString powerStatus = snap.batteryStatus.toLower();
+                if (powerStatus == QStringLiteral("discharging")) {
+                    snap.onAcPower = false;
+                    snap.batteryStateAvailable = true;
+                } else if (powerStatus == QStringLiteral("charging")) {
+                    snap.onAcPower = true;
+                    snap.batteryStateAvailable = true;
+                }
+                bool capacityOk = false;
+                snap.batteryPercent = SysfsReader::readScaledDouble(devDir.filePath(QStringLiteral("capacity")), 1.0, 0.0, &capacityOk);
+                snap.batteryLevelAvailable = capacityOk && snap.batteryPercent >= 0.0 && snap.batteryPercent <= 100.0;
 
                 bool vOk = false;
                 const double voltageV = SysfsReader::readScaledDouble(devDir.filePath(QStringLiteral("voltage_now")), 1000000.0, 0.0, &vOk);
@@ -60,13 +60,15 @@ PowerFlowSnapshot PowerFlowSampler::sample(qint64 elapsedMs, double cpuLoadPerce
 
                 bool pOk = false;
                 const double powerW = SysfsReader::readScaledDouble(devDir.filePath(QStringLiteral("power_now")), 1000000.0, 0.0, &pOk);
-                if (pOk && powerW > 0.0) {
+                if (pOk && powerW >= 0.0) {
                     snap.batteryWatts = powerW;
+                    snap.batteryPowerAvailable = true;
                 } else {
                     bool cOk = false;
                     const double currentA = SysfsReader::readScaledDouble(devDir.filePath(QStringLiteral("current_now")), 1000000.0, 0.0, &cOk);
-                    if (cOk && vOk) {
+                    if (cOk && vOk && currentA >= 0.0 && voltageV >= 0.0) {
                         snap.batteryWatts = currentA * voltageV;
+                        snap.batteryPowerAvailable = true;
                     }
                 }
 
@@ -90,6 +92,7 @@ PowerFlowSnapshot PowerFlowSampler::sample(qint64 elapsedMs, double cpuLoadPerce
 
                 if (energyFullWh > 0.1 && energyDesignWh > 0.1) {
                     snap.batteryHealthPercent = std::clamp((energyFullWh * 100.0) / energyDesignWh, 10.0, 100.0);
+                    snap.batteryHealthAvailable = true;
                 }
 
                 if (snap.batteryWatts > 0.25 && energyNowWh > 0.0) {
@@ -108,33 +111,58 @@ PowerFlowSnapshot PowerFlowSampler::sample(qint64 elapsedMs, double cpuLoadPerce
 
     // Read Intel RAPL PL1/PL2 and energy_uj if readable
     const QDir raplDir(QDir(m_config.sysRoot).filePath(QStringLiteral("class/powercap/intel-rapl:0")));
+    if (elapsedMs > 30000) {
+        m_hasPrevRapl = false;
+    }
     if (raplDir.exists()) {
         snap.pl1LimitWatts = SysfsReader::readScaledDouble(raplDir.filePath(QStringLiteral("constraint_0_power_limit_uw")), 1000000.0, 0.0);
         snap.pl2LimitWatts = SysfsReader::readScaledDouble(raplDir.filePath(QStringLiteral("constraint_1_power_limit_uw")), 1000000.0, 0.0);
 
         bool eOk = false;
         const qint64 energyRaw = SysfsReader::readInt64(raplDir.filePath(QStringLiteral("energy_uj")), -1, &eOk);
+        bool rangeOk = false;
+        const qint64 energyRangeRaw = SysfsReader::readInt64(raplDir.filePath(QStringLiteral("max_energy_range_uj")), -1, &rangeOk);
         if (eOk && energyRaw >= 0) {
             const quint64 curUj = static_cast<quint64>(energyRaw);
-            if (m_hasPrevRapl && curUj >= m_prevRaplEnergyUj && elapsedMs > 50) {
-                const double dJoules = static_cast<double>(curUj - m_prevRaplEnergyUj) / 1000000.0;
+            quint64 deltaUj = 0;
+            bool deltaAvailable = false;
+            if (m_hasPrevRapl && elapsedMs > 50 && curUj >= m_prevRaplEnergyUj) {
+                deltaUj = curUj - m_prevRaplEnergyUj;
+                deltaAvailable = true;
+            } else if (m_hasPrevRapl && elapsedMs > 50 && rangeOk && energyRangeRaw > 0
+                       && m_prevRaplEnergyUj < static_cast<quint64>(energyRangeRaw)
+                       && curUj < static_cast<quint64>(energyRangeRaw)) {
+                deltaUj = static_cast<quint64>(energyRangeRaw) - m_prevRaplEnergyUj + curUj;
+                deltaAvailable = true;
+            }
+            if (deltaAvailable) {
+                const double dJoules = static_cast<double>(deltaUj) / 1000000.0;
                 const double dtSec = static_cast<double>(elapsedMs) / 1000.0;
                 snap.packageWatts = std::clamp(dJoules / dtSec, 0.0, 250.0);
                 snap.raplExactAvailable = true;
+                snap.packagePowerAvailable = true;
             }
             m_prevRaplEnergyUj = curUj;
             m_hasPrevRapl = true;
+        } else {
+            // Missing/invalid readings invalidate the previous counter interval. The next
+            // successful value is a new baseline, not a one-poll power measurement.
+            m_hasPrevRapl = false;
         }
+    } else {
+        m_hasPrevRapl = false;
     }
 
     // Fallback estimation if RAPL energy_uj is root-only (0400)
-    if (!snap.raplExactAvailable) {
+    if (!snap.raplExactAvailable && cpuLoadPercent >= 0.0 && cpuLoadPercent <= 100.0 && maxFreqMhz > 0 && avgFreqMhz > 0) {
         const double pl1 = (snap.pl1LimitWatts > 1.0) ? snap.pl1LimitWatts : 28.0;
         const double freqRatio = (maxFreqMhz > 0 && avgFreqMhz > 0)
             ? std::clamp(static_cast<double>(avgFreqMhz) / static_cast<double>(maxFreqMhz), 0.25, 1.0)
             : 0.5;
         const double loadFactor = std::clamp(cpuLoadPercent / 100.0, 0.02, 1.0);
         snap.packageWatts = std::clamp(2.2 + pl1 * loadFactor * freqRatio * 0.85, 1.5, pl1 * 1.4);
+        snap.packagePowerAvailable = true;
+        snap.packagePowerEstimated = true;
     }
 
     // Scan hwmon for fan*_input RPM
@@ -147,54 +175,15 @@ PowerFlowSnapshot PowerFlowSampler::sample(qint64 elapsedMs, double cpuLoadPerce
             for (const QString &fanFile : fanFiles) {
                 bool fOk = false;
                 const int rpm = static_cast<int>(SysfsReader::readInt64(chipDir.filePath(fanFile), 0, &fOk));
-                if (fOk && rpm > snap.primaryFanRpm) {
-                    snap.primaryFanRpm = rpm;
+                if (fOk) {
+                    snap.fanAvailable = true;
+                    snap.primaryFanRpm = std::max(snap.primaryFanRpm, rpm);
                 }
             }
         }
-    }
-
-    // Query active Power Profile via D-Bus if using live /sys (throttled to every 5th tick)
-    if (m_config.sysRoot == QStringLiteral("/sys") && QDBusConnection::systemBus().isConnected()) {
-        if ((m_dbusPollTick++ % 5) == 0) {
-            QDBusMessage msg = QDBusMessage::createMethodCall(
-                QStringLiteral("net.hadess.PowerProfiles"),
-                QStringLiteral("/net/hadess/PowerProfiles"),
-                QStringLiteral("org.freedesktop.DBus.Properties"),
-                QStringLiteral("Get"));
-            msg << QStringLiteral("net.hadess.PowerProfiles") << QStringLiteral("ActiveProfile");
-            const QDBusMessage reply = QDBusConnection::systemBus().call(msg, QDBus::Block, 35);
-            if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
-                const QVariant unwrapped = reply.arguments().at(0).value<QDBusVariant>().variant();
-                const QString prof = unwrapped.toString().trimmed();
-                if (!prof.isEmpty()) {
-                    m_cachedPowerProfile = prof;
-                }
-            }
-        }
-        snap.activePowerProfile = m_cachedPowerProfile;
     }
 
     return snap;
-}
-
-bool PowerFlowSampler::setSystemPowerProfile(const QString &profile)
-{
-    if (!QDBusConnection::systemBus().isConnected()) {
-        return false;
-    }
-
-    QDBusMessage msg = QDBusMessage::createMethodCall(
-        QStringLiteral("net.hadess.PowerProfiles"),
-        QStringLiteral("/net/hadess/PowerProfiles"),
-        QStringLiteral("org.freedesktop.DBus.Properties"),
-        QStringLiteral("Set"));
-    msg << QStringLiteral("net.hadess.PowerProfiles")
-        << QStringLiteral("ActiveProfile")
-        << QVariant::fromValue(QDBusVariant(profile));
-
-    const QDBusMessage reply = QDBusConnection::systemBus().call(msg, QDBus::Block, 300);
-    return reply.type() == QDBusMessage::ReplyMessage;
 }
 
 } // namespace LoofiPulse

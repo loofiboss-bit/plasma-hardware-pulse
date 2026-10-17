@@ -1,0 +1,62 @@
+name: Linux CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-24.04
+    container: fedora:latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          dnf install --assumeyes \
+            cmake \
+            extra-cmake-modules \
+            gcc-c++ \
+            dbus-daemon \
+            kf6-kcmutils \
+            kf6-kcoreaddons-devel \
+            kf6-ki18n-devel \
+            kf6-kirigami-devel \
+            kf6-knotifications-devel \
+            kf6-kpackage \
+            kf6-qqc2-desktop-style \
+            libplasma-devel \
+            plasma-workspace-devel \
+            qt6-qtbase-devel \
+            qt6-qtdeclarative-devel \
+            qt6-qttools-devel \
+            appstream
+
+      - name: Configure
+        run: >-
+          cmake -S . -B build
+          -DBUILD_TESTING=ON
+          -DBUILD_LIVE_HARDWARE_TESTS=OFF
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo
+
+      - name: Build
+        run: cmake --build build --parallel 2
+
+      - name: Check QML syntax and types
+        run: |
+          QMLLINT_BIN="$(command -v qmllint || true)"
+          if [ -z "$QMLLINT_BIN" ]; then QMLLINT_BIN=/usr/lib64/qt6/bin/qmllint; fi
+          "$QMLLINT_BIN" --ignore-settings -i build/bin/com/github/loofi/hardwarepulse/qmldir -I build/bin \
+            src/app/qml/*.qml package/contents/ui/*.qml
+
+      - name: Run portable tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QML_IMPORT_PATH: ${{ github.workspace }}/build/bin
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Validate AppStream metadata
+        run: appstreamcli validate --no-net packaging/com.github.loofi.hardwarepulse.metainfo.xml

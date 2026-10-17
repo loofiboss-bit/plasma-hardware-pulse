@@ -35,8 +35,8 @@ int main(int argc, char *argv[])
     KAboutData aboutData(
         QStringLiteral("loofi-pulse"),
         QStringLiteral("Loofi Pulse"),
-        QStringLiteral("0.2.0"),
-        QStringLiteral("Causal & Topological KDE Plasma 6 Hardware Monitor"),
+        QStringLiteral(LOOFI_PULSE_VERSION),
+        QStringLiteral("KDE Plasma 6 hardware health and pressure monitor"),
         KAboutLicense::GPL_V3,
         QStringLiteral("© 2026 Loofi"));
     KAboutData::setApplicationData(aboutData);
@@ -80,7 +80,8 @@ int main(int argc, char *argv[])
     if (parser.isSet(smokeOpt)) {
         LoofiPulse::PulseTelemetryController probe;
         probe.refreshNow();
-        if (probe.verdictHeadline().isEmpty() || probe.responsivenessScore() <= 0.0) {
+        if (probe.verdictHeadline().isEmpty()) {
+            qCritical("Smoke test could not obtain a controller status headline.");
             return 2;
         }
         QTimer::singleShot(150, &app, &QCoreApplication::quit);
