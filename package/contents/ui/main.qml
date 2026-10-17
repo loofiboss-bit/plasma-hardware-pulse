@@ -25,6 +25,7 @@ PlasmoidItem {
         expanded: root.expanded
         showPsiInPanel: Plasmoid.configuration.showPsiInPanel !== false
         showWattsInPanel: Plasmoid.configuration.showWattsInPanel !== false
+        alwaysShowStatusInPanel: Plasmoid.configuration.alwaysShowStatusInPanel === true
         onActivationRequested: root.expanded = !root.expanded
     }
 

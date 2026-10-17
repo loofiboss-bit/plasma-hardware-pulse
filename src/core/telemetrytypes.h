@@ -250,6 +250,8 @@ struct FlightSample
     quint64 zramOriginalBytes = 0;
     quint64 zramCompressedBytes = 0;
     quint64 zramMemoryUsedBytes = 0;
+    double diskReadMibPerSec = 0.0;
+    double diskWriteMibPerSec = 0.0;
     qint64 throttleEventCount = 0;
     qint64 newThrottleEvents = 0;
     bool batteryPresent = false;

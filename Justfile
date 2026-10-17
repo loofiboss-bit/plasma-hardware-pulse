@@ -19,6 +19,8 @@ smoke: build
 
 install-local: build
     cmake --install build --prefix "$HOME/.local"
+    mkdir -p "$HOME/.config/plasma-workspace/env"
+    printf 'export QML_IMPORT_PATH="$HOME/.local/lib64/qt6/qml:$HOME/.local/lib/qt6/qml:$QML_IMPORT_PATH"\nexport QML2_IMPORT_PATH="$HOME/.local/lib64/qt6/qml:$HOME/.local/lib/qt6/qml:$QML2_IMPORT_PATH"\n' > "$HOME/.config/plasma-workspace/env/loofi-pulse-qml-path.sh"
     kpackagetool6 --type Plasma/Applet --upgrade package || kpackagetool6 --type Plasma/Applet --install package
 
 package-plasmoid:

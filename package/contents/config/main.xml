@@ -14,6 +14,9 @@
     <entry name="showPsiInPanel" type="Bool">
       <default>true</default>
     </entry>
+    <entry name="alwaysShowStatusInPanel" type="Bool">
+      <default>false</default>
+    </entry>
     <entry name="notificationsEnabled" type="Bool">
       <default>true</default>
     </entry>

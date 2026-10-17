@@ -248,6 +248,15 @@ QVariantMap FlightRecorder::sampleMetricMetadata(const FlightSample &s)
     result.insert(QStringLiteral("packagePower"),
                   metric(!pkgPowerAvail ? QStringLiteral("unavailable") : (pkgPowerEst ? QStringLiteral("estimated") : QStringLiteral("available")),
                          pkgPowerEst ? QStringLiteral("Estimated from CPU load and frequency") : QStringLiteral("Hardware power sensor")));
+    result.insert(QStringLiteral("gpuLoad"),
+                  metric(flag(QStringLiteral("gpuBusyAvailable")) ? QStringLiteral("available") : QStringLiteral("unavailable"),
+                         QStringLiteral("/sys/class/drm device/gpu_busy_percent")));
+    result.insert(QStringLiteral("gpuTemperature"),
+                  metric(flag(QStringLiteral("gpuTempAvailable")) ? QStringLiteral("available") : QStringLiteral("unavailable"),
+                         QStringLiteral("GPU device hwmon temp*_input")));
+    result.insert(QStringLiteral("diskThroughput"),
+                  metric(flag(QStringLiteral("diskThroughputAvailable")) ? QStringLiteral("available") : QStringLiteral("unavailable"),
+                         QStringLiteral("/proc/diskstats sector deltas")));
     return result;
 }
 
@@ -320,6 +329,8 @@ QString FlightRecorder::exportSamplesJson() const
         obj.insert(QStringLiteral("zramOriginalBytes"), valueOrNull(QStringLiteral("zramAvailable"), static_cast<double>(s.zramOriginalBytes)));
         obj.insert(QStringLiteral("zramCompressedBytes"), valueOrNull(QStringLiteral("zramAvailable"), static_cast<double>(s.zramCompressedBytes)));
         obj.insert(QStringLiteral("zramMemoryUsedBytes"), valueOrNull(QStringLiteral("zramAvailable"), static_cast<double>(s.zramMemoryUsedBytes)));
+        obj.insert(QStringLiteral("diskReadMibPerSec"), valueOrNull(QStringLiteral("diskThroughputAvailable"), s.diskReadMibPerSec));
+        obj.insert(QStringLiteral("diskWriteMibPerSec"), valueOrNull(QStringLiteral("diskThroughputAvailable"), s.diskWriteMibPerSec));
         obj.insert(QStringLiteral("throttleEventCount"), valid(QStringLiteral("throttleCountersAvailable")) ? QJsonValue(s.throttleEventCount) : QJsonValue(QJsonValue::Null));
         obj.insert(QStringLiteral("newThrottleEvents"), valid(QStringLiteral("throttleCountersAvailable")) ? QJsonValue(s.newThrottleEvents) : QJsonValue(QJsonValue::Null));
         obj.insert(QStringLiteral("batteryPresent"), s.batteryPresent);
