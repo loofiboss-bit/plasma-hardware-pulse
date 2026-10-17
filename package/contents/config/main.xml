@@ -8,6 +8,21 @@
     <entry name="pollIntervalMs" type="Int">
       <default>1000</default>
     </entry>
+    <entry name="historyRetentionSeconds" type="Int">
+      <default>300</default>
+    </entry>
+    <entry name="showCpuLoadInPanel" type="Bool">
+      <default>false</default>
+    </entry>
+    <entry name="showGpuInPanel" type="Bool">
+      <default>false</default>
+    </entry>
+    <entry name="showRamInPanel" type="Bool">
+      <default>false</default>
+    </entry>
+    <entry name="showIoInPanel" type="Bool">
+      <default>false</default>
+    </entry>
     <entry name="showWattsInPanel" type="Bool">
       <default>true</default>
     </entry>

@@ -10,6 +10,10 @@ Item {
 
     required property var controller
     required property bool expanded
+    property bool showCpuLoadInPanel: false
+    property bool showGpuInPanel: false
+    property bool showRamInPanel: false
+    property bool showIoInPanel: false
     property bool showPsiInPanel: true
     property bool showWattsInPanel: true
     property bool alwaysShowStatusInPanel: false
@@ -77,6 +81,82 @@ Item {
                           : "CPU temp N/A"
                     font.bold: true
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize + 1
+                }
+
+                Rectangle {
+                    visible: compactRoot.showCpuLoadInPanel
+                    Layout.preferredWidth: 1
+                    Layout.preferredHeight: 12
+                    color: Kirigami.Theme.disabledTextColor
+                    opacity: 0.45
+                }
+
+                PlasmaComponents3.Label {
+                    visible: compactRoot.showCpuLoadInPanel
+                    text: compactRoot.controller.cpuLoadAvailable
+                          ? Math.round(compactRoot.controller.cpuLoadPercent) + "% CPU"
+                          : "CPU N/A"
+                    opacity: 0.9
+                    font.bold: true
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                }
+
+                Rectangle {
+                    visible: compactRoot.showGpuInPanel
+                    Layout.preferredWidth: 1
+                    Layout.preferredHeight: 12
+                    color: Kirigami.Theme.disabledTextColor
+                    opacity: 0.45
+                }
+
+                PlasmaComponents3.Label {
+                    visible: compactRoot.showGpuInPanel
+                    text: compactRoot.controller.gpuBusyAvailable
+                          ? Math.round(compactRoot.controller.gpuBusyPercent) + "% GPU"
+                          : (compactRoot.controller.gpuTempAvailable
+                             ? Math.round(compactRoot.controller.gpuTempCelsius) + "°C GPU"
+                             : "GPU N/A")
+                    opacity: 0.9
+                    font.bold: true
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                }
+
+                Rectangle {
+                    visible: compactRoot.showRamInPanel
+                    Layout.preferredWidth: 1
+                    Layout.preferredHeight: 12
+                    color: Kirigami.Theme.disabledTextColor
+                    opacity: 0.45
+                }
+
+                PlasmaComponents3.Label {
+                    visible: compactRoot.showRamInPanel
+                    text: compactRoot.controller.memoryAvailable
+                          ? Math.round(compactRoot.controller.ramUsedPercent) + "% RAM"
+                          : "RAM N/A"
+                    opacity: 0.9
+                    font.bold: true
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                }
+
+                Rectangle {
+                    visible: compactRoot.showIoInPanel
+                    Layout.preferredWidth: 1
+                    Layout.preferredHeight: 12
+                    color: Kirigami.Theme.disabledTextColor
+                    opacity: 0.45
+                }
+
+                PlasmaComponents3.Label {
+                    visible: compactRoot.showIoInPanel
+                    text: compactRoot.controller.diskThroughputAvailable
+                          ? Number(compactRoot.controller.diskReadMibPerSec + compactRoot.controller.diskWriteMibPerSec).toFixed(1) + "M I/O"
+                          : (compactRoot.controller.netThroughputAvailable
+                             ? Number(compactRoot.controller.netRxMibPerSec + compactRoot.controller.netTxMibPerSec).toFixed(1) + "M Net"
+                             : "I/O N/A")
+                    opacity: 0.9
+                    font.bold: true
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                 }
 
                 Rectangle {

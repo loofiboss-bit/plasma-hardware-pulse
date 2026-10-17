@@ -29,6 +29,7 @@ Kirigami.ScrollablePage {
         property bool showPressure: true
         property bool showPower: false
         property bool showGpu: false
+        property bool showDisk: false
     }
 
     property bool showTempTrace: historySettings.showTemp
@@ -36,6 +37,7 @@ Kirigami.ScrollablePage {
     property bool showPsiTrace: historySettings.showPressure
     property bool showWattsTrace: historySettings.showPower
     property bool showGpuTrace: historySettings.showGpu
+    property bool showDiskTrace: historySettings.showDisk
     property int hoveredSampleIndex: -1
 
     onShowTempTraceChanged: historySettings.showTemp = showTempTrace
@@ -43,6 +45,7 @@ Kirigami.ScrollablePage {
     onShowPsiTraceChanged: historySettings.showPressure = showPsiTrace
     onShowWattsTraceChanged: historySettings.showPower = showWattsTrace
     onShowGpuTraceChanged: historySettings.showGpu = showGpuTrace
+    onShowDiskTraceChanged: historySettings.showDisk = showDiskTrace
 
     function selectStep(delta) {
         var samples = controller.historySamples
@@ -50,6 +53,23 @@ Kirigami.ScrollablePage {
         var index = controller.selectedHistoryIndex
         index = index < 0 ? samples.length - 1 : Math.max(0, Math.min(samples.length - 1, index + delta))
         controller.selectedHistorySampleId = samples[index].sampleId
+    }
+
+    function yAxisLabelAt(fraction) {
+        var parts = []
+        if (flightPage.showLoadTrace || flightPage.showPsiTrace || flightPage.showGpuTrace) {
+            parts.push(Math.round(fraction * 100) + "%")
+        }
+        if (flightPage.showTempTrace && (fraction === 0 || fraction === 0.5 || fraction === 1.0)) {
+            parts.push(Math.round(25 + fraction * 75) + "°")
+        }
+        if (flightPage.showWattsTrace && (fraction === 0.5 || fraction === 1.0)) {
+            parts.push(Math.round(fraction * Math.max(65, flightPage.controller.historyMaxWatts)) + "W")
+        }
+        if (flightPage.showDiskTrace && (fraction === 0.5 || fraction === 1.0)) {
+            parts.push(Math.round(fraction * Math.max(50, flightPage.controller.historyMaxDiskMibPerSec)) + "M")
+        }
+        return parts.length > 0 ? parts.join(" · ") : (Math.round(fraction * 100) + "%")
     }
 
     function hoveredSampleText() {
@@ -63,6 +83,7 @@ Kirigami.ScrollablePage {
         if (s.cpuLoadAvailable) parts.push("Load " + Number(s.cpuLoad).toFixed(0) + "%")
         if (s.psiAvailable) parts.push("Pressure idx " + Number(s.responsivenessScore).toFixed(1) + "%")
         if (s.systemPowerAvailable) parts.push(Number(s.systemWatts).toFixed(1) + " W")
+        if (s.diskThroughputAvailable) parts.push("Disk " + Number(s.diskReadMibPerSec + s.diskWriteMibPerSec).toFixed(1) + " MiB/s")
         parts.push("Click to freeze moment")
         return parts.join("  ·  ")
     }
@@ -118,6 +139,14 @@ Kirigami.ScrollablePage {
                     }
 
                     QQC2.Button {
+                        objectName: "clearHistoryButton"
+                        icon.name: "edit-clear-history"
+                        text: "Clear History"
+                        enabled: flightPage.controller.historySamples.length > 0
+                        onClicked: flightPage.controller.clearHistory()
+                    }
+
+                    QQC2.Button {
                         icon.name: "edit-copy"
                         text: "Copy Report (MD)"
                         onClicked: flightPage.controller.copyIncidentReportToClipboard()
@@ -136,6 +165,22 @@ Kirigami.ScrollablePage {
                         onClicked: flightPage.controller.openReportsFolder()
                     }
 
+                    Repeater {
+                        model: [
+                            { seconds: 300, label: "5m" },
+                            { seconds: 900, label: "15m" },
+                            { seconds: 1800, label: "30m" }
+                        ]
+                        delegate: QQC2.Button {
+                            id: retentionBtn
+                            required property var modelData
+                            text: retentionBtn.modelData.label + " window"
+                            checkable: true
+                            checked: flightPage.controller.historyRetentionSeconds === retentionBtn.modelData.seconds
+                            onClicked: flightPage.controller.historyRetentionSeconds = retentionBtn.modelData.seconds
+                        }
+                    }
+
                     Rectangle {
                         radius: theme.pillRadius
                         color: theme.subtleSurfaceColor
@@ -147,7 +192,8 @@ Kirigami.ScrollablePage {
                         QQC2.Label {
                             id: sampleCountLbl
                             anchors.centerIn: parent
-                            text: flightPage.controller.historySamples.length + " samples · 5 min window"
+                            text: flightPage.controller.historySamples.length + " samples · "
+                                  + Math.round(flightPage.controller.historyRetentionSeconds / 60) + " min window"
                             color: Kirigami.Theme.disabledTextColor
                             font.bold: true
                             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
@@ -191,6 +237,12 @@ Kirigami.ScrollablePage {
                                 label: "GPU load (0–100%)",
                                 accentKey: "gpu",
                                 active: flightPage.showGpuTrace
+                            },
+                            {
+                                key: "disk",
+                                label: "Disk I/O (0–" + Math.round(flightPage.controller.historyMaxDiskMibPerSec) + " MiB/s)",
+                                accentKey: "storage",
+                                active: flightPage.showDiskTrace
                             }
                         ]
 
@@ -212,6 +264,7 @@ Kirigami.ScrollablePage {
                                 else if (k === "psi") flightPage.showPsiTrace = checked
                                 else if (k === "watts") flightPage.showWattsTrace = checked
                                 else if (k === "gpu") flightPage.showGpuTrace = checked
+                                else if (k === "disk") flightPage.showDiskTrace = checked
                                 timelineCanvas.requestPaint()
                             }
 
@@ -271,31 +324,31 @@ Kirigami.ScrollablePage {
                 visible: flightPage.controller.historySamples.length >= 2
 
                 QQC2.Label {
-                    text: "100% · 100°"
+                    text: flightPage.yAxisLabelAt(1.0)
                     font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 1)
                     color: Kirigami.Theme.disabledTextColor
                 }
                 Item { Layout.fillHeight: true }
                 QQC2.Label {
-                    text: "75%"
+                    text: flightPage.yAxisLabelAt(0.75)
                     font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 1)
                     color: Kirigami.Theme.disabledTextColor
                 }
                 Item { Layout.fillHeight: true }
                 QQC2.Label {
-                    text: "50% · 62°"
+                    text: flightPage.yAxisLabelAt(0.5)
                     font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 1)
                     color: Kirigami.Theme.disabledTextColor
                 }
                 Item { Layout.fillHeight: true }
                 QQC2.Label {
-                    text: "25%"
+                    text: flightPage.yAxisLabelAt(0.25)
                     font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 1)
                     color: Kirigami.Theme.disabledTextColor
                 }
                 Item { Layout.fillHeight: true }
                 QQC2.Label {
-                    text: "0% · 25°"
+                    text: flightPage.yAxisLabelAt(0.0)
                     font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 1)
                     color: Kirigami.Theme.disabledTextColor
                 }
@@ -346,7 +399,7 @@ Kirigami.ScrollablePage {
                 anchors.bottomMargin: 30
                 focus: true
                 property real hoverX: -1
-                Accessible.name: "Five minute hardware history. Select a sample with left and right arrow keys."
+                Accessible.name: "Hardware history timeline. Select a sample with left and right arrow keys."
                 Keys.onLeftPressed: flightPage.selectStep(-1)
                 Keys.onRightPressed: flightPage.selectStep(1)
 
@@ -356,16 +409,24 @@ Kirigami.ScrollablePage {
                     function onSelectedHistoryChanged() { timelineCanvas.requestPaint() }
                 }
 
+                function sampleMetricValue(sample, valueKey) {
+                    if (valueKey === "diskTotalMibPerSec") {
+                        return Number(sample.diskReadMibPerSec || 0) + Number(sample.diskWriteMibPerSec || 0)
+                    }
+                    return sample[valueKey]
+                }
+
                 function drawTrace(ctx, samples, firstTime, timeSpan, valueKey, availableKey, minValue, maxValue, color, fillAlpha) {
                     var pts = []
                     for (var i = 0; i < samples.length; ++i) {
                         var sample = samples[i]
-                        if (!sample[availableKey] || !isFinite(sample[valueKey])) {
+                        var val = sampleMetricValue(sample, valueKey)
+                        if (!sample[availableKey] || !isFinite(val)) {
                             pts.push(null)
                             continue
                         }
                         var x = ((sample.timestampMs - firstTime) / timeSpan) * width
-                        var normal = Math.min(1, Math.max(0, (sample[valueKey] - minValue) / Math.max(1, maxValue - minValue)))
+                        var normal = Math.min(1, Math.max(0, (val - minValue) / Math.max(1, maxValue - minValue)))
                         var y = height - normal * (height - 12) - 6
                         pts.push({ x: x, y: y, gap: sample.gapBefore === true })
                     }
@@ -421,9 +482,11 @@ Kirigami.ScrollablePage {
                 }
 
                 function drawMarkerAtSample(ctx, sample, firstTime, timeSpan, valueKey, availableKey, minValue, maxValue, color) {
-                    if (!sample || !sample[availableKey] || !isFinite(sample[valueKey])) return
+                    if (!sample) return
+                    var val = sampleMetricValue(sample, valueKey)
+                    if (!sample[availableKey] || !isFinite(val)) return
                     var x = ((sample.timestampMs - firstTime) / timeSpan) * width
-                    var normal = Math.min(1, Math.max(0, (sample[valueKey] - minValue) / Math.max(1, maxValue - minValue)))
+                    var normal = Math.min(1, Math.max(0, (val - minValue) / Math.max(1, maxValue - minValue)))
                     var y = height - normal * (height - 12) - 6
                     ctx.fillStyle = color.toString()
                     ctx.beginPath()
@@ -440,6 +503,7 @@ Kirigami.ScrollablePage {
                     var lastTime = samples[samples.length - 1].timestampMs
                     var timeSpan = Math.max(1, lastTime - firstTime)
                     var maxWatts = Math.max(65, flightPage.controller.historyMaxWatts)
+                    var maxDiskMib = Math.max(50, flightPage.controller.historyMaxDiskMibPerSec)
 
                     // Horizontal grid lines (0%, 25%, 50%, 75%, 100%)
                     ctx.strokeStyle = theme.cardBorderColor.toString()
@@ -479,6 +543,8 @@ Kirigami.ScrollablePage {
                         drawTrace(ctx, samples, firstTime, timeSpan, "systemWatts", "systemPowerAvailable", 0, maxWatts, theme.powerAccent, 0.10)
                     if (flightPage.showGpuTrace)
                         drawTrace(ctx, samples, firstTime, timeSpan, "gpuBusy", "gpuBusyAvailable", 0, 100, theme.gpuAccent, 0.10)
+                    if (flightPage.showDiskTrace)
+                        drawTrace(ctx, samples, firstTime, timeSpan, "diskTotalMibPerSec", "diskThroughputAvailable", 0, maxDiskMib, theme.storageAccent, 0.10)
 
                     // Hover crosshair
                     if (timelineCanvas.hoverX >= 0 && timelineCanvas.hoverX <= width) {
@@ -516,6 +582,8 @@ Kirigami.ScrollablePage {
                             drawMarkerAtSample(ctx, actSample, firstTime, timeSpan, "systemWatts", "systemPowerAvailable", 0, maxWatts, theme.powerAccent)
                         if (flightPage.showGpuTrace)
                             drawMarkerAtSample(ctx, actSample, firstTime, timeSpan, "gpuBusy", "gpuBusyAvailable", 0, 100, theme.gpuAccent)
+                        if (flightPage.showDiskTrace)
+                            drawMarkerAtSample(ctx, actSample, firstTime, timeSpan, "diskTotalMibPerSec", "diskThroughputAvailable", 0, maxDiskMib, theme.storageAccent)
                     }
                 }
 
@@ -629,7 +697,9 @@ Kirigami.ScrollablePage {
                             id: incidentChip
                             required property var modelData
                             icon.name: incidentChip.modelData.throttled || incidentChip.modelData.severity >= 2 ? "dialog-warning" : "dialog-information"
-                            text: incidentChip.modelData.timeString + " · " + incidentChip.modelData.headline
+                            text: incidentChip.modelData.timeString
+                                  + (incidentChip.modelData.durationSeconds > 1 ? " (" + incidentChip.modelData.durationSeconds + "s)" : "")
+                                  + " · " + incidentChip.modelData.headline
                             onClicked: flightPage.controller.selectedHistorySampleId = incidentChip.modelData.sampleId
                         }
                     }

@@ -26,6 +26,26 @@ private:
         engine.addImportPath(QStringLiteral(PULSE_APP_QML));
     }
 
+    static QQuickItem *findVisualChild(QQuickItem *root, const QString &name)
+    {
+        if (!root) {
+            return nullptr;
+        }
+        if (root->objectName() == name) {
+            return root;
+        }
+        if (auto *direct = root->findChild<QQuickItem *>(name)) {
+            return direct;
+        }
+        const auto children = root->childItems();
+        for (QQuickItem *child : children) {
+            if (auto *found = findVisualChild(child, name)) {
+                return found;
+            }
+        }
+        return nullptr;
+    }
+
 private Q_SLOTS:
     void testAppNavigationKeyboardAndResponsiveRendering()
     {
@@ -106,6 +126,13 @@ private Q_SLOTS:
         QVERIFY(controller->property("selectedHistorySampleId").toULongLong() > 0);
         QTest::keyClick(window, Qt::Key_Right);
 
+        auto *clearHistoryBtn = window->findChild<QQuickItem *>(QStringLiteral("clearHistoryButton"));
+        QVERIFY(clearHistoryBtn);
+        controller->setProperty("historyRetentionSeconds", 900);
+        QCOMPARE(controller->property("historyRetentionSeconds").toInt(), 900);
+        controller->setProperty("historyRetentionSeconds", 300);
+        QCOMPARE(controller->property("historyRetentionSeconds").toInt(), 300);
+
         QPalette lightPalette = QGuiApplication::palette();
         lightPalette.setColor(QPalette::Window, Qt::white);
         lightPalette.setColor(QPalette::WindowText, Qt::black);
@@ -171,6 +198,22 @@ private Q_SLOTS:
             item->setHeight(window.height());
             window.show();
             QTest::qWait(100);
+            if (name == QStringLiteral("FullRepresentation")) {
+                QCOMPARE(item->property("sparkChannel").toString(), QStringLiteral("temp"));
+                QVERIFY(findVisualChild(item, QStringLiteral("sparkChannelCpuButton")) != nullptr);
+                QVERIFY(findVisualChild(item, QStringLiteral("sparkChannelPsiButton")) != nullptr);
+                QVERIFY(findVisualChild(item, QStringLiteral("sparkChannelPowerButton")) != nullptr);
+                for (const QString &ch : {QStringLiteral("cpu"), QStringLiteral("psi"), QStringLiteral("power"), QStringLiteral("temp")}) {
+                    item->setProperty("sparkChannel", ch);
+                    QCoreApplication::processEvents();
+                }
+            } else if (name == QStringLiteral("CompactRepresentation")) {
+                item->setProperty("showCpuLoadInPanel", true);
+                item->setProperty("showGpuInPanel", true);
+                item->setProperty("showRamInPanel", true);
+                item->setProperty("showIoInPanel", true);
+                QCoreApplication::processEvents();
+            }
             const QImage image = window.grabWindow();
             QVERIFY(!image.isNull());
             QVERIFY(image.save(artifacts() + QStringLiteral("/widget-") + name.toLower() + QStringLiteral(".png")));

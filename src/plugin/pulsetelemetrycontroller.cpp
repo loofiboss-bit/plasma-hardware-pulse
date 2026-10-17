@@ -48,7 +48,7 @@ PulseTelemetryController::PulseTelemetryController(QObject *parent)
 
 PulseTelemetryController::PulseTelemetryController(const QDBusConnection &powerProfileBus, QObject *parent)
     : QObject(parent)
-    , m_recorder(1200)
+    , m_recorder(3600)
     , m_powerProfileBus(powerProfileBus)
 {
     m_uptime.start();
@@ -74,6 +74,46 @@ void PulseTelemetryController::setPollIntervalMs(int intervalMs)
     }
     m_timer.setInterval(clamped);
     Q_EMIT pollIntervalChanged();
+}
+
+void PulseTelemetryController::setHistoryRetentionSeconds(int seconds)
+{
+    const int clamped = std::clamp(seconds, 60, 1800);
+    const qint64 nextRetentionMs = static_cast<qint64>(clamped) * 1000LL;
+    if (m_recorder.retentionMs() == nextRetentionMs) {
+        return;
+    }
+    m_recorder.setRetentionMs(nextRetentionMs);
+    while (m_historySamplesVariant.size() > m_recorder.count()) {
+        m_historySamplesVariant.removeFirst();
+    }
+    if (m_recorder.count() > 0
+        && (m_historySamplesVariant.size() != m_recorder.count()
+            || m_historySamplesVariant.first().toMap().value(QStringLiteral("sampleId")).toULongLong() != m_recorder.sampleAt(0).sampleId)) {
+        m_historySamplesVariant.clear();
+        for (int i = 0; i < m_recorder.count(); ++i) {
+            m_historySamplesVariant.append(sampleToVariantMap(m_recorder.sampleAt(i), i));
+        }
+    }
+    m_selectedHistoryIndex = m_selectedHistorySampleId == 0 ? -1 : m_recorder.indexOfSample(m_selectedHistorySampleId);
+    setLastActionStatus(QStringLiteral("History retention set to %1m.").arg(clamped / 60));
+    Q_EMIT historyRetentionChanged();
+    Q_EMIT telemetryUpdated();
+    Q_EMIT selectedHistoryChanged();
+}
+
+void PulseTelemetryController::clearHistory()
+{
+    m_recorder.clear();
+    m_historySamplesVariant.clear();
+    m_incidentHistoryVariant.clear();
+    m_selectedHistorySampleId = 0;
+    m_selectedHistoryIndex = -1;
+    m_selectedHistorySnapshot.clear();
+    m_gapPending = false;
+    setActionResult(true, QStringLiteral("Cleared recorded hardware history."));
+    Q_EMIT telemetryUpdated();
+    Q_EMIT selectedHistoryChanged();
 }
 
 void PulseTelemetryController::setNotificationsEnabled(bool enabled)
@@ -197,6 +237,8 @@ QVariantMap PulseTelemetryController::sampleToVariantMap(const FlightSample &s, 
     m.insert(QStringLiteral("fanRpm"), s.fanRpm);
     m.insert(QStringLiteral("diskReadMibPerSec"), s.diskReadMibPerSec);
     m.insert(QStringLiteral("diskWriteMibPerSec"), s.diskWriteMibPerSec);
+    m.insert(QStringLiteral("netRxMibPerSec"), s.netRxMibPerSec);
+    m.insert(QStringLiteral("netTxMibPerSec"), s.netTxMibPerSec);
     m.insert(QStringLiteral("throttled"), s.throttled);
     m.insert(QStringLiteral("severity"), static_cast<int>(s.severity));
     m.insert(QStringLiteral("verdictHeadline"), s.verdictHeadline);
@@ -273,6 +315,8 @@ QVariantMap PulseTelemetryController::metricMetadata() const
                                                     QStringLiteral("/sys/block/zram*/mm_stat")));
     result.insert(QStringLiteral("diskThroughput"), metric(m_psiMem.diskThroughputAvailable ? QStringLiteral("available") : QStringLiteral("unavailable"),
                                                             QStringLiteral("/proc/diskstats sector deltas")));
+    result.insert(QStringLiteral("netThroughput"), metric(m_psiMem.netThroughputAvailable ? QStringLiteral("available") : QStringLiteral("unavailable"),
+                                                           QStringLiteral("/proc/net/dev byte deltas")));
     result.insert(QStringLiteral("packagePower"), metric((m_power.raplExactAvailable || m_power.hwmonPowerAvailable) ? QStringLiteral("available")
                                                                  : (m_power.packagePowerEstimated ? QStringLiteral("estimated") : QStringLiteral("unavailable")),
                                                            m_power.raplExactAvailable ? QStringLiteral("Intel RAPL energy_uj")
@@ -319,7 +363,7 @@ void PulseTelemetryController::refreshNow()
         || m_lastProcessScanBoottimeMs == 0
         || (sampleBoottimeMs - m_lastProcessScanBoottimeMs) >= 2500;
     if (shouldScanProcesses) {
-        m_processRadar = m_cpuSampler.sampleProcessRadar(5);
+        m_processRadar = m_cpuSampler.sampleProcessRadar(8);
         m_lastProcessScanBoottimeMs = sampleBoottimeMs;
         if (m_processScanWarmupCount < 2) {
             ++m_processScanWarmupCount;
@@ -329,6 +373,8 @@ void PulseTelemetryController::refreshNow()
             QVariantMap pm;
             pm.insert(QStringLiteral("pid"), p.pid);
             pm.insert(QStringLiteral("name"), p.name);
+            pm.insert(QStringLiteral("state"), p.state);
+            pm.insert(QStringLiteral("inDiskWait"), p.inDiskWait);
             pm.insert(QStringLiteral("cpuPercent"), p.cpuPercent);
             pm.insert(QStringLiteral("rssMegabytes"), p.rssMegabytes);
             m_topProcessesVariant.append(pm);
@@ -448,6 +494,8 @@ void PulseTelemetryController::refreshNow()
         sample.zramMemoryUsedBytes = m_psiMem.zramMemUsedTotalBytes;
         sample.diskReadMibPerSec = m_psiMem.diskReadMibPerSec;
         sample.diskWriteMibPerSec = m_psiMem.diskWriteMibPerSec;
+        sample.netRxMibPerSec = m_psiMem.netRxMibPerSec;
+        sample.netTxMibPerSec = m_psiMem.netTxMibPerSec;
         sample.throttleEventCount = m_cpu.totalThrottleEvents;
         sample.newThrottleEvents = m_cpu.deltaThrottleEvents;
         sample.batteryPresent = m_power.batteryPresent;
@@ -483,6 +531,7 @@ void PulseTelemetryController::refreshNow()
         sample.metricQuality.insert(QStringLiteral("zramAvailable"), m_psiMem.zramAvailable);
         sample.metricQuality.insert(QStringLiteral("zramCompressionAvailable"), m_psiMem.zramCompressionAvailable);
         sample.metricQuality.insert(QStringLiteral("diskThroughputAvailable"), m_psiMem.diskThroughputAvailable);
+        sample.metricQuality.insert(QStringLiteral("netThroughputAvailable"), m_psiMem.netThroughputAvailable);
         sample.metricQuality.insert(QStringLiteral("packagePowerAvailable"), m_power.packagePowerAvailable);
         sample.metricQuality.insert(QStringLiteral("packagePowerEstimated"), m_power.packagePowerEstimated);
         sample.metricQuality.insert(QStringLiteral("systemPowerEstimated"), !batteryPowerAvailable && m_power.packagePowerEstimated);
@@ -509,6 +558,13 @@ void PulseTelemetryController::refreshNow()
         m_gapPending = false;
         const int latestIdx = m_recorder.count() - 1;
         m_historySamplesVariant.append(sampleToVariantMap(m_recorder.sampleAt(latestIdx), latestIdx));
+        if (m_recorder.count() > 0) {
+            const qulonglong firstValidId = m_recorder.sampleAt(0).sampleId;
+            while (!m_historySamplesVariant.isEmpty()
+                   && m_historySamplesVariant.first().toMap().value(QStringLiteral("sampleId")).toULongLong() < firstValidId) {
+                m_historySamplesVariant.removeFirst();
+            }
+        }
         while (m_historySamplesVariant.size() > m_recorder.count()) {
             m_historySamplesVariant.removeFirst();
         }
@@ -523,10 +579,13 @@ void PulseTelemetryController::refreshNow()
         m_selectedHistoryIndex = m_recorder.indexOfSample(m_selectedHistorySampleId);
 
         double peakWatts = std::max({65.0, m_power.pl1LimitWatts, m_power.pl2LimitWatts});
+        double peakDiskMib = 50.0;
         m_incidentHistoryVariant.clear();
         bool inEpisode = false;
         QVariantMap currentEpisode;
         int currentEpisodeSeverityRank = 0;
+        qint64 episodeStartMs = 0;
+        qint64 episodeEndMs = 0;
 
         const QList<FlightSample> &recorded = m_recorder.samples();
         for (int i = 0; i < recorded.size(); ++i) {
@@ -534,12 +593,20 @@ void PulseTelemetryController::refreshNow()
             if (s.metricQuality.value(QStringLiteral("systemPowerAvailable")).toBool() && s.systemWatts > peakWatts) {
                 peakWatts = s.systemWatts;
             }
+            const double totalDiskMib = s.diskReadMibPerSec + s.diskWriteMibPerSec;
+            if (s.metricQuality.value(QStringLiteral("diskThroughputAvailable")).toBool() && totalDiskMib > peakDiskMib) {
+                peakDiskMib = totalDiskMib;
+            }
             const bool isIncident = s.throttled
                 || s.severity == VerdictSeverity::CriticalThrottle
                 || s.severity == VerdictSeverity::Bottleneck
                 || s.severity == VerdictSeverity::Elevated;
             const int rank = s.throttled ? 4 : static_cast<int>(s.severity);
             if (isIncident && s.severity != VerdictSeverity::Unknown) {
+                if (!inEpisode) {
+                    episodeStartMs = s.timestampMs;
+                }
+                episodeEndMs = s.timestampMs;
                 if (!inEpisode || rank > currentEpisodeSeverityRank) {
                     currentEpisode = QVariantMap{
                         {QStringLiteral("sampleId"), static_cast<qulonglong>(s.sampleId)},
@@ -550,6 +617,9 @@ void PulseTelemetryController::refreshNow()
                     };
                     currentEpisodeSeverityRank = rank;
                 }
+                const int durationSec = std::max(1, static_cast<int>((episodeEndMs - episodeStartMs + s.elapsedSincePreviousMs) / 1000LL));
+                currentEpisode.insert(QStringLiteral("durationSeconds"), durationSec);
+                currentEpisode.insert(QStringLiteral("endTimeString"), QDateTime::fromMSecsSinceEpoch(episodeEndMs).toString(QStringLiteral("HH:mm:ss")));
                 inEpisode = true;
             } else if (inEpisode) {
                 m_incidentHistoryVariant.append(currentEpisode);
@@ -565,6 +635,8 @@ void PulseTelemetryController::refreshNow()
         }
         const int roundedWatts = static_cast<int>((peakWatts + 24.9) / 25.0) * 25;
         m_historyMaxWatts = std::max(65.0, static_cast<double>(roundedWatts));
+        const int roundedDiskMib = static_cast<int>((peakDiskMib + 49.9) / 50.0) * 50;
+        m_historyMaxDiskMibPerSec = std::max(50.0, static_cast<double>(roundedDiskMib));
     }
 
     maybeEmitAlertNotifications();

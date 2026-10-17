@@ -820,6 +820,142 @@ private Q_SLOTS:
         QVERIFY(storageVerdict.causalChain.contains(QStringLiteral("2.0 MiB/s read, 4.0 MiB/s write")));
     }
 
+    void testNetworkThroughputAndProcessRadarDiskWait()
+    {
+        QTemporaryDir tempDir;
+        QVERIFY(tempDir.isValid());
+        const QString sysRoot = tempDir.filePath(QStringLiteral("sys"));
+        const QString procRoot = tempDir.filePath(QStringLiteral("proc"));
+
+        writeTextFile(procRoot + QStringLiteral("/net/dev"),
+                      QStringLiteral("Inter-|   Receive                                                |  Transmit\n"
+                                     " face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed\n"
+                                     "    lo: 104857600 100 0 0 0 0 0 0 104857600 100 0 0 0 0 0 0\n"
+                                     "docker0: 52428800 50 0 0 0 0 0 0 52428800 50 0 0 0 0 0 0\n"
+                                     " wlan0: 1048576 10 0 0 0 0 0 0 2097152 20 0 0 0 0 0 0\n"));
+
+        PsiMemorySampler psiSampler({sysRoot, procRoot});
+        const PsiAndMemorySnapshot firstPsi = psiSampler.sample(1000);
+        QVERIFY(!firstPsi.netThroughputAvailable);
+
+        // Advance wlan0 by +3 MiB RX and +1.5 MiB TX; advance lo and docker0 heavily to verify they are ignored
+        writeTextFile(procRoot + QStringLiteral("/net/dev"),
+                      QStringLiteral("Inter-|   Receive                                                |  Transmit\n"
+                                     " face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed\n"
+                                     "    lo: 999999999 200 0 0 0 0 0 0 999999999 200 0 0 0 0 0 0\n"
+                                     "docker0: 888888888 150 0 0 0 0 0 0 888888888 150 0 0 0 0 0 0\n"
+                                     " wlan0: 4194304 40 0 0 0 0 0 0 3670016 35 0 0 0 0 0 0\n"));
+        const PsiAndMemorySnapshot secondPsi = psiSampler.sample(1000);
+        QVERIFY(secondPsi.netThroughputAvailable);
+        QCOMPARE(secondPsi.netRxMibPerSec, 3.0);
+        QCOMPARE(secondPsi.netTxMibPerSec, 1.5);
+
+        // Process Radar D-state (uninterruptible disk sleep) detection
+        writeTextFile(procRoot + QStringLiteral("/stat"),
+                      QStringLiteral("cpu  1000 0 500 8500 0 0 0 0 0 0\n"
+                                     "cpu0 1000 0 500 8500 0 0 0 0 0 0\n"));
+        writeTextFile(procRoot + QStringLiteral("/101/stat"),
+                      QStringLiteral("101 (rsync-backup) D 1 101 101 0 -1 4194304 0 0 0 0 10 20 0 0 20 0 1 0 100 104857600 2500 18446744073709551615 0 0 0 0 0 0 0 0 0 0 0 0 17 0 0 0 0 0 0\n"));
+        writeTextFile(procRoot + QStringLiteral("/101/status"),
+                      QStringLiteral("Name:\trsync-backup\nVmRSS:\t20480 kB\n"));
+        writeTextFile(procRoot + QStringLiteral("/202/stat"),
+                      QStringLiteral("202 (kwin_wayland) S 1 202 202 0 -1 4194304 0 0 0 0 50 50 0 0 20 0 1 0 100 209715200 5000 18446744073709551615 0 0 0 0 0 0 0 0 0 0 0 0 17 0 0 0 0 0 0\n"));
+        writeTextFile(procRoot + QStringLiteral("/202/status"),
+                      QStringLiteral("Name:\tkwin_wayland\nVmRSS:\t65536 kB\n"));
+
+        CpuSocSampler cpuSampler({sysRoot, procRoot});
+        cpuSampler.sampleCpu({}, 1000);
+        const ProcessRadarSnapshot radar = cpuSampler.sampleProcessRadar(5);
+        QCOMPARE(radar.diskWaitProcessCount, 1);
+        QCOMPARE(radar.topDiskWaitProcess.pid, 101);
+        QVERIFY(radar.topDiskWaitProcess.inDiskWait);
+        QCOMPARE(radar.topDiskWaitProcess.state, QStringLiteral("D"));
+        QVERIFY(!radar.topProcesses.isEmpty());
+        QCOMPARE(radar.topProcesses.first().pid, 101);
+    }
+
+    void testMultiDomainContributingSignalsAndStabilizerOscillation()
+    {
+        CpuSocSnapshot cpu;
+        cpu.loadAvailable = true;
+        cpu.loadWarmedUp = true;
+        cpu.temperatureAvailable = true;
+        cpu.packageTempCelsius = 85.0;
+        cpu.totalLoadPercent = 95.0;
+
+        PsiAndMemorySnapshot psi;
+        psi.responsivenessAvailable = true;
+        psi.cpuPsi.someAvailable = true;
+        psi.cpuPsi.someAvg10 = 22.0;
+        psi.memoryPsi.someAvailable = true;
+        psi.memoryPsi.someAvg10 = 18.0;
+        psi.memoryPsi.fullAvailable = true;
+        psi.memoryPsi.fullAvg10 = 8.0;
+        psi.ioPsi.someAvailable = true;
+        psi.ioPsi.fullAvailable = true;
+        psi.ioPsi.fullAvg10 = 15.0;
+        psi.ramAvailable = true;
+        psi.ramUsedPercent = 94.0;
+
+        const CausalVerdict multiVerdict = CausalDiagnosisEngine::evaluate(cpu, {}, psi, {}, {}, {});
+        QCOMPARE(multiVerdict.severity, VerdictSeverity::Bottleneck);
+        QCOMPARE(multiVerdict.contributingSignals.size(), 2);
+
+        // GPU thermal alert when gpu_busy_percent is unavailable (e.g. Intel i915/xe)
+        CpuSocSnapshot idleCpu;
+        idleCpu.loadAvailable = true;
+        idleCpu.loadWarmedUp = true;
+        idleCpu.temperatureAvailable = true;
+        idleCpu.packageTempCelsius = 55.0;
+        GpuSnapshot hotIntelGpu;
+        hotIntelGpu.available = true;
+        hotIntelGpu.busyAvailable = false;
+        hotIntelGpu.temperatureAvailable = true;
+        hotIntelGpu.tempCelsius = 90.0;
+        PsiAndMemorySnapshot calmPsi;
+        calmPsi.responsivenessAvailable = true;
+        calmPsi.cpuPsi.someAvailable = true;
+        calmPsi.memoryPsi.someAvailable = true;
+        calmPsi.ioPsi.someAvailable = true;
+
+        const CausalVerdict gpuThermalVerdict = CausalDiagnosisEngine::evaluate(idleCpu, hotIntelGpu, calmPsi, {}, {}, {});
+        QCOMPARE(gpuThermalVerdict.severity, VerdictSeverity::Elevated);
+        QCOMPARE(gpuThermalVerdict.primaryBottleneckDomain, QStringLiteral("Graphics"));
+
+        // VerdictStabilizer should not starve when oscillating between Elevated and Bottleneck
+        VerdictStabilizer stabilizer;
+        CausalVerdict nominal;
+        nominal.severity = VerdictSeverity::Nominal;
+        nominal.headline = QStringLiteral("Nominal");
+        stabilizer.update(nominal, 0);
+        QCOMPARE(stabilizer.update(nominal, 5000).severity, VerdictSeverity::Nominal);
+
+        CausalVerdict elevated;
+        elevated.severity = VerdictSeverity::Elevated;
+        elevated.headline = QStringLiteral("Elevated");
+        CausalVerdict bottleneck;
+        bottleneck.severity = VerdictSeverity::Bottleneck;
+        bottleneck.headline = QStringLiteral("Bottleneck");
+
+        QCOMPARE(stabilizer.update(elevated, 6000).severity, VerdictSeverity::Nominal);
+        QCOMPARE(stabilizer.update(bottleneck, 7500).severity, VerdictSeverity::Nominal);
+        QCOMPARE(stabilizer.update(elevated, 9100).severity, VerdictSeverity::Elevated);
+
+        // FlightRecorder immediate pruning when setRetentionMs shrinks window
+        FlightRecorder recorder(3600);
+        recorder.setRetentionMs(10000);
+        for (int i = 1; i <= 10; ++i) {
+            FlightSample s;
+            s.monotonicMs = i * 1000;
+            s.timestampMs = i * 1000;
+            recorder.appendSample(s);
+        }
+        QCOMPARE(recorder.count(), 10);
+        recorder.setRetentionMs(3000);
+        QCOMPARE(recorder.count(), 4);
+        QCOMPARE(recorder.sampleAt(0).monotonicMs, qint64(7000));
+    }
+
     void testLiveHostTelemetrySanity()
     {
         SysfsReader reader;

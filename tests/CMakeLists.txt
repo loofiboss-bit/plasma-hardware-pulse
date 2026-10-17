@@ -35,6 +35,8 @@ set(PULSECORE_PORTABLE_TESTS
     testJsonReportHasVersionQualityAndRecordedChannels
     testVerdictStabilityAndImmediateUnknown
     testCpuHwmonPowerAndDiskStatsThroughput
+    testNetworkThroughputAndProcessRadarDiskWait
+    testMultiDomainContributingSignalsAndStabilizerOscillation
 )
 foreach(test_name IN LISTS PULSECORE_PORTABLE_TESTS)
     add_test(NAME pulsecore_${test_name} COMMAND test_pulsecore ${test_name})
@@ -69,7 +71,7 @@ target_link_libraries(test_controller_actions PRIVATE
     loofipulsecore Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::DBus Qt6::Widgets Qt6::Test
     KF6::Notifications KF6::I18n
 )
-foreach(test_name IN ITEMS testMissingSystemMonitorReportsFailure testUnsupportedProfileNeverStartsChange testUnwritableReportLocationReportsFailure)
+foreach(test_name IN ITEMS testMissingSystemMonitorReportsFailure testUnsupportedProfileNeverStartsChange testUnwritableReportLocationReportsFailure testHistoryRetentionAndClearHistory)
     add_test(NAME controller_${test_name} COMMAND test_controller_actions ${test_name})
     set_tests_properties(controller_${test_name} PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;${PULSE_TEST_XDG_ENV}")
 endforeach()

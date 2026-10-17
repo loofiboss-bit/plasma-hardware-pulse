@@ -10,11 +10,12 @@ namespace LoofiPulse
 class FlightRecorder
 {
 public:
-    explicit FlightRecorder(int capacity = 1200);
+    explicit FlightRecorder(int capacity = 3600);
 
     quint64 appendSample(FlightSample sample);
     void clear();
     void setRetentionMs(qint64 retentionMs);
+    qint64 retentionMs() const;
 
     int count() const;
     int capacity() const;
@@ -29,7 +30,7 @@ public:
     static QVariantMap sampleMetricMetadata(const FlightSample &s);
 
 private:
-    int m_capacity = 1200;
+    int m_capacity = 3600;
     qint64 m_retentionMs = 5 * 60 * 1000;
     quint64 m_nextSampleId = 1;
     QList<FlightSample> m_samples;

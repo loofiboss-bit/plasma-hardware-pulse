@@ -39,6 +39,8 @@ Item {
     readonly property color powerAccent: isDark ? "#a78bfa" : "#7c3aed"
     readonly property color gpuAccent: isDark ? "#f472b6" : "#db2777"
 
+    property string sparkChannel: "temp"
+
     function channelColor(key) {
         if (key === "temp") return tempAccent
         if (key === "cpu") return cpuAccent
@@ -46,6 +48,31 @@ Item {
         if (key === "power") return powerAccent
         if (key === "gpu") return gpuAccent
         return cpuAccent
+    }
+
+    function sparkChannelDescription() {
+        const mins = Math.round((fullRoot.controller.historyRetentionSeconds || 300) / 60)
+        if (sparkChannel === "cpu") return "CPU load · last " + mins + "m · 0–100%"
+        if (sparkChannel === "psi") return "Pressure index · last " + mins + "m · 0–100%"
+        if (sparkChannel === "power") return "Package power · last " + mins + "m · W"
+        return "CPU temperature · last " + mins + "m · 30–100°C"
+    }
+
+    function sparkChannelNowText() {
+        if (sparkChannel === "cpu") {
+            return fullRoot.controller.cpuLoadAvailable
+                   ? Math.round(fullRoot.controller.cpuLoadPercent) + "% now" : ""
+        }
+        if (sparkChannel === "psi") {
+            return fullRoot.controller.psiAvailable
+                   ? fullRoot.controller.responsivenessScore.toFixed(1) + "% now" : ""
+        }
+        if (sparkChannel === "power") {
+            return fullRoot.controller.packagePowerAvailable
+                   ? fullRoot.controller.packageWatts.toFixed(1) + "W now" : ""
+        }
+        return fullRoot.controller.cpuTempAvailable
+               ? Math.round(fullRoot.controller.cpuPackageTemp) + "°C now" : ""
     }
 
     function severityColor(sev) {
@@ -256,6 +283,35 @@ Item {
                         wrapMode: Text.WordWrap
                     }
 
+                    Flow {
+                        Layout.fillWidth: true
+                        visible: fullRoot.controller.verdictContributingSignals
+                                 && fullRoot.controller.verdictContributingSignals.length > 0
+                        spacing: 4
+
+                        Repeater {
+                            model: fullRoot.controller.verdictContributingSignals || []
+                            delegate: Rectangle {
+                                id: contribChip
+                                required property string modelData
+                                radius: 4
+                                color: fullRoot.cardSurface
+                                border.width: 1
+                                border.color: fullRoot.cardBorder
+                                implicitWidth: contribLbl.implicitWidth + 8
+                                implicitHeight: contribLbl.implicitHeight + 3
+
+                                PlasmaComponents3.Label {
+                                    id: contribLbl
+                                    anchors.centerIn: parent
+                                    text: "+ " + contribChip.modelData
+                                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                                    opacity: 0.85
+                                }
+                            }
+                        }
+                    }
+
                     PlasmaComponents3.Label {
                         Layout.fillWidth: true
                         text: "Next step: " + fullRoot.controller.verdictRecommendation
@@ -302,7 +358,10 @@ Item {
                                       + " · Mem " + (fullRoot.controller.psiMemoryAvailable ? fullRoot.controller.psiMemSome10.toFixed(1) + "%" : "N/A")
                                       + (fullRoot.controller.diskThroughputAvailable
                                          ? " · Disk " + Number(fullRoot.controller.diskReadMibPerSec + fullRoot.controller.diskWriteMibPerSec).toFixed(1) + " MiB/s"
-                                         : " · I/O " + (fullRoot.controller.psiIoFullAvailable ? fullRoot.controller.psiIoFull10.toFixed(1) + "%" : "N/A")),
+                                         : " · I/O " + (fullRoot.controller.psiIoFullAvailable ? fullRoot.controller.psiIoFull10.toFixed(1) + "%" : "N/A"))
+                                      + (fullRoot.controller.netThroughputAvailable
+                                         ? " · Net " + Number(fullRoot.controller.netRxMibPerSec + fullRoot.controller.netTxMibPerSec).toFixed(1) + " MiB/s"
+                                         : ""),
                             ratio: fullRoot.controller.psiAvailable
                                    ? Math.min(1.0, Math.max(0.0, fullRoot.controller.responsivenessScore / 100.0)) : 0.0,
                             barVisible: fullRoot.controller.psiAvailable
@@ -448,20 +507,48 @@ Item {
 
                     RowLayout {
                         Layout.fillWidth: true
+                        spacing: 6
                         PlasmaComponents3.Label {
-                            text: "CPU temperature · last 5 minutes · 30–100°C"
+                            text: fullRoot.sparkChannelDescription()
                             font: Kirigami.Theme.smallFont
                             opacity: 0.8
                             Layout.fillWidth: true
+                            elide: Text.ElideRight
                         }
                         PlasmaComponents3.Label {
-                            text: fullRoot.controller.cpuTempAvailable
-                                  ? Math.round(fullRoot.controller.cpuPackageTemp) + "°C now"
-                                  : ""
+                            text: fullRoot.sparkChannelNowText()
                             font.bold: true
                             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                            color: fullRoot.tempAccent
+                            color: fullRoot.channelColor(fullRoot.sparkChannel)
                         }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 4
+                        Repeater {
+                            model: [
+                                { key: "temp", label: "Temp", objName: "sparkChannelTempButton" },
+                                { key: "cpu", label: "CPU", objName: "sparkChannelCpuButton" },
+                                { key: "psi", label: "PSI", objName: "sparkChannelPsiButton" },
+                                { key: "power", label: "Power", objName: "sparkChannelPowerButton" }
+                            ]
+                            delegate: PlasmaComponents3.ToolButton {
+                                id: sparkBtn
+                                required property var modelData
+                                objectName: sparkBtn.modelData.objName
+                                text: sparkBtn.modelData.label
+                                checkable: true
+                                checked: fullRoot.sparkChannel === sparkBtn.modelData.key
+                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                                Accessible.name: "Show " + sparkBtn.modelData.label + " sparkline"
+                                onClicked: {
+                                    fullRoot.sparkChannel = sparkBtn.modelData.key
+                                    miniSparkCanvas.requestPaint()
+                                }
+                            }
+                        }
+                        Item { Layout.fillWidth: true }
                     }
 
                     Canvas {
@@ -484,21 +571,44 @@ Item {
 
                             const firstTime = samples[0].monotonicMs
                             const duration = Math.max(1, samples[samples.length - 1].monotonicMs - firstTime)
+                            const ch = fullRoot.sparkChannel
+                            const accent = fullRoot.channelColor(ch)
+
+                            let maxPower = 45.0
+                            if (ch === "power") {
+                                for (let m = 0; m < samples.length; ++m) {
+                                    if (samples[m].powerAvailable && samples[m].packageWatts > maxPower) {
+                                        maxPower = samples[m].packageWatts * 1.15
+                                    }
+                                }
+                            }
 
                             let pts = []
                             for (let i = 0; i < samples.length; ++i) {
                                 const sample = samples[i]
-                                if (!sample.cpuTempAvailable) continue
+                                let norm = 0.0
+                                if (ch === "cpu") {
+                                    if (!sample.cpuLoadAvailable) continue
+                                    norm = Math.min(1, Math.max(0, (sample.cpuLoadPercent || 0) / 100.0))
+                                } else if (ch === "psi") {
+                                    if (!sample.psiAvailable) continue
+                                    norm = Math.min(1, Math.max(0, (sample.psiScore || 0) / 100.0))
+                                } else if (ch === "power") {
+                                    if (!sample.powerAvailable) continue
+                                    norm = Math.min(1, Math.max(0, (sample.packageWatts || 0) / maxPower))
+                                } else {
+                                    if (!sample.cpuTempAvailable) continue
+                                    norm = Math.min(1, Math.max(0, (sample.cpuTemp - 30) / 70))
+                                }
                                 const x = (sample.monotonicMs - firstTime) / duration * width
-                                const tempNorm = Math.min(1, Math.max(0, (sample.cpuTemp - 30) / 70))
-                                const y = height - (tempNorm * (height - 8)) - 4
+                                const y = height - (norm * (height - 8)) - 4
                                 pts.push({ x: x, y: y })
                             }
                             if (pts.length < 2) return
 
                             const grad = ctx.createLinearGradient(0, 0, 0, height)
-                            grad.addColorStop(0, Qt.rgba(fullRoot.tempAccent.r, fullRoot.tempAccent.g, fullRoot.tempAccent.b, 0.22).toString())
-                            grad.addColorStop(1, Qt.rgba(fullRoot.tempAccent.r, fullRoot.tempAccent.g, fullRoot.tempAccent.b, 0.0).toString())
+                            grad.addColorStop(0, Qt.rgba(accent.r, accent.g, accent.b, 0.22).toString())
+                            grad.addColorStop(1, Qt.rgba(accent.r, accent.g, accent.b, 0.0).toString())
                             ctx.fillStyle = grad
                             ctx.beginPath()
                             ctx.moveTo(pts[0].x, height)
@@ -508,7 +618,7 @@ Item {
                             ctx.fill()
 
                             ctx.lineWidth = 2
-                            ctx.strokeStyle = fullRoot.tempAccent.toString()
+                            ctx.strokeStyle = accent.toString()
                             ctx.beginPath()
                             ctx.moveTo(pts[0].x, pts[0].y)
                             for (let k = 1; k < pts.length; ++k) ctx.lineTo(pts[k].x, pts[k].y)

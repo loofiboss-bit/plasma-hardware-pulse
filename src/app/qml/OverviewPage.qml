@@ -127,6 +127,35 @@ Kirigami.ScrollablePage {
                         color: Kirigami.Theme.textColor
                     }
 
+                    Flow {
+                        visible: page.controller.verdictContributingSignals.length > 0
+                        Layout.fillWidth: true
+                        spacing: Kirigami.Units.smallSpacing
+
+                        Repeater {
+                            model: page.controller.verdictContributingSignals
+                            delegate: Rectangle {
+                                id: contribPill
+                                required property string modelData
+                                radius: theme.pillRadius
+                                color: theme.subtleSurfaceColor
+                                border.width: 1
+                                border.color: theme.subtleBorderColor
+                                implicitWidth: contribLbl.implicitWidth + 14
+                                implicitHeight: contribLbl.implicitHeight + 6
+
+                                QQC2.Label {
+                                    id: contribLbl
+                                    anchors.centerIn: parent
+                                    text: "Also active: " + contribPill.modelData
+                                    color: Kirigami.Theme.neutralTextColor
+                                    font.bold: true
+                                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                                }
+                            }
+                        }
+                    }
+
                     Rectangle {
                         Layout.fillWidth: true
                         implicitHeight: recLabel.implicitHeight + 14
@@ -349,7 +378,7 @@ Kirigami.ScrollablePage {
                         targetPage: "pressure"
                     },
                     {
-                        title: "Storage & disk I/O",
+                        title: "Storage & I/O",
                         icon: "drive-harddisk",
                         accentKey: "storage",
                         sampleKey: "diskReadMibPerSec",
@@ -361,7 +390,11 @@ Kirigami.ScrollablePage {
                             : page.metric(page.controller.psiIoFullAvailable, page.controller.psiIoFull10.toFixed(1), "% I/O wait"),
                         subtitle: (page.controller.diskThroughputAvailable
                             ? "R " + page.controller.diskReadMibPerSec.toFixed(1) + " · W " + page.controller.diskWriteMibPerSec.toFixed(1) + " MiB/s · "
-                            : "") + (page.controller.nvmeTempAvailable ? "NVMe " + page.controller.nvmeTempCelsius.toFixed(0) + " °C" : "NVMe temp N/A"),
+                            : "")
+                            + (page.controller.netThroughputAvailable
+                               ? "Net ↓" + page.controller.netRxMibPerSec.toFixed(1) + " ↑" + page.controller.netTxMibPerSec.toFixed(1) + " MiB/s · "
+                               : "")
+                            + (page.controller.nvmeTempAvailable ? "NVMe " + page.controller.nvmeTempCelsius.toFixed(0) + " °C" : "NVMe temp N/A"),
                         ratio: page.controller.diskThroughputAvailable
                             ? Math.min(1.0, Math.max(0.0, (page.controller.diskReadMibPerSec + page.controller.diskWriteMibPerSec) / 500.0))
                             : (page.controller.psiIoFullAvailable ? Math.min(1.0, Math.max(0.0, page.controller.psiIoFull10 / 25.0)) : 0.0),
@@ -666,6 +699,7 @@ Kirigami.ScrollablePage {
                             "GPU load: " + page.metric(page.controller.gpuBusyAvailable, page.controller.gpuBusyPercent.toFixed(0), "%"),
                             "GPU temperature: " + page.metric(page.controller.gpuTempAvailable, page.controller.gpuTempCelsius.toFixed(0), " °C"),
                             "GPU driver: " + (page.controller.gpuAvailable && page.controller.gpuDriverName ? page.controller.gpuDriverName : "Unavailable"),
+                            "Network I/O: " + (page.controller.netThroughputAvailable ? ("↓" + page.controller.netRxMibPerSec.toFixed(2) + " / ↑" + page.controller.netTxMibPerSec.toFixed(2) + " MiB/s") : "Unavailable"),
                             "Fan: " + (page.controller.fanAvailable ? page.controller.primaryFanRpm + " RPM" : "Unavailable"),
                             "Thermal headroom: " + page.metric(page.controller.thermalHeadroomAvailable, page.controller.thermalHeadroom.toFixed(1), " °C"),
                             "Active power profile: " + (page.controller.activePowerProfile || "Unavailable")
@@ -709,6 +743,7 @@ Kirigami.ScrollablePage {
                             { key: "gpuLoad", label: "GPU load" },
                             { key: "pressureIndex", label: "Pressure index" },
                             { key: "diskThroughput", label: "Disk throughput" },
+                            { key: "netThroughput", label: "Network throughput" },
                             { key: "packagePower", label: "Package power" }
                         ]
                         delegate: Rectangle {

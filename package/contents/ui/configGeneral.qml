@@ -8,6 +8,11 @@ KCM.SimpleKCM {
     id: configRoot
 
     property alias cfg_pollIntervalMs: pollSpin.value
+    property alias cfg_historyRetentionSeconds: retentionSpin.value
+    property alias cfg_showCpuLoadInPanel: showCpuLoadCheck.checked
+    property alias cfg_showGpuInPanel: showGpuCheck.checked
+    property alias cfg_showRamInPanel: showRamCheck.checked
+    property alias cfg_showIoInPanel: showIoCheck.checked
     property alias cfg_showWattsInPanel: showWattsCheck.checked
     property alias cfg_showPsiInPanel: showPsiCheck.checked
     property alias cfg_alwaysShowStatusInPanel: alwaysShowStatusCheck.checked
@@ -29,14 +34,42 @@ KCM.SimpleKCM {
             wrapMode: Text.WordWrap
         }
 
+        QQC2.SpinBox {
+            id: retentionSpin
+            Kirigami.FormData.label: "History retention (seconds):"
+            from: 300
+            to: 1800
+            stepSize: 300
+        }
+
         Kirigami.Separator {
             Kirigami.FormData.isSection: true
             Kirigami.FormData.label: "Panel Pill Representation"
         }
 
         QQC2.CheckBox {
-            id: showWattsCheck
+            id: showCpuLoadCheck
             Kirigami.FormData.label: "Visible metrics:"
+            text: "Show CPU load (%) in panel"
+        }
+
+        QQC2.CheckBox {
+            id: showGpuCheck
+            text: "Show GPU load / temperature in panel"
+        }
+
+        QQC2.CheckBox {
+            id: showRamCheck
+            text: "Show RAM usage (%) in panel"
+        }
+
+        QQC2.CheckBox {
+            id: showIoCheck
+            text: "Show Disk / Network throughput (MiB/s) in panel"
+        }
+
+        QQC2.CheckBox {
+            id: showWattsCheck
             text: "Show CPU package power draw (Watts) in panel"
         }
 

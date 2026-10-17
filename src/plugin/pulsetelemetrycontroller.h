@@ -88,6 +88,9 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(bool diskThroughputAvailable READ diskThroughputAvailable NOTIFY telemetryUpdated)
     Q_PROPERTY(double diskReadMibPerSec READ diskReadMibPerSec NOTIFY telemetryUpdated)
     Q_PROPERTY(double diskWriteMibPerSec READ diskWriteMibPerSec NOTIFY telemetryUpdated)
+    Q_PROPERTY(bool netThroughputAvailable READ netThroughputAvailable NOTIFY telemetryUpdated)
+    Q_PROPERTY(double netRxMibPerSec READ netRxMibPerSec NOTIFY telemetryUpdated)
+    Q_PROPERTY(double netTxMibPerSec READ netTxMibPerSec NOTIFY telemetryUpdated)
 
     // Power & Cooling properties
     Q_PROPERTY(bool onAcPower READ onAcPower NOTIFY telemetryUpdated)
@@ -125,6 +128,7 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(QString verdictCausalChain READ verdictCausalChain NOTIFY telemetryUpdated)
     Q_PROPERTY(QString verdictRecommendation READ verdictRecommendation NOTIFY telemetryUpdated)
     Q_PROPERTY(QString primaryBottleneckDomain READ primaryBottleneckDomain NOTIFY telemetryUpdated)
+    Q_PROPERTY(QStringList verdictContributingSignals READ verdictContributingSignals NOTIFY telemetryUpdated)
     Q_PROPERTY(QString culpritName READ culpritName NOTIFY telemetryUpdated)
     Q_PROPERTY(int culpritPid READ culpritPid NOTIFY telemetryUpdated)
     Q_PROPERTY(double culpritCpuPercent READ culpritCpuPercent NOTIFY telemetryUpdated)
@@ -132,6 +136,7 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(QString memoryCulpritName READ memoryCulpritName NOTIFY telemetryUpdated)
     Q_PROPERTY(int memoryCulpritPid READ memoryCulpritPid NOTIFY telemetryUpdated)
     Q_PROPERTY(double memoryCulpritRssMb READ memoryCulpritRssMb NOTIFY telemetryUpdated)
+    Q_PROPERTY(int diskWaitProcessCount READ diskWaitProcessCount NOTIFY telemetryUpdated)
 
     // Structured collections for QML views
     Q_PROPERTY(QVariantList domainSensors READ domainSensors NOTIFY telemetryUpdated)
@@ -140,6 +145,7 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(QVariantList historySamples READ historySamples NOTIFY telemetryUpdated)
     Q_PROPERTY(QVariantList incidentHistory READ incidentHistory NOTIFY telemetryUpdated)
     Q_PROPERTY(double historyMaxWatts READ historyMaxWatts NOTIFY telemetryUpdated)
+    Q_PROPERTY(double historyMaxDiskMibPerSec READ historyMaxDiskMibPerSec NOTIFY telemetryUpdated)
     Q_PROPERTY(QVariantMap metricMetadata READ metricMetadata NOTIFY telemetryUpdated)
     Q_PROPERTY(int selectedHistoryIndex READ selectedHistoryIndex WRITE setSelectedHistoryIndex NOTIFY selectedHistoryChanged)
     Q_PROPERTY(qulonglong selectedHistorySampleId READ selectedHistorySampleId WRITE setSelectedHistorySampleId NOTIFY selectedHistoryChanged)
@@ -147,6 +153,7 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(QVariantMap selectedHistoryDetail READ selectedHistoryDetail NOTIFY selectedHistoryChanged)
 
     Q_PROPERTY(int pollIntervalMs READ pollIntervalMs WRITE setPollIntervalMs NOTIFY pollIntervalChanged)
+    Q_PROPERTY(int historyRetentionSeconds READ historyRetentionSeconds WRITE setHistoryRetentionSeconds NOTIFY historyRetentionChanged)
     Q_PROPERTY(bool notificationsEnabled READ notificationsEnabled WRITE setNotificationsEnabled NOTIFY notificationsEnabledChanged)
     Q_PROPERTY(bool recordingPaused READ recordingPaused WRITE setRecordingPaused NOTIFY recordingPausedChanged)
     Q_PROPERTY(QString lastActionStatus READ lastActionStatus NOTIFY lastActionStatusChanged)
@@ -225,6 +232,9 @@ public:
     bool diskThroughputAvailable() const { return m_psiMem.diskThroughputAvailable; }
     double diskReadMibPerSec() const { return m_psiMem.diskReadMibPerSec; }
     double diskWriteMibPerSec() const { return m_psiMem.diskWriteMibPerSec; }
+    bool netThroughputAvailable() const { return m_psiMem.netThroughputAvailable; }
+    double netRxMibPerSec() const { return m_psiMem.netRxMibPerSec; }
+    double netTxMibPerSec() const { return m_psiMem.netTxMibPerSec; }
 
     bool onAcPower() const { return m_power.onAcPower; }
     bool batteryPresent() const { return m_power.batteryPresent; }
@@ -260,6 +270,7 @@ public:
     QString verdictCausalChain() const { return m_verdict.causalChain; }
     QString verdictRecommendation() const { return m_verdict.recommendation; }
     QString primaryBottleneckDomain() const { return m_verdict.primaryBottleneckDomain; }
+    QStringList verdictContributingSignals() const { return m_verdict.contributingSignals; }
     QString culpritName() const { return m_verdict.topProcess.name; }
     int culpritPid() const { return m_verdict.topProcess.pid; }
     double culpritCpuPercent() const { return m_verdict.topProcess.cpuPercent; }
@@ -267,6 +278,7 @@ public:
     QString memoryCulpritName() const { return m_verdict.topMemoryProcess.name; }
     int memoryCulpritPid() const { return m_verdict.topMemoryProcess.pid; }
     double memoryCulpritRssMb() const { return m_verdict.topMemoryProcess.rssMegabytes; }
+    int diskWaitProcessCount() const { return m_processRadar.diskWaitProcessCount; }
 
     QVariantList domainSensors() const { return m_domainSensorsVariant; }
     QVariantList coreItems() const { return m_coreItemsVariant; }
@@ -274,6 +286,7 @@ public:
     QVariantList historySamples() const { return m_historySamplesVariant; }
     QVariantList incidentHistory() const { return m_incidentHistoryVariant; }
     double historyMaxWatts() const { return m_historyMaxWatts; }
+    double historyMaxDiskMibPerSec() const { return m_historyMaxDiskMibPerSec; }
     QVariantMap metricMetadata() const;
 
     int selectedHistoryIndex() const { return m_selectedHistorySampleId == 0 ? -1 : m_recorder.indexOfSample(m_selectedHistorySampleId); }
@@ -285,6 +298,9 @@ public:
 
     int pollIntervalMs() const { return m_timer.interval(); }
     void setPollIntervalMs(int intervalMs);
+
+    int historyRetentionSeconds() const { return static_cast<int>(m_recorder.retentionMs() / 1000LL); }
+    void setHistoryRetentionSeconds(int seconds);
 
     bool notificationsEnabled() const { return m_notificationsEnabled; }
     void setNotificationsEnabled(bool enabled);
@@ -298,6 +314,7 @@ public:
     bool powerProfileChangePending() const { return m_powerProfileChangePending; }
 
     Q_INVOKABLE void refreshNow();
+    Q_INVOKABLE void clearHistory();
     Q_INVOKABLE bool setPowerProfile(const QString &profile);
     Q_INVOKABLE void launchStudioApp(const QString &pageName = QString());
     Q_INVOKABLE bool openSystemMonitor();
@@ -311,6 +328,7 @@ Q_SIGNALS:
     void telemetryUpdated();
     void selectedHistoryChanged();
     void pollIntervalChanged();
+    void historyRetentionChanged();
     void notificationsEnabledChanged();
     void recordingPausedChanged();
     void lastActionStatusChanged();
@@ -370,6 +388,7 @@ private:
     QVariantList m_historySamplesVariant;
     QVariantList m_incidentHistoryVariant;
     double m_historyMaxWatts = 65.0;
+    double m_historyMaxDiskMibPerSec = 100.0;
     int m_selectedHistoryIndex = -1;
 };
 

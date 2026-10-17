@@ -31,15 +31,47 @@ Kirigami.ApplicationWindow {
         id: appSettings
         category: "LoofiPulse"
         property int savedPollInterval: 1000
+        property int savedHistoryRetentionSeconds: 300
         property bool savedNotificationsEnabled: true
     }
 
     PulseTelemetryController {
         id: telemetry
         pollIntervalMs: appSettings.savedPollInterval
+        historyRetentionSeconds: appSettings.savedHistoryRetentionSeconds
         notificationsEnabled: appSettings.savedNotificationsEnabled
         onPollIntervalChanged: appSettings.savedPollInterval = pollIntervalMs
+        onHistoryRetentionChanged: appSettings.savedHistoryRetentionSeconds = historyRetentionSeconds
         onNotificationsEnabledChanged: appSettings.savedNotificationsEnabled = notificationsEnabled
+    }
+
+    Shortcut {
+        sequences: ["Ctrl+1", "Alt+1"]
+        onActivated: appWindow.switchToPage("overview")
+    }
+    Shortcut {
+        sequences: ["Ctrl+2", "Alt+2"]
+        onActivated: appWindow.switchToPage("flight")
+    }
+    Shortcut {
+        sequences: ["Ctrl+3", "Alt+3"]
+        onActivated: appWindow.switchToPage("pressure")
+    }
+    Shortcut {
+        sequences: ["Ctrl+4", "Alt+4"]
+        onActivated: appWindow.switchToPage("power")
+    }
+    Shortcut {
+        sequences: ["Ctrl+P"]
+        onActivated: telemetry.recordingPaused = !telemetry.recordingPaused
+    }
+    Shortcut {
+        sequence: "Ctrl+S"
+        onActivated: telemetry.exportIncidentReportToFile()
+    }
+    Shortcut {
+        sequence: "Ctrl+Shift+C"
+        onActivated: telemetry.copyIncidentReportToClipboard()
     }
 
     function switchToPage(name) {
@@ -135,6 +167,22 @@ Kirigami.ApplicationWindow {
                 Kirigami.Action {
                     text: "Eco (2000 ms)"
                     onTriggered: telemetry.pollIntervalMs = 2000
+                }
+            },
+            Kirigami.Action {
+                text: "History Window (" + Math.round(telemetry.historyRetentionSeconds / 60) + "m)"
+                icon.name: "chronometer"
+                Kirigami.Action {
+                    text: "5 minutes"
+                    onTriggered: telemetry.historyRetentionSeconds = 300
+                }
+                Kirigami.Action {
+                    text: "15 minutes"
+                    onTriggered: telemetry.historyRetentionSeconds = 900
+                }
+                Kirigami.Action {
+                    text: "30 minutes"
+                    onTriggered: telemetry.historyRetentionSeconds = 1800
                 }
             }
         ]
