@@ -96,27 +96,43 @@ Kirigami.ScrollablePage {
 
         Flow {
             Layout.fillWidth: true
-            spacing: Kirigami.Units.smallSpacing
+            spacing: Kirigami.Units.mediumSpacing
 
-            QQC2.CheckBox {
-                text: "CPU temperature (25–100 °C)"
-                checked: flightPage.showTempTrace
-                onToggled: { flightPage.showTempTrace = checked; timelineCanvas.requestPaint() }
+            RowLayout {
+                spacing: 4
+                Rectangle { Layout.preferredWidth: 10; Layout.preferredHeight: 10; radius: 5; color: Kirigami.Theme.highlightColor }
+                QQC2.CheckBox {
+                    text: "CPU temperature (25–100 °C)"
+                    checked: flightPage.showTempTrace
+                    onToggled: { flightPage.showTempTrace = checked; timelineCanvas.requestPaint() }
+                }
             }
-            QQC2.CheckBox {
-                text: "CPU load (0–100%)"
-                checked: flightPage.showLoadTrace
-                onToggled: { flightPage.showLoadTrace = checked; timelineCanvas.requestPaint() }
+            RowLayout {
+                spacing: 4
+                Rectangle { Layout.preferredWidth: 10; Layout.preferredHeight: 10; radius: 5; color: Kirigami.Theme.neutralTextColor }
+                QQC2.CheckBox {
+                    text: "CPU load (0–100%)"
+                    checked: flightPage.showLoadTrace
+                    onToggled: { flightPage.showLoadTrace = checked; timelineCanvas.requestPaint() }
+                }
             }
-            QQC2.CheckBox {
-                text: "Calculated pressure index (0–100%)"
-                checked: flightPage.showPsiTrace
-                onToggled: { flightPage.showPsiTrace = checked; timelineCanvas.requestPaint() }
+            RowLayout {
+                spacing: 4
+                Rectangle { Layout.preferredWidth: 10; Layout.preferredHeight: 10; radius: 5; color: Kirigami.Theme.positiveTextColor }
+                QQC2.CheckBox {
+                    text: "Calculated pressure index (0–100%)"
+                    checked: flightPage.showPsiTrace
+                    onToggled: { flightPage.showPsiTrace = checked; timelineCanvas.requestPaint() }
+                }
             }
-            QQC2.CheckBox {
-                text: "Power (0–65 W)"
-                checked: flightPage.showWattsTrace
-                onToggled: { flightPage.showWattsTrace = checked; timelineCanvas.requestPaint() }
+            RowLayout {
+                spacing: 4
+                Rectangle { Layout.preferredWidth: 10; Layout.preferredHeight: 10; radius: 5; color: Kirigami.Theme.linkColor }
+                QQC2.CheckBox {
+                    text: "Power (0–65 W)"
+                    checked: flightPage.showWattsTrace
+                    onToggled: { flightPage.showWattsTrace = checked; timelineCanvas.requestPaint() }
+                }
             }
         }
 
@@ -134,6 +150,7 @@ Kirigami.ScrollablePage {
                 objectName: "historyTimeline"
                 anchors.fill: parent
                 focus: true
+                property real hoverX: -1
                 Accessible.name: "Five minute hardware history. Select a sample with left and right arrow keys."
                 Keys.onLeftPressed: flightPage.selectStep(-1)
                 Keys.onRightPressed: flightPage.selectStep(1)
@@ -196,6 +213,7 @@ Kirigami.ScrollablePage {
                     ctx.globalAlpha = 1
 
                     ctx.strokeStyle = Kirigami.Theme.disabledTextColor.toString()
+                    ctx.fillStyle = Kirigami.Theme.disabledTextColor.toString()
                     ctx.lineWidth = 1
                     for (var g = 1; g <= 3; ++g) {
                         var gy = (height / 4) * g
@@ -214,6 +232,17 @@ Kirigami.ScrollablePage {
                     if (flightPage.showWattsTrace)
                         drawTrace(ctx, samples, firstTime, timeSpan, "systemWatts", "systemPowerAvailable", 0, 65, Kirigami.Theme.linkColor)
 
+                    if (timelineCanvas.hoverX >= 0 && timelineCanvas.hoverX <= width) {
+                        ctx.globalAlpha = 0.45
+                        ctx.strokeStyle = Kirigami.Theme.textColor.toString()
+                        ctx.lineWidth = 1
+                        ctx.beginPath()
+                        ctx.moveTo(timelineCanvas.hoverX, 0)
+                        ctx.lineTo(timelineCanvas.hoverX, height)
+                        ctx.stroke()
+                        ctx.globalAlpha = 1
+                    }
+
                     var selIdx = flightPage.controller.selectedHistoryIndex
                     if (selIdx >= 0 && selIdx < samples.length) {
                         var sx = ((samples[selIdx].timestampMs - firstTime) / timeSpan) * width
@@ -228,6 +257,7 @@ Kirigami.ScrollablePage {
 
                 MouseArea {
                     anchors.fill: parent
+                    hoverEnabled: true
                     function selectAtX(mouseX) {
                         var samples = flightPage.controller.historySamples
                         if (!samples || samples.length === 0) return
@@ -242,8 +272,29 @@ Kirigami.ScrollablePage {
                         flightPage.controller.selectedHistorySampleId = samples[nearest].sampleId
                     }
                     onPressed: (mouse) => { timelineCanvas.forceActiveFocus(); selectAtX(mouse.x) }
-                    onPositionChanged: (mouse) => { if (pressed) selectAtX(mouse.x) }
+                    onPositionChanged: (mouse) => {
+                        timelineCanvas.hoverX = mouse.x
+                        timelineCanvas.requestPaint()
+                        if (pressed) selectAtX(mouse.x)
+                    }
+                    onExited: {
+                        timelineCanvas.hoverX = -1
+                        timelineCanvas.requestPaint()
+                    }
                 }
+            }
+
+            ColumnLayout {
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.bottom: parent.bottom
+                anchors.margins: 6
+                visible: flightPage.controller.historySamples.length >= 2
+                QQC2.Label { text: "100% / 100°C"; font.pixelSize: Kirigami.Theme.smallFont.pixelSize; color: Kirigami.Theme.disabledTextColor }
+                Item { Layout.fillHeight: true }
+                QQC2.Label { text: "50%"; font.pixelSize: Kirigami.Theme.smallFont.pixelSize; color: Kirigami.Theme.disabledTextColor }
+                Item { Layout.fillHeight: true }
+                QQC2.Label { text: "0% / 25°C"; font.pixelSize: Kirigami.Theme.smallFont.pixelSize; color: Kirigami.Theme.disabledTextColor }
             }
 
             QQC2.Label {

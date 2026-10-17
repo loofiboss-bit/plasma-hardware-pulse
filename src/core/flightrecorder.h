@@ -26,6 +26,7 @@ public:
 
     QString exportSummaryMarkdown() const;
     QString exportSamplesJson() const;
+    static QVariantMap sampleMetricMetadata(const FlightSample &s);
 
 private:
     int m_capacity = 1200;

@@ -687,6 +687,12 @@ private Q_SLOTS:
         QCOMPARE(exported.value(QStringLiteral("gpuTempCelsius")).toDouble(), 73.0);
         QCOMPARE(exported.value(QStringLiteral("nvmeTempCelsius")).toDouble(), 44.0);
         QVERIFY(exported.value(QStringLiteral("metricQuality")).isObject());
+        const QJsonObject metaObj = exported.value(QStringLiteral("metricMetadata")).toObject();
+        QCOMPARE(metaObj.value(QStringLiteral("cpuTemperature")).toObject().value(QStringLiteral("state")).toString(), QStringLiteral("available"));
+        QCOMPARE(metaObj.value(QStringLiteral("pressureIndex")).toObject().value(QStringLiteral("state")).toString(), QStringLiteral("calculated"));
+        const QString md = recorder.exportSummaryMarkdown();
+        QVERIFY(md.contains(QStringLiteral("## Data quality at latest sample")));
+        QVERIFY(md.contains(QStringLiteral("**cpuTemperature**: available")));
     }
 
     void testVerdictStabilityAndImmediateUnknown()
@@ -716,6 +722,62 @@ private Q_SLOTS:
         QCOMPARE(stabilizer.update(nominal, 11400).severity, VerdictSeverity::Bottleneck);
         QCOMPARE(stabilizer.update(nominal, 16399).severity, VerdictSeverity::Bottleneck);
         QCOMPARE(stabilizer.update(nominal, 16400).severity, VerdictSeverity::Nominal);
+    }
+
+    void testCpuHwmonPowerAndDiskStatsThroughput()
+    {
+        QTemporaryDir tempDir;
+        QVERIFY(tempDir.isValid());
+        const QString sysRoot = tempDir.filePath(QStringLiteral("sys"));
+        const QString procRoot = tempDir.filePath(QStringLiteral("proc"));
+
+        // 1. CPU hwmon package power (zenpower) when intel-rapl is absent
+        writeTextFile(sysRoot + QStringLiteral("/class/hwmon/hwmon0/name"), QStringLiteral("zenpower\n"));
+        writeTextFile(sysRoot + QStringLiteral("/class/hwmon/hwmon0/power1_average"), QStringLiteral("42500000\n"));
+        PowerFlowSampler powerSampler({sysRoot, procRoot});
+        const PowerFlowSnapshot powerSnap = powerSampler.sample(1000, 50.0, 3000, 4500);
+        QVERIFY(powerSnap.hwmonPowerAvailable);
+        QVERIFY(powerSnap.packagePowerAvailable);
+        QVERIFY(!powerSnap.packagePowerEstimated);
+        QCOMPARE(powerSnap.packageWatts, 42.5);
+
+        // 2. Intel xe GPU frequency path
+        const QString xeCard = sysRoot + QStringLiteral("/class/drm/card0");
+        writeTextFile(xeCard + QStringLiteral("/device/tile0/gt0/freq0/act_freq"), QStringLiteral("1450\n"));
+        writeTextFile(xeCard + QStringLiteral("/device/tile0/gt0/freq0/max_freq"), QStringLiteral("2200\n"));
+        CpuSocSampler cpuSampler({sysRoot, procRoot});
+        const GpuSnapshot xeGpu = cpuSampler.sampleGpu({});
+        QVERIFY(xeGpu.available);
+        QVERIFY(xeGpu.frequencyAvailable);
+        QCOMPARE(xeGpu.currentFreqMhz, 1450);
+        QCOMPARE(xeGpu.boostFreqMhz, 2200);
+
+        // 3. /proc/diskstats throughput (ignoring partitions like nvme0n1p1 and zram0)
+        writeTextFile(procRoot + QStringLiteral("/pressure/io"), QStringLiteral("some avg10=12.00 avg60=5.00 total=1000\nfull avg10=9.50 avg60=4.00 total=800\n"));
+        writeTextFile(procRoot + QStringLiteral("/diskstats"),
+                      QStringLiteral(" 259 0 nvme0n1 100 0 2048 10 200 0 4096 20 0 10 30\n"
+                                     " 259 1 nvme0n1p1 100 0 2048 10 200 0 4096 20 0 10 30\n"
+                                     " 252 0 zram0 50 0 1024 5 50 0 1024 5 0 5 10\n"));
+        PsiMemorySampler psiSampler({sysRoot, procRoot});
+        const PsiAndMemorySnapshot firstPsi = psiSampler.sample(1000);
+        QVERIFY(!firstPsi.diskThroughputAvailable);
+
+        // Advance nvme0n1 by +4096 read sectors (2 MiB) and +8192 write sectors (4 MiB) over 1000 ms
+        writeTextFile(procRoot + QStringLiteral("/diskstats"),
+                      QStringLiteral(" 259 0 nvme0n1 150 0 6144 15 250 0 12288 25 0 15 40\n"
+                                     " 259 1 nvme0n1p1 150 0 6144 15 250 0 12288 25 0 15 40\n"));
+        const PsiAndMemorySnapshot secondPsi = psiSampler.sample(1000);
+        QVERIFY(secondPsi.diskThroughputAvailable);
+        QCOMPARE(secondPsi.diskReadMibPerSec, 2.0);
+        QCOMPARE(secondPsi.diskWriteMibPerSec, 4.0);
+
+        CpuSocSnapshot cpu;
+        cpu.loadAvailable = true;
+        cpu.loadWarmedUp = true;
+        cpu.temperatureAvailable = true;
+        const CausalVerdict storageVerdict = CausalDiagnosisEngine::evaluate(cpu, {}, secondPsi, powerSnap, {}, {});
+        QCOMPARE(storageVerdict.severity, VerdictSeverity::Bottleneck);
+        QVERIFY(storageVerdict.causalChain.contains(QStringLiteral("2.0 MiB/s read, 4.0 MiB/s write")));
     }
 
     void testLiveHostTelemetrySanity()

@@ -66,13 +66,19 @@ CausalVerdict CausalDiagnosisEngine::evaluate(
                 nvmeTempAvailable = true;
             }
         }
+        QString storageDetails = QStringLiteral("All-work I/O pressure is %1%; NVMe temperature is %2")
+            .arg(psiMem.ioPsi.fullAvg10, 0, 'f', 1)
+            .arg(nvmeTempAvailable ? QStringLiteral("%1°C").arg(nvmeTemp, 0, 'f', 1)
+                                   : QStringLiteral("Unavailable"));
+        if (psiMem.diskThroughputAvailable) {
+            storageDetails += QStringLiteral("; disk throughput: %1 MiB/s read, %2 MiB/s write")
+                .arg(psiMem.diskReadMibPerSec, 0, 'f', 1)
+                .arg(psiMem.diskWriteMibPerSec, 0, 'f', 1);
+        }
         setVerdict(VerdictSeverity::Bottleneck,
                    QStringLiteral("Storage"),
                    QStringLiteral("Storage pressure is blocking work"),
-                   QStringLiteral("All-work I/O pressure is %1%; NVMe temperature is %2")
-                       .arg(psiMem.ioPsi.fullAvg10, 0, 'f', 1)
-                       .arg(nvmeTempAvailable ? QStringLiteral("%1°C").arg(nvmeTemp, 0, 'f', 1)
-                                              : QStringLiteral("Unavailable")),
+                   storageDetails,
                    QStringLiteral("Check for background indexing, updates, or other heavy disk activity."));
         return verdict;
     }

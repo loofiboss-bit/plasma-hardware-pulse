@@ -82,6 +82,9 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(bool swapAvailable READ swapAvailable NOTIFY telemetryUpdated)
     Q_PROPERTY(bool zramAvailable READ zramAvailable NOTIFY telemetryUpdated)
     Q_PROPERTY(bool zramCompressionAvailable READ zramCompressionAvailable NOTIFY telemetryUpdated)
+    Q_PROPERTY(bool diskThroughputAvailable READ diskThroughputAvailable NOTIFY telemetryUpdated)
+    Q_PROPERTY(double diskReadMibPerSec READ diskReadMibPerSec NOTIFY telemetryUpdated)
+    Q_PROPERTY(double diskWriteMibPerSec READ diskWriteMibPerSec NOTIFY telemetryUpdated)
 
     // Power & Cooling properties
     Q_PROPERTY(bool onAcPower READ onAcPower NOTIFY telemetryUpdated)
@@ -210,6 +213,9 @@ public:
     bool swapAvailable() const { return m_psiMem.swapAvailable; }
     bool zramAvailable() const { return m_psiMem.zramAvailable; }
     bool zramCompressionAvailable() const { return m_psiMem.zramCompressionAvailable; }
+    bool diskThroughputAvailable() const { return m_psiMem.diskThroughputAvailable; }
+    double diskReadMibPerSec() const { return m_psiMem.diskReadMibPerSec; }
+    double diskWriteMibPerSec() const { return m_psiMem.diskWriteMibPerSec; }
 
     bool onAcPower() const { return m_power.onAcPower; }
     bool batteryPresent() const { return m_power.batteryPresent; }
@@ -316,6 +322,8 @@ private:
     QElapsedTimer m_uptime;
     qint64 m_lastBoottimeMs = 0;
     qint64 m_lastSampleWallTimeMs = 0;
+    qint64 m_lastProcessScanBoottimeMs = 0;
+    int m_processScanWarmupCount = 0;
     bool m_gapPending = false;
     bool m_notificationsEnabled = true;
     bool m_recordingPaused = false;

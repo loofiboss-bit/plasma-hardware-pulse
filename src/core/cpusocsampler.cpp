@@ -2,6 +2,7 @@
 #include "sysfsreader.h"
 
 #include <QDir>
+#include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
 #include <QRegularExpression>
@@ -263,9 +264,15 @@ GpuSnapshot CpuSocSampler::sampleGpu(const QList<DomainSensorReading> &domainRea
         if (!actOk) {
             actMhz = static_cast<int>(SysfsReader::readInt64(cardDir.filePath(QStringLiteral("gt/gt0/rps_act_freq_mhz")), 0, &actOk));
         }
+        if (!actOk) {
+            actMhz = static_cast<int>(SysfsReader::readInt64(cardDir.filePath(QStringLiteral("device/tile0/gt0/freq0/act_freq")), 0, &actOk));
+        }
         int boostMhz = static_cast<int>(SysfsReader::readInt64(cardDir.filePath(QStringLiteral("gt_boost_freq_mhz")), 0));
         if (boostMhz <= 0) {
             boostMhz = static_cast<int>(SysfsReader::readInt64(cardDir.filePath(QStringLiteral("gt_max_freq_mhz")), 0));
+        }
+        if (boostMhz <= 0) {
+            boostMhz = static_cast<int>(SysfsReader::readInt64(cardDir.filePath(QStringLiteral("device/tile0/gt0/freq0/max_freq")), 0));
         }
 
         bool busyOk = false;
@@ -355,21 +362,24 @@ ProcessRadarSnapshot CpuSocSampler::sampleProcessRadar(int maxTopProcesses)
         : 100ULL;
     m_prevSystemTotalTicks = currentSysTicks;
 
-    const QStringList entries = procDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+    QDirIterator procIt(m_config.procRoot, QDir::Dirs | QDir::NoDotAndDotDot);
     QHash<int, quint64> nextProcTicks;
+    nextProcTicks.reserve(m_prevProcTicks.size());
     QList<CulpritProcess> candidates;
 
     const long pageSizeKb = std::max(4L, sysconf(_SC_PAGESIZE) / 1024L);
     const int numCpus = std::max(1, static_cast<int>(m_prevCoreJiffies.size()));
 
-    for (const QString &entry : entries) {
+    while (procIt.hasNext()) {
+        procIt.next();
+        const QString entry = procIt.fileName();
         bool pidOk = false;
         const int pid = entry.toInt(&pidOk);
         if (!pidOk || pid <= 1) {
             continue;
         }
 
-        const QString statLine = SysfsReader::readTrimmedLine(procDir.filePath(entry + QStringLiteral("/stat")));
+        const QString statLine = SysfsReader::readTrimmedLine(procIt.filePath() + QStringLiteral("/stat"));
         if (statLine.isEmpty()) {
             continue;
         }

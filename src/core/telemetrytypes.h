@@ -141,6 +141,10 @@ struct PsiAndMemorySnapshot
     quint64 swapTotalBytes = 0;
     quint64 swapFreeBytes = 0;
     double responsivenessScore = 0.0;
+
+    bool diskThroughputAvailable = false;
+    double diskReadMibPerSec = 0.0;
+    double diskWriteMibPerSec = 0.0;
 };
 
 struct PowerFlowSnapshot
@@ -162,6 +166,7 @@ struct PowerFlowSnapshot
     double batteryHealthPercent = 100.0;
 
     bool raplExactAvailable = false;
+    bool hwmonPowerAvailable = false;
     double packageWatts = 0.0;
     double pl1LimitWatts = 0.0;
     double pl2LimitWatts = 0.0;
