@@ -21,5 +21,10 @@ install-local: build
     cmake --install build --prefix "$HOME/.local"
     kpackagetool6 --type Plasma/Applet --upgrade package || kpackagetool6 --type Plasma/Applet --install package
 
+package-plasmoid:
+    mkdir -p build/dist
+    rm -f build/dist/com.github.loofi.hardwarepulse.plasmoid
+    (cd package && zip -r "../build/dist/com.github.loofi.hardwarepulse.plasmoid" metadata.json contents/)
+
 clean:
     rm -rf build

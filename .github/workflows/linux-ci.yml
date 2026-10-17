@@ -33,7 +33,8 @@ jobs:
             qt6-qtbase-devel \
             qt6-qtdeclarative-devel \
             qt6-qttools-devel \
-            appstream
+            appstream \
+            zip
 
       - name: Configure
         run: >-
@@ -60,3 +61,17 @@ jobs:
 
       - name: Validate AppStream metadata
         run: appstreamcli validate --no-net packaging/com.github.loofi.hardwarepulse.metainfo.xml
+
+      - name: Verify clean install and plasmoid bundle
+        run: |
+          INSTALL_ROOT="${RUNNER_TEMP:-/tmp}/loofi-pulse-install-root"
+          rm -rf "$INSTALL_ROOT"
+          cmake --install build --prefix "$INSTALL_ROOT/usr"
+          test -x "$INSTALL_ROOT/usr/bin/loofi-pulse"
+          test -f "$INSTALL_ROOT/usr/share/applications/com.github.loofi.hardwarepulse.desktop"
+          test -f "$INSTALL_ROOT/usr/share/metainfo/com.github.loofi.hardwarepulse.metainfo.xml"
+          test -f "$INSTALL_ROOT/usr/share/plasma/plasmoids/com.github.loofi.hardwarepulse/metadata.json"
+          mkdir -p build/dist
+          (cd package && zip -r "../build/dist/com.github.loofi.hardwarepulse.plasmoid" metadata.json contents/)
+          test -s build/dist/com.github.loofi.hardwarepulse.plasmoid
+
