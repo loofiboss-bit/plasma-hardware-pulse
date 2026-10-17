@@ -34,6 +34,7 @@ set(PULSECORE_PORTABLE_TESTS
     testHistoryAndReportsSkipUnavailableValues
     testJsonReportHasVersionQualityAndRecordedChannels
     testVerdictStabilityAndImmediateUnknown
+    testCpuHwmonPowerAndDiskStatsThroughput
 )
 foreach(test_name IN LISTS PULSECORE_PORTABLE_TESTS)
     add_test(NAME pulsecore_${test_name} COMMAND test_pulsecore ${test_name})

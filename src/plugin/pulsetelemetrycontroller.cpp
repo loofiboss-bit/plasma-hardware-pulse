@@ -263,10 +263,11 @@ QVariantMap PulseTelemetryController::metricMetadata() const
                                                           QStringLiteral("/proc/meminfo MemTotal and MemAvailable")));
     result.insert(QStringLiteral("zram"), metric(m_psiMem.zramActive ? QStringLiteral("available") : QStringLiteral("not-active"),
                                                     QStringLiteral("/sys/block/zram*/mm_stat")));
-    result.insert(QStringLiteral("packagePower"), metric(m_power.raplExactAvailable ? QStringLiteral("available")
+    result.insert(QStringLiteral("packagePower"), metric((m_power.raplExactAvailable || m_power.hwmonPowerAvailable) ? QStringLiteral("available")
                                                                  : (m_power.packagePowerEstimated ? QStringLiteral("estimated") : QStringLiteral("unavailable")),
                                                            m_power.raplExactAvailable ? QStringLiteral("Intel RAPL energy_uj")
-                                                                                      : QStringLiteral("Estimated from CPU load and frequency")));
+                                                                                      : (m_power.hwmonPowerAvailable ? QStringLiteral("/sys/class/hwmon power*_input")
+                                                                                                                     : QStringLiteral("Estimated from CPU load and frequency"))));
     result.insert(QStringLiteral("fanSpeed"), metric(m_power.fanAvailable ? QStringLiteral("available") : QStringLiteral("unavailable"),
                                                        QStringLiteral("/sys/class/hwmon fan*_input")));
     result.insert(QStringLiteral("battery"), metric(!m_power.batteryStateAvailable ? QStringLiteral("unavailable")

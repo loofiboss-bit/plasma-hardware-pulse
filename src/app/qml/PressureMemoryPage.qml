@@ -147,6 +147,16 @@ Kirigami.ScrollablePage {
                         font.bold: true
                     }
                     QQC2.Label {
+                        visible: psiPage.controller.diskThroughputAvailable
+                        text: "Disk throughput: " + psiPage.controller.diskReadMibPerSec.toFixed(1) + " MiB/s read · "
+                              + psiPage.controller.diskWriteMibPerSec.toFixed(1) + " MiB/s write"
+                        color: Kirigami.Theme.highlightColor
+                        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                        font.bold: true
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
+                    }
+                    QQC2.Label {
                         text: "Indicates when threads are blocked waiting for synchronous NVMe/disk transactions."
                         color: Kirigami.Theme.textColor
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize

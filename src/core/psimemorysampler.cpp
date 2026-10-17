@@ -22,6 +22,9 @@ void PsiMemorySampler::setRootConfig(const SysfsRootConfig &config)
     m_prevCpuSomeUs = 0;
     m_prevMemSomeUs = 0;
     m_prevIoSomeUs = 0;
+    m_prevDiskReadSectors = 0;
+    m_prevDiskWriteSectors = 0;
+    m_hasPrevDiskStats = false;
 }
 
 PsiMetric PsiMemorySampler::parsePsiContent(const QString &content, quint64 prevTotalUs, qint64 elapsedMs)
@@ -122,6 +125,9 @@ PsiAndMemorySnapshot PsiMemorySampler::sample(qint64 elapsedMs)
         m_prevCpuSomeUs = 0;
         m_prevMemSomeUs = 0;
         m_prevIoSomeUs = 0;
+        m_prevDiskReadSectors = 0;
+        m_prevDiskWriteSectors = 0;
+        m_hasPrevDiskStats = false;
     }
 
     snap.cpuPsi = parsePsiContent(cpuPsiText, m_prevCpuSomeUs, elapsedMs);
@@ -138,6 +144,54 @@ PsiAndMemorySnapshot PsiMemorySampler::sample(qint64 elapsedMs)
     updateCounter(snap.cpuPsi, m_prevCpuSomeUs);
     updateCounter(snap.memoryPsi, m_prevMemSomeUs);
     updateCounter(snap.ioPsi, m_prevIoSomeUs);
+
+    // Parse /proc/diskstats for whole physical block devices (nvme*n*, sd[a-z]+, vd[a-z]+, mmcblk[0-9]+)
+    const QString diskStatsText = readWholeText(procDir.filePath(QStringLiteral("diskstats")));
+    if (!diskStatsText.isEmpty()) {
+        static const QRegularExpression wholeDiskRe(QStringLiteral("^(nvme\\d+n\\d+|sd[a-z]+|vd[a-z]+|mmcblk\\d+)$"));
+        quint64 totalReadSectors = 0;
+        quint64 totalWriteSectors = 0;
+        bool foundDisk = false;
+        const QStringList diskLines = diskStatsText.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+        for (const QString &dLine : diskLines) {
+            const QStringList cols = dLine.split(QLatin1Char(' '), Qt::SkipEmptyParts);
+            if (cols.size() < 10) {
+                continue;
+            }
+            const QString devName = cols.at(2);
+            if (!wholeDiskRe.match(devName).hasMatch()) {
+                continue;
+            }
+            bool rOk = false;
+            bool wOk = false;
+            const quint64 rSec = cols.at(5).toULongLong(&rOk);
+            const quint64 wSec = cols.at(9).toULongLong(&wOk);
+            if (rOk && wOk) {
+                totalReadSectors += rSec;
+                totalWriteSectors += wSec;
+                foundDisk = true;
+            }
+        }
+        if (foundDisk) {
+            if (m_hasPrevDiskStats && elapsedMs > 50
+                && totalReadSectors >= m_prevDiskReadSectors
+                && totalWriteSectors >= m_prevDiskWriteSectors) {
+                const double dtSec = static_cast<double>(elapsedMs) / 1000.0;
+                const double readBytes = static_cast<double>(totalReadSectors - m_prevDiskReadSectors) * 512.0;
+                const double writeBytes = static_cast<double>(totalWriteSectors - m_prevDiskWriteSectors) * 512.0;
+                snap.diskReadMibPerSec = std::clamp((readBytes / (1024.0 * 1024.0)) / dtSec, 0.0, 20000.0);
+                snap.diskWriteMibPerSec = std::clamp((writeBytes / (1024.0 * 1024.0)) / dtSec, 0.0, 20000.0);
+                snap.diskThroughputAvailable = true;
+            }
+            m_prevDiskReadSectors = totalReadSectors;
+            m_prevDiskWriteSectors = totalWriteSectors;
+            m_hasPrevDiskStats = true;
+        } else {
+            m_hasPrevDiskStats = false;
+        }
+    } else {
+        m_hasPrevDiskStats = false;
+    }
 
     // Parse /proc/meminfo
     const QString memInfoText = readWholeText(procDir.filePath(QStringLiteral("meminfo")));

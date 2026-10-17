@@ -264,9 +264,15 @@ GpuSnapshot CpuSocSampler::sampleGpu(const QList<DomainSensorReading> &domainRea
         if (!actOk) {
             actMhz = static_cast<int>(SysfsReader::readInt64(cardDir.filePath(QStringLiteral("gt/gt0/rps_act_freq_mhz")), 0, &actOk));
         }
+        if (!actOk) {
+            actMhz = static_cast<int>(SysfsReader::readInt64(cardDir.filePath(QStringLiteral("device/tile0/gt0/freq0/act_freq")), 0, &actOk));
+        }
         int boostMhz = static_cast<int>(SysfsReader::readInt64(cardDir.filePath(QStringLiteral("gt_boost_freq_mhz")), 0));
         if (boostMhz <= 0) {
             boostMhz = static_cast<int>(SysfsReader::readInt64(cardDir.filePath(QStringLiteral("gt_max_freq_mhz")), 0));
+        }
+        if (boostMhz <= 0) {
+            boostMhz = static_cast<int>(SysfsReader::readInt64(cardDir.filePath(QStringLiteral("device/tile0/gt0/freq0/max_freq")), 0));
         }
 
         bool busyOk = false;

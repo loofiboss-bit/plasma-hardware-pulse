@@ -153,24 +153,33 @@ PowerFlowSnapshot PowerFlowSampler::sample(qint64 elapsedMs, double cpuLoadPerce
         m_hasPrevRapl = false;
     }
 
-    // Fallback estimation if RAPL energy_uj is root-only (0400)
-    if (!snap.raplExactAvailable && cpuLoadPercent >= 0.0 && cpuLoadPercent <= 100.0 && maxFreqMhz > 0 && avgFreqMhz > 0) {
-        const double pl1 = (snap.pl1LimitWatts > 1.0) ? snap.pl1LimitWatts : 28.0;
-        const double freqRatio = (maxFreqMhz > 0 && avgFreqMhz > 0)
-            ? std::clamp(static_cast<double>(avgFreqMhz) / static_cast<double>(maxFreqMhz), 0.25, 1.0)
-            : 0.5;
-        const double loadFactor = std::clamp(cpuLoadPercent / 100.0, 0.02, 1.0);
-        snap.packageWatts = std::clamp(2.2 + pl1 * loadFactor * freqRatio * 0.85, 1.5, pl1 * 1.4);
-        snap.packagePowerAvailable = true;
-        snap.packagePowerEstimated = true;
-    }
-
-    // Scan hwmon for fan*_input RPM
+    // Scan hwmon for CPU package power (if RAPL unavailable) and fan*_input RPM
     const QDir hwmonRoot(QDir(m_config.sysRoot).filePath(QStringLiteral("class/hwmon")));
     if (hwmonRoot.exists()) {
         const QStringList hwmonDirs = hwmonRoot.entryList(QStringList{QStringLiteral("hwmon*")}, QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
         for (const QString &dirName : hwmonDirs) {
             const QDir chipDir(hwmonRoot.filePath(dirName));
+            const QString chipName = SysfsReader::readTrimmedLine(chipDir.filePath(QStringLiteral("name"))).toLower();
+            const bool isCpuChip = chipName.contains(QStringLiteral("k10temp"))
+                || chipName.contains(QStringLiteral("zenpower"))
+                || chipName.contains(QStringLiteral("amd_energy"))
+                || chipName.contains(QStringLiteral("fam15h_power"))
+                || chipName.contains(QStringLiteral("coretemp"));
+
+            if (!snap.raplExactAvailable && !snap.hwmonPowerAvailable && isCpuChip) {
+                for (const QString &powerFile : {QStringLiteral("power1_average"), QStringLiteral("power1_input")}) {
+                    bool pOk = false;
+                    const double watts = SysfsReader::readScaledDouble(chipDir.filePath(powerFile), 1000000.0, 0.0, &pOk);
+                    if (pOk && watts > 0.0 && watts <= 500.0) {
+                        snap.packageWatts = watts;
+                        snap.hwmonPowerAvailable = true;
+                        snap.packagePowerAvailable = true;
+                        snap.packagePowerEstimated = false;
+                        break;
+                    }
+                }
+            }
+
             const QStringList fanFiles = chipDir.entryList(QStringList{QStringLiteral("fan*_input")}, QDir::Files, QDir::Name);
             for (const QString &fanFile : fanFiles) {
                 bool fOk = false;
@@ -181,6 +190,18 @@ PowerFlowSnapshot PowerFlowSampler::sample(qint64 elapsedMs, double cpuLoadPerce
                 }
             }
         }
+    }
+
+    // Fallback estimation if neither RAPL nor CPU hwmon power is readable
+    if (!snap.raplExactAvailable && !snap.hwmonPowerAvailable && cpuLoadPercent >= 0.0 && cpuLoadPercent <= 100.0 && maxFreqMhz > 0 && avgFreqMhz > 0) {
+        const double pl1 = (snap.pl1LimitWatts > 1.0) ? snap.pl1LimitWatts : 28.0;
+        const double freqRatio = (maxFreqMhz > 0 && avgFreqMhz > 0)
+            ? std::clamp(static_cast<double>(avgFreqMhz) / static_cast<double>(maxFreqMhz), 0.25, 1.0)
+            : 0.5;
+        const double loadFactor = std::clamp(cpuLoadPercent / 100.0, 0.02, 1.0);
+        snap.packageWatts = std::clamp(2.2 + pl1 * loadFactor * freqRatio * 0.85, 1.5, pl1 * 1.4);
+        snap.packagePowerAvailable = true;
+        snap.packagePowerEstimated = true;
     }
 
     return snap;
