@@ -13,7 +13,40 @@ Item {
     Layout.minimumWidth: Kirigami.Units.gridUnit * 16
     Layout.preferredWidth: Kirigami.Units.gridUnit * 26
     Layout.minimumHeight: Kirigami.Units.gridUnit * 20
-    Layout.preferredHeight: Kirigami.Units.gridUnit * 27
+    Layout.preferredHeight: Kirigami.Units.gridUnit * 28
+
+    readonly property bool isDark: {
+        var c = Kirigami.Theme.backgroundColor
+        return (0.299 * c.r + 0.587 * c.g + 0.114 * c.b) < 0.5
+    }
+
+    readonly property color cardSurface: isDark
+        ? Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(1, 1, 1, 0.055))
+        : Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(0, 0, 0, 0.035))
+    readonly property color cardHoverSurface: isDark
+        ? Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(1, 1, 1, 0.095))
+        : Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(0, 0, 0, 0.065))
+    readonly property color cardBorder: isDark
+        ? Qt.rgba(1, 1, 1, 0.12)
+        : Qt.rgba(0, 0, 0, 0.12)
+    readonly property color trackBg: isDark
+        ? Qt.rgba(1, 1, 1, 0.10)
+        : Qt.rgba(0, 0, 0, 0.09)
+
+    readonly property color tempAccent: isDark ? "#fb923c" : "#d97706"
+    readonly property color cpuAccent: isDark ? "#38bdf8" : "#0284c7"
+    readonly property color psiAccent: isDark ? "#34d399" : "#059669"
+    readonly property color powerAccent: isDark ? "#a78bfa" : "#7c3aed"
+    readonly property color gpuAccent: isDark ? "#f472b6" : "#db2777"
+
+    function channelColor(key) {
+        if (key === "temp") return tempAccent
+        if (key === "cpu") return cpuAccent
+        if (key === "psi") return psiAccent
+        if (key === "power") return powerAccent
+        if (key === "gpu") return gpuAccent
+        return cpuAccent
+    }
 
     function severityColor(sev) {
         if (sev === 4) return Kirigami.Theme.disabledTextColor
@@ -21,6 +54,11 @@ Item {
         if (sev === 2) return Kirigami.Theme.negativeTextColor
         if (sev === 1) return Kirigami.Theme.neutralTextColor
         return Kirigami.Theme.positiveTextColor
+    }
+
+    function severityBgColor(sev) {
+        var c = severityColor(sev)
+        return Qt.rgba(c.r, c.g, c.b, isDark ? 0.13 : 0.08)
     }
 
     function severityBadgeText(sev) {
@@ -65,11 +103,41 @@ Item {
             // Header Row
             ColumnLayout {
                 Layout.fillWidth: true
+                spacing: Kirigami.Units.smallSpacing
 
-                Kirigami.Heading {
-                    level: 3
-                    text: "Loofi Pulse"
+                RowLayout {
                     Layout.fillWidth: true
+                    spacing: 8
+
+                    Kirigami.Icon {
+                        source: "utilities-system-monitor"
+                        Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
+                        Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium
+                    }
+
+                    Kirigami.Heading {
+                        level: 3
+                        text: "Loofi Pulse"
+                        Layout.fillWidth: true
+                    }
+
+                    Rectangle {
+                        visible: fullRoot.controller.activePowerProfile.length > 0
+                        radius: 5
+                        color: fullRoot.cardSurface
+                        border.width: 1
+                        border.color: fullRoot.cardBorder
+                        implicitWidth: profBadge.implicitWidth + 12
+                        implicitHeight: profBadge.implicitHeight + 4
+
+                        PlasmaComponents3.Label {
+                            id: profBadge
+                            anchors.centerIn: parent
+                            text: fullRoot.controller.activePowerProfile
+                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                            font.bold: true
+                        }
+                    }
                 }
 
                 Flow {
@@ -130,15 +198,21 @@ Item {
                 Layout.fillWidth: true
                 implicitHeight: verdictCol.implicitHeight + Kirigami.Units.largeSpacing * 2
                 radius: 10
-                color: Kirigami.Theme.backgroundColor
+                color: fullRoot.cardSurface
                 border.width: 1.5
                 border.color: fullRoot.severityColor(fullRoot.controller.verdictSeverity)
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 10
+                    color: fullRoot.severityBgColor(fullRoot.controller.verdictSeverity)
+                }
 
                 ColumnLayout {
                     id: verdictCol
                     anchors.fill: parent
                     anchors.margins: Kirigami.Units.largeSpacing
-                    spacing: 4
+                    spacing: 5
 
                     RowLayout {
                         Layout.fillWidth: true
@@ -149,11 +223,21 @@ Item {
                             radius: 5
                             color: fullRoot.severityColor(fullRoot.controller.verdictSeverity)
                         }
-                        PlasmaComponents3.Label {
-                            text: fullRoot.severityBadgeText(fullRoot.controller.verdictSeverity)
-                            color: fullRoot.severityColor(fullRoot.controller.verdictSeverity)
-                            font.bold: true
-                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                        Rectangle {
+                            radius: 4
+                            color: fullRoot.severityBgColor(fullRoot.controller.verdictSeverity)
+                            border.width: 1
+                            border.color: fullRoot.severityColor(fullRoot.controller.verdictSeverity)
+                            implicitWidth: sevPillLbl.implicitWidth + 10
+                            implicitHeight: sevPillLbl.implicitHeight + 3
+                            PlasmaComponents3.Label {
+                                id: sevPillLbl
+                                anchors.centerIn: parent
+                                text: fullRoot.severityBadgeText(fullRoot.controller.verdictSeverity)
+                                color: fullRoot.severityColor(fullRoot.controller.verdictSeverity)
+                                font.bold: true
+                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                            }
                         }
                         PlasmaComponents3.Label {
                             Layout.fillWidth: true
@@ -168,7 +252,7 @@ Item {
                         text: fullRoot.controller.verdictCausalChain
                         font.family: Kirigami.Theme.defaultFont.family
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                        opacity: 0.9
+                        opacity: 0.92
                         wrapMode: Text.WordWrap
                     }
 
@@ -176,282 +260,261 @@ Item {
                         Layout.fillWidth: true
                         text: "Next step: " + fullRoot.controller.verdictRecommendation
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                        opacity: 0.75
+                        opacity: 0.78
                         wrapMode: Text.WordWrap
                     }
                 }
             }
 
-            // 2. Physical Domain Cards Grid (2x2) with deep-link buttons
+            // 2. Physical Domain Cards Grid (2x2) — Full card clickable with progress bars
             GridLayout {
                 Layout.fillWidth: true
-                columns: width >= Kirigami.Units.gridUnit * 25 ? 2 : 1
+                columns: width >= Kirigami.Units.gridUnit * 24 ? 2 : 1
                 rowSpacing: Kirigami.Units.smallSpacing
                 columnSpacing: Kirigami.Units.smallSpacing
 
-                // CPU & SoC Card
-                Rectangle {
-                    Layout.fillWidth: true
-                    implicitHeight: cpuCardColumn.implicitHeight + Kirigami.Units.mediumSpacing * 2
-                    radius: 8
-                    color: Kirigami.Theme.alternateBackgroundColor
-                    border.width: 1
-                    border.color: Kirigami.Theme.alternateBackgroundColor
+                Repeater {
+                    model: [
+                        {
+                            title: "CPU & SoC Package",
+                            targetPage: "power",
+                            accessibleName: "Open CPU and Power details",
+                            accentKey: "cpu",
+                            headline: (fullRoot.controller.cpuTempAvailable ? Math.round(fullRoot.controller.cpuPackageTemp) + "°C" : "Temp unavailable")
+                                      + "  •  " + (fullRoot.controller.cpuLoadAvailable ? Math.round(fullRoot.controller.cpuLoadPercent) + "%" : "Load unavailable"),
+                            subtitle: "Thermal margin: "
+                                      + (fullRoot.controller.thermalHeadroomAvailable ? Math.round(fullRoot.controller.thermalHeadroom) + "°C" : "Unavailable")
+                                      + (fullRoot.controller.cpuAvgFreqMhz > 0 ? " · " + fullRoot.controller.cpuAvgFreqMhz + " MHz" : ""),
+                            ratio: fullRoot.controller.cpuLoadAvailable
+                                   ? Math.min(1.0, Math.max(0.0, fullRoot.controller.cpuLoadPercent / 100.0)) : 0.0,
+                            barVisible: fullRoot.controller.cpuLoadAvailable
+                        },
+                        {
+                            title: "Memory, Disk I/O & Pressure",
+                            targetPage: "pressure",
+                            accessibleName: "Open Memory and Pressure details",
+                            accentKey: "psi",
+                            headline: "Pressure index: " + (fullRoot.controller.psiAvailable ? fullRoot.controller.responsivenessScore.toFixed(1) + "%" : "Unavailable")
+                                      + " · ZRAM: " + (fullRoot.controller.zramCompressionAvailable
+                                      ? fullRoot.controller.zramCompressionRatio.toFixed(1) + "×"
+                                      : (fullRoot.controller.zramAvailable ? "Idle" : "Unavailable")),
+                            subtitle: "Wait · CPU " + (fullRoot.controller.psiCpuAvailable ? fullRoot.controller.psiCpuSome10.toFixed(1) + "%" : "N/A")
+                                      + " · Mem " + (fullRoot.controller.psiMemoryAvailable ? fullRoot.controller.psiMemSome10.toFixed(1) + "%" : "N/A")
+                                      + (fullRoot.controller.diskThroughputAvailable
+                                         ? " · Disk " + Number(fullRoot.controller.diskReadMibPerSec + fullRoot.controller.diskWriteMibPerSec).toFixed(1) + " MiB/s"
+                                         : " · I/O " + (fullRoot.controller.psiIoFullAvailable ? fullRoot.controller.psiIoFull10.toFixed(1) + "%" : "N/A")),
+                            ratio: fullRoot.controller.psiAvailable
+                                   ? Math.min(1.0, Math.max(0.0, fullRoot.controller.responsivenessScore / 100.0)) : 0.0,
+                            barVisible: fullRoot.controller.psiAvailable
+                        },
+                        {
+                            title: "GPU, NVMe & Wireless",
+                            targetPage: "power",
+                            accessibleName: "Open GPU and sensor details",
+                            accentKey: "gpu",
+                            headline: "GPU " + (fullRoot.controller.gpuBusyAvailable ? Math.round(fullRoot.controller.gpuBusyPercent) + "%" : "N/A")
+                                      + (fullRoot.controller.gpuTempAvailable ? " (" + Math.round(fullRoot.controller.gpuTempCelsius) + "°C)" : "")
+                                      + (fullRoot.controller.gpuFrequencyAvailable ? " · " + fullRoot.controller.gpuCurrentFreqMhz + " MHz" : ""),
+                            subtitle: "NVMe " + (fullRoot.controller.nvmeTempAvailable ? Math.round(fullRoot.controller.nvmeTempCelsius) + "°C" : "Unavailable")
+                                      + " · Wi-Fi " + (fullRoot.controller.wifiTempAvailable ? Math.round(fullRoot.controller.wifiTempCelsius) + "°C" : "Unavailable"),
+                            ratio: fullRoot.controller.gpuBusyAvailable
+                                   ? Math.min(1.0, Math.max(0.0, fullRoot.controller.gpuBusyPercent / 100.0)) : 0.0,
+                            barVisible: fullRoot.controller.gpuBusyAvailable
+                        },
+                        {
+                            title: "Energy Flow & Envelope",
+                            targetPage: "power",
+                            accessibleName: "Open Power and Cooling details",
+                            accentKey: "power",
+                            headline: (fullRoot.controller.packagePowerAvailable
+                                       ? fullRoot.controller.packageWatts.toFixed(1) + " W" + (fullRoot.controller.packagePowerEstimated ? " · Est." : " · Measured")
+                                       : "Power unavailable") + "  •  "
+                                      + (fullRoot.controller.batteryStateAvailable ? fullRoot.controller.batteryTimeRemainingText : "Battery unavailable"),
+                            subtitle: "Power limits: " + (fullRoot.controller.powerLimitsAvailable
+                                      ? Math.round(fullRoot.controller.pl1LimitWatts) + "/" + Math.round(fullRoot.controller.pl2LimitWatts) + " W"
+                                      : "Unavailable") + " · Fan: "
+                                      + (fullRoot.controller.fanAvailable ? (fullRoot.controller.primaryFanRpm + " RPM") : "Fan unavailable"),
+                            ratio: fullRoot.controller.packagePowerAvailable
+                                   ? Math.min(1.0, Math.max(0.0, fullRoot.controller.packageWatts / Math.max(25.0, fullRoot.controller.pl1LimitWatts > 0 ? fullRoot.controller.pl1LimitWatts : 45.0))) : 0.0,
+                            barVisible: fullRoot.controller.packagePowerAvailable
+                        }
+                    ]
 
-                    ColumnLayout {
-                        id: cpuCardColumn
-                        anchors.fill: parent
-                        anchors.margins: Kirigami.Units.mediumSpacing
-                        spacing: 2
+                    delegate: Rectangle {
+                        id: domCard
+                        required property var modelData
+                        readonly property color accentColor: fullRoot.channelColor(domCard.modelData.accentKey)
+                        property bool hovered: false
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        implicitHeight: domCardCol.implicitHeight + Kirigami.Units.mediumSpacing * 2
+                        radius: 10
+                        color: domCard.hovered ? fullRoot.cardHoverSurface : fullRoot.cardSurface
+                        border.width: domCard.hovered ? 1.5 : 1
+                        border.color: domCard.hovered ? domCard.accentColor : fullRoot.cardBorder
 
-                        RowLayout {
-                            Layout.fillWidth: true
-                            PlasmaComponents3.Label {
-                                text: "CPU & SoC Package"
-                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                                opacity: 0.75
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onEntered: domCard.hovered = true
+                            onExited: domCard.hovered = false
+                            onClicked: fullRoot.controller.launchStudioApp(domCard.modelData.targetPage)
+                        }
+
+                        ColumnLayout {
+                            id: domCardCol
+                            anchors.fill: parent
+                            anchors.margins: Kirigami.Units.mediumSpacing
+                            spacing: 4
+
+                            RowLayout {
                                 Layout.fillWidth: true
+                                spacing: 6
+
+                                Rectangle {
+                                    Layout.preferredWidth: 8
+                                    Layout.preferredHeight: 8
+                                    radius: 4
+                                    color: domCard.accentColor
+                                }
+
+                                PlasmaComponents3.Label {
+                                    text: domCard.modelData.title
+                                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                                    font.bold: true
+                                    opacity: 0.8
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                }
+
+                                PlasmaComponents3.ToolButton {
+                                    icon.name: "go-next"
+                                    display: PlasmaComponents3.AbstractButton.IconOnly
+                                    Accessible.name: domCard.modelData.accessibleName
+                                    onClicked: fullRoot.controller.launchStudioApp(domCard.modelData.targetPage)
+                                }
                             }
-                            PlasmaComponents3.ToolButton {
-                                icon.name: "go-next"
-                                display: PlasmaComponents3.AbstractButton.IconOnly
-                                Accessible.name: "Open CPU and Power details"
-                                onClicked: fullRoot.controller.launchStudioApp("power")
-                            }
-                        }
-                        PlasmaComponents3.Label {
-                            Layout.fillWidth: true
-                            wrapMode: Text.WordWrap
-                            text: (fullRoot.controller.cpuTempAvailable ? Math.round(fullRoot.controller.cpuPackageTemp) + "°C" : "Temp unavailable") + "  •  "
-                                  + (fullRoot.controller.cpuLoadAvailable ? Math.round(fullRoot.controller.cpuLoadPercent) + "%" : "Load unavailable")
-                            font.bold: true
-                            font.pixelSize: Kirigami.Theme.defaultFont.pixelSize + 2
-                        }
-                        PlasmaComponents3.Label {
-                            Layout.fillWidth: true
-                            wrapMode: Text.WordWrap
-                            text: "Thermal margin: "
-                                  + (fullRoot.controller.thermalHeadroomAvailable ? Math.round(fullRoot.controller.thermalHeadroom) + "°C" : "Unavailable")
-                                  + (fullRoot.controller.cpuAvgFreqMhz > 0 ? " · " + fullRoot.controller.cpuAvgFreqMhz + " MHz" : "")
-                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                            opacity: 0.8
-                        }
-                    }
-                }
 
-                // PSI & ZRAM Card
-                Rectangle {
-                    Layout.fillWidth: true
-                    implicitHeight: pressureCardColumn.implicitHeight + Kirigami.Units.mediumSpacing * 2
-                    radius: 8
-                    color: Kirigami.Theme.alternateBackgroundColor
-                    border.width: 1
-                    border.color: Kirigami.Theme.alternateBackgroundColor
-
-                    ColumnLayout {
-                        id: pressureCardColumn
-                        anchors.fill: parent
-                        anchors.margins: Kirigami.Units.mediumSpacing
-                        spacing: 2
-
-                        RowLayout {
-                            Layout.fillWidth: true
                             PlasmaComponents3.Label {
-                                text: "Memory, Disk I/O & Pressure"
-                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                                opacity: 0.75
                                 Layout.fillWidth: true
+                                wrapMode: Text.WordWrap
+                                text: domCard.modelData.headline
+                                font.bold: true
+                                font.pixelSize: Kirigami.Theme.defaultFont.pixelSize + 1
                             }
-                            PlasmaComponents3.ToolButton {
-                                icon.name: "go-next"
-                                display: PlasmaComponents3.AbstractButton.IconOnly
-                                Accessible.name: "Open Memory and Pressure details"
-                                onClicked: fullRoot.controller.launchStudioApp("pressure")
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 5
+                                radius: 2.5
+                                color: fullRoot.trackBg
+
+                                Rectangle {
+                                    visible: domCard.modelData.barVisible
+                                    width: parent.width * domCard.modelData.ratio
+                                    height: parent.height
+                                    radius: 2.5
+                                    color: domCard.accentColor
+                                }
                             }
-                        }
-                        PlasmaComponents3.Label {
-                            Layout.fillWidth: true
-                            wrapMode: Text.WordWrap
-                            text: "Pressure index: " + (fullRoot.controller.psiAvailable ? fullRoot.controller.responsivenessScore.toFixed(1) + "%" : "Unavailable")
-                                  + " · ZRAM: " + (fullRoot.controller.zramCompressionAvailable
-                                  ? fullRoot.controller.zramCompressionRatio.toFixed(1) + "×"
-                                  : (fullRoot.controller.zramAvailable ? "Idle" : "Unavailable"))
-                            font.bold: true
-                            font.pixelSize: Kirigami.Theme.defaultFont.pixelSize + 2
-                        }
-                        PlasmaComponents3.Label {
-                            Layout.fillWidth: true
-                            wrapMode: Text.WordWrap
-                            text: "Wait · CPU " + (fullRoot.controller.psiCpuAvailable ? fullRoot.controller.psiCpuSome10.toFixed(1) + "%" : "N/A")
-                                  + " · Mem " + (fullRoot.controller.psiMemoryAvailable ? fullRoot.controller.psiMemSome10.toFixed(1) + "%" : "N/A")
-                                  + (fullRoot.controller.diskThroughputAvailable
-                                     ? " · Disk " + Number(fullRoot.controller.diskReadMibPerSec + fullRoot.controller.diskWriteMibPerSec).toFixed(1) + " MiB/s"
-                                     : " · I/O " + (fullRoot.controller.psiIoFullAvailable ? fullRoot.controller.psiIoFull10.toFixed(1) + "%" : "N/A"))
-                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                            opacity: 0.8
-                        }
-                    }
-                }
 
-                // Storage, Wireless & GPU Thermal Card
-                Rectangle {
-                    Layout.fillWidth: true
-                    implicitHeight: deviceCardColumn.implicitHeight + Kirigami.Units.mediumSpacing * 2
-                    radius: 8
-                    color: Kirigami.Theme.alternateBackgroundColor
-                    border.width: 1
-                    border.color: Kirigami.Theme.alternateBackgroundColor
-
-                    ColumnLayout {
-                        id: deviceCardColumn
-                        anchors.fill: parent
-                        anchors.margins: Kirigami.Units.mediumSpacing
-                        spacing: 2
-
-                        RowLayout {
-                            Layout.fillWidth: true
                             PlasmaComponents3.Label {
-                                text: "GPU, NVMe & Wireless"
-                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                                opacity: 0.75
                                 Layout.fillWidth: true
-                            }
-                            PlasmaComponents3.ToolButton {
-                                icon.name: "go-next"
-                                display: PlasmaComponents3.AbstractButton.IconOnly
-                                Accessible.name: "Open GPU and sensor details"
-                                onClicked: fullRoot.controller.launchStudioApp("power")
-                            }
-                        }
-                        PlasmaComponents3.Label {
-                            Layout.fillWidth: true
-                            wrapMode: Text.WordWrap
-                            text: "GPU " + (fullRoot.controller.gpuBusyAvailable ? Math.round(fullRoot.controller.gpuBusyPercent) + "%" : "N/A")
-                                  + (fullRoot.controller.gpuTempAvailable ? " (" + Math.round(fullRoot.controller.gpuTempCelsius) + "°C)" : "")
-                                  + (fullRoot.controller.gpuFrequencyAvailable ? " · " + fullRoot.controller.gpuCurrentFreqMhz + " MHz" : "")
-                            font.bold: true
-                            font.pixelSize: Kirigami.Theme.defaultFont.pixelSize + 1
-                        }
-                        PlasmaComponents3.Label {
-                            Layout.fillWidth: true
-                            wrapMode: Text.WordWrap
-                            text: "NVMe " + (fullRoot.controller.nvmeTempAvailable ? Math.round(fullRoot.controller.nvmeTempCelsius) + "°C" : "Unavailable")
-                                  + " · Wi-Fi " + (fullRoot.controller.wifiTempAvailable ? Math.round(fullRoot.controller.wifiTempCelsius) + "°C" : "Unavailable")
-                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                            opacity: 0.8
-                        }
-                    }
-                }
-
-                // Energy Flow Card
-                Rectangle {
-                    Layout.fillWidth: true
-                    implicitHeight: powerCardColumn.implicitHeight + Kirigami.Units.mediumSpacing * 2
-                    radius: 8
-                    color: Kirigami.Theme.alternateBackgroundColor
-                    border.width: 1
-                    border.color: Kirigami.Theme.alternateBackgroundColor
-
-                    ColumnLayout {
-                        id: powerCardColumn
-                        anchors.fill: parent
-                        anchors.margins: Kirigami.Units.mediumSpacing
-                        spacing: 2
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            PlasmaComponents3.Label {
-                                text: "Energy Flow & Envelope"
+                                wrapMode: Text.WordWrap
+                                text: domCard.modelData.subtitle
                                 font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                                opacity: 0.75
-                                Layout.fillWidth: true
+                                opacity: 0.8
                             }
-                            PlasmaComponents3.ToolButton {
-                                icon.name: "go-next"
-                                display: PlasmaComponents3.AbstractButton.IconOnly
-                                Accessible.name: "Open Power and Cooling details"
-                                onClicked: fullRoot.controller.launchStudioApp("power")
-                            }
-                        }
-                        PlasmaComponents3.Label {
-                            Layout.fillWidth: true
-                            wrapMode: Text.WordWrap
-                            text: (fullRoot.controller.packagePowerAvailable ? fullRoot.controller.packageWatts.toFixed(1) + " W" + (fullRoot.controller.packagePowerEstimated ? " · Est." : " · Measured") : "Power unavailable") + "  •  "
-                                  + (fullRoot.controller.batteryStateAvailable ? fullRoot.controller.batteryTimeRemainingText : "Battery unavailable")
-                            font.bold: true
-                            font.pixelSize: Kirigami.Theme.defaultFont.pixelSize + 2
-                        }
-                        PlasmaComponents3.Label {
-                            Layout.fillWidth: true
-                            wrapMode: Text.WordWrap
-                            text: "Power limits: " + (fullRoot.controller.powerLimitsAvailable
-                                  ? Math.round(fullRoot.controller.pl1LimitWatts) + "/" + Math.round(fullRoot.controller.pl2LimitWatts) + " W"
-                                  : "Unavailable") + " · Fan: "
-                                  + (fullRoot.controller.fanAvailable ? (fullRoot.controller.primaryFanRpm + " RPM") : "Fan unavailable")
-                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                            opacity: 0.8
                         }
                     }
                 }
             }
 
-            // 3. Mini Live Sparkline (Temperature & Load)
+            // 3. Collision-Free Mini Live Sparkline (Dedicated header above Canvas)
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: Kirigami.Units.gridUnit * 5
-                radius: 8
-                color: Kirigami.Theme.alternateBackgroundColor
+                implicitHeight: sparkCol.implicitHeight + 16
+                radius: 10
+                color: fullRoot.cardSurface
                 border.width: 1
-                border.color: Kirigami.Theme.alternateBackgroundColor
+                border.color: fullRoot.cardBorder
 
-                Canvas {
-                    id: miniSparkCanvas
+                ColumnLayout {
+                    id: sparkCol
                     anchors.fill: parent
                     anchors.margins: 8
+                    spacing: 4
 
-                    Connections {
-                        target: fullRoot.controller
-                        function onTelemetryUpdated() {
-                            miniSparkCanvas.requestPaint()
+                    RowLayout {
+                        Layout.fillWidth: true
+                        PlasmaComponents3.Label {
+                            text: "CPU temperature · last 5 minutes · 30–100°C"
+                            font: Kirigami.Theme.smallFont
+                            opacity: 0.8
+                            Layout.fillWidth: true
+                        }
+                        PlasmaComponents3.Label {
+                            text: fullRoot.controller.cpuTempAvailable
+                                  ? Math.round(fullRoot.controller.cpuPackageTemp) + "°C now"
+                                  : ""
+                            font.bold: true
+                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                            color: fullRoot.tempAccent
                         }
                     }
 
-                    onPaint: {
-                        const ctx = getContext("2d")
-                        ctx.clearRect(0, 0, width, height)
-                        const samples = fullRoot.controller.historySamples
-                        if (!samples || samples.length < 2) return
+                    Canvas {
+                        id: miniSparkCanvas
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Kirigami.Units.gridUnit * 3.5
 
-                        const firstTime = samples[0].monotonicMs
-                        const duration = Math.max(1, samples[samples.length - 1].monotonicMs - firstTime)
-                        ctx.lineWidth = 2
-                        ctx.strokeStyle = Kirigami.Theme.highlightColor
-                        ctx.beginPath()
-                        let drawing = false
-                        for (let i = 0; i < samples.length; ++i) {
-                            const sample = samples[i]
-                            if (!sample.cpuTempAvailable) {
-                                drawing = false
-                                continue
+                        Connections {
+                            target: fullRoot.controller
+                            function onTelemetryUpdated() {
+                                miniSparkCanvas.requestPaint()
                             }
-                            const x = (sample.monotonicMs - firstTime) / duration * width
-                            const tempNorm = Math.min(1, Math.max(0, (sample.cpuTemp - 30) / 70))
-                            const y = height - (tempNorm * (height - 8)) - 4
-                            if (!drawing || sample.gapBefore) ctx.moveTo(x, y)
-                            else ctx.lineTo(x, y)
-                            drawing = true
                         }
-                        ctx.stroke()
-                    }
-                }
 
-                PlasmaComponents3.Label {
-                    anchors.top: parent.top
-                    anchors.left: parent.left
-                    anchors.margins: 6
-                    text: "CPU temperature · last 5 minutes · 30–100°C"
-                    font: Kirigami.Theme.smallFont
-                    opacity: 0.75
+                        onPaint: {
+                            const ctx = getContext("2d")
+                            ctx.clearRect(0, 0, width, height)
+                            const samples = fullRoot.controller.historySamples
+                            if (!samples || samples.length < 2) return
+
+                            const firstTime = samples[0].monotonicMs
+                            const duration = Math.max(1, samples[samples.length - 1].monotonicMs - firstTime)
+
+                            let pts = []
+                            for (let i = 0; i < samples.length; ++i) {
+                                const sample = samples[i]
+                                if (!sample.cpuTempAvailable) continue
+                                const x = (sample.monotonicMs - firstTime) / duration * width
+                                const tempNorm = Math.min(1, Math.max(0, (sample.cpuTemp - 30) / 70))
+                                const y = height - (tempNorm * (height - 8)) - 4
+                                pts.push({ x: x, y: y })
+                            }
+                            if (pts.length < 2) return
+
+                            const grad = ctx.createLinearGradient(0, 0, 0, height)
+                            grad.addColorStop(0, Qt.rgba(fullRoot.tempAccent.r, fullRoot.tempAccent.g, fullRoot.tempAccent.b, 0.22).toString())
+                            grad.addColorStop(1, Qt.rgba(fullRoot.tempAccent.r, fullRoot.tempAccent.g, fullRoot.tempAccent.b, 0.0).toString())
+                            ctx.fillStyle = grad
+                            ctx.beginPath()
+                            ctx.moveTo(pts[0].x, height)
+                            for (let j = 0; j < pts.length; ++j) ctx.lineTo(pts[j].x, pts[j].y)
+                            ctx.lineTo(pts[pts.length - 1].x, height)
+                            ctx.closePath()
+                            ctx.fill()
+
+                            ctx.lineWidth = 2
+                            ctx.strokeStyle = fullRoot.tempAccent.toString()
+                            ctx.beginPath()
+                            ctx.moveTo(pts[0].x, pts[0].y)
+                            for (let k = 1; k < pts.length; ++k) ctx.lineTo(pts[k].x, pts[k].y)
+                            ctx.stroke()
+                        }
+                    }
                 }
             }
 
@@ -465,6 +528,7 @@ Item {
                     text: "Power profile: " + (fullRoot.controller.powerProfileChangePending ? "Changing…"
                           : (fullRoot.controller.activePowerProfile || "Unavailable"))
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                    font.bold: true
                     opacity: 0.85
                 }
 
@@ -487,12 +551,15 @@ Item {
                 PlasmaComponents3.Label {
                     visible: !fullRoot.controller.powerProfileServiceAvailable
                     text: "Power profile service unavailable"
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                    opacity: 0.7
                 }
             }
 
             PlasmaComponents3.Button {
                 id: qualityToggle
                 Layout.fillWidth: true
+                icon.name: qualityToggle.checked ? "collapse-all" : "expand-all"
                 text: "Data quality"
                 checkable: true
                 Accessible.name: "Show data quality, sources, and sample times"
@@ -507,21 +574,25 @@ Item {
                     Layout.fillWidth: true
                     text: fullRoot.qualityText("cpuLoad", "CPU load")
                     wrapMode: Text.WordWrap
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                 }
                 PlasmaComponents3.Label {
                     Layout.fillWidth: true
                     text: fullRoot.qualityText("cpuTemperature", "CPU temperature")
                     wrapMode: Text.WordWrap
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                 }
                 PlasmaComponents3.Label {
                     Layout.fillWidth: true
                     text: fullRoot.qualityText("pressureIndex", "Pressure index")
                     wrapMode: Text.WordWrap
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                 }
                 PlasmaComponents3.Label {
                     Layout.fillWidth: true
                     text: fullRoot.qualityText("packagePower", "CPU package power")
                     wrapMode: Text.WordWrap
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                 }
             }
         }
