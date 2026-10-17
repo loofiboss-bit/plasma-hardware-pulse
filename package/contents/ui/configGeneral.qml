@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
@@ -15,26 +16,43 @@ KCM.SimpleKCM {
     Kirigami.FormLayout {
         QQC2.SpinBox {
             id: pollSpin
-            Kirigami.FormData.label: "Poll interval (ms):"
+            Kirigami.FormData.label: "Sampling rate (ms):"
             from: 500
             to: 5000
             stepSize: 250
         }
 
+        QQC2.Label {
+            text: "500 ms provides high-resolution spike capture; 1000 ms is recommended for balanced desktop use."
+            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+            color: Kirigami.Theme.disabledTextColor
+            wrapMode: Text.WordWrap
+        }
+
+        Kirigami.Separator {
+            Kirigami.FormData.isSection: true
+            Kirigami.FormData.label: "Panel Pill Representation"
+        }
+
         QQC2.CheckBox {
             id: showWattsCheck
-            Kirigami.FormData.label: "Panel Pill:"
-            text: "Show power draw (Watts) in panel"
+            Kirigami.FormData.label: "Visible metrics:"
+            text: "Show CPU package power draw (Watts) in panel"
         }
 
         QQC2.CheckBox {
             id: showPsiCheck
-            text: "Show calculated pressure index in panel"
+            text: "Show calculated pressure index (% PSI) in panel"
         }
 
         QQC2.CheckBox {
             id: alwaysShowStatusCheck
-            text: "Always show status headline in panel (otherwise shown only on alerts)"
+            text: "Always show status headline in panel (otherwise shown only on active alerts)"
+        }
+
+        Kirigami.Separator {
+            Kirigami.FormData.isSection: true
+            Kirigami.FormData.label: "Desktop Notifications"
         }
 
         QQC2.CheckBox {

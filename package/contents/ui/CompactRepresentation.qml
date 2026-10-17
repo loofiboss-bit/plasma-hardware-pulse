@@ -15,7 +15,7 @@ Item {
     property bool alwaysShowStatusInPanel: false
     signal activationRequested()
 
-    Layout.minimumWidth: pillRow.implicitWidth + Kirigami.Units.smallSpacing * 4
+    Layout.minimumWidth: pillContentRow.implicitWidth + Kirigami.Units.smallSpacing * 5
     Layout.preferredWidth: Layout.minimumWidth
     Layout.minimumHeight: Kirigami.Units.iconSizes.small
 
@@ -36,7 +36,7 @@ Item {
     }
 
     PlasmaComponents3.Button {
-        id: pillRow
+        id: pillButton
         anchors.fill: parent
         anchors.margins: 2
         checkable: true
@@ -44,48 +44,74 @@ Item {
         Accessible.name: compactRoot.controller.verdictHeadline + ". Activate to open hardware details."
         Accessible.description: "Loofi Pulse status and current hardware readings."
         onClicked: compactRoot.activationRequested()
-        contentItem: RowLayout {
-            spacing: Kirigami.Units.smallSpacing
 
-            Rectangle {
-                Layout.preferredWidth: 8
-                Layout.preferredHeight: 8
-                radius: 4
-                color: compactRoot.badgeColor(compactRoot.controller.verdictSeverity)
-            }
+        contentItem: Item {
+            implicitWidth: pillContentRow.implicitWidth
+            implicitHeight: pillContentRow.implicitHeight
 
-            PlasmaComponents3.Label {
-                visible: compactRoot.alwaysShowStatusInPanel
-                         || (compactRoot.controller.verdictSeverity >= 1 && compactRoot.controller.verdictSeverity <= 3)
-                text: compactRoot.controller.verdictHeadline
-                elide: Text.ElideRight
-                Layout.maximumWidth: Kirigami.Units.gridUnit * 9
-                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                font.bold: compactRoot.controller.verdictSeverity >= 2
-            }
+            RowLayout {
+                id: pillContentRow
+                anchors.centerIn: parent
+                spacing: 8
 
-            PlasmaComponents3.Label {
-                text: compactRoot.controller.cpuTempAvailable
-                      ? Math.round(compactRoot.controller.cpuPackageTemp) + "°C " + compactRoot.velocityArrow(compactRoot.controller.thermalVelocity)
-                      : "CPU temp N/A"
-                font.bold: true
-                font.pixelSize: Kirigami.Theme.smallFont.pixelSize + 1
-            }
+                Rectangle {
+                    Layout.preferredWidth: 9
+                    Layout.preferredHeight: 9
+                    radius: 4.5
+                    color: compactRoot.badgeColor(compactRoot.controller.verdictSeverity)
+                }
 
-            PlasmaComponents3.Label {
-                visible: compactRoot.showPsiInPanel
-                text: compactRoot.controller.psiAvailable ? Math.round(compactRoot.controller.responsivenessScore) + "% PSI" : "PSI N/A"
-                opacity: 0.85
-                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-            }
+                PlasmaComponents3.Label {
+                    visible: compactRoot.alwaysShowStatusInPanel
+                             || (compactRoot.controller.verdictSeverity >= 1 && compactRoot.controller.verdictSeverity <= 3)
+                    text: compactRoot.controller.verdictHeadline
+                    elide: Text.ElideRight
+                    Layout.maximumWidth: Kirigami.Units.gridUnit * 9
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                    font.bold: compactRoot.controller.verdictSeverity >= 2
+                }
 
-            PlasmaComponents3.Label {
-                visible: compactRoot.showWattsInPanel
-                text: compactRoot.controller.packagePowerAvailable
-                      ? compactRoot.controller.packageWatts.toFixed(1) + "W" + (compactRoot.controller.packagePowerEstimated ? "~" : "")
-                      : "W N/A"
-                opacity: 0.85
-                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                PlasmaComponents3.Label {
+                    text: compactRoot.controller.cpuTempAvailable
+                          ? Math.round(compactRoot.controller.cpuPackageTemp) + "°C " + compactRoot.velocityArrow(compactRoot.controller.thermalVelocity)
+                          : "CPU temp N/A"
+                    font.bold: true
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize + 1
+                }
+
+                Rectangle {
+                    visible: compactRoot.showPsiInPanel
+                    Layout.preferredWidth: 1
+                    Layout.preferredHeight: 12
+                    color: Kirigami.Theme.disabledTextColor
+                    opacity: 0.45
+                }
+
+                PlasmaComponents3.Label {
+                    visible: compactRoot.showPsiInPanel
+                    text: compactRoot.controller.psiAvailable ? Math.round(compactRoot.controller.responsivenessScore) + "% PSI" : "PSI N/A"
+                    opacity: 0.9
+                    font.bold: true
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                }
+
+                Rectangle {
+                    visible: compactRoot.showWattsInPanel
+                    Layout.preferredWidth: 1
+                    Layout.preferredHeight: 12
+                    color: Kirigami.Theme.disabledTextColor
+                    opacity: 0.45
+                }
+
+                PlasmaComponents3.Label {
+                    visible: compactRoot.showWattsInPanel
+                    text: compactRoot.controller.packagePowerAvailable
+                          ? compactRoot.controller.packageWatts.toFixed(1) + "W" + (compactRoot.controller.packagePowerEstimated ? "~" : "")
+                          : "W N/A"
+                    opacity: 0.9
+                    font.bold: true
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                }
             }
         }
     }
