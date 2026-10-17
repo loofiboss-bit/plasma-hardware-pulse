@@ -14,7 +14,7 @@ KCM.SimpleKCM {
     Kirigami.FormLayout {
         QQC2.SpinBox {
             id: pollSpin
-            Kirigami.FormData.label: i18n("Poll interval (ms):")
+            Kirigami.FormData.label: "Poll interval (ms):"
             from: 500
             to: 5000
             stepSize: 250
@@ -22,19 +22,19 @@ KCM.SimpleKCM {
 
         QQC2.CheckBox {
             id: showWattsCheck
-            Kirigami.FormData.label: i18n("Panel Pill:")
-            text: i18n("Show power draw (Watts) in panel")
+            Kirigami.FormData.label: "Panel Pill:"
+            text: "Show power draw (Watts) in panel"
         }
 
         QQC2.CheckBox {
             id: showPsiCheck
-            text: i18n("Show calculated pressure index in panel")
+            text: "Show calculated pressure index in panel"
         }
 
         QQC2.CheckBox {
             id: notificationsCheck
-            Kirigami.FormData.label: i18n("Alerts:")
-            text: i18n("Send KDE notification on active thermal throttling or critical PSI bottleneck")
+            Kirigami.FormData.label: "Alerts:"
+            text: "Send KDE notification on active thermal throttling or critical PSI bottleneck"
         }
     }
 }

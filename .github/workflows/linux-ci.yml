@@ -21,12 +21,14 @@ jobs:
             extra-cmake-modules \
             gcc-c++ \
             dbus-daemon \
+            kf6-kcmutils \
             kf6-kcoreaddons-devel \
             kf6-ki18n-devel \
             kf6-kirigami-devel \
             kf6-knotifications-devel \
+            kf6-kpackage \
             kf6-qqc2-desktop-style \
-            plasma-devel \
+            libplasma-devel \
             plasma-workspace-devel \
             qt6-qtbase-devel \
             qt6-qtdeclarative-devel \
