@@ -10,6 +10,30 @@ Kirigami.ScrollablePage {
     title: "Memory & Pressure"
 
     required property var controller
+    property string processSortMode: "combined"
+
+    function sortedProcesses() {
+        var list = psiPage.controller.topProcesses ? psiPage.controller.topProcesses.slice() : []
+        var mode = psiPage.processSortMode
+        list.sort(function(a, b) {
+            if (mode === "cpu") {
+                return Number(b.cpuPercent || 0) - Number(a.cpuPercent || 0)
+            }
+            if (mode === "rss") {
+                return Number(b.rssMegabytes || 0) - Number(a.rssMegabytes || 0)
+            }
+            if (mode === "disk") {
+                var aDisk = a.inDiskWait ? 1 : 0
+                var bDisk = b.inDiskWait ? 1 : 0
+                if (aDisk !== bDisk) return bDisk - aDisk
+                return Number(b.cpuPercent || 0) - Number(a.cpuPercent || 0)
+            }
+            var aScore = (a.inDiskWait ? 1000 : 0) + Number(a.cpuPercent || 0) + Number(a.rssMegabytes || 0) * 0.015
+            var bScore = (b.inDiskWait ? 1000 : 0) + Number(b.cpuPercent || 0) + Number(b.rssMegabytes || 0) * 0.015
+            return bScore - aScore
+        })
+        return list
+    }
 
     readonly property PulseTheme theme: PulseTheme {
         id: theme
@@ -455,8 +479,22 @@ Kirigami.ScrollablePage {
                     }
 
                     QQC2.Label {
-                        text: "Indicates when threads are blocked waiting for synchronous NVMe/disk transactions."
-                        color: Kirigami.Theme.disabledTextColor
+                        visible: psiPage.controller.netThroughputAvailable
+                        text: "Network throughput: ↓" + psiPage.controller.netRxMibPerSec.toFixed(2) + " MiB/s · ↑"
+                              + psiPage.controller.netTxMibPerSec.toFixed(2) + " MiB/s"
+                        color: theme.psiAccent
+                        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                        font.bold: true
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
+                    }
+
+                    QQC2.Label {
+                        text: psiPage.controller.diskWaitProcessCount > 0
+                              ? (psiPage.controller.diskWaitProcessCount + " process(es) currently in uninterruptible disk wait (state D).")
+                              : "Indicates when threads are blocked waiting for synchronous NVMe/disk transactions."
+                        color: psiPage.controller.diskWaitProcessCount > 0 ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.disabledTextColor
+                        font.bold: psiPage.controller.diskWaitProcessCount > 0
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                         wrapMode: Text.WordWrap
                         Layout.fillWidth: true
@@ -621,14 +659,32 @@ Kirigami.ScrollablePage {
         }
 
         // 4. Concurrent Resource Use (Process Radar Table)
-        RowLayout {
+        Flow {
             Layout.fillWidth: true
+            spacing: Kirigami.Units.smallSpacing
+
             Kirigami.Heading {
                 level: 3
                 text: "Concurrent resource use"
-                Layout.fillWidth: true
-                wrapMode: Text.WordWrap
             }
+
+            Repeater {
+                model: [
+                    { key: "combined", label: "Sort: Combined" },
+                    { key: "cpu", label: "Sort: CPU %" },
+                    { key: "rss", label: "Sort: Memory RSS" },
+                    { key: "disk", label: "Sort: Disk Wait" }
+                ]
+                delegate: QQC2.Button {
+                    id: sortBtn
+                    required property var modelData
+                    text: sortBtn.modelData.label
+                    checkable: true
+                    checked: psiPage.processSortMode === sortBtn.modelData.key
+                    onClicked: psiPage.processSortMode = sortBtn.modelData.key
+                }
+            }
+
             QQC2.Button {
                 icon.name: "utilities-system-monitor"
                 text: "Open System Monitor"
@@ -637,7 +693,7 @@ Kirigami.ScrollablePage {
         }
 
         Repeater {
-            model: psiPage.controller.topProcesses
+            model: psiPage.sortedProcesses()
 
             delegate: Rectangle {
                 id: processCard
@@ -647,8 +703,8 @@ Kirigami.ScrollablePage {
                 implicitHeight: processContent.implicitHeight + Kirigami.Units.largeSpacing * 2
                 radius: theme.cardRadius
                 color: theme.surfaceColor
-                border.width: 1
-                border.color: theme.cardBorderColor
+                border.width: processCard.modelData.inDiskWait ? 1.5 : 1
+                border.color: processCard.modelData.inDiskWait ? Kirigami.Theme.negativeTextColor : theme.cardBorderColor
 
                 ColumnLayout {
                     id: processContent
@@ -679,6 +735,25 @@ Kirigami.ScrollablePage {
                             text: processCard.modelData.name + " (PID " + processCard.modelData.pid + ")"
                             font.bold: true
                             wrapMode: Text.WordWrap
+                        }
+
+                        Rectangle {
+                            visible: processCard.modelData.inDiskWait === true
+                            radius: theme.pillRadius
+                            color: theme.accentTint(Kirigami.Theme.negativeTextColor, 0.18)
+                            border.width: 1
+                            border.color: Kirigami.Theme.negativeTextColor
+                            implicitWidth: diskWaitBadgeLbl.implicitWidth + 12
+                            implicitHeight: diskWaitBadgeLbl.implicitHeight + 4
+
+                            QQC2.Label {
+                                id: diskWaitBadgeLbl
+                                anchors.centerIn: parent
+                                text: "DISK WAIT (D)"
+                                color: Kirigami.Theme.negativeTextColor
+                                font.bold: true
+                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                            }
                         }
 
                         QQC2.Label {
