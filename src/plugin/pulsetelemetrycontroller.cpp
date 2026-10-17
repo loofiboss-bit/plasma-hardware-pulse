@@ -184,11 +184,19 @@ QVariantMap PulseTelemetryController::sampleToVariantMap(const FlightSample &s, 
     m.insert(QStringLiteral("cpuFreqMhz"), s.cpuFreqMhz);
     m.insert(QStringLiteral("gpuBusy"), s.gpuBusyPercent);
     m.insert(QStringLiteral("gpuTemp"), s.gpuTempCelsius);
+    m.insert(QStringLiteral("gpuFreqMhz"), s.gpuFreqMhz);
+    m.insert(QStringLiteral("gpuPowerWatts"), s.gpuPowerWatts);
+    m.insert(QStringLiteral("gpuVramUsedMib"), s.gpuVramUsedMegabytes);
+    m.insert(QStringLiteral("gpuVramTotalMib"), s.gpuVramTotalMegabytes);
     m.insert(QStringLiteral("psiCpuSome10"), s.psiCpuSome10);
     m.insert(QStringLiteral("psiMemSome10"), s.psiMemSome10);
     m.insert(QStringLiteral("psiIoFull10"), s.psiIoFull10);
     m.insert(QStringLiteral("responsivenessScore"), s.responsivenessScore);
     m.insert(QStringLiteral("systemWatts"), s.systemWatts);
+    m.insert(QStringLiteral("ramUsedPercent"), s.ramUsedPercent);
+    m.insert(QStringLiteral("fanRpm"), s.fanRpm);
+    m.insert(QStringLiteral("diskReadMibPerSec"), s.diskReadMibPerSec);
+    m.insert(QStringLiteral("diskWriteMibPerSec"), s.diskWriteMibPerSec);
     m.insert(QStringLiteral("throttled"), s.throttled);
     m.insert(QStringLiteral("severity"), static_cast<int>(s.severity));
     m.insert(QStringLiteral("verdictHeadline"), s.verdictHeadline);
@@ -263,6 +271,8 @@ QVariantMap PulseTelemetryController::metricMetadata() const
                                                           QStringLiteral("/proc/meminfo MemTotal and MemAvailable")));
     result.insert(QStringLiteral("zram"), metric(m_psiMem.zramActive ? QStringLiteral("available") : QStringLiteral("not-active"),
                                                     QStringLiteral("/sys/block/zram*/mm_stat")));
+    result.insert(QStringLiteral("diskThroughput"), metric(m_psiMem.diskThroughputAvailable ? QStringLiteral("available") : QStringLiteral("unavailable"),
+                                                            QStringLiteral("/proc/diskstats sector deltas")));
     result.insert(QStringLiteral("packagePower"), metric((m_power.raplExactAvailable || m_power.hwmonPowerAvailable) ? QStringLiteral("available")
                                                                  : (m_power.packagePowerEstimated ? QStringLiteral("estimated") : QStringLiteral("unavailable")),
                                                            m_power.raplExactAvailable ? QStringLiteral("Intel RAPL energy_uj")
@@ -436,6 +446,8 @@ void PulseTelemetryController::refreshNow()
         sample.zramOriginalBytes = m_psiMem.zramOrigBytes;
         sample.zramCompressedBytes = m_psiMem.zramCompressedBytes;
         sample.zramMemoryUsedBytes = m_psiMem.zramMemUsedTotalBytes;
+        sample.diskReadMibPerSec = m_psiMem.diskReadMibPerSec;
+        sample.diskWriteMibPerSec = m_psiMem.diskWriteMibPerSec;
         sample.throttleEventCount = m_cpu.totalThrottleEvents;
         sample.newThrottleEvents = m_cpu.deltaThrottleEvents;
         sample.batteryPresent = m_power.batteryPresent;
@@ -470,6 +482,7 @@ void PulseTelemetryController::refreshNow()
         sample.metricQuality.insert(QStringLiteral("swapAvailable"), m_psiMem.swapAvailable);
         sample.metricQuality.insert(QStringLiteral("zramAvailable"), m_psiMem.zramAvailable);
         sample.metricQuality.insert(QStringLiteral("zramCompressionAvailable"), m_psiMem.zramCompressionAvailable);
+        sample.metricQuality.insert(QStringLiteral("diskThroughputAvailable"), m_psiMem.diskThroughputAvailable);
         sample.metricQuality.insert(QStringLiteral("packagePowerAvailable"), m_power.packagePowerAvailable);
         sample.metricQuality.insert(QStringLiteral("packagePowerEstimated"), m_power.packagePowerEstimated);
         sample.metricQuality.insert(QStringLiteral("systemPowerEstimated"), !batteryPowerAvailable && m_power.packagePowerEstimated);
@@ -508,6 +521,50 @@ void PulseTelemetryController::refreshNow()
             }
         }
         m_selectedHistoryIndex = m_recorder.indexOfSample(m_selectedHistorySampleId);
+
+        double peakWatts = std::max({65.0, m_power.pl1LimitWatts, m_power.pl2LimitWatts});
+        m_incidentHistoryVariant.clear();
+        bool inEpisode = false;
+        QVariantMap currentEpisode;
+        int currentEpisodeSeverityRank = 0;
+
+        const QList<FlightSample> &recorded = m_recorder.samples();
+        for (int i = 0; i < recorded.size(); ++i) {
+            const FlightSample &s = recorded.at(i);
+            if (s.metricQuality.value(QStringLiteral("systemPowerAvailable")).toBool() && s.systemWatts > peakWatts) {
+                peakWatts = s.systemWatts;
+            }
+            const bool isIncident = s.throttled
+                || s.severity == VerdictSeverity::CriticalThrottle
+                || s.severity == VerdictSeverity::Bottleneck
+                || s.severity == VerdictSeverity::Elevated;
+            const int rank = s.throttled ? 4 : static_cast<int>(s.severity);
+            if (isIncident && s.severity != VerdictSeverity::Unknown) {
+                if (!inEpisode || rank > currentEpisodeSeverityRank) {
+                    currentEpisode = QVariantMap{
+                        {QStringLiteral("sampleId"), static_cast<qulonglong>(s.sampleId)},
+                        {QStringLiteral("timeString"), QDateTime::fromMSecsSinceEpoch(s.timestampMs).toString(QStringLiteral("HH:mm:ss"))},
+                        {QStringLiteral("headline"), s.verdictHeadline},
+                        {QStringLiteral("severity"), static_cast<int>(s.severity)},
+                        {QStringLiteral("throttled"), s.throttled}
+                    };
+                    currentEpisodeSeverityRank = rank;
+                }
+                inEpisode = true;
+            } else if (inEpisode) {
+                m_incidentHistoryVariant.append(currentEpisode);
+                inEpisode = false;
+                currentEpisodeSeverityRank = 0;
+            }
+        }
+        if (inEpisode) {
+            m_incidentHistoryVariant.append(currentEpisode);
+        }
+        while (m_incidentHistoryVariant.size() > 8) {
+            m_incidentHistoryVariant.removeFirst();
+        }
+        const int roundedWatts = static_cast<int>((peakWatts + 24.9) / 25.0) * 25;
+        m_historyMaxWatts = std::max(65.0, static_cast<double>(roundedWatts));
     }
 
     maybeEmitAlertNotifications();
@@ -711,7 +768,7 @@ bool PulseTelemetryController::openReportsFolder()
     return opened;
 }
 
-void PulseTelemetryController::launchStudioApp()
+void PulseTelemetryController::launchStudioApp(const QString &pageName)
 {
     QString exe = QStandardPaths::findExecutable(QStringLiteral("loofi-pulse"));
     if (exe.isEmpty()) {
@@ -721,7 +778,11 @@ void PulseTelemetryController::launchStudioApp()
         }
     }
     if (!exe.isEmpty()) {
-        const bool started = QProcess::startDetached(exe, {});
+        QStringList args;
+        if (!pageName.trimmed().isEmpty()) {
+            args << QStringLiteral("--page") << pageName.trimmed();
+        }
+        const bool started = QProcess::startDetached(exe, args);
         setActionResult(started, started ? QStringLiteral("Loofi Pulse opened in a new window.")
                                         : QStringLiteral("Loofi Pulse could not be started."));
     } else {

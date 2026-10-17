@@ -80,6 +80,15 @@ private Q_SLOTS:
             }
         }
 
+        QObject *overviewAction = window->findChild<QObject *>(QStringLiteral("navigateOverview"));
+        QVERIFY(QMetaObject::invokeMethod(overviewAction, "trigger"));
+        QCoreApplication::processEvents();
+        QObject *overviewPage = window->findChild<QObject *>(QStringLiteral("overviewPage"));
+        QVERIFY(overviewPage);
+        QVERIFY(QMetaObject::invokeMethod(overviewPage, "navigateRequested", Q_ARG(QString, QStringLiteral("power"))));
+        QCoreApplication::processEvents();
+        QVERIFY(window->findChild<QQuickItem *>(QStringLiteral("powerPage")) != nullptr);
+
         QObject *historyAction = window->findChild<QObject *>(QStringLiteral("navigateHistory"));
         QVERIFY(QMetaObject::invokeMethod(historyAction, "trigger"));
         QCoreApplication::processEvents();
@@ -91,6 +100,8 @@ private Q_SLOTS:
         QVERIFY(historyPage);
         QObject *controller = qvariant_cast<QObject *>(historyPage->property("controller"));
         QVERIFY(controller);
+        QVERIFY(controller->property("historyMaxWatts").toDouble() >= 60.0);
+        QVERIFY(controller->property("incidentHistory").isValid());
         QTest::keyClick(window, Qt::Key_Left);
         QVERIFY(controller->property("selectedHistorySampleId").toULongLong() > 0);
         QTest::keyClick(window, Qt::Key_Right);

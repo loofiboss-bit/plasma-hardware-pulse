@@ -71,14 +71,29 @@ Kirigami.ScrollablePage {
                     id: cpuPressureColumn
                     anchors.fill: parent
                     anchors.margins: Kirigami.Units.largeSpacing
+                    spacing: 6
                     QQC2.Label { text: "CPU pressure"; color: Kirigami.Theme.disabledTextColor; font.pixelSize: Kirigami.Theme.smallFont.pixelSize; font.bold: true }
                     QQC2.Label {
                         text: psiPage.controller.psiCpuAvailable ? ("some: " + psiPage.controller.psiCpuSome10.toFixed(2) + "%  ("
                               + Math.round(psiPage.controller.psiCpuStallMs) + " ms/s)")
                               : "Unavailable"
                         color: Kirigami.Theme.textColor
-
                         font.bold: true
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                    }
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 6
+                        radius: 3
+                        color: Kirigami.Theme.backgroundColor
+                        Rectangle {
+                            visible: psiPage.controller.psiCpuAvailable
+                            width: parent.width * Math.min(1.0, Math.max(0.0, psiPage.controller.psiCpuSome10 / 25.0))
+                            height: parent.height
+                            radius: 3
+                            color: psiPage.controller.psiCpuSome10 > 10 ? Kirigami.Theme.neutralTextColor : Kirigami.Theme.highlightColor
+                        }
                     }
                     QQC2.Label {
                         text: "Percentage of time at least one runnable thread is delayed waiting for CPU time."
@@ -103,6 +118,7 @@ Kirigami.ScrollablePage {
                     id: memoryPressureColumn
                     anchors.fill: parent
                     anchors.margins: Kirigami.Units.largeSpacing
+                    spacing: 6
                     QQC2.Label { text: "Memory pressure"; color: Kirigami.Theme.disabledTextColor; font.pixelSize: Kirigami.Theme.smallFont.pixelSize; font.bold: true }
                     QQC2.Label {
                         text: psiPage.controller.psiMemoryAvailable
@@ -110,8 +126,22 @@ Kirigami.ScrollablePage {
                                  + (psiPage.controller.psiMemoryFullAvailable ? psiPage.controller.psiMemFull10.toFixed(2) + "%" : "Unavailable")
                                  + " (" + Math.round(psiPage.controller.psiMemStallMs) + " ms/s)") : "Unavailable"
                         color: Kirigami.Theme.textColor
-
                         font.bold: true
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                    }
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 6
+                        radius: 3
+                        color: Kirigami.Theme.backgroundColor
+                        Rectangle {
+                            visible: psiPage.controller.psiMemoryAvailable
+                            width: parent.width * Math.min(1.0, Math.max(0.0, psiPage.controller.psiMemSome10 / 20.0))
+                            height: parent.height
+                            radius: 3
+                            color: psiPage.controller.psiMemSome10 >= 5 ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.highlightColor
+                        }
                     }
                     QQC2.Label {
                         text: "Measures actual thread stall time spent on ZRAM compression, page reclaim, and allocation."
@@ -136,6 +166,7 @@ Kirigami.ScrollablePage {
                     id: ioPressureColumn
                     anchors.fill: parent
                     anchors.margins: Kirigami.Units.largeSpacing
+                    spacing: 6
                     QQC2.Label { text: "Storage and I/O pressure"; color: Kirigami.Theme.disabledTextColor; font.pixelSize: Kirigami.Theme.smallFont.pixelSize; font.bold: true }
                     QQC2.Label {
                         text: psiPage.controller.psiIoAvailable
@@ -143,8 +174,22 @@ Kirigami.ScrollablePage {
                                  + (psiPage.controller.psiIoFullAvailable ? psiPage.controller.psiIoFull10.toFixed(2) + "%" : "Unavailable")
                                  + " (" + Math.round(psiPage.controller.psiIoStallMs) + " ms/s)") : "Unavailable"
                         color: Kirigami.Theme.textColor
-
                         font.bold: true
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                    }
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 6
+                        radius: 3
+                        color: Kirigami.Theme.backgroundColor
+                        Rectangle {
+                            visible: psiPage.controller.psiIoAvailable
+                            width: parent.width * Math.min(1.0, Math.max(0.0, psiPage.controller.psiIoSome10 / 25.0))
+                            height: parent.height
+                            radius: 3
+                            color: psiPage.controller.psiIoFull10 >= 8 ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.highlightColor
+                        }
                     }
                     QQC2.Label {
                         visible: psiPage.controller.diskThroughputAvailable
@@ -196,7 +241,6 @@ Kirigami.ScrollablePage {
                               + psiPage.controller.ramUsedPercent.toFixed(1) + "%)") : "Physical RAM: Unavailable"
                         color: Kirigami.Theme.textColor
                         font.bold: true
-
                     }
                     QQC2.Label {
                         text: psiPage.controller.swapAvailable
@@ -205,7 +249,6 @@ Kirigami.ScrollablePage {
                               : "Swap: Unavailable"
                         color: Kirigami.Theme.highlightColor
                         font.bold: true
-
                     }
                     QQC2.Label {
                         text: !psiPage.controller.zramAvailable ? "ZRAM: Unavailable"
@@ -214,7 +257,6 @@ Kirigami.ScrollablePage {
                                  : "ZRAM: No compressed pages in use")
                         color: Kirigami.Theme.positiveTextColor
                         font.bold: true
-
                     }
                 }
 
@@ -222,14 +264,14 @@ Kirigami.ScrollablePage {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 14
                     radius: 7
-                    color: Kirigami.Theme.alternateBackgroundColor
+                    color: Kirigami.Theme.backgroundColor
 
                     Rectangle {
                         visible: psiPage.controller.memoryAvailable
                         width: parent.width * Math.min(1.0, Math.max(0, psiPage.controller.ramUsedPercent / 100.0))
                         height: parent.height
                         radius: 7
-                        color: Kirigami.Theme.highlightColor
+                        color: psiPage.controller.ramUsedPercent > 88 ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.highlightColor
                     }
                 }
 
@@ -246,9 +288,19 @@ Kirigami.ScrollablePage {
         }
 
         // Processes are contextual workload observations, not proof of causality.
-        Kirigami.Heading {
-            level: 3
-            text: "Concurrent resource use"
+        RowLayout {
+            Layout.fillWidth: true
+            Kirigami.Heading {
+                level: 3
+                text: "Concurrent resource use"
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+            }
+            QQC2.Button {
+                icon.name: "utilities-system-monitor"
+                text: "Open System Monitor"
+                onClicked: psiPage.controller.openSystemMonitor()
+            }
         }
 
         Repeater {
@@ -266,24 +318,35 @@ Kirigami.ScrollablePage {
                     id: processContent
                     anchors.fill: parent
                     anchors.margins: Kirigami.Units.largeSpacing
-                    spacing: Kirigami.Units.smallSpacing
+                    spacing: 6
 
-                    QQC2.Label {
+                    RowLayout {
                         Layout.fillWidth: true
-                        text: processCard.modelData.name + " (PID " + processCard.modelData.pid + ") · concurrent workload"
-                        font.bold: true
-                        wrapMode: Text.WordWrap
+                        QQC2.Label {
+                            Layout.fillWidth: true
+                            text: processCard.modelData.name + " (PID " + processCard.modelData.pid + ")"
+                            font.bold: true
+                            wrapMode: Text.WordWrap
+                        }
+                        QQC2.Label {
+                            text: Number(processCard.modelData.cpuPercent).toFixed(1) + "% CPU · "
+                                  + Math.round(Number(processCard.modelData.rssMegabytes)) + " MiB RSS"
+                            color: Kirigami.Theme.textColor
+                            font.bold: true
+                        }
                     }
-                    QQC2.Label {
+
+                    Rectangle {
                         Layout.fillWidth: true
-                        text: "Observed use: " + Number(processCard.modelData.cpuPercent).toFixed(1) + "% CPU · "
-                              + Math.round(Number(processCard.modelData.rssMegabytes)) + " MiB RSS"
-                        wrapMode: Text.WordWrap
-                    }
-                    QQC2.Button {
-                        icon.name: "utilities-system-monitor"
-                        text: "Open System Monitor"
-                        onClicked: psiPage.controller.openSystemMonitor()
+                        Layout.preferredHeight: 6
+                        radius: 3
+                        color: Kirigami.Theme.backgroundColor
+                        Rectangle {
+                            width: parent.width * Math.min(1.0, Math.max(0.0, Number(processCard.modelData.cpuPercent) / 100.0))
+                            height: parent.height
+                            radius: 3
+                            color: Kirigami.Theme.highlightColor
+                        }
                     }
                 }
             }

@@ -120,6 +120,39 @@ CausalVerdict CausalDiagnosisEngine::evaluate(
         }
     }
 
+    if (power.activePowerProfile == QStringLiteral("power-saver")
+        && ((cpuLoadValid && cpu.totalLoadPercent >= 65.0)
+            || (gpu.busyAvailable && gpu.busyPercent >= 75.0)
+            || (psiMem.cpuPsi.someAvailable && psiMem.cpuPsi.someAvg10 >= 10.0))) {
+        QString details = QStringLiteral("Active power profile is 'power-saver'");
+        if (cpuLoadValid) {
+            details += QStringLiteral("; measured CPU load is %1%").arg(cpu.totalLoadPercent, 0, 'f', 0);
+        }
+        if (gpu.busyAvailable && gpu.busyPercent >= 75.0) {
+            details += QStringLiteral("; measured GPU load is %1%").arg(gpu.busyPercent, 0, 'f', 0);
+        }
+        setVerdict(VerdictSeverity::Elevated,
+                   QStringLiteral("Power & Cooling"),
+                   QStringLiteral("High workload while power-saver profile is active"),
+                   details,
+                   QStringLiteral("Switch to the 'balanced' or 'performance' power profile for higher responsiveness."));
+        return verdict;
+    }
+
+    if (cpuLoadValid && cpu.totalLoadPercent >= 75.0
+        && power.packagePowerAvailable && !power.packagePowerEstimated
+        && power.pl1LimitWatts > 5.0 && power.packageWatts >= power.pl1LimitWatts * 0.95) {
+        setVerdict(VerdictSeverity::Elevated,
+                   QStringLiteral("Power & Cooling"),
+                   QStringLiteral("CPU is operating at its sustained power limit (PL1)"),
+                   QStringLiteral("Measured package power: %1 W at %2% CPU load (PL1 limit: %3 W)")
+                       .arg(power.packageWatts, 0, 'f', 1)
+                       .arg(cpu.totalLoadPercent, 0, 'f', 0)
+                       .arg(power.pl1LimitWatts, 0, 'f', 0),
+                   QStringLiteral("Sustained performance is capped by the power envelope. Use 'performance' profile if higher limits are supported."));
+        return verdict;
+    }
+
     if (gpu.busyAvailable && gpu.temperatureAvailable
         && cpuLoadValid && gpu.busyPercent >= 85.0 && cpu.totalLoadPercent < 70.0) {
         setVerdict(VerdictSeverity::Elevated,
@@ -157,6 +190,20 @@ CausalVerdict CausalDiagnosisEngine::evaluate(
         return verdict;
     }
 
+    if (power.batteryStateAvailable && power.batteryPresent && !power.onAcPower
+        && power.batteryPowerAvailable && power.batteryWatts >= 28.0) {
+        QString details = QStringLiteral("Battery discharge rate is %1 W").arg(power.batteryWatts, 0, 'f', 1);
+        if (power.batteryLevelAvailable) {
+            details += QStringLiteral(" (%1% remaining)").arg(power.batteryPercent, 0, 'f', 0);
+        }
+        setVerdict(VerdictSeverity::Elevated,
+                   QStringLiteral("Power & Cooling"),
+                   QStringLiteral("High battery power draw"),
+                   details,
+                   QStringLiteral("Switch to the 'balanced' or 'power-saver' profile to extend battery runtime."));
+        return verdict;
+    }
+
     if (!cpuLoadValid || !cpu.temperatureAvailable || !psiMem.responsivenessAvailable) {
         QStringList unavailable;
         if (!cpuLoadValid) unavailable.append(cpu.loadAvailable
@@ -178,7 +225,6 @@ CausalVerdict CausalDiagnosisEngine::evaluate(
                QStringLiteral("No current system pressure detected"),
                QStringLiteral("CPU load and system pressure are within normal ranges."),
                QStringLiteral("No action is needed."));
-    Q_UNUSED(power);
     return verdict;
 }
 

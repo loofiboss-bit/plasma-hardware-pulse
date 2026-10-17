@@ -49,8 +49,11 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(double gpuVramUsedMib READ gpuVramUsedMib NOTIFY telemetryUpdated)
     Q_PROPERTY(double gpuVramTotalMib READ gpuVramTotalMib NOTIFY telemetryUpdated)
     Q_PROPERTY(double gpuPowerWatts READ gpuPowerWatts NOTIFY telemetryUpdated)
+    Q_PROPERTY(bool gpuFrequencyAvailable READ gpuFrequencyAvailable NOTIFY telemetryUpdated)
     Q_PROPERTY(bool gpuBusyAvailable READ gpuBusyAvailable NOTIFY telemetryUpdated)
     Q_PROPERTY(bool gpuTempAvailable READ gpuTempAvailable NOTIFY telemetryUpdated)
+    Q_PROPERTY(bool gpuPowerAvailable READ gpuPowerAvailable NOTIFY telemetryUpdated)
+    Q_PROPERTY(bool gpuVramAvailable READ gpuVramAvailable NOTIFY telemetryUpdated)
 
     // PSI & ZRAM / Memory properties
     Q_PROPERTY(double psiCpuSome10 READ psiCpuSome10 NOTIFY telemetryUpdated)
@@ -92,6 +95,7 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(bool batteryStateAvailable READ batteryStateAvailable NOTIFY telemetryUpdated)
     Q_PROPERTY(bool batteryLevelAvailable READ batteryLevelAvailable NOTIFY telemetryUpdated)
     Q_PROPERTY(bool batteryHealthAvailable READ batteryHealthAvailable NOTIFY telemetryUpdated)
+    Q_PROPERTY(bool batteryPowerAvailable READ batteryPowerAvailable NOTIFY telemetryUpdated)
     Q_PROPERTY(QString batteryStatus READ batteryStatus NOTIFY telemetryUpdated)
     Q_PROPERTY(double batteryPercent READ batteryPercent NOTIFY telemetryUpdated)
     Q_PROPERTY(double batteryWatts READ batteryWatts NOTIFY telemetryUpdated)
@@ -134,6 +138,8 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(QVariantList coreItems READ coreItems NOTIFY telemetryUpdated)
     Q_PROPERTY(QVariantList topProcesses READ topProcesses NOTIFY telemetryUpdated)
     Q_PROPERTY(QVariantList historySamples READ historySamples NOTIFY telemetryUpdated)
+    Q_PROPERTY(QVariantList incidentHistory READ incidentHistory NOTIFY telemetryUpdated)
+    Q_PROPERTY(double historyMaxWatts READ historyMaxWatts NOTIFY telemetryUpdated)
     Q_PROPERTY(QVariantMap metricMetadata READ metricMetadata NOTIFY telemetryUpdated)
     Q_PROPERTY(int selectedHistoryIndex READ selectedHistoryIndex WRITE setSelectedHistoryIndex NOTIFY selectedHistoryChanged)
     Q_PROPERTY(qulonglong selectedHistorySampleId READ selectedHistorySampleId WRITE setSelectedHistorySampleId NOTIFY selectedHistoryChanged)
@@ -175,8 +181,11 @@ public:
     double gpuVramUsedMib() const { return m_gpu.vramUsedMegabytes; }
     double gpuVramTotalMib() const { return m_gpu.vramTotalMegabytes; }
     double gpuPowerWatts() const { return m_gpu.powerWatts; }
+    bool gpuFrequencyAvailable() const { return m_gpu.frequencyAvailable; }
     bool gpuBusyAvailable() const { return m_gpu.busyAvailable; }
     bool gpuTempAvailable() const { return m_gpu.temperatureAvailable; }
+    bool gpuPowerAvailable() const { return m_gpu.powerAvailable; }
+    bool gpuVramAvailable() const { return m_gpu.vramAvailable; }
 
     double psiCpuSome10() const { return m_psiMem.cpuPsi.someAvg10; }
     double psiMemSome10() const { return m_psiMem.memoryPsi.someAvg10; }
@@ -222,6 +231,7 @@ public:
     bool batteryStateAvailable() const { return m_power.batteryStateAvailable; }
     bool batteryLevelAvailable() const { return m_power.batteryLevelAvailable; }
     bool batteryHealthAvailable() const { return m_power.batteryHealthAvailable; }
+    bool batteryPowerAvailable() const { return m_power.batteryPowerAvailable; }
     QString batteryStatus() const { return m_power.batteryStatus; }
     double batteryPercent() const { return m_power.batteryPercent; }
     double batteryWatts() const { return m_power.batteryWatts; }
@@ -262,6 +272,8 @@ public:
     QVariantList coreItems() const { return m_coreItemsVariant; }
     QVariantList topProcesses() const { return m_topProcessesVariant; }
     QVariantList historySamples() const { return m_historySamplesVariant; }
+    QVariantList incidentHistory() const { return m_incidentHistoryVariant; }
+    double historyMaxWatts() const { return m_historyMaxWatts; }
     QVariantMap metricMetadata() const;
 
     int selectedHistoryIndex() const { return m_selectedHistorySampleId == 0 ? -1 : m_recorder.indexOfSample(m_selectedHistorySampleId); }
@@ -287,7 +299,7 @@ public:
 
     Q_INVOKABLE void refreshNow();
     Q_INVOKABLE bool setPowerProfile(const QString &profile);
-    Q_INVOKABLE void launchStudioApp();
+    Q_INVOKABLE void launchStudioApp(const QString &pageName = QString());
     Q_INVOKABLE bool openSystemMonitor();
     Q_INVOKABLE bool openReportsFolder();
     Q_INVOKABLE int jumpToPeakThermalSpike();
@@ -356,6 +368,8 @@ private:
     QVariantList m_coreItemsVariant;
     QVariantList m_topProcessesVariant;
     QVariantList m_historySamplesVariant;
+    QVariantList m_incidentHistoryVariant;
+    double m_historyMaxWatts = 65.0;
     int m_selectedHistoryIndex = -1;
 };
 

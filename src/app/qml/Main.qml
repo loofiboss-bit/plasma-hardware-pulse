@@ -155,6 +155,7 @@ Kirigami.ApplicationWindow {
         id: overviewComp
         OverviewPage {
             controller: telemetry
+            onNavigateRequested: (pageName) => appWindow.switchToPage(pageName)
         }
     }
 

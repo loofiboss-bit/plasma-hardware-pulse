@@ -190,6 +190,46 @@ private Q_SLOTS:
         QCOMPARE(throttleVerdict.topProcess.name, QStringLiteral("cc1plus"));
         QVERIFY(!throttleVerdict.causalChain.contains(QStringLiteral("cc1plus")));
         QVERIFY(throttleVerdict.causalChain.contains(QStringLiteral("19 new throttle events")));
+
+        // 4. Power-saver profile active during heavy CPU load
+        cpu.deltaThrottleEvents = 0;
+        cpu.packageTempCelsius = 68.0;
+        cpu.thermalHeadroomCelsius = 32.0;
+        cpu.totalLoadPercent = 72.0;
+        gpu.busyPercent = 15.0;
+        gpu.tempCelsius = 52.0;
+        power.activePowerProfile = QStringLiteral("power-saver");
+        const CausalVerdict powerSaverMismatch = CausalDiagnosisEngine::evaluate(cpu, gpu, psi, power, domains, culprit);
+        QCOMPARE(powerSaverMismatch.severity, VerdictSeverity::Elevated);
+        QCOMPARE(powerSaverMismatch.primaryBottleneckDomain, QStringLiteral("Power & Cooling"));
+        QVERIFY(powerSaverMismatch.headline.contains(QStringLiteral("power-saver")));
+
+        // 5. PL1 Power Limit Capping
+        power.activePowerProfile = QStringLiteral("balanced");
+        cpu.totalLoadPercent = 84.0;
+        power.packagePowerAvailable = true;
+        power.packagePowerEstimated = false;
+        power.pl1LimitWatts = 28.0;
+        power.packageWatts = 27.5;
+        const CausalVerdict pl1Capped = CausalDiagnosisEngine::evaluate(cpu, gpu, psi, power, domains, culprit);
+        QCOMPARE(pl1Capped.severity, VerdictSeverity::Elevated);
+        QCOMPARE(pl1Capped.primaryBottleneckDomain, QStringLiteral("Power & Cooling"));
+        QVERIFY(pl1Capped.headline.contains(QStringLiteral("PL1")));
+
+        // 6. High battery discharge rate
+        cpu.totalLoadPercent = 30.0;
+        power.pl1LimitWatts = 0.0;
+        power.batteryStateAvailable = true;
+        power.batteryPresent = true;
+        power.onAcPower = false;
+        power.batteryPowerAvailable = true;
+        power.batteryLevelAvailable = true;
+        power.batteryPercent = 42.0;
+        power.batteryWatts = 31.5;
+        const CausalVerdict batteryDrain = CausalDiagnosisEngine::evaluate(cpu, gpu, psi, power, domains, culprit);
+        QCOMPARE(batteryDrain.severity, VerdictSeverity::Elevated);
+        QCOMPARE(batteryDrain.primaryBottleneckDomain, QStringLiteral("Power & Cooling"));
+        QVERIFY(batteryDrain.headline.contains(QStringLiteral("battery")));
     }
 
     void testBatteryEtaAndHealthCalculation()

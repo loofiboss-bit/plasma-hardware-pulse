@@ -18,21 +18,42 @@ Kirigami.ScrollablePage {
         property bool showLoad: true
         property bool showPressure: true
         property bool showPower: false
+        property bool showGpu: false
     }
     property bool showTempTrace: historySettings.showTemp
     property bool showLoadTrace: historySettings.showLoad
     property bool showPsiTrace: historySettings.showPressure
     property bool showWattsTrace: historySettings.showPower
+    property bool showGpuTrace: historySettings.showGpu
+    property int hoveredSampleIndex: -1
+
     onShowTempTraceChanged: historySettings.showTemp = showTempTrace
     onShowLoadTraceChanged: historySettings.showLoad = showLoadTrace
     onShowPsiTraceChanged: historySettings.showPressure = showPsiTrace
     onShowWattsTraceChanged: historySettings.showPower = showWattsTrace
+    onShowGpuTraceChanged: historySettings.showGpu = showGpuTrace
+
     function selectStep(delta) {
         var samples = controller.historySamples
         if (!samples || samples.length === 0) return
         var index = controller.selectedHistoryIndex
         index = index < 0 ? samples.length - 1 : Math.max(0, Math.min(samples.length - 1, index + delta))
         controller.selectedHistorySampleId = samples[index].sampleId
+    }
+
+    function hoveredSampleText() {
+        var samples = flightPage.controller.historySamples
+        if (!samples || flightPage.hoveredSampleIndex < 0 || flightPage.hoveredSampleIndex >= samples.length) {
+            return ""
+        }
+        var s = samples[flightPage.hoveredSampleIndex]
+        var parts = ["Hover: " + (s.timeString || "--:--:--")]
+        if (s.cpuTempAvailable) parts.push("CPU " + Number(s.cpuTemp).toFixed(1) + " °C")
+        if (s.cpuLoadAvailable) parts.push("Load " + Number(s.cpuLoad).toFixed(0) + "%")
+        if (s.psiAvailable) parts.push("Pressure idx " + Number(s.responsivenessScore).toFixed(1) + "%")
+        if (s.systemPowerAvailable) parts.push(Number(s.systemWatts).toFixed(1) + " W")
+        parts.push("click to freeze")
+        return parts.join(" · ")
     }
 
     ColumnLayout {
@@ -129,9 +150,18 @@ Kirigami.ScrollablePage {
                 spacing: 4
                 Rectangle { Layout.preferredWidth: 10; Layout.preferredHeight: 10; radius: 5; color: Kirigami.Theme.linkColor }
                 QQC2.CheckBox {
-                    text: "Power (0–65 W)"
+                    text: "Power (0–" + Math.round(flightPage.controller.historyMaxWatts) + " W)"
                     checked: flightPage.showWattsTrace
                     onToggled: { flightPage.showWattsTrace = checked; timelineCanvas.requestPaint() }
+                }
+            }
+            RowLayout {
+                spacing: 4
+                Rectangle { Layout.preferredWidth: 10; Layout.preferredHeight: 10; radius: 5; color: Kirigami.Theme.negativeTextColor }
+                QQC2.CheckBox {
+                    text: "GPU load (0–100%)"
+                    checked: flightPage.showGpuTrace
+                    onToggled: { flightPage.showGpuTrace = checked; timelineCanvas.requestPaint() }
                 }
             }
         }
@@ -177,7 +207,7 @@ Kirigami.ScrollablePage {
                             continue
                         }
                         var x = ((sample.timestampMs - firstTime) / timeSpan) * width
-                        var normal = Math.min(1, Math.max(0, (sample[valueKey] - minValue) / (maxValue - minValue)))
+                        var normal = Math.min(1, Math.max(0, (sample[valueKey] - minValue) / Math.max(1, maxValue - minValue)))
                         var y = height - normal * (height - 12) - 6
                         if (!drawing || sample.gapBefore) ctx.moveTo(x, y)
                         else ctx.lineTo(x, y)
@@ -194,6 +224,7 @@ Kirigami.ScrollablePage {
                     var firstTime = samples[0].timestampMs
                     var lastTime = samples[samples.length - 1].timestampMs
                     var timeSpan = Math.max(1, lastTime - firstTime)
+                    var maxWatts = Math.max(65, flightPage.controller.historyMaxWatts)
 
                     // Incident markers and visible breaks after pauses or sleep.
                     ctx.globalAlpha = 0.28
@@ -230,7 +261,9 @@ Kirigami.ScrollablePage {
                     if (flightPage.showPsiTrace)
                         drawTrace(ctx, samples, firstTime, timeSpan, "responsivenessScore", "psiAvailable", 0, 100, Kirigami.Theme.positiveTextColor)
                     if (flightPage.showWattsTrace)
-                        drawTrace(ctx, samples, firstTime, timeSpan, "systemWatts", "systemPowerAvailable", 0, 65, Kirigami.Theme.linkColor)
+                        drawTrace(ctx, samples, firstTime, timeSpan, "systemWatts", "systemPowerAvailable", 0, maxWatts, Kirigami.Theme.linkColor)
+                    if (flightPage.showGpuTrace)
+                        drawTrace(ctx, samples, firstTime, timeSpan, "gpuBusy", "gpuBusyAvailable", 0, 100, Kirigami.Theme.negativeTextColor)
 
                     if (timelineCanvas.hoverX >= 0 && timelineCanvas.hoverX <= width) {
                         ctx.globalAlpha = 0.45
@@ -258,9 +291,9 @@ Kirigami.ScrollablePage {
                 MouseArea {
                     anchors.fill: parent
                     hoverEnabled: true
-                    function selectAtX(mouseX) {
+                    function nearestIndexAtX(mouseX) {
                         var samples = flightPage.controller.historySamples
-                        if (!samples || samples.length === 0) return
+                        if (!samples || samples.length === 0) return -1
                         var ratio = Math.min(1.0, Math.max(0.0, mouseX / Math.max(1.0, width)))
                         var targetTime = samples[0].timestampMs
                                 + ratio * (samples[samples.length - 1].timestampMs - samples[0].timestampMs)
@@ -269,16 +302,25 @@ Kirigami.ScrollablePage {
                             if (Math.abs(samples[i].timestampMs - targetTime)
                                     < Math.abs(samples[nearest].timestampMs - targetTime)) nearest = i
                         }
-                        flightPage.controller.selectedHistorySampleId = samples[nearest].sampleId
+                        return nearest
+                    }
+                    function selectAtX(mouseX) {
+                        var samples = flightPage.controller.historySamples
+                        var nearest = nearestIndexAtX(mouseX)
+                        if (nearest >= 0 && nearest < samples.length) {
+                            flightPage.controller.selectedHistorySampleId = samples[nearest].sampleId
+                        }
                     }
                     onPressed: (mouse) => { timelineCanvas.forceActiveFocus(); selectAtX(mouse.x) }
                     onPositionChanged: (mouse) => {
                         timelineCanvas.hoverX = mouse.x
+                        flightPage.hoveredSampleIndex = nearestIndexAtX(mouse.x)
                         timelineCanvas.requestPaint()
                         if (pressed) selectAtX(mouse.x)
                     }
                     onExited: {
                         timelineCanvas.hoverX = -1
+                        flightPage.hoveredSampleIndex = -1
                         timelineCanvas.requestPaint()
                     }
                 }
@@ -290,7 +332,11 @@ Kirigami.ScrollablePage {
                 anchors.bottom: parent.bottom
                 anchors.margins: 6
                 visible: flightPage.controller.historySamples.length >= 2
-                QQC2.Label { text: "100% / 100°C"; font.pixelSize: Kirigami.Theme.smallFont.pixelSize; color: Kirigami.Theme.disabledTextColor }
+                QQC2.Label {
+                    text: "100% / 100°C" + (flightPage.showWattsTrace ? " / " + Math.round(flightPage.controller.historyMaxWatts) + "W" : "")
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                    color: Kirigami.Theme.disabledTextColor
+                }
                 Item { Layout.fillHeight: true }
                 QQC2.Label { text: "50%"; font.pixelSize: Kirigami.Theme.smallFont.pixelSize; color: Kirigami.Theme.disabledTextColor }
                 Item { Layout.fillHeight: true }
@@ -303,18 +349,51 @@ Kirigami.ScrollablePage {
                 text: "No history has been recorded yet"
                 color: Kirigami.Theme.disabledTextColor
             }
-
         }
 
         QQC2.Label {
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
-            text: flightPage.controller.historySamples.length
-                  ? "Recorded time: " + new Date(flightPage.controller.historySamples[0].timestampMs).toLocaleTimeString()
-                    + " — " + new Date(flightPage.controller.historySamples[flightPage.controller.historySamples.length - 1].timestampMs).toLocaleTimeString()
-                    + " · Select a sample by clicking the graph or using Left/Right arrow keys."
-                  : "No history yet. Measurements appear here after the next sample."
-            color: Kirigami.Theme.disabledTextColor
+            text: flightPage.hoveredSampleIndex >= 0
+                  ? flightPage.hoveredSampleText()
+                  : (flightPage.controller.historySamples.length
+                     ? "Recorded time: " + new Date(flightPage.controller.historySamples[0].timestampMs).toLocaleTimeString()
+                       + " — " + new Date(flightPage.controller.historySamples[flightPage.controller.historySamples.length - 1].timestampMs).toLocaleTimeString()
+                       + " · Select a sample by clicking the graph or using Left/Right arrow keys."
+                     : "No history yet. Measurements appear here after the next sample.")
+            color: flightPage.hoveredSampleIndex >= 0 ? Kirigami.Theme.highlightColor : Kirigami.Theme.disabledTextColor
+            font.bold: flightPage.hoveredSampleIndex >= 0
+        }
+
+        // Recorded Incident Episodes Bar
+        ColumnLayout {
+            Layout.fillWidth: true
+            visible: flightPage.controller.incidentHistory.length > 0
+            spacing: Kirigami.Units.smallSpacing
+
+            QQC2.Label {
+                Layout.fillWidth: true
+                text: "Recorded incidents (click to inspect moment):"
+                font.bold: true
+                color: Kirigami.Theme.disabledTextColor
+                wrapMode: Text.WordWrap
+            }
+
+            Flow {
+                Layout.fillWidth: true
+                spacing: Kirigami.Units.smallSpacing
+
+                Repeater {
+                    model: flightPage.controller.incidentHistory
+                    delegate: QQC2.Button {
+                        id: incidentChip
+                        required property var modelData
+                        icon.name: incidentChip.modelData.throttled || incidentChip.modelData.severity >= 2 ? "dialog-warning" : "dialog-information"
+                        text: incidentChip.modelData.timeString + " · " + incidentChip.modelData.headline
+                        onClicked: flightPage.controller.selectedHistorySampleId = incidentChip.modelData.sampleId
+                    }
+                }
+            }
         }
 
         // Snapshot Inspector Card
@@ -366,17 +445,20 @@ Kirigami.ScrollablePage {
 
                     QQC2.Label {
                         Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
                         text: "CPU temperature: " + (flightPage.controller.selectedHistoryDetail.cpuTempAvailable ? Number(flightPage.controller.selectedHistoryDetail.cpuTemp).toFixed(1) + " °C" : "Unavailable")
                         color: Kirigami.Theme.textColor
                         font.bold: true
                     }
                     QQC2.Label {
                         Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
                         text: "NVMe temperature: " + (flightPage.controller.selectedHistoryDetail.nvmeTempAvailable ? Number(flightPage.controller.selectedHistoryDetail.nvmeTemp).toFixed(1) + " °C" : "Unavailable")
                         color: Kirigami.Theme.textColor
                     }
                     QQC2.Label {
                         Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
                         text: "CPU load: " + (flightPage.controller.selectedHistoryDetail.cpuLoadAvailable
                               ? Number(flightPage.controller.selectedHistoryDetail.cpuLoad).toFixed(1) + "%"
                                 + (flightPage.controller.selectedHistoryDetail.cpuFrequencyAvailable
@@ -386,9 +468,28 @@ Kirigami.ScrollablePage {
                     }
                     QQC2.Label {
                         Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
                         text: "System power: " + (flightPage.controller.selectedHistoryDetail.systemPowerAvailable
                               ? Number(flightPage.controller.selectedHistoryDetail.systemWatts).toFixed(1) + " W"
                                 + (flightPage.controller.selectedHistoryDetail.systemPowerEstimated ? " · Estimated" : " · Measured")
+                              : "Unavailable")
+                        color: Kirigami.Theme.textColor
+                    }
+                    QQC2.Label {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        text: "GPU load & temp: " + (flightPage.controller.selectedHistoryDetail.gpuBusyAvailable
+                              ? Number(flightPage.controller.selectedHistoryDetail.gpuBusy).toFixed(0) + "%" : "Unavailable")
+                              + " · " + (flightPage.controller.selectedHistoryDetail.gpuTempAvailable
+                              ? Number(flightPage.controller.selectedHistoryDetail.gpuTemp).toFixed(0) + " °C" : "Unavailable")
+                        color: Kirigami.Theme.textColor
+                    }
+                    QQC2.Label {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        text: "Disk I/O throughput: " + (flightPage.controller.selectedHistoryDetail.diskThroughputAvailable
+                              ? Number(flightPage.controller.selectedHistoryDetail.diskReadMibPerSec).toFixed(1) + " MiB/s read · "
+                                + Number(flightPage.controller.selectedHistoryDetail.diskWriteMibPerSec).toFixed(1) + " MiB/s write"
                               : "Unavailable")
                         color: Kirigami.Theme.textColor
                     }
@@ -403,6 +504,7 @@ Kirigami.ScrollablePage {
                     }
                     QQC2.Label {
                         Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
                         text: flightPage.controller.selectedHistoryDetail.culpritName
                               ? "Observed use: " + Number(flightPage.controller.selectedHistoryDetail.culpritCpuPercent).toFixed(1)
                                 + "% CPU · " + Math.round(Number(flightPage.controller.selectedHistoryDetail.culpritRssMb)) + " MiB RSS"
@@ -411,11 +513,13 @@ Kirigami.ScrollablePage {
                     }
                     QQC2.Label {
                         Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
                         text: "Calculated pressure index: " + (flightPage.controller.selectedHistoryDetail.psiAvailable ? Number(flightPage.controller.selectedHistoryDetail.responsivenessScore).toFixed(1) + "%" : "Unavailable")
                         color: Kirigami.Theme.positiveTextColor
                     }
                     QQC2.Label {
                         Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
                         text: "New throttle events: " + (!flightPage.controller.selectedHistoryDetail.throttleCountersAvailable
                               ? "Unavailable" : (flightPage.controller.selectedHistoryDetail.throttled ? "Observed" : "None observed"))
                         color: Kirigami.Theme.textColor
@@ -429,7 +533,7 @@ Kirigami.ScrollablePage {
                         anchors.left: parent.left
                         anchors.right: parent.right
                         Repeater {
-                            model: ["cpuLoad", "cpuTemperature", "pressureIndex", "packagePower"]
+                            model: ["cpuLoad", "cpuTemperature", "gpuLoad", "pressureIndex", "diskThroughput", "packagePower"]
                             delegate: QQC2.Label {
                                 required property string modelData
                                 readonly property var quality: flightPage.controller.selectedHistoryDetail.metricMetadata

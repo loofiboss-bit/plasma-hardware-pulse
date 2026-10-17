@@ -9,6 +9,7 @@ KCM.SimpleKCM {
     property alias cfg_pollIntervalMs: pollSpin.value
     property alias cfg_showWattsInPanel: showWattsCheck.checked
     property alias cfg_showPsiInPanel: showPsiCheck.checked
+    property alias cfg_alwaysShowStatusInPanel: alwaysShowStatusCheck.checked
     property alias cfg_notificationsEnabled: notificationsCheck.checked
 
     Kirigami.FormLayout {
@@ -29,6 +30,11 @@ KCM.SimpleKCM {
         QQC2.CheckBox {
             id: showPsiCheck
             text: "Show calculated pressure index in panel"
+        }
+
+        QQC2.CheckBox {
+            id: alwaysShowStatusCheck
+            text: "Always show status headline in panel (otherwise shown only on alerts)"
         }
 
         QQC2.CheckBox {
