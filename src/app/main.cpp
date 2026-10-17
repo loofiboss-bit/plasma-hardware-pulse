@@ -59,7 +59,19 @@ int main(int argc, char *argv[])
     aboutData.processCommandLine(&parser);
 
     QQmlApplicationEngine engine;
-    engine.addImportPath(QCoreApplication::applicationDirPath());
+    const QString appDir = QCoreApplication::applicationDirPath();
+    for (const QString &relPath : {
+             QStringLiteral("/../lib/qml"),
+             QStringLiteral("/../lib64/qml"),
+             QStringLiteral("/../lib/qt6/qml"),
+             QStringLiteral("/../lib64/qt6/qml"),
+         }) {
+        const QString candidate = QDir::cleanPath(appDir + relPath);
+        if (QDir(candidate).exists()) {
+            engine.addImportPath(candidate);
+        }
+    }
+    engine.addImportPath(appDir);
 
     QObject::connect(
         &engine,

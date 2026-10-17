@@ -770,7 +770,14 @@ bool PulseTelemetryController::openReportsFolder()
 
 void PulseTelemetryController::launchStudioApp(const QString &pageName)
 {
-    QString exe = QStandardPaths::findExecutable(QStringLiteral("loofi-pulse"));
+    QString exe;
+    const QString localBin = QDir(QDir::homePath()).filePath(QStringLiteral(".local/bin/loofi-pulse"));
+    if (QFileInfo(localBin).isExecutable()) {
+        exe = localBin;
+    }
+    if (exe.isEmpty()) {
+        exe = QStandardPaths::findExecutable(QStringLiteral("loofi-pulse"));
+    }
     if (exe.isEmpty()) {
         const QString sibling = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("loofi-pulse"));
         if (QFileInfo::exists(sibling)) {
