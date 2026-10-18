@@ -1,71 +1,89 @@
 # Loofi Pulse
 
-Loofi Pulse is a Linux hardware monitor for KDE Plasma 6. It includes a Plasma panel applet and a standalone Kirigami application, built with C++20 and Qt 6.
+Loofi Pulse is a local Linux hardware monitor and incident investigation tool for KDE Plasma 6. The C++20/Qt 6 application and Plasma widget share one user-session collector. Fedora KDE is the primary target.
 
-## Version 0.8.0
+## Version 0.9.0
 
-The application and panel widget read CPU and GPU activity, temperatures, Linux Pressure Stall Information (PSI), memory and ZRAM data, block storage and network throughput, power and battery information, and concurrent process activity (including uninterruptible disk-wait `D`-state detection). Missing or invalid measurements are marked **Unavailable**. Measurement details include their source, quality and sample time; calculated pressure indices and estimated package power are labelled explicitly.
+- **Overview** connects the current diagnosis to CPU, GPU, temperature, memory pressure, storage and power details. **Why this status?** explains evidence, uncertainty and recommended next steps. High activity alone remains neutral.
+- **History** retains 5, 15 or 30 minutes in memory at supported 250–10,000 ms sampling intervals. Mark a problem, select an incident or range, compare before/during/after, and freeze an investigation while live collection continues. Missing observations, warmup and recording gaps remain visible.
+- **Processes** lists readable processes, including small idle processes, with search, sorting, owner, state, CPU and memory. PID plus process start time identifies a process across updates. Historical observations contain the union of the top eight CPU, memory and disk-wait processes, at most 24 rows per observation. Inaccessible or exited processes are omitted. Concurrent use does not establish causation.
+- **Storage & Network** exposes individual devices, throughput, read/write IOPS, average disk request time and network error/drop counters. Physical disk aggregates exclude partitions and virtual devices. Network totals default to physical interfaces; explicitly selected virtual interfaces can overlap physical traffic.
+- **Power & Cooling** presents package power, power limits, GPU telemetry, batteries, cooling and per-core data. Multiple batteries remain individually visible. Combined levels require compatible energy readings; USB/USB-C sources are recognized when Linux exposes their online state. Missing voltage is never replaced with an invented value.
+- **GPU selection** binds readings to a device identity. The capability overview explains missing kernel/driver interfaces. A detected GPU can lack readable busy, temperature, frequency, power or memory measurements.
+- **Local sessions** explicitly save and reopen an investigation without replacing the live recording. **Export selected incident** and the complete recording report have separate actions. Saved values retain their original diagnosis and quality metadata.
+- **Plasma widget** keeps configurable panel metrics and presets, plus popup diagnostics and incident navigation into the application.
 
-- **Overview** presents a persistent telemetry header bar, hero causal diagnosis banner with secondary multi-domain contributing signal pills and a circular PSI responsiveness ring gauge, and six fully clickable primary domain cards (**CPU load**, **CPU temperature**, **Graphics (GPU)**, **Memory pressure**, **Storage & I/O**, and **CPU package power**) with embedded live mini-sparklines that navigate directly to their corresponding detail pages. Additional sensor and data-quality details expand into a structured two-column status matrix.
-- **History** keeps a configurable **5, 15, or 30-minute** retention window at 500, 1,000 or 2,000 ms intervals using incremental ring-buffer updates, on-demand metadata synthesis, and a **Clear History** reset action. An oscilloscope-grade chart with dynamic Y/X-axis gutters, interactive channel toggle chips (**CPU load**, **CPU temp**, **GPU load**, **Responsiveness index**, **CPU package power**, and **Disk I/O**), gradient-filled traces, and a 6-card Snapshot Inspector HUD covers live and historical telemetry alongside clickable **Recorded incidents** episode chips with incident durations.
-- **Memory & Pressure** combines a circular PSI gauge with dual-bar (`some`/`full`) CPU, memory, and storage stall cards, a visual **RAM → ZRAM → Swap** allocation pipeline, and an interactive concurrent process radar with sort modes (**Combined**, **CPU %**, **Memory RSS**, and **Disk Wait**) plus explicit `DISK WAIT (D)` badges when processes stall in uninterruptible sleep.
-- **Power & Cooling** organizes power and thermal telemetry into four accented domain cards (**CPU package & power limits**, **Graphics (GPU)**, **Battery & power source**, and **Cooling & device thermal**), an icon-equipped power profile switcher, a per-core load/thermal heatmap grid with **Sort by load**, and a two-column detected sensor matrix with thermal headroom bars.
-- **Plasma 6 Panel Widget** renders a configurable telemetry pill in the panel (with optional toggles for **CPU temp**, **CPU %**, **GPU load/temp**, **RAM %**, **Responsiveness index**, **Disk/Network I/O**, and **CPU package power**) and provides an interactive 2x2 domain card grid plus a channel-switchable (**Temp**, **CPU**, **PSI**, **Power**) sparkline in its popup.
+### Collection and notifications
 
-Ordinary warnings require three seconds of consistent observations, and recovery requires five seconds. New hardware throttle-counter events appear immediately. The causal diagnosis engine evaluates CPU/GPU thermals, PSI bottlenecks (including uninterruptible `D`-state disk wait context), power-saver profile capping under heavy load, sustained PL1 power-limit capping, and high battery discharge rates, while surfacing secondary concurrent stress signals in `contributingSignals`. Stable rule identities prevent unrelated diagnoses of the same severity from flickering between domains. **Why this status?** explains observed evidence, duration, missing measurements and recommended next steps. Temperature risk and storage temperature do not by themselves establish throttling or an I/O bottleneck.
+`loofi-pulse-service` owns collection and serves the application and widgets through the versioned user-session D-Bus name/interface `com.github.loofi.hardwarepulse.Collector1`, at `/com/github/loofi/hardwarepulse/Collector1`. D-Bus activates it on demand. Collection runs away from the UI thread with one outstanding job; clients request their own sampling and retention settings. The fastest interval and longest requested retention determine shared collection.
 
-Markdown and versioned JSON reports (schema version 2, with additive diagnostic and source metadata) include recorded values, network and disk throughput, data quality, contributing signals, and the covered period. Process names, IDs and start-time identities are excluded by default; enable **Include process names and IDs in reports** in Settings to include them. Each file is saved atomically, export errors identify the affected file, and successful exports offer an **Open folder** action. **Open System Monitor** opens KDE's process view for further investigation.
+**Background monitoring** is off by default. **Start at login** is a separate opt-in setting; installing the package does not enable either setting. With no clients and background monitoring disabled, the collector exits after 30 seconds. Ordinary rolling recordings are memory-only and disappear when the collector exits. Save an investigation explicitly to retain it.
 
-The standalone app remembers its polling interval, history retention window, notification preference, network interface selection, report privacy preference and selected chart curves, and supports keyboard shortcuts (`Ctrl+1..4` / `Alt+1..4` for page navigation, `Ctrl+P` for pause/resume, `Ctrl+S` to save a report, `Ctrl+Shift+C` to copy a report). The widget keeps its separate Plasma settings. Layouts follow the KDE theme and support keyboard navigation. Hardware support depends on the interfaces exposed by the running Linux kernel; unavailable sensors require no additional permissions.
+Incident notifications are coordinated by the collector, with an open action, critical escalation and a 15-minute snooze. Notifications and background monitoring have separate controls. Service disconnection, warmup, pause and stale data are distinct states; a disconnected client must not treat old values as current readings.
 
+### Sessions, reports and privacy
 
-### Understanding the measurements
+`.pulse-session` format version 1 preserves original samples, device identities, quality, gaps, markers and diagnosis engine version. Files are validated before opening: the supported format, ordered timestamps and valid references are required, with limits of **64 MiB** and **7,201 telemetry points**. An invalid file cannot replace the current investigation. Saves are atomic; a write failure is reported to the user.
 
-- **Responsiveness index** is a calculated 0–100 score; higher is better. It is neither a measured response time nor raw PSI. Raw CPU, memory and storage PSI values describe time spent waiting; higher values indicate more pressure.
-- **CPU package power** and **Battery discharge** have separate history channels. Package power is not whole-system power. Estimated package values are labelled. The legacy JSON `systemWatts` field is preserved for compatibility and must not be interpreted as measured whole-system power.
-- Activity uses neutral channel colours. Warnings require observed pressure, thermal risk or throttle evidence; high CPU/GPU use and throughput alone are not failures.
-- **Measurement details** shows each metric's source, sample time, quality and missing-data reason. Process rows expand to show the PID/start-time identity and last observation time; concurrent resource use does not establish causation.
-- Disk and network rates use per-device baselines. Hotplug, disappearance and counter resets warm up independently. Network totals default to physical interfaces; Settings can explicitly select virtual interfaces, which may overlap physical traffic.
-- History retains the configured 5/15/30-minute window across supported 250–10,000 ms sampling intervals. The view shows the actually recorded duration separately and preserves gaps during pause, suspend and missing readings.
-- Settings groups sampling, retention, notifications, network selection and report privacy. Panel presets **Minimal**, **Balanced** and **Detailed** have bounded width; existing per-metric choices remain available as **Custom**.
+Reports retain JSON schema version 2 and existing fields alongside additive metadata. Session and report exports exclude process names, PIDs, start-time identities and owners by default. Enable **Include process names and IDs in reports** only when those details are appropriate to share. Live process inspection is local and separate from export privacy. Review any saved session or report before sharing: system and device details remain present even with process redaction.
 
-Open a specific section with `loofi-pulse --page power --section gpu`, or `--page pressure --section storage`. Existing page names remain supported; unknown sections open the top of the page.
+The app offers to save an unsaved investigation when explicitly quitting monitoring. Successful report files remain available if another file fails to export.
 
-See [ROADMAP.md](ROADMAP.md) for the planned local incident sessions, additional hardware views and 1.0 qualification work. These later features are not part of v0.8.
+### Measurement semantics
 
-## Build
+- **Responsiveness index** is a calculated 0–100 score, not measured latency. Raw PSI measures time spent waiting; higher pressure means more waiting.
+- **CPU package power** and **Battery discharge** are separate measurements. Estimated package power is labelled. The legacy JSON `systemWatts` field does not establish measured whole-system power.
+- **Average disk request time** is derived from completed read/write operations and their accumulated request milliseconds in `/proc/diskstats`; it is not application response time or a latency percentile. An interval without completed requests has no average.
+- Per-device baselines reset after disappearance, replacement, counter rollback or suspend. The first new reading warms up instead of producing a rate from lifetime counters.
+- Ordinary diagnosis warnings require sustained evidence; new hardware throttle-counter events are immediate. Heat alone does not establish active throttling, and storage temperature alone does not establish an I/O bottleneck.
+- Missing, malformed or unreadable measurements are unavailable. Pulse does not request additional privileges to fabricate complete sensor coverage.
 
-On Fedora, install the KDE Frameworks, Plasma, Qt, and CMake development packages required by the project, then run:
+### Navigation
+
+Existing page identifiers, configuration keys and shortcuts remain supported. `Ctrl+1..4` / `Alt+1..4` navigate existing pages; `Ctrl+P` pauses/resumes, `Ctrl+S` exports a report, and `Ctrl+Shift+C` copies it. `Ctrl+O` opens a session and `Ctrl+Shift+S` saves one.
 
 ```sh
-cmake -S . -B build -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo
-cmake --build build --parallel
+loofi-pulse --page power --section gpu
+loofi-pulse --page pressure --section storage
+loofi-pulse --session /path/to/investigation.pulse-session
+loofi-pulse --incident INCIDENT_ID
 ```
 
-Run portable tests with:
+An incident identifier refers to the shared collector's recording. Save a session to preserve it across collector exit. Process termination and system administration remain outside the investigation workflow; **Open System Monitor** can open KDE's process view.
+
+## Build and verify
+
+Install the development dependencies listed in `packaging/plasma-hardware-pulse.spec`, then run:
 
 ```sh
-ctest --test-dir build --output-on-failure
-```
-
-QML and metadata checks can also be run directly:
-
-```sh
+cmake -S . -B build -DBUILD_TESTING=ON -DBUILD_LIVE_HARDWARE_TESTS=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=/usr
+cmake --build build --parallel 2
+QT_QPA_PLATFORM=offscreen ctest --test-dir build --output-on-failure
 qmllint --ignore-settings -i build/bin/com/github/loofi/hardwarepulse/qmldir -I build/bin src/app/qml/*.qml package/contents/ui/*.qml
 appstreamcli validate --no-net packaging/com.github.loofi.hardwarepulse.metainfo.xml
 ```
 
-The live host telemetry sanity check is excluded by default because it depends on the sensors and interfaces of the machine running it. Enable it explicitly with `-DBUILD_LIVE_HARDWARE_TESTS=ON` when testing on a suitable Linux host.
+The normal test suite uses deterministic filesystem fixtures, session validation and isolated D-Bus/UI tests. Live-host telemetry sanity checks require `-DBUILD_LIVE_HARDWARE_TESTS=ON` and suitable readable interfaces. The complete application requires a session D-Bus; build-tree service tests should use an isolated bus to avoid interacting with an installed collector.
 
-To launch the standalone application from the build tree:
+For a sustained 35-minute UI/service workload with 1,000 simulated processes, run the following after building. It samples every 250 ms, fills 30 minutes of history, then opens the production History page. The test reports five-minute UI-delay percentiles and UI/collector CPU and RSS; the normal CTest run keeps a five-second UI workload and a separate ten-second full-history regression. The latter prefills 7,201 synthetic points with peaks and gaps, rolls the window every 250 ms, and verifies bounded plot projection and UI latency. It does not replace the wall-clock retention test.
 
 ```sh
-QML_IMPORT_PATH="$PWD/build/bin" ./build/bin/loofi-pulse
+mkdir -p build/soak-state/{config,data,cache}
+PULSE_SOAK_MS=2100000 QTEST_FUNCTION_TIMEOUT=2400000 \
+QT_QPA_PLATFORM=offscreen QML_IMPORT_PATH="$PWD/build/bin" \
+XDG_DATA_DIRS="$PWD/build/share:/usr/local/share:/usr/share" \
+XDG_CONFIG_HOME="$PWD/build/soak-state/config" \
+XDG_DATA_HOME="$PWD/build/soak-state/data" \
+XDG_CACHE_HOME="$PWD/build/soak-state/cache" \
+dbus-run-session -- ./build/tests/test_collector_v09 actualQmlProcessPageResponsiveness
 ```
 
-## Packaging & Installation
+## Packaging and qualification
 
-- **Local install**: `just install-local` installs into `~/.local` and upgrades/installs the Plasma 6 applet package.
-- **Plasmoid bundle**: `just package-plasmoid` generates `build/dist/com.github.loofi.hardwarepulse.plasmoid`.
-- **Fedora RPM**: `packaging/plasma-hardware-pulse.spec` provides the RPM build specification for Fedora KDE Plasma 6.
+The Fedora spec builds RPM/SRPM packages containing the application, collector, D-Bus activation file, QML plugin and widget. `just package-plasmoid` creates a widget bundle; the widget also requires the matching installed native plugin and collector. A widget ZIP alone does not provide those binaries.
 
+CI builds and runs CTest, QML and AppStream checks, checks staged application/collector/activation artifacts, and builds RPM/SRPM packages. A successful source or staged build is distinct from an installed-package upgrade or real desktop test.
+
+**Qualification boundary:** deterministic fixtures cover multiple GPUs and batteries, USB-PD, virtual devices, unavailable readings and counter resets. They do not qualify real Intel/AMD/NVIDIA drivers, physical hotplug, USB-C charging, suspend/resume, Plasma/Wayland desktop interaction, screen readers or upgrade behavior on an ordinary user system. Those combinations must be recorded separately when physically exercised. A performance acceptance target is also not a measured result; record the exact workload, CPU/RSS and UI-delay results before claiming it passed.
+
+`just install-local` modifies the user's desktop installation and configuration; run it only when intentionally installing. Development and CI checks do not publish a release or install the package on the ordinary user system. See [ROADMAP.md](ROADMAP.md) for the remaining release qualification work and [SECURITY.md](SECURITY.md) for privacy and vulnerability reporting.

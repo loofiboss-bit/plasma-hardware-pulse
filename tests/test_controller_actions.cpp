@@ -29,11 +29,13 @@ private Q_SLOTS:
     void testNavigationValidationAndPrivacyDefaults()
     {
         QCOMPARE(PulseTelemetryController::normalizedPageName(QStringLiteral(" power ")), QStringLiteral("power"));
+        QCOMPARE(PulseTelemetryController::normalizedPageName(QStringLiteral("storage")), QStringLiteral("storage"));
+        QCOMPARE(PulseTelemetryController::normalizedPageName(QStringLiteral("devices")), QStringLiteral("storage"));
         QCOMPARE(PulseTelemetryController::normalizedPageName(QStringLiteral("unknown")), QStringLiteral("overview"));
         QCOMPARE(PulseTelemetryController::validatedSectionName(QStringLiteral("power"), QStringLiteral("gpu")), QStringLiteral("gpu"));
         QCOMPARE(PulseTelemetryController::validatedSectionName(QStringLiteral("pressure"), QStringLiteral("network")), QStringLiteral("network"));
         QVERIFY(PulseTelemetryController::validatedSectionName(QStringLiteral("power"), QStringLiteral("processes")).isEmpty());
-        PulseTelemetryController controller;
+        PulseTelemetryController controller(QDBusConnection::systemBus());
         QVERIFY(!controller.exportIncludeProcessDetails());
         QSignalSpy changes(&controller, &PulseTelemetryController::exportIncludeProcessDetailsChanged);
         controller.setExportIncludeProcessDetails(true);
@@ -45,7 +47,7 @@ private Q_SLOTS:
 
     void testNetworkSelectionAndHistoryMetadata()
     {
-        PulseTelemetryController controller;
+        PulseTelemetryController controller(QDBusConnection::systemBus());
         QVERIFY(controller.selectedNetworkInterfaces().isEmpty());
         QSignalSpy changes(&controller, &PulseTelemetryController::selectedNetworkInterfacesChanged);
         controller.setSelectedNetworkInterfaces({QStringLiteral(" tun0 "), QStringLiteral("eth0"), QStringLiteral("tun0"), QString()});
@@ -79,7 +81,7 @@ private Q_SLOTS:
         QTemporaryDir emptyPath;
         QVERIFY(emptyPath.isValid());
         qputenv("PATH", QFile::encodeName(emptyPath.path()));
-        PulseTelemetryController controller;
+        PulseTelemetryController controller(QDBusConnection::systemBus());
         QVERIFY(!controller.openSystemMonitor());
         QVERIFY(!controller.lastActionSucceeded());
         QVERIFY(controller.lastActionStatus().contains(QStringLiteral("not installed")));
@@ -88,7 +90,7 @@ private Q_SLOTS:
 
     void testUnsupportedProfileNeverStartsChange()
     {
-        PulseTelemetryController controller;
+        PulseTelemetryController controller(QDBusConnection::systemBus());
         QVERIFY(!controller.setPowerProfile(QStringLiteral("not-a-real-power-profile")));
         QVERIFY(!controller.powerProfileChangePending());
         QVERIFY(!controller.lastActionSucceeded());
@@ -134,7 +136,7 @@ private Q_SLOTS:
 
         const QByteArray previousDataHome = qgetenv("XDG_DATA_HOME");
         qputenv("XDG_DATA_HOME", QFile::encodeName(blockedPath));
-        PulseTelemetryController controller;
+        PulseTelemetryController controller(QDBusConnection::systemBus());
         QCOMPARE(controller.exportIncidentReportToFile(), QString());
         QVERIFY(!controller.lastActionSucceeded());
         QVERIFY(controller.lastActionStatus().contains(QStringLiteral("could not be created")));
@@ -143,7 +145,7 @@ private Q_SLOTS:
 
     void testHistoryRetentionAndClearHistory()
     {
-        PulseTelemetryController controller;
+        PulseTelemetryController controller(QDBusConnection::systemBus());
         QCOMPARE(controller.historyRetentionSeconds(), 300);
         QVERIFY(!controller.historySamples().isEmpty());
 

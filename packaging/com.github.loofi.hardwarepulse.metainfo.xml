@@ -9,7 +9,9 @@
     <p>
       Loofi Pulse provides a KDE Plasma 6 panel applet and a Kirigami desktop application for
       viewing system hardware readings, temperatures, Linux memory and I/O pressure, power,
-      and recent telemetry history. Available readings depend on the sensors and interfaces
+      and recent telemetry history. A shared collector supports the application and widget.
+      Inspect processes and individual devices, investigate incidents, and explicitly save
+      and reopen local sessions. Background monitoring is optional. Available readings depend on the sensors and interfaces
       exposed by the running Linux system.
     </p>
   </description>
@@ -20,6 +22,12 @@
   </developer>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.9.0" date="2026-10-18">
+      <description>
+        <p>Shared user-session collection, incident investigations and saved local sessions,
+        full process inspection, per-device storage and network metrics, and multiple GPU and battery support.</p>
+      </description>
+    </release>
     <release version="0.8.0" date="2026-10-17" />
     <release version="0.7.0" date="2026-10-17" />
     <release version="0.6.0" date="2026-10-17" />

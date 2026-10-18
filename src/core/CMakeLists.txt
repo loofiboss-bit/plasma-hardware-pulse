@@ -5,6 +5,7 @@ set(loofipulsecore_SRCS
     powerflowsampler.cpp
     causaldiagnosisengine.cpp
     flightrecorder.cpp
+    sessionstore.cpp
 )
 
 set(loofipulsecore_HDRS
@@ -15,6 +16,7 @@ set(loofipulsecore_HDRS
     powerflowsampler.h
     causaldiagnosisengine.h
     flightrecorder.h
+    sessionstore.h
 )
 
 add_library(loofipulsecore STATIC

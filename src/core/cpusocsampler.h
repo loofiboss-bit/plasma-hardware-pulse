@@ -3,6 +3,7 @@
 #include "telemetrytypes.h"
 
 #include <QHash>
+#include <QElapsedTimer>
 #include <QList>
 
 namespace LoofiPulse
@@ -16,6 +17,7 @@ public:
     void setRootConfig(const SysfsRootConfig &config);
 
     CpuSocSnapshot sampleCpu(const QList<DomainSensorReading> &domainReadings, qint64 elapsedMs = 1000);
+    QList<GpuSnapshot> sampleGpus(const QList<DomainSensorReading> &domainReadings);
     GpuSnapshot sampleGpu(const QList<DomainSensorReading> &domainReadings);
     CulpritProcess sampleTopCulpritProcess();
     ProcessRadarSnapshot sampleProcessRadar(int maxTopProcesses = 5);
@@ -42,6 +44,10 @@ private:
 
     QHash<int, ProcSample> m_prevProcTicks;
     quint64 m_prevSystemTotalTicks = 0;
+    QHash<quint32, QString> m_ownerNames;
+    QElapsedTimer m_ownerMetadataAge;
+    QHash<QString, QString> m_gpuDrivers;
+    QElapsedTimer m_gpuMetadataAge;
 };
 
 } // namespace LoofiPulse

@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
+import "MeasurementLabels.js" as MeasurementLabels
 
 ColumnLayout {
     id: details
@@ -24,7 +25,7 @@ ColumnLayout {
             Layout.fillWidth: true
             ColumnLayout {
                 anchors.fill: parent
-                QQC2.Label { text: entry.modelData + " · " + String(entry.quality.state || "unavailable"); font.bold: true }
+                QQC2.Label { Layout.fillWidth: true; wrapMode: Text.WordWrap; text: MeasurementLabels.metricLabel(entry.modelData) + " · " + MeasurementLabels.qualityLabel(entry.quality.state); font.bold: true }
                 QQC2.Label {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap

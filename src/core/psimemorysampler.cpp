@@ -154,24 +154,50 @@ PsiAndMemorySnapshot PsiMemorySampler::sample(qint64 elapsedMs)
     // Keep baselines per device: hotplug must never add a device's lifetime counters.
     const double mibPerSecond = elapsedMs > 50 ? 1000.0 / elapsedMs / (1024.0 * 1024.0) : 0.0;
     QHash<QString, Counters> nextDisks;
-    static const QRegularExpression wholeDiskRe(QStringLiteral("^(nvme\\d+n\\d+|sd[a-z]+|vd[a-z]+|mmcblk\\d+)$"));
+    static const QRegularExpression wholeDiskRe(QStringLiteral("^(nvme\\d+n\\d+|sd[a-z]+|vd[a-z]+|xvd[a-z]+|mmcblk\\d+)$"));
     const QString diskStatsText = readWholeText(procDir.filePath(QStringLiteral("diskstats")));
     for (const QString &line : diskStatsText.split(QLatin1Char('\n'), Qt::SkipEmptyParts)) {
         const QStringList cols = line.split(QRegularExpression(QStringLiteral("\\s+")), Qt::SkipEmptyParts);
-        if (cols.size() < 10 || !wholeDiskRe.match(cols.at(2)).hasMatch()) continue;
-        bool readOk = false, writeOk = false;
-        Counters current{cols.at(5).toULongLong(&readOk), cols.at(9).toULongLong(&writeOk)};
-        if (!readOk || !writeOk) continue;
-        // major:minor distinguishes replacement devices sharing a name.
-        const QString diskSequence = SysfsReader::readTrimmedLine(QDir(m_config.sysRoot).filePath(QStringLiteral("class/block/") + cols.at(2) + QStringLiteral("/diskseq")));
-        const QString identity = cols.at(0) + QLatin1Char(':') + cols.at(1) + QLatin1Char(':') + cols.at(2) + QLatin1Char(':') + diskSequence;
-        nextDisks.insert(identity, current);
-        if (!m_diskCounters.contains(identity) || mibPerSecond == 0.0) continue;
-        const Counters previous = m_diskCounters.value(identity);
-        if (current.received < previous.received || current.sent < previous.sent) continue;
-        snap.diskReadMibPerSec += (current.received - previous.received) * 512.0 * mibPerSecond;
-        snap.diskWriteMibPerSec += (current.sent - previous.sent) * 512.0 * mibPerSecond;
-        snap.diskThroughputAvailable = true;
+        if (cols.size() < 11) continue;
+        const QDir blockDir(QDir(m_config.sysRoot).filePath(QStringLiteral("class/block/") + cols.at(2)));
+        DiskTelemetry item;
+        item.name = cols.at(2);
+        item.isPartition = QFileInfo::exists(blockDir.filePath(QStringLiteral("partition")));
+        const QString canonicalPath = QFileInfo(blockDir.absolutePath()).canonicalFilePath();
+        item.isPhysical = !item.isPartition && (QFileInfo::exists(blockDir.filePath(QStringLiteral("device")))
+            || (wholeDiskRe.match(item.name).hasMatch() && !canonicalPath.contains(QStringLiteral("/virtual/"))));
+        item.included = item.isPhysical;
+        const QString diskSequence = SysfsReader::readTrimmedLine(blockDir.filePath(QStringLiteral("diskseq")));
+        item.identity = cols.at(0) + QLatin1Char(':') + cols.at(1) + QLatin1Char(':') + item.name + QLatin1Char(':') + diskSequence;
+        bool valid = true;
+        auto counter = [&cols, &valid](int index) { bool ok = false; const auto n = cols.at(index).toULongLong(&ok); valid = valid && ok; return n; };
+        Counters current;
+        current.received = counter(5); current.sent = counter(9);
+        current.reads = counter(3); current.writes = counter(7);
+        const auto readMs = counter(6); const auto writeMs = counter(10);
+        current.requestMs = readMs + writeMs;
+        if (!valid) continue;
+        nextDisks.insert(item.identity, current);
+        if (m_diskCounters.contains(item.identity) && mibPerSecond > 0.0) {
+            const Counters previous = m_diskCounters.value(item.identity);
+            if (current.received >= previous.received && current.sent >= previous.sent
+                && current.reads >= previous.reads && current.writes >= previous.writes && current.requestMs >= previous.requestMs) {
+                item.throughputAvailable = true;
+                item.readMibPerSec = (current.received - previous.received) * 512.0 * mibPerSecond;
+                item.writeMibPerSec = (current.sent - previous.sent) * 512.0 * mibPerSecond;
+                item.readIops = (current.reads - previous.reads) * 1000.0 / elapsedMs;
+                item.writeIops = (current.writes - previous.writes) * 1000.0 / elapsedMs;
+                const auto requests = current.reads - previous.reads + current.writes - previous.writes;
+                item.requestTimeAvailable = requests > 0;
+                if (requests) item.averageRequestMs = double(current.requestMs - previous.requestMs) / requests;
+                if (item.included) {
+                    snap.diskThroughputAvailable = true;
+                    snap.diskReadMibPerSec += item.readMibPerSec;
+                    snap.diskWriteMibPerSec += item.writeMibPerSec;
+                }
+            }
+        }
+        snap.disks.append(item);
     }
     m_diskCounters = std::move(nextDisks);
 
@@ -189,6 +215,14 @@ PsiAndMemorySnapshot PsiMemorySampler::sample(qint64 elapsedMs)
         const QDir interfaceDir(QDir(m_config.sysRoot).filePath(QStringLiteral("class/net/") + name));
         NetworkInterfaceTelemetry item;
         item.name = name;
+        if (cols.size() >= 12) {
+            bool rxErrorOk = false, txErrorOk = false, rxDropOk = false, txDropOk = false;
+            item.rxErrors = cols.at(2).toULongLong(&rxErrorOk);
+            item.rxDropped = cols.at(3).toULongLong(&rxDropOk);
+            item.txErrors = cols.at(10).toULongLong(&txErrorOk);
+            item.txDropped = cols.at(11).toULongLong(&txDropOk);
+            item.countersAvailable = rxErrorOk && txErrorOk && rxDropOk && txDropOk;
+        }
         item.isPhysical = QFileInfo::exists(interfaceDir.filePath(QStringLiteral("device")));
         const QString ifindex = SysfsReader::readTrimmedLine(interfaceDir.filePath(QStringLiteral("ifindex")));
         item.identity = name + QLatin1Char(':') + ifindex;

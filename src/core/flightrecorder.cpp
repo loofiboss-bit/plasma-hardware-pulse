@@ -1,6 +1,8 @@
 #include "flightrecorder.h"
 
 #include <QDateTime>
+#include <QUuid>
+#include <QSet>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -10,11 +12,25 @@
 
 namespace LoofiPulse
 {
+namespace {
+QVariantMap reportMetricMetadata(const FlightSample &sample, bool includeProcessDetails)
+{
+    const auto metadata = FlightRecorder::sampleMetricMetadata(sample);
+    if (includeProcessDetails) return metadata;
+    auto context = SessionStore::sampleToMap(sample, true);
+    context.insert(QStringLiteral("reportMetricMetadata"), metadata);
+    return SessionStore::redactProcessDetails(context).toMap().value(QStringLiteral("reportMetricMetadata")).toMap();
+}
+}
 
 FlightRecorder::FlightRecorder(int capacity)
-    : m_capacity(std::max(10, capacity))
+    : m_recordingId(QUuid::createUuid().toString(QUuid::WithoutBraces))
+    , m_capacity(std::max(10, capacity))
 {
-    m_samples.reserve(m_capacity);
+    // QList reuses front slack only below 2/3 occupancy. Reserve enough
+    // room up front so a full rolling window never repeatedly reallocates.
+    m_samples.reserve(qsizetype(m_capacity) * 2);
+    trimRecords();
 }
 
 quint64 FlightRecorder::appendSample(FlightSample sample)
@@ -26,6 +42,7 @@ quint64 FlightRecorder::appendSample(FlightSample sample)
         m_nextSampleId = std::max(m_nextSampleId, stored.sampleId + 1);
     }
     m_samples.append(stored);
+    updateIncidents(stored);
 
     const qint64 latestTime = stored.monotonicMs > 0 ? stored.monotonicMs : stored.timestampMs;
     const qint64 cutoff = latestTime - m_retentionMs;
@@ -38,12 +55,32 @@ quint64 FlightRecorder::appendSample(FlightSample sample)
     while (m_samples.size() > m_capacity) {
         m_samples.removeFirst();
     }
+    trimRecords();
     return stored.sampleId;
 }
 
 void FlightRecorder::clear()
 {
     m_samples.clear();
+    m_incidents.clear();
+    m_markers.clear();
+    m_activeIncident.clear();
+    m_peakRank = -1;
+    m_recordingId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    m_engineVersion = QStringLiteral("0.9.0");
+}
+
+void FlightRecorder::restoreSnapshot(const SessionSnapshot &snapshot)
+{
+    m_recordingId = snapshot.recordingId;
+    m_engineVersion = snapshot.engineVersion;
+    m_samples = snapshot.samples;
+    m_samples.reserve(qsizetype(m_capacity) * 2);
+    m_incidents = snapshot.incidents;
+    m_markers = snapshot.markers;
+    m_activeIncident.clear();
+    m_peakRank = -1;
+    m_nextSampleId = m_samples.isEmpty() ? 1 : m_samples.last().sampleId + 1;
 }
 
 int FlightRecorder::count() const
@@ -60,7 +97,10 @@ void FlightRecorder::setCapacity(int capacity)
 {
     m_capacity = std::max(10, capacity);
     while (m_samples.size() > m_capacity) m_samples.removeFirst();
-    m_samples.reserve(m_capacity);
+    // QList reuses front slack only below 2/3 occupancy. Reserve enough
+    // room up front so a full rolling window never repeatedly reallocates.
+    m_samples.reserve(qsizetype(m_capacity) * 2);
+    trimRecords();
 }
 
 void FlightRecorder::setRetentionMs(qint64 retentionMs)
@@ -79,6 +119,7 @@ void FlightRecorder::setRetentionMs(qint64 retentionMs)
             m_samples.removeFirst();
         }
     }
+    trimRecords();
 }
 
 qint64 FlightRecorder::retentionMs() const
@@ -137,44 +178,154 @@ int FlightRecorder::worstResponsivenessIndex() const
     return worstIdx;
 }
 
+void FlightRecorder::updateIncidents(const FlightSample &sample)
+{
+    const bool gap = sample.metricQuality.value(QStringLiteral("gapBefore")).toBool();
+    const bool warning = sample.severity != VerdictSeverity::Unknown
+        && (sample.throttled || sample.severity == VerdictSeverity::Elevated
+            || sample.severity == VerdictSeverity::Bottleneck || sample.severity == VerdictSeverity::CriticalThrottle);
+    const auto finish = [&](bool recovered) {
+        if (m_activeIncident.isEmpty()) return;
+        m_activeIncident.insert(QStringLiteral("active"), false);
+        m_activeIncident.insert(QStringLiteral("gapTerminated"), !recovered);
+        if (recovered) m_activeIncident.insert(QStringLiteral("recoverySampleId"), QVariant::fromValue(sample.sampleId));
+        m_incidents.append(m_activeIncident);
+        m_activeIncident.clear();
+        m_peakRank = -1;
+    };
+    if (gap || sample.severity == VerdictSeverity::Unknown) finish(false);
+    if (!warning) { if (!gap && sample.severity != VerdictSeverity::Unknown) finish(true); return; }
+    const qint64 time = sample.monotonicMs > 0 ? sample.monotonicMs : sample.timestampMs;
+    if (m_activeIncident.isEmpty()) {
+        m_activeIncident = {{QStringLiteral("incidentId"), m_recordingId + QStringLiteral(":") + QString::number(sample.sampleId)},
+            {QStringLiteral("startSampleId"), QVariant::fromValue(sample.sampleId)},
+            {QStringLiteral("startMs"), time}, {QStringLiteral("active"), true}, {QStringLiteral("gapTerminated"), false}};
+    }
+    const int rank = sample.throttled ? 100 : static_cast<int>(sample.severity);
+    if (rank > m_peakRank) {
+        m_activeIncident.insert(QStringLiteral("sampleId"), QVariant::fromValue(sample.sampleId));
+        m_activeIncident.insert(QStringLiteral("timeString"), QDateTime::fromMSecsSinceEpoch(sample.timestampMs).toString(QStringLiteral("HH:mm:ss")));
+        m_activeIncident.insert(QStringLiteral("headline"), sample.verdictHeadline);
+        m_activeIncident.insert(QStringLiteral("severity"), static_cast<int>(sample.severity));
+        m_activeIncident.insert(QStringLiteral("throttled"), sample.throttled);
+        m_activeIncident.insert(QStringLiteral("evidence"), sample.verdictEvidence);
+        m_peakRank = rank;
+    }
+    m_activeIncident.insert(QStringLiteral("endSampleId"), QVariant::fromValue(sample.sampleId));
+    m_activeIncident.insert(QStringLiteral("endMs"), time);
+    m_activeIncident.insert(QStringLiteral("durationSeconds"), std::max<qint64>(1, (time - m_activeIncident.value(QStringLiteral("startMs")).toLongLong()) / 1000));
+    m_activeIncident.insert(QStringLiteral("endTimeString"), QDateTime::fromMSecsSinceEpoch(sample.timestampMs).toString(QStringLiteral("HH:mm:ss")));
+}
+
+void FlightRecorder::trimRecords()
+{
+    if (m_samples.isEmpty()) return;
+    const quint64 first = m_samples.first().sampleId;
+    while (!m_incidents.isEmpty() && m_incidents.first().toMap().value(QStringLiteral("endSampleId")).toULongLong() < first) m_incidents.removeFirst();
+    while (!m_markers.isEmpty() && m_markers.first().toMap().value(QStringLiteral("sampleId")).toULongLong() < first) m_markers.removeFirst();
+}
+
 QVariantList FlightRecorder::incidentEpisodes() const
 {
-    QVariantList episodes;
-    QVariantMap current;
-    qint64 startMs = 0;
-    int peakRank = -1;
-    const auto finish = [&]() {
-        if (!current.isEmpty()) episodes.append(current);
-        current.clear();
-        peakRank = -1;
-    };
-    for (const FlightSample &sample : m_samples) {
-        // No incident duration or causality is inferred across unrecorded time.
-        if (sample.metricQuality.value(QStringLiteral("gapBefore")).toBool()) finish();
-        const bool warning = sample.severity == VerdictSeverity::Elevated
-            || sample.severity == VerdictSeverity::Bottleneck
-            || sample.severity == VerdictSeverity::CriticalThrottle;
-        if ((!warning && !sample.throttled) || sample.severity == VerdictSeverity::Unknown) {
-            finish();
-            continue;
-        }
-        const qint64 timeMs = sample.monotonicMs > 0 ? sample.monotonicMs : sample.timestampMs;
-        if (current.isEmpty()) startMs = timeMs;
-        const int rank = sample.throttled ? 4 : static_cast<int>(sample.severity);
-        if (rank > peakRank) {
-            current.insert(QStringLiteral("sampleId"), static_cast<qulonglong>(sample.sampleId));
-            current.insert(QStringLiteral("timeString"), QDateTime::fromMSecsSinceEpoch(sample.timestampMs).toString(QStringLiteral("HH:mm:ss")));
-            current.insert(QStringLiteral("headline"), sample.verdictHeadline);
-            current.insert(QStringLiteral("severity"), static_cast<int>(sample.severity));
-            current.insert(QStringLiteral("throttled"), sample.throttled);
-            peakRank = rank;
-        }
-        current.insert(QStringLiteral("durationSeconds"), std::max<qint64>(1, (timeMs - startMs) / 1000));
-        current.insert(QStringLiteral("endTimeString"), QDateTime::fromMSecsSinceEpoch(sample.timestampMs).toString(QStringLiteral("HH:mm:ss")));
+    QVariantList result = m_incidents;
+    if (!m_activeIncident.isEmpty()) result.append(m_activeIncident);
+    // Retain the original identity while accurately describing a trimmed beginning.
+    for (auto &entry : result) {
+        auto map = entry.toMap();
+        const bool partial = indexOfSample(map.value(QStringLiteral("startSampleId")).toULongLong()) < 0;
+        map.insert(QStringLiteral("partial"), partial);
+        map.insert(QStringLiteral("peakAvailable"), indexOfSample(map.value(QStringLiteral("sampleId")).toULongLong()) >= 0);
+        entry = map;
     }
-    finish();
-    while (episodes.size() > 8) episodes.removeFirst();
-    return episodes;
+    return result;
+}
+QString FlightRecorder::recordingId() const { return m_recordingId; }
+QVariantList FlightRecorder::markers() const { return m_markers; }
+QString FlightRecorder::markProblemNow(const QString &label)
+{
+    if (m_samples.isEmpty()) return {};
+    const auto &s = m_samples.last();
+    const QString id = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    m_markers.append(QVariantMap{{QStringLiteral("markerId"), id}, {QStringLiteral("sampleId"), QVariant::fromValue(s.sampleId)},
+        {QStringLiteral("timestampMs"), s.timestampMs}, {QStringLiteral("label"), label.isEmpty() ? QStringLiteral("Problem marked") : label}});
+    while (m_markers.size() > SessionStore::MaximumSamples) m_markers.removeFirst();
+    return id;
+}
+SessionSnapshot FlightRecorder::freezeRange(quint64 startSampleId, quint64 endSampleId) const
+{
+    SessionSnapshot result;
+    result.recordingId = m_recordingId;
+    result.engineVersion = m_engineVersion;
+    const int start = indexOfSample(startSampleId), end = indexOfSample(endSampleId);
+    if (start < 0 || end < start) return result;
+    const auto time = [](const FlightSample &s) { return s.monotonicMs > 0 ? s.monotonicMs : s.timestampMs; };
+    const qint64 from = time(m_samples.at(start)) - 30000, to = time(m_samples.at(end)) + 30000;
+    for (const auto &s : m_samples) if (time(s) >= from && time(s) <= to) result.samples.append(s);
+    result.metadata = {{QStringLiteral("selectionStartSampleId"), QVariant::fromValue(startSampleId)},
+        {QStringLiteral("selectionEndSampleId"), QVariant::fromValue(endSampleId)}, {QStringLiteral("comparison"), compareRange(startSampleId, endSampleId)}};
+    QSet<quint64> ids;
+    for (const auto &s : result.samples) ids.insert(s.sampleId);
+    for (const auto &v : incidentEpisodes()) {
+        auto incident = v.toMap();
+        if (incident.value(QStringLiteral("endMs")).toLongLong() < from || incident.value(QStringLiteral("startMs")).toLongLong() > to) continue;
+        for (const auto &key : {QStringLiteral("sampleId"), QStringLiteral("startSampleId"), QStringLiteral("endSampleId"), QStringLiteral("recoverySampleId")}) {
+            if (incident.contains(key) && !ids.contains(incident.value(key).toULongLong())) {
+                incident.remove(key); incident.insert(QStringLiteral("partial"), true);
+            }
+        }
+        result.incidents.append(incident);
+    }
+    for (const auto &v : m_markers) if (ids.contains(v.toMap().value(QStringLiteral("sampleId")).toULongLong())) result.markers.append(v);
+    return result;
+}
+SessionSnapshot FlightRecorder::freezeIncident(const QString &incidentId) const
+{
+    for (const auto &v : incidentEpisodes()) {
+        const auto m = v.toMap();
+        if (m.value(QStringLiteral("incidentId")).toString() != incidentId) continue;
+        quint64 start = m.value(QStringLiteral("startSampleId")).toULongLong();
+        if (indexOfSample(start) < 0 && !m_samples.isEmpty()) start = m_samples.first().sampleId;
+        quint64 end = m.value(QStringLiteral("endSampleId")).toULongLong();
+        if (indexOfSample(end) < 0 && !m_samples.isEmpty()) end = m_samples.last().sampleId;
+        auto result = freezeRange(start, end);
+        result.metadata.insert(QStringLiteral("incidentId"), incidentId);
+        return result;
+    }
+    return {};
+}
+QVariantMap FlightRecorder::compareRange(quint64 startSampleId, quint64 endSampleId) const
+{
+    const int start = indexOfSample(startSampleId), end = indexOfSample(endSampleId);
+    if (start < 0 || end < start) return {};
+    const auto time = [](const FlightSample &s) { return s.monotonicMs > 0 ? s.monotonicMs : s.timestampMs; };
+    const qint64 begin = time(m_samples.at(start)), finish = time(m_samples.at(end));
+    const auto window = [&](qint64 from, qint64 to, bool leftClosed, bool rightClosed) {
+        int count = 0, gaps = 0, cpuCount = 0, responseCount = 0;
+        qint64 covered = 0;
+        for (int i = 1; i < m_samples.size(); ++i) {
+            const auto &previous = m_samples.at(i - 1);
+            const auto &current = m_samples.at(i);
+            const qint64 overlap = std::max<qint64>(0, std::min(to, time(current)) - std::max(from, time(previous)));
+            if (overlap == 0) continue;
+            if (current.metricQuality.value(QStringLiteral("gapBefore")).toBool()) ++gaps;
+            else covered += overlap;
+        }
+        double cpu = 0, response = 0;
+        for (const auto &s : m_samples) {
+            const qint64 t = time(s);
+            if ((leftClosed ? t < from : t <= from) || (rightClosed ? t > to : t >= to)) continue;
+            ++count;
+            if (s.metricQuality.value(QStringLiteral("cpuLoadAvailable")).toBool()) { cpu += s.cpuLoadPercent; ++cpuCount; }
+            if (s.metricQuality.value(QStringLiteral("psiAvailable")).toBool()) { response += s.responsivenessScore; ++responseCount; }
+        }
+        return QVariantMap{{QStringLiteral("sampleCount"), count}, {QStringLiteral("available"), count > 0},
+            {QStringLiteral("coverageMs"), covered}, {QStringLiteral("requestedMs"), to - from}, {QStringLiteral("gapCount"), gaps},
+            {QStringLiteral("complete"), count > 0 && gaps == 0 && covered >= to - from},
+            {QStringLiteral("cpuLoadAvailable"), cpuCount > 0}, {QStringLiteral("cpuLoadPercent"), cpuCount ? cpu / cpuCount : 0},
+            {QStringLiteral("responsivenessAvailable"), responseCount > 0}, {QStringLiteral("responsivenessScore"), responseCount ? response / responseCount : 0}};
+    };
+    return {{QStringLiteral("before"), window(begin - 30000, begin, true, false)},
+        {QStringLiteral("during"), window(begin, finish, true, true)}, {QStringLiteral("after"), window(finish, finish + 30000, false, true)}};
 }
 
 QString FlightRecorder::exportSummaryMarkdown(bool includeProcessDetails) const
@@ -203,9 +354,11 @@ QString FlightRecorder::exportSummaryMarkdown(bool includeProcessDetails) const
     const qint64 durationSeconds = firstMs > 0 && lastMs >= firstMs ? (lastMs - firstMs) / 1000 : 0;
     md += QStringLiteral("- **Recorded Samples**: %1\n").arg(m_samples.size());
     md += QStringLiteral("- **Covered Period**: %1 seconds\n").arg(durationSeconds);
+    md += QStringLiteral("- **Report scope**: Only the samples included in this report; observations outside this period are not inferred. Concurrent activity does not establish causation.\n");
     md += QStringLiteral("- **Throttle Events Observed**: %1\n")
               .arg(throttleCountersAvailable ? QString::number(throttleEvents) : QStringLiteral("Unavailable"));
-    md += QStringLiteral("- **Latest Verdict**: %1\n").arg(latest.verdictHeadline);
+    md += QStringLiteral("- **Latest Verdict**: %1\n").arg(includeProcessDetails ? latest.verdictHeadline
+        : SessionStore::sampleToMap(latest, false).value(QStringLiteral("verdictHeadline")).toString());
     const auto metricText = [](const FlightSample &sample, const QString &qualityKey, double value, int precision, const QString &unit) {
         return sample.metricQuality.value(qualityKey).toBool()
             ? QStringLiteral("%1%2").arg(value, 0, 'f', precision).arg(unit)
@@ -220,7 +373,7 @@ QString FlightRecorder::exportSummaryMarkdown(bool includeProcessDetails) const
 
     md += QStringLiteral("- **Battery discharge**: %1\n\n")
               .arg(metricText(latest, QStringLiteral("batteryDischargeAvailable"), latest.batteryWatts, 1, QStringLiteral(" W")));
-    const QVariantMap metadata = sampleMetricMetadata(latest);
+    const QVariantMap metadata = reportMetricMetadata(latest, includeProcessDetails);
     if (!metadata.isEmpty()) {
         md += QStringLiteral("## Data quality at latest sample\n");
         for (const QString &key : {QStringLiteral("cpuLoad"), QStringLiteral("cpuTemperature"),
@@ -273,7 +426,7 @@ QString FlightRecorder::exportSummaryMarkdown(bool includeProcessDetails) const
         md += QStringLiteral("Responsiveness index: Unavailable; required PSI readings were incomplete.\n");
     }
 
-    return md;
+    return includeProcessDetails ? md : SessionStore::redactReportText(md, m_samples).toString();
 }
 
 QVariantMap FlightRecorder::sampleMetricMetadata(const FlightSample &s)
@@ -362,6 +515,7 @@ QString FlightRecorder::exportSamplesJson(bool includeProcessDetails) const
         ? recordedToMs - recordedFromMs : 0;
     for (int i = 0; i < m_samples.size(); ++i) {
         const FlightSample &s = m_samples.at(i);
+        const QVariantMap safeSample = includeProcessDetails ? QVariantMap{} : SessionStore::sampleToMap(s, false);
         const auto valid = [&s](const QString &key) { return s.metricQuality.value(key).toBool(); };
         const auto valueOrNull = [&valid](const QString &qualityKey, double value) {
             return valid(qualityKey) ? QJsonValue(value) : QJsonValue(QJsonValue::Null);
@@ -400,14 +554,14 @@ QString FlightRecorder::exportSamplesJson(bool includeProcessDetails) const
         obj.insert(QStringLiteral("psiCpuStallMsPerSec"), valueOrNull(QStringLiteral("psiCpuSomeAvailable"), s.psiCpuStallMsPerSec));
         obj.insert(QStringLiteral("psiMemStallMsPerSec"), valueOrNull(QStringLiteral("psiMemorySomeAvailable"), s.psiMemStallMsPerSec));
         obj.insert(QStringLiteral("psiIoStallMsPerSec"), valueOrNull(QStringLiteral("psiIoSomeAvailable"), s.psiIoStallMsPerSec));
-        QVariantMap exportedQuality = s.metricQuality;
+        QVariantMap exportedQuality = includeProcessDetails ? s.metricQuality : safeSample.value(QStringLiteral("metricQuality")).toMap();
         if (!includeProcessDetails) {
             QVariantMap nestedMetadata = exportedQuality.value(QStringLiteral("metricMetadata")).toMap();
             nestedMetadata.remove(QStringLiteral("processActivity"));
             if (exportedQuality.contains(QStringLiteral("metricMetadata"))) exportedQuality.insert(QStringLiteral("metricMetadata"), nestedMetadata);
         }
         obj.insert(QStringLiteral("metricQuality"), QJsonObject::fromVariantMap(exportedQuality));
-        QVariantMap metadata = sampleMetricMetadata(s);
+        QVariantMap metadata = reportMetricMetadata(s, includeProcessDetails);
         if (!includeProcessDetails) metadata.remove(QStringLiteral("processActivity"));
         obj.insert(QStringLiteral("metricMetadata"), QJsonObject::fromVariantMap(metadata));
         obj.insert(QStringLiteral("responsivenessScore"), valueOrNull(QStringLiteral("psiAvailable"), s.responsivenessScore));
@@ -442,17 +596,27 @@ QString FlightRecorder::exportSamplesJson(bool includeProcessDetails) const
         obj.insert(QStringLiteral("activePowerProfile"), s.activePowerProfile.isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(s.activePowerProfile));
         obj.insert(QStringLiteral("throttled"), s.throttled);
         obj.insert(QStringLiteral("severity"), static_cast<int>(s.severity));
-        obj.insert(QStringLiteral("verdictHeadline"), s.verdictHeadline);
+        obj.insert(QStringLiteral("verdictHeadline"), includeProcessDetails ? s.verdictHeadline : safeSample.value(QStringLiteral("verdictHeadline")).toString());
         obj.insert(QStringLiteral("culpritName"), includeProcessDetails ? s.culpritName : QString());
         obj.insert(QStringLiteral("culpritPid"), includeProcessDetails ? s.culpritPid : 0);
         obj.insert(QStringLiteral("culpritStartTimeTicks"), includeProcessDetails ? QJsonValue(static_cast<qint64>(s.culpritStartTimeTicks)) : QJsonValue(QJsonValue::Null));
         obj.insert(QStringLiteral("processObservedAtMs"), includeProcessDetails ? QJsonValue(s.processObservedAtMs) : QJsonValue(QJsonValue::Null));
         obj.insert(QStringLiteral("culpritCpuPercent"), includeProcessDetails ? s.culpritCpuPercent : 0.0);
         obj.insert(QStringLiteral("culpritRssMb"), includeProcessDetails ? s.culpritRssMb : 0.0);
+        obj.insert(QStringLiteral("gpuDevices"), QJsonArray::fromVariantList(includeProcessDetails ? s.gpuDevices : safeSample.value(QStringLiteral("gpuDevices")).toList()));
+        obj.insert(QStringLiteral("storageDevices"), QJsonArray::fromVariantList(includeProcessDetails ? s.storageDevices : safeSample.value(QStringLiteral("storageDevices")).toList()));
+        obj.insert(QStringLiteral("networkDevices"), QJsonArray::fromVariantList(includeProcessDetails ? s.networkDevices : safeSample.value(QStringLiteral("networkDevices")).toList()));
+        obj.insert(QStringLiteral("batteries"), QJsonArray::fromVariantList(includeProcessDetails ? s.batteries : safeSample.value(QStringLiteral("batteries")).toList()));
+        obj.insert(QStringLiteral("captureId"), includeProcessDetails ? s.captureId : safeSample.value(QStringLiteral("captureId")).toString());
+        obj.insert(QStringLiteral("engineVersion"), includeProcessDetails ? s.engineVersion : safeSample.value(QStringLiteral("engineVersion")).toString());
+        obj.insert(QStringLiteral("verdictCausalChain"), includeProcessDetails ? s.verdictCausalChain : safeSample.value(QStringLiteral("verdictCausalChain")).toString());
+        obj.insert(QStringLiteral("verdictRecommendation"), includeProcessDetails ? s.verdictRecommendation : safeSample.value(QStringLiteral("verdictRecommendation")).toString());
+        obj.insert(QStringLiteral("contributingSignals"), QJsonArray::fromStringList(includeProcessDetails ? s.contributingSignals : safeSample.value(QStringLiteral("contributingSignals")).toStringList()));
+        if (includeProcessDetails) obj.insert(QStringLiteral("processObservations"), QJsonArray::fromVariantList(s.processObservations));
         obj.insert(QStringLiteral("schemaVersion"), 2);
         obj.insert(QStringLiteral("processDetailsIncluded"), includeProcessDetails);
         obj.insert(QStringLiteral("verdictRuleId"), s.verdictRuleId);
-        obj.insert(QStringLiteral("verdictEvidence"), QJsonArray::fromStringList(includeProcessDetails ? s.verdictEvidence : QStringList()));
+        obj.insert(QStringLiteral("verdictEvidence"), QJsonArray::fromStringList(includeProcessDetails ? s.verdictEvidence : safeSample.value(QStringLiteral("verdictEvidence")).toStringList()));
         obj.insert(QStringLiteral("verdictDurationMs"), s.verdictDurationMs);
         obj.insert(QStringLiteral("powerSources"), QJsonObject{
             {QStringLiteral("packageWatts"), QStringLiteral("CPU package only; see metricMetadata.packagePower")},
@@ -460,6 +624,7 @@ QString FlightRecorder::exportSamplesJson(bool includeProcessDetails) const
             {QStringLiteral("systemWatts"), QStringLiteral("Legacy composite field; do not interpret as measured whole-system power")}});
         arr.append(obj);
     }
+    if (!includeProcessDetails) arr = QJsonArray::fromVariantList(SessionStore::redactReportText(arr.toVariantList(), m_samples).toList());
     return QString::fromUtf8(QJsonDocument(arr).toJson(QJsonDocument::Indented));
 }
 

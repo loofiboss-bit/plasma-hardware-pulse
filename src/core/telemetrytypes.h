@@ -3,6 +3,7 @@
 #include <QList>
 #include <QString>
 #include <QVariantMap>
+#include <QVariantList>
 #include <QtGlobal>
 
 namespace LoofiPulse
@@ -84,6 +85,9 @@ struct CpuSocSnapshot
 
 struct GpuSnapshot
 {
+    QString identity;
+    QString name;
+    QString unavailableReason;
     bool available = false;
     bool frequencyAvailable = false;
     bool busyAvailable = false;
@@ -122,8 +126,23 @@ struct NetworkInterfaceTelemetry
     bool isPhysical = false;
     bool included = false;
     bool throughputAvailable = false;
+    bool countersAvailable = false;
+    quint64 rxErrors = 0, txErrors = 0, rxDropped = 0, txDropped = 0;
     double rxMibPerSec = 0.0;
     double txMibPerSec = 0.0;
+};
+
+struct DiskTelemetry
+{
+    QString identity;
+    QString name;
+    bool isPhysical = false;
+    bool isPartition = false;
+    bool included = false;
+    bool throughputAvailable = false;
+    bool requestTimeAvailable = false;
+    double readMibPerSec = 0.0, writeMibPerSec = 0.0;
+    double readIops = 0.0, writeIops = 0.0, averageRequestMs = 0.0;
 };
 
 struct PsiAndMemorySnapshot
@@ -157,14 +176,28 @@ struct PsiAndMemorySnapshot
     double diskReadMibPerSec = 0.0;
     double diskWriteMibPerSec = 0.0;
 
+    QList<DiskTelemetry> disks;
     QList<NetworkInterfaceTelemetry> networkInterfaces;
     bool netThroughputAvailable = false;
     double netRxMibPerSec = 0.0;
     double netTxMibPerSec = 0.0;
 };
 
+struct BatteryTelemetry
+{
+    QString identity, name, status;
+    bool present = true;
+    bool levelAvailable = false, powerAvailable = false, voltageAvailable = false;
+    bool energyAvailable = false, healthAvailable = false;
+    double percent = 0.0, watts = 0.0, voltageVolts = 0.0;
+    double energyNowWh = 0.0, energyFullWh = 0.0, energyDesignWh = 0.0;
+    double healthPercent = 0.0;
+    int timeRemainingMinutes = -1;
+};
+
 struct PowerFlowSnapshot
 {
+    QList<BatteryTelemetry> batteries;
     bool batteryStateAvailable = false;
     bool batteryLevelAvailable = false;
     bool batteryHealthAvailable = false;
@@ -194,6 +227,10 @@ struct PowerFlowSnapshot
 
 struct CulpritProcess
 {
+    quint32 ownerUid = 0;
+    QString ownerName;
+    bool ownerAvailable = false;
+    bool cpuAvailable = false;
     quint64 startTimeTicks = 0;
     qint64 observedAtMs = 0;
     int pid = 0;
@@ -212,6 +249,8 @@ struct ProcessRadarSnapshot
     CulpritProcess topDiskWaitProcess;
     int diskWaitProcessCount = 0;
     QList<CulpritProcess> topProcesses;
+    QList<CulpritProcess> allProcesses;
+    QList<CulpritProcess> historicalProcesses;
 };
 
 struct CausalVerdict
@@ -232,6 +271,9 @@ struct CausalVerdict
 
 struct FlightSample
 {
+    QVariantList gpuDevices, storageDevices, networkDevices, batteries, processObservations;
+    QString captureId, engineVersion, verdictRecommendation, verdictCausalChain;
+    QStringList contributingSignals;
     quint64 sampleId = 0;
     qint64 timestampMs = 0;
     qint64 monotonicMs = 0;

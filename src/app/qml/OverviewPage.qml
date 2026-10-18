@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
+import "MeasurementLabels.js" as MeasurementLabels
 import org.kde.kirigami as Kirigami
 
 Kirigami.ScrollablePage {
@@ -16,6 +17,7 @@ Kirigami.ScrollablePage {
         var target = targets[section]
         if (!target) return false
         if (section === "measurements") page.detailsExpanded = true
+        if (section === "status") page.whyExpanded = true
         Qt.callLater(function() {
             var position = target.mapToItem(page.flickable.contentItem, 0, 0)
             page.flickable.contentY = Math.max(0, Math.min(position.y - 12,
@@ -540,14 +542,10 @@ Kirigami.ScrollablePage {
                         onPaint: {
                             var ctx = getContext("2d")
                             ctx.clearRect(0, 0, width, height)
-                            var samples = page.controller.historySamples
-                            if (!samples || samples.length < 2) return
-                            var startIdx = Math.max(0, samples.length - 36)
-                            var count = samples.length - startIdx
+                            var samples = JSON.parse(page.controller.historyRecentSeriesJson(metricCard.modelData.sampleKey,
+                                metricCard.modelData.sampleAvailKey, 36))
+                            var count = samples.length
                             if (count < 2) return
-
-                            var sKey = metricCard.modelData.sampleKey
-                            var aKey = metricCard.modelData.sampleAvailKey
                             var sMin = metricCard.modelData.sampleMin
                             var sMax = Math.max(sMin + 1, metricCard.modelData.sampleMax)
                             var col = metricCard.cardAccent
@@ -557,10 +555,10 @@ Kirigami.ScrollablePage {
                             ctx.beginPath()
                             var pts = []
                             for (var i = 0; i < count; ++i) {
-                                var s = samples[startIdx + i]
-                                if (!s[aKey] || !isFinite(s[sKey]) || s.gapBefore) { pts.push(null); continue }
+                                var s = samples[i]
+                                if (!s.available || !isFinite(s.value) || s.gapBefore) { pts.push(null); continue }
                                 var px = (i / Math.max(1, count - 1)) * width
-                                var norm = Math.min(1, Math.max(0, (s[sKey] - sMin) / (sMax - sMin)))
+                                var norm = Math.min(1, Math.max(0, (s.value - sMin) / (sMax - sMin)))
                                 var py = height - norm * (height - 6) - 3
                                 pts.push({ x: px, y: py })
                             }
@@ -815,7 +813,7 @@ Kirigami.ScrollablePage {
                     rowSpacing: Kirigami.Units.smallSpacing
 
                     Repeater {
-                        model: Object.keys(page.controller.metricMetadata).map(function(key) { return { key: key, label: key } })
+                        model: Object.keys(page.controller.metricMetadata).map(function(key) { return { key: key, label: MeasurementLabels.metricLabel(key) } })
                         delegate: Rectangle {
                             id: qCard
                             required property var modelData
@@ -841,7 +839,7 @@ Kirigami.ScrollablePage {
                                         Layout.fillWidth: true
                                     }
                                     QQC2.Label {
-                                        text: qCard.quality ? String(qCard.quality.state).toUpperCase() : "UNAVAILABLE"
+                                        text: MeasurementLabels.qualityLabel(qCard.quality ? qCard.quality.state : "unavailable")
                                         font.bold: true
                                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                                         color: !qCard.quality || qCard.quality.state === "unavailable"

@@ -1,3 +1,14 @@
+find_program(DBUS_RUN_SESSION dbus-run-session REQUIRED)
+add_test(NAME service_install_paths COMMAND ${CMAKE_COMMAND}
+    "-DSERVICE_SOURCE=${PROJECT_SOURCE_DIR}/src/service"
+    "-DTEST_ROOT=${CMAKE_BINARY_DIR}/test-state/service-install"
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/test_service_install.cmake")
+function(pulse_add_dbus_test name target timeout)
+    add_test(NAME ${name} COMMAND ${CMAKE_COMMAND}
+        "-DDBUS_RUN_SESSION=${DBUS_RUN_SESSION}" "-DTEST_EXECUTABLE=$<TARGET_FILE:${target}>"
+        "-DTEST_ARGUMENTS=${ARGN}" "-DTEST_LOG=${CMAKE_BINARY_DIR}/test-logs/${name}.log"
+        "-DTEST_TIMEOUT=${timeout}" -P "${CMAKE_CURRENT_SOURCE_DIR}/run_dbus_test.cmake")
+endfunction()
 qt_add_executable(test_pulsecore
     test_pulsecore.cpp
 )
@@ -53,10 +64,8 @@ if(BUILD_LIVE_HARDWARE_TESTS)
     add_test(NAME pulsecore_live_host_telemetry COMMAND test_pulsecore testLiveHostTelemetrySanity)
 endif()
 
-add_test(
-    NAME app_qml_smoke_test
-    COMMAND "${CMAKE_BINARY_DIR}/bin/loofi-pulse" --smoke-test
-)
+pulse_add_dbus_test(app_qml_smoke_test loofi-pulse 25 --smoke-test)
+
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/test-state/config" "${CMAKE_BINARY_DIR}/test-state/data" "${CMAKE_BINARY_DIR}/test-state/cache")
 set(PULSE_TEST_XDG_ENV
     "XDG_CONFIG_HOME=${CMAKE_BINARY_DIR}/test-state/config"
@@ -71,6 +80,9 @@ set_tests_properties(app_qml_smoke_test PROPERTIES
 qt_add_executable(test_controller_actions
     test_controller_actions.cpp
     ${PROJECT_SOURCE_DIR}/src/plugin/pulsetelemetrycontroller.cpp
+    ${PROJECT_SOURCE_DIR}/src/plugin/collectorclient.cpp
+    ${PROJECT_SOURCE_DIR}/src/plugin/telemetryselection.cpp
+    ${PROJECT_SOURCE_DIR}/src/plugin/reportexport.cpp
 )
 target_include_directories(test_controller_actions PRIVATE ${PROJECT_SOURCE_DIR}/src/plugin)
 target_compile_definitions(test_controller_actions PRIVATE LOOFI_PULSE_VERSION="${PROJECT_VERSION}")
@@ -97,10 +109,39 @@ target_compile_definitions(test_qml_ui PRIVATE
 )
 target_link_libraries(test_qml_ui PRIVATE Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::Test)
 add_dependencies(test_qml_ui hardwarepulseplugin)
-foreach(test_name IN ITEMS testAppNavigationKeyboardAndResponsiveRendering testWidgetComponentsLoad testPanelPresetsPreserveCustomMetrics)
-    add_test(NAME qml_${test_name} COMMAND test_qml_ui ${test_name})
+foreach(test_name IN ITEMS testAppNavigationKeyboardAndResponsiveRendering testWidgetComponentsLoad testPanelPresetsPreserveCustomMetrics testProcessInspectionIdentityAndFiltering testSessionDialogsAndUnsavedClose)
+    pulse_add_dbus_test(qml_${test_name} test_qml_ui 25 ${test_name})
     set_tests_properties(qml_${test_name} PROPERTIES
-        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}/bin;PULSE_TEST_ARTIFACT_DIR=${CMAKE_BINARY_DIR}/test-artifacts;${PULSE_TEST_XDG_ENV}"
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}/bin;XDG_DATA_DIRS=${CMAKE_BINARY_DIR}/share:/usr/local/share:/usr/share;PULSE_TEST_ARTIFACT_DIR=${CMAKE_BINARY_DIR}/test-artifacts;${PULSE_TEST_XDG_ENV}"
         TIMEOUT 30
     )
 endforeach()
+
+foreach(name IN ITEMS hardware_v09 sessions_v09 performance_v09)
+    qt_add_executable(test_${name} test_${name}.cpp)
+    target_link_libraries(test_${name} PRIVATE loofipulsecore Qt6::Core Qt6::Test)
+    add_test(NAME ${name} COMMAND test_${name})
+endforeach()
+
+qt_add_executable(test_collector_v09 test_collector_v09.cpp
+    ${PROJECT_SOURCE_DIR}/src/plugin/pulsetelemetrycontroller.cpp
+    ${PROJECT_SOURCE_DIR}/src/plugin/collectorclient.cpp
+    ${PROJECT_SOURCE_DIR}/src/plugin/telemetryselection.cpp
+    ${PROJECT_SOURCE_DIR}/src/plugin/reportexport.cpp)
+target_include_directories(test_collector_v09 PRIVATE ${PROJECT_SOURCE_DIR}/src/plugin)
+target_compile_definitions(test_collector_v09 PRIVATE LOOFI_PULSE_VERSION="${PROJECT_VERSION}" PULSE_SERVICE_BIN="$<TARGET_FILE:loofi-pulse-service>" PULSE_BUILD_BIN="${CMAKE_BINARY_DIR}/bin" PULSE_APP_QML="${PROJECT_SOURCE_DIR}/src/app/qml")
+target_link_libraries(test_collector_v09 PRIVATE loofipulsecore Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::DBus Qt6::Widgets Qt6::Test KF6::Notifications KF6::I18n)
+add_dependencies(test_collector_v09 loofi-pulse-service hardwarepulseplugin)
+pulse_add_dbus_test(collector_v09 test_collector_v09 80)
+set_tests_properties(collector_v09 PROPERTIES TIMEOUT 90 ENVIRONMENT "QT_QPA_PLATFORM=offscreen;XDG_CONFIG_HOME=${CMAKE_BINARY_DIR}/test-state/collector/config;XDG_DATA_HOME=${CMAKE_BINARY_DIR}/test-state/collector/data;XDG_CACHE_HOME=${CMAKE_BINARY_DIR}/test-state/collector/cache")
+pulse_add_dbus_test(collector_full_history_v09 test_collector_v09 80 actualQmlProcessPageResponsiveness)
+set_tests_properties(collector_full_history_v09 PROPERTIES TIMEOUT 90 ENVIRONMENT "QT_QPA_PLATFORM=offscreen;PULSE_PREFILL_HISTORY=1;PULSE_SOAK_MS=10000;XDG_CONFIG_HOME=${CMAKE_BINARY_DIR}/test-state/full-history/config;XDG_DATA_HOME=${CMAKE_BINARY_DIR}/test-state/full-history/data;XDG_CACHE_HOME=${CMAKE_BINARY_DIR}/test-state/full-history/cache")
+set_tests_properties(performance_v09 PROPERTIES TIMEOUT 60)
+
+qt_add_executable(test_notifications_v09 test_notifications_v09.cpp)
+target_include_directories(test_notifications_v09 PRIVATE ${PROJECT_SOURCE_DIR}/src/plugin)
+target_compile_definitions(test_notifications_v09 PRIVATE PULSE_SERVICE_BIN="$<TARGET_FILE:loofi-pulse-service>")
+target_link_libraries(test_notifications_v09 PRIVATE Qt6::Core Qt6::DBus Qt6::Test)
+add_dependencies(test_notifications_v09 loofi-pulse-service)
+pulse_add_dbus_test(notifications_v09 test_notifications_v09 80)
+set_tests_properties(notifications_v09 PROPERTIES TIMEOUT 90 ENVIRONMENT "QT_QPA_PLATFORM=offscreen;XDG_DATA_DIRS=${CMAKE_BINARY_DIR}/share:/usr/share;XDG_CONFIG_HOME=${CMAKE_BINARY_DIR}/test-state/notifications/config;XDG_DATA_HOME=${CMAKE_BINARY_DIR}/test-state/notifications/data;XDG_CACHE_HOME=${CMAKE_BINARY_DIR}/test-state/notifications/cache")

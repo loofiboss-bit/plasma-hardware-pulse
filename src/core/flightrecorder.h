@@ -1,6 +1,6 @@
 #pragma once
 
-#include "telemetrytypes.h"
+#include "sessionstore.h"
 
 #include <QList>
 
@@ -14,6 +14,8 @@ public:
 
     quint64 appendSample(FlightSample sample);
     void clear();
+    // Restore an already validated frozen session without recomputing its diagnoses or identities.
+    void restoreSnapshot(const SessionSnapshot &snapshot);
     void setRetentionMs(qint64 retentionMs);
     qint64 retentionMs() const;
 
@@ -27,11 +29,25 @@ public:
     int worstResponsivenessIndex() const;
 
     QVariantList incidentEpisodes() const;
+    QString markProblemNow(const QString &label = QString());
+    SessionSnapshot freezeRange(quint64 startSampleId, quint64 endSampleId) const;
+    SessionSnapshot freezeIncident(const QString &incidentId) const;
+    QVariantMap compareRange(quint64 startSampleId, quint64 endSampleId) const;
+    QVariantList markers() const;
+    QString recordingId() const;
     QString exportSummaryMarkdown(bool includeProcessDetails = false) const;
     QString exportSamplesJson(bool includeProcessDetails = false) const;
     static QVariantMap sampleMetricMetadata(const FlightSample &s);
 
 private:
+    void updateIncidents(const FlightSample &sample);
+    void trimRecords();
+    QString m_recordingId;
+    QString m_engineVersion = QStringLiteral("0.9.0");
+    QVariantList m_incidents;
+    QVariantList m_markers;
+    QVariantMap m_activeIncident;
+    int m_peakRank = -1;
     int m_capacity = 7201;
     qint64 m_retentionMs = 5 * 60 * 1000;
     quint64 m_nextSampleId = 1;

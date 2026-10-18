@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
+import QtQuick.Dialogs
 import org.kde.kirigami as Kirigami
 import Qt.labs.settings
 import com.github.loofi.hardwarepulse 1.0
@@ -40,6 +41,7 @@ Kirigami.ApplicationWindow {
 
     PulseTelemetryController {
         id: telemetry
+        objectName: "telemetryController"
         pollIntervalMs: appSettings.savedPollInterval
         historyRetentionSeconds: appSettings.savedHistoryRetentionSeconds
         notificationsEnabled: appSettings.savedNotificationsEnabled
@@ -81,6 +83,53 @@ Kirigami.ApplicationWindow {
         onActivated: telemetry.copyIncidentReportToClipboard()
     }
 
+    Shortcut { sequence: "Ctrl+O"; onActivated: openSessionDialog.open() }
+    Shortcut { sequence: "Ctrl+Shift+S"; onActivated: saveSessionDialog.open() }
+    Shortcut { sequence: "Ctrl+5"; onActivated: appWindow.switchToPage("processes") }
+    Shortcut { sequence: "Ctrl+6"; onActivated: appWindow.switchToPage("storage") }
+
+    FileDialog {
+        id: openSessionDialog
+        objectName: "openSessionDialog"
+        title: "Open Pulse session"
+        nameFilters: ["Pulse sessions (*.pulse-session)"]
+        fileMode: FileDialog.OpenFile
+        onAccepted: { telemetry.openSession(selectedFile.toString()); appWindow.switchToPage("flight") }
+    }
+    FileDialog {
+        id: saveSessionDialog
+        objectName: "saveSessionDialog"
+        title: "Save Pulse session"
+        nameFilters: ["Pulse sessions (*.pulse-session)"]
+        defaultSuffix: "pulse-session"
+        fileMode: FileDialog.SaveFile
+        onAccepted: telemetry.saveSession(selectedFile.toString())
+    }
+    onClosing: close => {
+        if (!telemetry.canQuitWithoutSaving()) {
+            close.accepted = false
+            unsavedDialog.open()
+        }
+    }
+    QQC2.Dialog {
+        id: unsavedDialog
+        objectName: "unsavedInvestigationDialog"
+        title: "Save this investigation?"
+        modal: true
+        anchors.centerIn: parent
+        width: Math.min(appWindow.width - 40, 480)
+        standardButtons: QQC2.Dialog.Cancel
+        ColumnLayout {
+            width: parent.width
+            QQC2.Label { Layout.fillWidth: true; wrapMode: Text.WordWrap; text: "This investigation has not been saved. Save a session to keep the original evidence before closing the last monitor." }
+            QQC2.Button { text: "Save session…"; onClicked: { unsavedDialog.close(); saveSessionDialog.open() } }
+            QQC2.Button { text: "Discard investigation and close"; onClicked: { telemetry.returnToLive(); appWindow.close() } }
+        }
+    }
+
+    function openSession(path) { telemetry.openSession(path); switchToPage("flight") }
+    function openIncident(id) { telemetry.selectIncident(id); switchToPage("flight", "inspector") }
+
     function focusPageSection(item: var, section: string): void {
         if (item && typeof item.focusSection === "function") item.focusSection(section)
     }
@@ -94,6 +143,12 @@ Kirigami.ApplicationWindow {
         } else if (name === "pressure") {
             targetComp = pressureComp
             normalized = "pressure"
+        } else if (name === "processes") {
+            targetComp = processesComp
+            normalized = "processes"
+        } else if (name === "storage") {
+            targetComp = storageComp
+            normalized = "storage"
         } else if (name === "power") {
             targetComp = powerComp
             normalized = "power"
@@ -150,6 +205,21 @@ Kirigami.ApplicationWindow {
                     text: "Include process names and IDs in reports"
                     checked: telemetry.exportIncludeProcessDetails
                     onToggled: telemetry.exportIncludeProcessDetails = checked
+                }
+                QQC2.CheckBox {
+                    text: "Continue monitoring when all windows close"
+                    checked: telemetry.backgroundMonitoring
+                    onToggled: telemetry.backgroundMonitoring = checked
+                }
+                QQC2.CheckBox {
+                    text: "Start monitoring at login"
+                    checked: telemetry.startAtLogin
+                    onToggled: telemetry.startAtLogin = checked
+                }
+                QQC2.Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    text: "Background monitoring and login startup are separate opt-ins. Recordings stay in memory until you save a session. The process-detail privacy setting also applies to sessions."
                 }
                 QQC2.Label { text: "Network interfaces"; font.bold: true }
                 QQC2.CheckBox {
@@ -231,6 +301,35 @@ Kirigami.ApplicationWindow {
                 icon.name: "battery-profile-performance"
                 checked: appWindow.currentPageName === "power"
                 onTriggered: appWindow.switchToPage("power")
+            },
+            Kirigami.Action {
+                objectName: "navigateProcesses"
+                text: "Processes"
+                icon.name: "view-process-all"
+                checked: appWindow.currentPageName === "processes"
+                onTriggered: appWindow.switchToPage("processes")
+            },
+            Kirigami.Action {
+                objectName: "navigateStorage"
+                text: "Storage & Network"
+                icon.name: "drive-harddisk"
+                checked: appWindow.currentPageName === "storage"
+                onTriggered: appWindow.switchToPage("storage")
+            },
+            Kirigami.Action {
+                text: "Open session…"
+                icon.name: "document-open"
+                onTriggered: openSessionDialog.open()
+            },
+            Kirigami.Action {
+                text: "Save session…"
+                icon.name: "document-save-as"
+                onTriggered: saveSessionDialog.open()
+            },
+            Kirigami.Action {
+                text: "Snooze notifications for 15 minutes"
+                icon.name: "notifications-disabled"
+                onTriggered: telemetry.snoozeNotifications()
             },
             Kirigami.Action {
                 separator: true
@@ -397,11 +496,20 @@ Kirigami.ApplicationWindow {
                 // Live / Pause pill button
                 QQC2.ToolButton {
                     icon.name: telemetry.recordingPaused ? "media-playback-start" : "media-playback-pause"
-                    text: telemetry.recordingPaused ? "PAUSED" : ("LIVE · " + telemetry.pollIntervalMs + "ms")
+                    text: telemetry.recordingPaused ? "Recording paused" : (telemetry.collectorState + " · " + telemetry.pollIntervalMs + " ms")
                     display: appWindow.width < 680 ? QQC2.AbstractButton.IconOnly : QQC2.AbstractButton.TextBesideIcon
                     Accessible.name: telemetry.recordingPaused ? "Resume Flight Recorder" : "Pause Flight Recorder"
                     onClicked: telemetry.recordingPaused = !telemetry.recordingPaused
                 }
+            }
+
+            QQC2.Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                text: "Collector: " + telemetry.collectorState
+                      + (telemetry.sessionMode ? " · HISTORICAL investigation — live monitoring continues separately" : " · Live recording")
+                      + (telemetry.unsavedInvestigation ? " · Unsaved investigation" : "")
+                Accessible.name: text
             }
 
             // Segmented View Switcher Row
@@ -414,7 +522,9 @@ Kirigami.ApplicationWindow {
                         { id: "overview", label: "Overview", icon: "view-statistics" },
                         { id: "flight", label: "History", icon: "chronometer" },
                         { id: "pressure", label: "Memory & Pressure", icon: "memory" },
-                        { id: "power", label: "Power & Cooling", icon: "battery-profile-performance" }
+                        { id: "power", label: "Power & Cooling", icon: "battery-profile-performance" },
+                        { id: "processes", label: "Processes", icon: "view-process-all" },
+                        { id: "storage", label: "Storage & Network", icon: "drive-harddisk" }
                     ]
                     delegate: QQC2.AbstractButton {
                         id: navTabBtn
@@ -465,7 +575,7 @@ Kirigami.ApplicationWindow {
         height: visible ? statusRow.implicitHeight + Kirigami.Units.smallSpacing * 2 : 0
         color: theme.elevatedSurfaceColor
         border.width: 1
-        border.color: telemetry.powerProfileChangePending
+        border.color: (telemetry.powerProfileChangePending || telemetry.actionPending)
                       ? Kirigami.Theme.neutralTextColor
                       : (telemetry.lastActionSucceeded ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.negativeTextColor)
 
@@ -480,13 +590,13 @@ Kirigami.ApplicationWindow {
                 Layout.preferredWidth: 8
                 Layout.preferredHeight: 8
                 radius: 4
-                color: telemetry.powerProfileChangePending
+                color: (telemetry.powerProfileChangePending || telemetry.actionPending)
                        ? Kirigami.Theme.neutralTextColor
                        : (telemetry.lastActionSucceeded ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.negativeTextColor)
             }
 
             QQC2.Label {
-                text: (telemetry.powerProfileChangePending ? "Working: "
+                text: ((telemetry.powerProfileChangePending || telemetry.actionPending) ? "Working: "
                        : telemetry.lastActionSucceeded ? "Completed: " : "Could not complete: ")
                       + telemetry.lastActionStatus
                 wrapMode: Text.WordWrap
@@ -496,16 +606,24 @@ Kirigami.ApplicationWindow {
             }
 
             QQC2.Button {
-                visible: telemetry.lastActionSucceeded && telemetry.lastActionPath.length > 0
+                visible: telemetry.lastActionPath.length > 0
                 icon.name: "folder-open"
                 text: "Open folder"
                 onClicked: telemetry.openReportsFolder()
             }
 
             QQC2.Label {
-                text: "Poll: " + telemetry.pollIntervalMs + "ms"
-                      + (telemetry.recordingPaused ? " • PAUSED" : " • LIVE")
-                color: telemetry.recordingPaused ? Kirigami.Theme.neutralTextColor : Kirigami.Theme.positiveTextColor
+                objectName: "recordingStatusLabel"
+                Layout.maximumWidth: appWindow.width * 0.42
+                wrapMode: Text.WordWrap
+                text: (telemetry.sessionMode ? "View: Historical investigation" : "View: Current recording")
+                      + "\nCollector: " + telemetry.collectorState + " · " + telemetry.pollIntervalMs + " ms"
+                      + (telemetry.recordingPaused ? " · Recording paused in this window" : "")
+                color: telemetry.collectorState.indexOf("Disconnected") === 0
+                       ? Kirigami.Theme.negativeTextColor
+                       : (telemetry.sessionMode || telemetry.recordingPaused || telemetry.collectorState.indexOf("Live") !== 0
+                          ? Kirigami.Theme.neutralTextColor : Kirigami.Theme.positiveTextColor)
+                Accessible.name: text
                 font.bold: true
             }
         }
@@ -523,6 +641,8 @@ Kirigami.ApplicationWindow {
         id: flightComp
         FlightRecorderPage {
             controller: telemetry
+            onSaveSessionRequested: saveSessionDialog.open()
+            onOpenSessionRequested: openSessionDialog.open()
         }
     }
 
@@ -539,6 +659,9 @@ Kirigami.ApplicationWindow {
             controller: telemetry
         }
     }
+
+    Component { id: processesComp; ProcessesPage { controller: telemetry } }
+    Component { id: storageComp; StorageNetworkPage { controller: telemetry } }
 
     pageStack.initialPage: overviewComp
 }

@@ -9,6 +9,10 @@
 #include "telemetrytypes.h"
 
 #include <QElapsedTimer>
+#include <QDBusServiceWatcher>
+#include <QThreadPool>
+#include <QUuid>
+#include <functional>
 #include <QDBusConnection>
 #include <QObject>
 #include <QTimer>
@@ -149,6 +153,7 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(QVariantList coreItems READ coreItems NOTIFY telemetryUpdated)
     Q_PROPERTY(QVariantList topProcesses READ topProcesses NOTIFY telemetryUpdated)
     Q_PROPERTY(QVariantList historySamples READ historySamples NOTIFY telemetryUpdated)
+    Q_PROPERTY(QVariantMap historySummary READ historySummary NOTIFY telemetryUpdated)
     Q_PROPERTY(QVariantList incidentHistory READ incidentHistory NOTIFY telemetryUpdated)
     Q_PROPERTY(double historyMaxWatts READ historyMaxWatts NOTIFY telemetryUpdated)
     Q_PROPERTY(double historyMaxDiskMibPerSec READ historyMaxDiskMibPerSec NOTIFY telemetryUpdated)
@@ -170,138 +175,151 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(bool powerProfileChangePending READ powerProfileChangePending NOTIFY lastActionStatusChanged)
 
 public:
+    ~PulseTelemetryController() override;
+    QByteArray collectorPacket(bool includeHistory = false) const;
+    QByteArray collectorHistory(qulonglong afterId, int limit = 64) const;
+    QByteArray collectorIncident(const QString &id) const;
+    QByteArray collectorMarkProblem();
+    void setCollectorIdentity(const QString &id) { m_captureId = id; }
     explicit PulseTelemetryController(QObject *parent = nullptr);
     explicit PulseTelemetryController(const QDBusConnection &powerProfileBus, QObject *parent = nullptr);
 
-    double cpuLoadPercent() const { return m_cpu.totalLoadPercent; }
-    double cpuPackageTemp() const { return m_cpu.packageTempCelsius; }
-    double thermalHeadroom() const { return m_cpu.thermalHeadroomCelsius; }
-    double thermalVelocity() const { return m_cpu.thermalVelocityCPerSec; }
-    int cpuAvgFreqMhz() const { return m_cpu.avgFreqMhz; }
-    int cpuMaxFreqMhz() const { return m_cpu.maxFreqMhz; }
-    int cpuPeakFreqMhz() const { return m_cpu.peakCoreFreqMhz; }
-    qint64 totalThrottleEvents() const { return m_cpu.totalThrottleEvents; }
-    qint64 deltaThrottleEvents() const { return m_cpu.deltaThrottleEvents; }
-    bool cpuLoadAvailable() const { return m_cpu.loadAvailable && m_cpu.loadWarmedUp; }
-    bool cpuTempAvailable() const { return m_cpu.temperatureAvailable; }
-    bool thermalHeadroomAvailable() const { return m_cpu.temperatureAvailable && m_cpu.thermalLimitAvailable; }
-    bool throttleCountersAvailable() const { return m_cpu.throttleCountersAvailable; }
+    double cpuLoadPercent() const { return remoteValue<double>("cpuLoadPercent", m_cpu.totalLoadPercent); }
+    double cpuPackageTemp() const { return remoteValue<double>("cpuPackageTemp", m_cpu.packageTempCelsius); }
+    double thermalHeadroom() const { return remoteValue<double>("thermalHeadroom", m_cpu.thermalHeadroomCelsius); }
+    double thermalVelocity() const { return remoteValue<double>("thermalVelocity", m_cpu.thermalVelocityCPerSec); }
+    int cpuAvgFreqMhz() const { return remoteValue<int>("cpuAvgFreqMhz", m_cpu.avgFreqMhz); }
+    int cpuMaxFreqMhz() const { return remoteValue<int>("cpuMaxFreqMhz", m_cpu.maxFreqMhz); }
+    int cpuPeakFreqMhz() const { return remoteValue<int>("cpuPeakFreqMhz", m_cpu.peakCoreFreqMhz); }
+    qint64 totalThrottleEvents() const { return remoteValue<qint64>("totalThrottleEvents", m_cpu.totalThrottleEvents); }
+    qint64 deltaThrottleEvents() const { return remoteValue<qint64>("deltaThrottleEvents", m_cpu.deltaThrottleEvents); }
+    bool cpuLoadAvailable() const { return remoteValue<bool>("cpuLoadAvailable", m_cpu.loadAvailable && m_cpu.loadWarmedUp); }
+    bool cpuTempAvailable() const { return remoteValue<bool>("cpuTempAvailable", m_cpu.temperatureAvailable); }
+    bool thermalHeadroomAvailable() const { return remoteValue<bool>("thermalHeadroomAvailable", m_cpu.temperatureAvailable && m_cpu.thermalLimitAvailable); }
+    bool throttleCountersAvailable() const { return remoteValue<bool>("throttleCountersAvailable", m_cpu.throttleCountersAvailable); }
 
-    bool gpuAvailable() const { return m_gpu.available; }
-    QString gpuDriverName() const { return m_gpu.driverName; }
-    int gpuCurrentFreqMhz() const { return m_gpu.currentFreqMhz; }
-    int gpuBoostFreqMhz() const { return m_gpu.boostFreqMhz; }
-    double gpuBusyPercent() const { return m_gpu.busyPercent; }
-    double gpuTempCelsius() const { return m_gpu.tempCelsius; }
-    double gpuVramUsedMib() const { return m_gpu.vramUsedMegabytes; }
-    double gpuVramTotalMib() const { return m_gpu.vramTotalMegabytes; }
-    double gpuPowerWatts() const { return m_gpu.powerWatts; }
-    bool gpuFrequencyAvailable() const { return m_gpu.frequencyAvailable; }
-    bool gpuBusyAvailable() const { return m_gpu.busyAvailable; }
-    bool gpuTempAvailable() const { return m_gpu.temperatureAvailable; }
-    bool gpuPowerAvailable() const { return m_gpu.powerAvailable; }
-    bool gpuVramAvailable() const { return m_gpu.vramAvailable; }
+    bool gpuAvailable() const { return remoteValue<bool>("gpuAvailable", m_gpu.available); }
+    QString gpuDriverName() const { return remoteValue<QString>("gpuDriverName", m_gpu.driverName); }
+    int gpuCurrentFreqMhz() const { return remoteValue<int>("gpuCurrentFreqMhz", m_gpu.currentFreqMhz); }
+    int gpuBoostFreqMhz() const { return remoteValue<int>("gpuBoostFreqMhz", m_gpu.boostFreqMhz); }
+    double gpuBusyPercent() const { return remoteValue<double>("gpuBusyPercent", m_gpu.busyPercent); }
+    double gpuTempCelsius() const { return remoteValue<double>("gpuTempCelsius", m_gpu.tempCelsius); }
+    double gpuVramUsedMib() const { return remoteValue<double>("gpuVramUsedMib", m_gpu.vramUsedMegabytes); }
+    double gpuVramTotalMib() const { return remoteValue<double>("gpuVramTotalMib", m_gpu.vramTotalMegabytes); }
+    double gpuPowerWatts() const { return remoteValue<double>("gpuPowerWatts", m_gpu.powerWatts); }
+    bool gpuFrequencyAvailable() const { return remoteValue<bool>("gpuFrequencyAvailable", m_gpu.frequencyAvailable); }
+    bool gpuBusyAvailable() const { return remoteValue<bool>("gpuBusyAvailable", m_gpu.busyAvailable); }
+    bool gpuTempAvailable() const { return remoteValue<bool>("gpuTempAvailable", m_gpu.temperatureAvailable); }
+    bool gpuPowerAvailable() const { return remoteValue<bool>("gpuPowerAvailable", m_gpu.powerAvailable); }
+    bool gpuVramAvailable() const { return remoteValue<bool>("gpuVramAvailable", m_gpu.vramAvailable); }
 
-    double psiCpuSome10() const { return m_psiMem.cpuPsi.someAvg10; }
-    double psiMemSome10() const { return m_psiMem.memoryPsi.someAvg10; }
-    double psiMemFull10() const { return m_psiMem.memoryPsi.fullAvg10; }
-    double psiIoSome10() const { return m_psiMem.ioPsi.someAvg10; }
-    double psiIoFull10() const { return m_psiMem.ioPsi.fullAvg10; }
-    double psiCpuStallMs() const { return m_psiMem.cpuPsi.deltaStallMsPerSec; }
-    double psiMemStallMs() const { return m_psiMem.memoryPsi.deltaStallMsPerSec; }
-    double psiIoStallMs() const { return m_psiMem.ioPsi.deltaStallMsPerSec; }
-    double responsivenessScore() const { return m_psiMem.responsivenessScore; }
-    bool psiAvailable() const { return m_psiMem.responsivenessAvailable; }
-    bool psiCpuAvailable() const { return m_psiMem.cpuPsi.someAvailable; }
-    bool psiMemoryAvailable() const { return m_psiMem.memoryPsi.someAvailable; }
-    bool psiMemoryFullAvailable() const { return m_psiMem.memoryPsi.fullAvailable; }
-    bool psiIoAvailable() const { return m_psiMem.ioPsi.someAvailable; }
-    bool psiIoFullAvailable() const { return m_psiMem.ioPsi.fullAvailable; }
-    bool memoryAvailable() const { return m_psiMem.ramAvailable; }
-    double ramUsedPercent() const { return m_psiMem.ramUsedPercent; }
-    double ramUsedGib() const { return static_cast<double>(m_psiMem.ramUsedBytes) / (1024.0 * 1024.0 * 1024.0); }
-    double ramTotalGib() const { return static_cast<double>(m_psiMem.ramTotalBytes) / (1024.0 * 1024.0 * 1024.0); }
-    bool zramActive() const { return m_psiMem.zramActive; }
-    double zramOrigMib() const { return static_cast<double>(m_psiMem.zramOrigBytes) / (1024.0 * 1024.0); }
-    double zramComprMib() const { return static_cast<double>(m_psiMem.zramCompressedBytes) / (1024.0 * 1024.0); }
-    double zramMemUsedMib() const { return static_cast<double>(m_psiMem.zramMemUsedTotalBytes) / (1024.0 * 1024.0); }
-    double zramCompressionRatio() const { return m_psiMem.zramCompressionRatio; }
+    double psiCpuSome10() const { return remoteValue<double>("psiCpuSome10", m_psiMem.cpuPsi.someAvg10); }
+    double psiMemSome10() const { return remoteValue<double>("psiMemSome10", m_psiMem.memoryPsi.someAvg10); }
+    double psiMemFull10() const { return remoteValue<double>("psiMemFull10", m_psiMem.memoryPsi.fullAvg10); }
+    double psiIoSome10() const { return remoteValue<double>("psiIoSome10", m_psiMem.ioPsi.someAvg10); }
+    double psiIoFull10() const { return remoteValue<double>("psiIoFull10", m_psiMem.ioPsi.fullAvg10); }
+    double psiCpuStallMs() const { return remoteValue<double>("psiCpuStallMs", m_psiMem.cpuPsi.deltaStallMsPerSec); }
+    double psiMemStallMs() const { return remoteValue<double>("psiMemStallMs", m_psiMem.memoryPsi.deltaStallMsPerSec); }
+    double psiIoStallMs() const { return remoteValue<double>("psiIoStallMs", m_psiMem.ioPsi.deltaStallMsPerSec); }
+    double responsivenessScore() const { return remoteValue<double>("responsivenessScore", m_psiMem.responsivenessScore); }
+    bool psiAvailable() const { return remoteValue<bool>("psiAvailable", m_psiMem.responsivenessAvailable); }
+    bool psiCpuAvailable() const { return remoteValue<bool>("psiCpuAvailable", m_psiMem.cpuPsi.someAvailable); }
+    bool psiMemoryAvailable() const { return remoteValue<bool>("psiMemoryAvailable", m_psiMem.memoryPsi.someAvailable); }
+    bool psiMemoryFullAvailable() const { return remoteValue<bool>("psiMemoryFullAvailable", m_psiMem.memoryPsi.fullAvailable); }
+    bool psiIoAvailable() const { return remoteValue<bool>("psiIoAvailable", m_psiMem.ioPsi.someAvailable); }
+    bool psiIoFullAvailable() const { return remoteValue<bool>("psiIoFullAvailable", m_psiMem.ioPsi.fullAvailable); }
+    bool memoryAvailable() const { return remoteValue<bool>("memoryAvailable", m_psiMem.ramAvailable); }
+    double ramUsedPercent() const { return remoteValue<double>("ramUsedPercent", m_psiMem.ramUsedPercent); }
+    double ramUsedGib() const { return remoteValue<double>("ramUsedGib", static_cast<double>(m_psiMem.ramUsedBytes) / (1024.0 * 1024.0 * 1024.0)); }
+    double ramTotalGib() const { return remoteValue<double>("ramTotalGib", static_cast<double>(m_psiMem.ramTotalBytes) / (1024.0 * 1024.0 * 1024.0)); }
+    bool zramActive() const { return remoteValue<bool>("zramActive", m_psiMem.zramActive); }
+    double zramOrigMib() const { return remoteValue<double>("zramOrigMib", static_cast<double>(m_psiMem.zramOrigBytes) / (1024.0 * 1024.0)); }
+    double zramComprMib() const { return remoteValue<double>("zramComprMib", static_cast<double>(m_psiMem.zramCompressedBytes) / (1024.0 * 1024.0)); }
+    double zramMemUsedMib() const { return remoteValue<double>("zramMemUsedMib", static_cast<double>(m_psiMem.zramMemUsedTotalBytes) / (1024.0 * 1024.0)); }
+    double zramCompressionRatio() const { return remoteValue<double>("zramCompressionRatio", m_psiMem.zramCompressionRatio); }
     double swapUsedGib() const
     {
         const quint64 used = (m_psiMem.swapTotalBytes > m_psiMem.swapFreeBytes)
             ? (m_psiMem.swapTotalBytes - m_psiMem.swapFreeBytes)
             : 0ULL;
-        return static_cast<double>(used) / (1024.0 * 1024.0 * 1024.0);
+        return remoteValue<double>("swapUsedGib", static_cast<double>(used) / (1024.0 * 1024.0 * 1024.0));
     }
-    double swapTotalGib() const { return static_cast<double>(m_psiMem.swapTotalBytes) / (1024.0 * 1024.0 * 1024.0); }
-    bool swapAvailable() const { return m_psiMem.swapAvailable; }
-    bool zramAvailable() const { return m_psiMem.zramAvailable; }
-    bool zramCompressionAvailable() const { return m_psiMem.zramCompressionAvailable; }
-    bool diskThroughputAvailable() const { return m_psiMem.diskThroughputAvailable; }
-    double diskReadMibPerSec() const { return m_psiMem.diskReadMibPerSec; }
-    double diskWriteMibPerSec() const { return m_psiMem.diskWriteMibPerSec; }
-    bool netThroughputAvailable() const { return m_psiMem.netThroughputAvailable; }
-    double netRxMibPerSec() const { return m_psiMem.netRxMibPerSec; }
-    double netTxMibPerSec() const { return m_psiMem.netTxMibPerSec; }
+    double swapTotalGib() const { return remoteValue<double>("swapTotalGib", static_cast<double>(m_psiMem.swapTotalBytes) / (1024.0 * 1024.0 * 1024.0)); }
+    bool swapAvailable() const { return remoteValue<bool>("swapAvailable", m_psiMem.swapAvailable); }
+    bool zramAvailable() const { return remoteValue<bool>("zramAvailable", m_psiMem.zramAvailable); }
+    bool zramCompressionAvailable() const { return remoteValue<bool>("zramCompressionAvailable", m_psiMem.zramCompressionAvailable); }
+    bool diskThroughputAvailable() const { return remoteValue<bool>("diskThroughputAvailable", m_psiMem.diskThroughputAvailable); }
+    double diskReadMibPerSec() const { return remoteValue<double>("diskReadMibPerSec", m_psiMem.diskReadMibPerSec); }
+    double diskWriteMibPerSec() const { return remoteValue<double>("diskWriteMibPerSec", m_psiMem.diskWriteMibPerSec); }
+    bool netThroughputAvailable() const { return remoteValue<bool>("netThroughputAvailable", m_psiMem.netThroughputAvailable); }
+    double netRxMibPerSec() const { return remoteValue<double>("netRxMibPerSec", m_psiMem.netRxMibPerSec); }
+    double netTxMibPerSec() const { return remoteValue<double>("netTxMibPerSec", m_psiMem.netTxMibPerSec); }
     QVariantList networkInterfaces() const;
     QStringList selectedNetworkInterfaces() const { return m_selectedNetworkInterfaces; }
     void setSelectedNetworkInterfaces(const QStringList &interfaces);
 
-    bool onAcPower() const { return m_power.onAcPower; }
-    bool batteryPresent() const { return m_power.batteryPresent; }
-    bool batteryStateAvailable() const { return m_power.batteryStateAvailable; }
-    bool batteryLevelAvailable() const { return m_power.batteryLevelAvailable; }
-    bool batteryHealthAvailable() const { return m_power.batteryHealthAvailable; }
-    bool batteryPowerAvailable() const { return m_power.batteryPowerAvailable; }
-    QString batteryStatus() const { return m_power.batteryStatus; }
-    double batteryPercent() const { return m_power.batteryPercent; }
-    double batteryWatts() const { return m_power.batteryWatts; }
-    int batteryTimeRemainingMinutes() const { return m_power.batteryTimeRemainingMinutes; }
+    bool onAcPower() const { return remoteValue<bool>("onAcPower", m_power.onAcPower); }
+    bool batteryPresent() const { return remoteValue<bool>("batteryPresent", m_power.batteryPresent); }
+    bool batteryStateAvailable() const { return remoteValue<bool>("batteryStateAvailable", m_power.batteryStateAvailable); }
+    bool batteryLevelAvailable() const { return remoteValue<bool>("batteryLevelAvailable", m_power.batteryLevelAvailable); }
+    bool batteryHealthAvailable() const { return remoteValue<bool>("batteryHealthAvailable", m_power.batteryHealthAvailable); }
+    bool batteryPowerAvailable() const { return remoteValue<bool>("batteryPowerAvailable", m_power.batteryPowerAvailable); }
+    QString batteryStatus() const { return remoteValue<QString>("batteryStatus", m_power.batteryStatus); }
+    double batteryPercent() const { return remoteValue<double>("batteryPercent", m_power.batteryPercent); }
+    double batteryWatts() const { return remoteValue<double>("batteryWatts", m_power.batteryWatts); }
+    int batteryTimeRemainingMinutes() const { return remoteValue<int>("batteryTimeRemainingMinutes", m_power.batteryTimeRemainingMinutes); }
     QString batteryTimeRemainingText() const;
-    double batteryHealthPercent() const { return m_power.batteryHealthPercent; }
-    bool raplExactAvailable() const { return m_power.raplExactAvailable; }
-    bool packagePowerAvailable() const { return m_power.packagePowerAvailable; }
-    bool packagePowerEstimated() const { return m_power.packagePowerEstimated; }
-    double packageWatts() const { return m_power.packageWatts; }
-    double pl1LimitWatts() const { return m_power.pl1LimitWatts; }
-    double pl2LimitWatts() const { return m_power.pl2LimitWatts; }
-    bool powerLimitsAvailable() const { return m_power.pl1LimitWatts > 0.0 || m_power.pl2LimitWatts > 0.0; }
-    QString activePowerProfile() const { return m_activePowerProfile; }
-    QStringList availablePowerProfiles() const { return m_availablePowerProfiles; }
-    bool powerProfileServiceAvailable() const { return m_powerProfileServiceAvailable; }
-    int primaryFanRpm() const { return m_power.primaryFanRpm; }
-    bool fanAvailable() const { return m_power.fanAvailable; }
-    double nvmeTempCelsius() const { return m_nvmeTemp; }
-    double wifiTempCelsius() const { return m_wifiTemp; }
-    bool nvmeTempAvailable() const { return m_nvmeTempAvailable; }
-    bool wifiTempAvailable() const { return m_wifiTempAvailable; }
+    double batteryHealthPercent() const { return remoteValue<double>("batteryHealthPercent", m_power.batteryHealthPercent); }
+    bool raplExactAvailable() const { return remoteValue<bool>("raplExactAvailable", m_power.raplExactAvailable); }
+    bool packagePowerAvailable() const { return remoteValue<bool>("packagePowerAvailable", m_power.packagePowerAvailable); }
+    bool packagePowerEstimated() const { return remoteValue<bool>("packagePowerEstimated", m_power.packagePowerEstimated); }
+    double packageWatts() const { return remoteValue<double>("packageWatts", m_power.packageWatts); }
+    double pl1LimitWatts() const { return remoteValue<double>("pl1LimitWatts", m_power.pl1LimitWatts); }
+    double pl2LimitWatts() const { return remoteValue<double>("pl2LimitWatts", m_power.pl2LimitWatts); }
+    bool powerLimitsAvailable() const { return remoteValue<bool>("powerLimitsAvailable", m_power.pl1LimitWatts > 0.0 || m_power.pl2LimitWatts > 0.0); }
+    QString activePowerProfile() const { return remoteValue<QString>("activePowerProfile", m_activePowerProfile); }
+    QStringList availablePowerProfiles() const { return remoteValue<QStringList>("availablePowerProfiles", m_availablePowerProfiles); }
+    bool powerProfileServiceAvailable() const { return remoteValue<bool>("powerProfileServiceAvailable", m_powerProfileServiceAvailable); }
+    int primaryFanRpm() const { return remoteValue<int>("primaryFanRpm", m_power.primaryFanRpm); }
+    bool fanAvailable() const { return remoteValue<bool>("fanAvailable", m_power.fanAvailable); }
+    double nvmeTempCelsius() const { return remoteValue<double>("nvmeTempCelsius", m_nvmeTemp); }
+    double wifiTempCelsius() const { return remoteValue<double>("wifiTempCelsius", m_wifiTemp); }
+    bool nvmeTempAvailable() const { return remoteValue<bool>("nvmeTempAvailable", m_nvmeTempAvailable); }
+    bool wifiTempAvailable() const { return remoteValue<bool>("wifiTempAvailable", m_wifiTempAvailable); }
 
-    int verdictSeverity() const { return static_cast<int>(m_verdict.severity); }
-    QString verdictHeadline() const { return m_verdict.headline; }
-    QString verdictCausalChain() const { return m_verdict.causalChain; }
-    QString verdictRecommendation() const { return m_verdict.recommendation; }
-    QString verdictRuleId() const { return m_verdict.ruleId; }
-    double verdictDurationSeconds() const { return m_verdict.durationMs / 1000.0; }
-    QStringList verdictEvidence() const { return m_verdict.evidence; }
+    int verdictSeverity() const { return remoteValue<int>("verdictSeverity", static_cast<int>(m_verdict.severity)); }
+    QString verdictHeadline() const { return remoteValue<QString>("verdictHeadline", m_verdict.headline); }
+    QString verdictCausalChain() const { return remoteValue<QString>("verdictCausalChain", m_verdict.causalChain); }
+    QString verdictRecommendation() const { return remoteValue<QString>("verdictRecommendation", m_verdict.recommendation); }
+    QString verdictRuleId() const { return remoteValue<QString>("verdictRuleId", m_verdict.ruleId); }
+    double verdictDurationSeconds() const { return remoteValue<double>("verdictDurationSeconds", m_verdict.durationMs / 1000.0); }
+    QStringList verdictEvidence() const { return remoteValue<QStringList>("verdictEvidence", m_verdict.evidence); }
     QStringList verdictMissingEvidence() const;
-    QString primaryBottleneckDomain() const { return m_verdict.primaryBottleneckDomain; }
-    QStringList verdictContributingSignals() const { return m_verdict.contributingSignals; }
-    QString culpritName() const { return m_verdict.topProcess.name; }
-    int culpritPid() const { return m_verdict.topProcess.pid; }
-    double culpritCpuPercent() const { return m_verdict.topProcess.cpuPercent; }
-    double culpritRssMb() const { return m_verdict.topProcess.rssMegabytes; }
-    QString memoryCulpritName() const { return m_verdict.topMemoryProcess.name; }
-    int memoryCulpritPid() const { return m_verdict.topMemoryProcess.pid; }
-    double memoryCulpritRssMb() const { return m_verdict.topMemoryProcess.rssMegabytes; }
-    int diskWaitProcessCount() const { return m_processRadar.diskWaitProcessCount; }
+    QString primaryBottleneckDomain() const { return remoteValue<QString>("primaryBottleneckDomain", m_verdict.primaryBottleneckDomain); }
+    QStringList verdictContributingSignals() const { return remoteValue<QStringList>("verdictContributingSignals", m_verdict.contributingSignals); }
+    QString culpritName() const { return remoteValue<QString>("culpritName", m_verdict.topProcess.name); }
+    int culpritPid() const { return remoteValue<int>("culpritPid", m_verdict.topProcess.pid); }
+    double culpritCpuPercent() const { return remoteValue<double>("culpritCpuPercent", m_verdict.topProcess.cpuPercent); }
+    double culpritRssMb() const { return remoteValue<double>("culpritRssMb", m_verdict.topProcess.rssMegabytes); }
+    QString memoryCulpritName() const { return remoteValue<QString>("memoryCulpritName", m_verdict.topMemoryProcess.name); }
+    int memoryCulpritPid() const { return remoteValue<int>("memoryCulpritPid", m_verdict.topMemoryProcess.pid); }
+    double memoryCulpritRssMb() const { return remoteValue<double>("memoryCulpritRssMb", m_verdict.topMemoryProcess.rssMegabytes); }
+    int diskWaitProcessCount() const { return remoteValue<int>("diskWaitProcessCount", m_processRadar.diskWaitProcessCount); }
 
-    QVariantList domainSensors() const { return m_domainSensorsVariant; }
-    QVariantList coreItems() const { return m_coreItemsVariant; }
-    QVariantList topProcesses() const { return m_topProcessesVariant; }
+    QVariantList domainSensors() const { return remoteValue<QVariantList>("domainSensors", m_domainSensorsVariant); }
+    QVariantList coreItems() const { return remoteValue<QVariantList>("coreItems", m_coreItemsVariant); }
+    QVariantList topProcesses() const { return remoteValue<QVariantList>("topProcesses", m_topProcessesVariant); }
     QVariantList historySamples() const { return m_historySamplesVariant; }
+    QVariantMap historySummary() const;
+    Q_INVOKABLE QVariantMap historySampleAt(int index) const;
+    Q_INVOKABLE int historyIndexAtRatio(double ratio) const;
+    Q_INVOKABLE QVariantMap historyPlot(int pixelWidth) const;
+    Q_INVOKABLE QString historyPlotJson(int pixelWidth) const;
+    Q_INVOKABLE QVariantList historyRecentSeries(const QString &valueKey, const QString &availableKey, int limit) const;
+    Q_INVOKABLE QString historyRecentSeriesJson(const QString &valueKey, const QString &availableKey, int limit) const;
     QVariantList incidentHistory() const { return m_incidentHistoryVariant; }
-    double historyMaxWatts() const { return m_historyMaxWatts; }
-    double historyMaxDiskMibPerSec() const { return m_historyMaxDiskMibPerSec; }
+    double historyMaxWatts() const { return remoteValue<double>("historyMaxWatts", m_historyMaxWatts); }
+    double historyMaxDiskMibPerSec() const { return remoteValue<double>("historyMaxDiskMibPerSec", m_historyMaxDiskMibPerSec); }
     QVariantMap metricMetadata() const;
 
     int selectedHistoryIndex() const { return m_selectedHistorySampleId == 0 ? -1 : m_recorder.indexOfSample(m_selectedHistorySampleId); }
@@ -314,7 +332,7 @@ public:
     int pollIntervalMs() const { return m_timer.interval(); }
     void setPollIntervalMs(int intervalMs);
 
-    int historyRetentionSeconds() const { return static_cast<int>(m_recorder.retentionMs() / 1000LL); }
+    int historyRetentionSeconds() const { return m_remoteClient ? m_requestedRetentionSeconds : static_cast<int>(m_recorder.retentionMs() / 1000LL); }
     void setHistoryRetentionSeconds(int seconds);
     double actualHistorySeconds() const;
     bool exportIncludeProcessDetails() const { return m_exportIncludeProcessDetails; }
@@ -355,27 +373,129 @@ Q_SIGNALS:
     void recordingPausedChanged();
     void lastActionStatusChanged();
 
+public:
+    Q_PROPERTY(QVariantList allProcesses READ allProcesses NOTIFY telemetryUpdated)
+    Q_PROPERTY(QVariantList storageDevices READ storageDevices NOTIFY telemetryUpdated)
+    Q_PROPERTY(QVariantList gpuDevices READ gpuDevices NOTIFY telemetryUpdated)
+    Q_PROPERTY(QVariantList batteries READ batteries NOTIFY telemetryUpdated)
+    Q_PROPERTY(QVariantList capabilities READ capabilities NOTIFY telemetryUpdated)
+    Q_PROPERTY(QString collectorState READ collectorState NOTIFY telemetryUpdated)
+    Q_PROPERTY(bool backgroundMonitoring READ backgroundMonitoring WRITE setBackgroundMonitoring NOTIFY telemetryUpdated)
+    Q_PROPERTY(bool startAtLogin READ startAtLogin WRITE setStartAtLogin NOTIFY telemetryUpdated)
+    Q_PROPERTY(bool sessionMode READ sessionMode NOTIFY telemetryUpdated)
+    Q_PROPERTY(QString sessionPath READ sessionPath NOTIFY telemetryUpdated)
+    Q_PROPERTY(bool unsavedInvestigation READ unsavedInvestigation NOTIFY telemetryUpdated)
+    Q_PROPERTY(QVariantMap investigationSummary READ investigationSummary NOTIFY telemetryUpdated)
+    Q_PROPERTY(QString selectedGpuId READ selectedGpuId WRITE setSelectedGpuId NOTIFY telemetryUpdated)
+    Q_PROPERTY(QString selectedStorageId READ selectedStorageId WRITE setSelectedStorageId NOTIFY telemetryUpdated)
+    Q_PROPERTY(bool actionPending READ actionPending NOTIFY telemetryUpdated)
+    QVariantList allProcesses() const;
+    QVariantList storageDevices() const;
+    QVariantList gpuDevices() const;
+    QVariantList batteries() const;
+    QVariantList capabilities() const;
+    QString collectorState() const;
+    bool backgroundMonitoring() const { return m_remoteValues.value(QStringLiteral("backgroundMonitoring")).toBool(); }
+    bool startAtLogin() const { return m_remoteValues.value(QStringLiteral("startAtLogin")).toBool(); }
+    void setBackgroundMonitoring(bool enabled);
+    void setStartAtLogin(bool enabled);
+    bool sessionMode() const { return m_sessionMode; }
+    QString sessionPath() const { return m_sessionPath; }
+    bool unsavedInvestigation() const { return m_unsavedInvestigation; }
+    QVariantMap investigationSummary() const { return m_investigationSummary; }
+    QString selectedGpuId() const { return m_selectedGpuId; }
+    QString selectedStorageId() const { return m_selectedStorageId; }
+    void setSelectedGpuId(const QString &id);
+    void setSelectedStorageId(const QString &id);
+    bool actionPending() const { return m_actionPending; }
+    Q_INVOKABLE void markProblemNow();
+    Q_INVOKABLE void markProblemAndLaunch();
+    Q_INVOKABLE void selectIncident(const QString &id);
+    Q_INVOKABLE void launchIncident(const QString &id);
+    Q_INVOKABLE void selectHistoryRange(qulonglong first, qulonglong last);
+    Q_INVOKABLE void returnToLive();
+    Q_INVOKABLE void saveSession(const QString &path);
+    Q_INVOKABLE void openSession(const QString &path);
+    Q_INVOKABLE QString exportSelectedIncident();
+    Q_INVOKABLE QString exportEntireRecording();
+    Q_INVOKABLE void snoozeNotifications();
+    Q_INVOKABLE void quitMonitoring();
+    Q_INVOKABLE bool canQuitWithoutSaving() const { return !m_unsavedInvestigation; }
+
+private Q_SLOTS:
+    void receiveCollectorFrame(const QByteArray &data);
+    void connectCollector();
 private:
-    void maybeEmitAlertNotifications();
+    QVariant remoteTelemetryValue(const char *key) const;
+    QVariantList remoteCollection(const char *key) const;
+    QVariantMap sampleForView(const FlightSample &sample, int index) const;
+    template<class T> T remoteValue(const char *key, const T &local) const {
+        return m_remoteClient ? remoteTelemetryValue(key).value<T>() : local;
+    }
+    void callCollector(const QString &method, const QVariantList &arguments = {},
+                       std::function<void(const QByteArray &)> completion = {});
+    void subscribeCollector();
+    void refreshProcesses();
+    void fetchCollectorHistory(qulonglong afterId = 0);
+    void appendRemoteSample(const QVariantMap &map);
+    void showSession(const SessionSnapshot &session, const QString &path, bool unsaved);
+    void rebuildHistoryView();
+    void exportRecorderAsync(const FlightRecorder &recorder, const QVariantMap &selection = {});
+    QVariantMap processToMap(const CulpritProcess &process) const;
     void setLastActionStatus(const QString &status);
     void setActionResult(bool succeeded, const QString &status, const QString &path = QString());
     void refreshPowerProfileProperties();
     static QVariantMap sampleToVariantMap(const FlightSample &s, int index);
 
+    QString m_clientId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    QElapsedTimer m_lastLaunchAttempt;
+    mutable qint64 m_lastPacketProcessMs = -1;
+    quint64 m_investigationGeneration = 0;
+    quint64 m_connectionGeneration = 0;
+    int m_requestedRetentionSeconds = 300;
+    QVariantList m_pendingSamples;
+    bool m_remoteClient = false;
+    bool m_connecting = false;
+    bool m_syncing = false;
+    bool m_sessionMode = false;
+    bool m_unsavedInvestigation = false;
+    bool m_actionPending = false;
+    QString m_sessionPath;
+    QString m_captureId;
+    QString m_remoteCaptureId;
+    QString m_selectedGpuId;
+    QString m_selectedStorageId;
+    QString m_connectionState = QStringLiteral("Connecting");
+    QVariantMap m_remoteValues;
+    QVariantMap m_investigationSummary;
+    bool m_openedSession = false;
+    QHash<QString, SessionSnapshot> m_markedInvestigations;
+    QStringList m_markedOrder;
+    SessionSnapshot m_sourceSession;
+    SessionSnapshot m_session;
+    FlightRecorder m_liveRecorder{7201};
+    QTimer m_reconnectTimer;
+    QElapsedTimer m_receivedAt;
+    QThreadPool m_filePool;
+    QDBusServiceWatcher *m_serviceWatcher = nullptr;
+    QList<GpuSnapshot> m_gpus;
+    QVariantList m_allProcesses;
+    QVariantList m_processObservations;
     SysfsReader m_sysfsReader;
     PsiMemorySampler m_psiSampler;
     CpuSocSampler m_cpuSampler;
+    CpuSocSampler m_processSampler;
     PowerFlowSampler m_powerSampler;
     FlightRecorder m_recorder;
     QDBusConnection m_powerProfileBus;
 
     QTimer m_timer;
     QTimer m_powerProfileRefreshTimer;
+    QTimer m_processTimer;
     QElapsedTimer m_uptime;
     qint64 m_lastBoottimeMs = 0;
     qint64 m_lastSampleWallTimeMs = 0;
     qint64 m_lastProcessScanBoottimeMs = 0;
-    int m_processScanWarmupCount = 0;
     bool m_gapPending = false;
     bool m_notificationsEnabled = true;
     bool m_recordingPaused = false;
@@ -409,6 +529,16 @@ private:
     QVariantList m_domainSensorsVariant;
     QVariantList m_coreItemsVariant;
     QVariantList m_topProcessesVariant;
+    struct HistoryPlotSample {
+        quint64 sampleId = 0;
+        qint64 timestamp = 0;
+        double values[7]{};
+        bool available[7]{};
+        bool gap = false;
+        bool throttled = false;
+        int severity = 0;
+    };
+    mutable QList<HistoryPlotSample> m_historyPlotSamples;
     QVariantList m_historySamplesVariant;
     QVariantList m_incidentHistoryVariant;
     double m_historyMaxWatts = 65.0;

@@ -1,6 +1,9 @@
 qt_add_executable(loofi-pulse
     main.cpp
     ${CMAKE_SOURCE_DIR}/src/plugin/pulsetelemetrycontroller.cpp
+    ${CMAKE_SOURCE_DIR}/src/plugin/collectorclient.cpp
+    ${CMAKE_SOURCE_DIR}/src/plugin/telemetryselection.cpp
+    ${CMAKE_SOURCE_DIR}/src/plugin/reportexport.cpp
     ${CMAKE_SOURCE_DIR}/src/plugin/pulsetelemetrycontroller.h
     qml.qrc
 )
