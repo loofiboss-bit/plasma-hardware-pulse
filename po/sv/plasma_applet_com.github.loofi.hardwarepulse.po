@@ -1,0 +1,51 @@
+# Swedish translation for plasma_applet_com.github.loofi.hardwarepulse.
+# Copyright (C) 2026 Loofi
+# This file is distributed under the same license as the loofi-pulse package.
+# Loofi <loofi@github.com>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: plasma_applet_com.github.loofi.hardwarepulse 0.11.0\n"
+"Report-Msgid-Bugs-To: https://github.com/loofiboss-bit/plasma-hardware-pulse\n"
+"POT-Creation-Date: 2026-10-19 01:00+0200\n"
+"PO-Revision-Date: 2026-10-19 01:00+0200\n"
+"Last-Translator: Loofi <loofi@github.com>\n"
+"Language-Team: Swedish <kde-i18n-doc@kde.org>\n"
+"Language: sv\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Loofi Pulse"
+msgstr "Loofi Pulse"
+
+msgid "Open Loofi Pulse"
+msgstr "Öppna Loofi Pulse"
+
+msgid "Mark Problem Now"
+msgstr "Markera problem nu"
+
+msgid "Nominal"
+msgstr "Nominell"
+
+msgid "Elevated"
+msgstr "Förhöjd"
+
+msgid "Bottleneck"
+msgstr "Flaskhals"
+
+msgid "Critical Throttle"
+msgstr "Kritisk strypning"
+
+msgid "General"
+msgstr "Allmänt"
+
+msgid "Compact"
+msgstr "Kompakt"
+
+msgid "Detailed"
+msgstr "Detaljerad"
+
+msgid "More settings in Loofi Pulse…"
+msgstr "Fler inställningar i Loofi Pulse…"

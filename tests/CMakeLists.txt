@@ -159,3 +159,19 @@ target_link_libraries(test_historystore PRIVATE loofipulsecore Qt6::Core Qt6::Sq
 add_test(NAME historystore COMMAND test_historystore)
 set_tests_properties(historystore PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;${PULSE_TEST_XDG_ENV}")
 
+qt_add_executable(test_i18n test_i18n.cpp)
+target_compile_definitions(test_i18n PRIVATE
+    PULSE_BUILD_LOCALE_DIR="${CMAKE_BINARY_DIR}/locale"
+)
+target_link_libraries(test_i18n PRIVATE Qt6::Core Qt6::Test KF6::I18n)
+add_dependencies(test_i18n pofiles)
+add_test(NAME i18n COMMAND test_i18n)
+set_tests_properties(i18n PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;${PULSE_TEST_XDG_ENV}")
+
+find_program(MSGFMT_EXECUTABLE msgfmt)
+if(MSGFMT_EXECUTABLE)
+    add_test(NAME i18n_catalogs_valid COMMAND ${MSGFMT_EXECUTABLE} --check -o /dev/null "${PROJECT_SOURCE_DIR}/po/sv/loofi-pulse.po")
+    add_test(NAME i18n_applet_catalogs_valid COMMAND ${MSGFMT_EXECUTABLE} --check -o /dev/null "${PROJECT_SOURCE_DIR}/po/sv/plasma_applet_com.github.loofi.hardwarepulse.po")
+endif()
+
+

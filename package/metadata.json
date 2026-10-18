@@ -9,6 +9,7 @@
     "Category": "System Information",
     "Copyright": "© 2026 Loofi",
     "Description": "Hardware, temperature, memory pressure, and power monitor for KDE Plasma 6",
+    "Description[sv]": "Hårdvaru-, temperatur-, minnestrycks- och effektövervakare för KDE Plasma 6",
     "Icon": "com.github.loofi.hardwarepulse",
     "Id": "com.github.loofi.hardwarepulse",
     "License": "GPL-3.0-or-later",

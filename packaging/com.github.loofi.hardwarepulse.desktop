@@ -1,7 +1,10 @@
 [Desktop Entry]
 Name=Loofi Pulse
+Name[sv]=Loofi Pulse
 GenericName=Causal Hardware & Thermal Monitor
+GenericName[sv]=Hårdvaru- och temperaturövervakare
 Comment=Logical KDE Plasma 6 hardware monitor with causal bottleneck diagnosis, Linux PSI stall radar, ZRAM analytics, and thermal flight recorder
+Comment[sv]=KDE Plasma 6 hårdvaruövervakare med flaskhalsdiagnos, Linux PSI-tryckradar, ZRAM-analys och termisk haverikommission
 Exec=loofi-pulse
 Icon=com.github.loofi.hardwarepulse
 Type=Application

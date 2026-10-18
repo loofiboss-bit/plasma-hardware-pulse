@@ -2,7 +2,9 @@
 <component type="desktop-application">
   <id>com.github.loofi.hardwarepulse</id>
   <name>Loofi Pulse</name>
+  <name xml:lang="sv">Loofi Pulse</name>
   <summary>Hardware, temperature, memory pressure, and power monitor for KDE Plasma 6</summary>
+  <summary xml:lang="sv">Hårdvaru-, temperatur-, minnestrycks- och effektövervakare för KDE Plasma 6</summary>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
   <description>

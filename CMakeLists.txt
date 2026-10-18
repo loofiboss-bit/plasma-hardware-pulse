@@ -67,3 +67,7 @@ install(FILES packaging/com.github.loofi.hardwarepulse.desktop
         DESTINATION ${KDE_INSTALL_APPDIR})
 install(FILES packaging/com.github.loofi.hardwarepulse.metainfo.xml
         DESTINATION ${KDE_INSTALL_METAINFODIR})
+
+# Install internationalization PO catalogs
+ki18n_install(po)
+

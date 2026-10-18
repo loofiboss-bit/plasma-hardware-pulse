@@ -4,6 +4,7 @@
 
 #include <KAboutData>
 #include <KCrash>
+#include <KLocalizedContext>
 #include <KLocalizedString>
 #include <KWindowSystem>
 #include <QApplication>
@@ -85,9 +86,11 @@ int main(int argc, char *argv[])
 
     if (isSmokeTest) QCoreApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
     QApplication app(argc, argv);
-    QLocale::setDefault(QLocale(QLocale::English, QLocale::UnitedStates));
+    if (isSmokeTest) {
+        QLocale::setDefault(QLocale(QLocale::English, QLocale::UnitedStates));
+        KLocalizedString::setLanguages({QStringLiteral("en_US"), QStringLiteral("en")});
+    }
     KLocalizedString::setApplicationDomain("loofi-pulse");
-    KLocalizedString::setLanguages({QStringLiteral("en_US"), QStringLiteral("en")});
 
     KAboutData aboutData(
         QStringLiteral("loofi-pulse"),
@@ -133,6 +136,10 @@ int main(int argc, char *argv[])
         }
     }
     engine.addImportPath(appDir);
+QT_WARNING_PUSH
+QT_WARNING_DISABLE_DEPRECATED
+    engine.rootContext()->setContextObject(new KLocalizedContext(&engine));
+QT_WARNING_POP
 
     LoofiPulse::TrayIcon trayIcon;
     engine.rootContext()->setContextProperty(QStringLiteral("appTray"), &trayIcon);
