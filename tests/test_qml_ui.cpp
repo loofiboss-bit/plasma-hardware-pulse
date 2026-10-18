@@ -160,6 +160,23 @@ private Q_SLOTS:
         QVERIFY(window->findChild<QObject *>(QStringLiteral("samplingIntervalSetting")));
         QVERIFY(QMetaObject::invokeMethod(settingsDialog, "close"));
 
+        // Verify dedicated SettingsPage navigation and dialogs
+        QVERIFY(QMetaObject::invokeMethod(window, "switchToPage", Q_ARG(QVariant, QStringLiteral("settings")), Q_ARG(QVariant, QString())));
+        QCoreApplication::processEvents();
+        QCOMPARE(window->property("currentPageName").toString(), QStringLiteral("settings"));
+
+        auto *aboutDialog = window->findChild<QObject *>(QStringLiteral("aboutDialog"));
+        QVERIFY(aboutDialog);
+        QVERIFY(QMetaObject::invokeMethod(window, "openAboutDialog"));
+        QTRY_VERIFY(aboutDialog->property("visible").toBool());
+        QVERIFY(QMetaObject::invokeMethod(aboutDialog, "close"));
+
+        auto *shortcutsDialog = window->findChild<QObject *>(QStringLiteral("shortcutsDialog"));
+        QVERIFY(shortcutsDialog);
+        QVERIFY(QMetaObject::invokeMethod(window, "openShortcutsDialog"));
+        QTRY_VERIFY(shortcutsDialog->property("visible").toBool());
+        QVERIFY(QMetaObject::invokeMethod(shortcutsDialog, "close"));
+
         QObject *historyAction = window->findChild<QObject *>(QStringLiteral("navigateHistory"));
         QVERIFY(QMetaObject::invokeMethod(historyAction, "trigger"));
         QCoreApplication::processEvents();

@@ -13,6 +13,7 @@
 #include <QProcess>
 #include <QSaveFile>
 #include <QStandardPaths>
+#include <QTime>
 
 namespace LoofiPulse {
 namespace {
@@ -199,25 +200,105 @@ QByteArray CollectorService::StopMonitoring()
     // Existing widget clients continue to receive telemetry; closing the last client starts idle shutdown.
     updateRequests(); if (!m_latest.isEmpty()) publish(m_latest); return success();
 }
+QByteArray CollectorService::GetPreferences()
+{
+    QVariantMap prefs;
+    prefs[QStringLiteral("minNotificationSeverity")] = m_settings.value(QStringLiteral("minNotificationSeverity"), 2).toInt();
+    prefs[QStringLiteral("mutedNotificationDomains")] = m_settings.value(QStringLiteral("mutedNotificationDomains"), QStringList()).toStringList();
+    prefs[QStringLiteral("quietHoursEnabled")] = m_settings.value(QStringLiteral("quietHoursEnabled"), false).toBool();
+    prefs[QStringLiteral("quietHoursStart")] = m_settings.value(QStringLiteral("quietHoursStart"), QStringLiteral("22:00")).toString();
+    prefs[QStringLiteral("quietHoursEnd")] = m_settings.value(QStringLiteral("quietHoursEnd"), QStringLiteral("08:00")).toString();
+    prefs[QStringLiteral("longTermHistoryEnabled")] = m_settings.value(QStringLiteral("longTermHistoryEnabled"), false).toBool();
+    prefs[QStringLiteral("longTermHistoryRetentionDays")] = m_settings.value(QStringLiteral("longTermHistoryRetentionDays"), 7).toInt();
+    prefs[QStringLiteral("backgroundMonitoring")] = backgroundActive();
+    prefs[QStringLiteral("startAtLogin")] = m_settings.value(QStringLiteral("startAtLogin"), false).toBool();
+    return QJsonDocument(QJsonObject::fromVariantMap(prefs)).toJson(QJsonDocument::Compact);
+}
+
+QByteArray CollectorService::SetPreferences(const QByteArray &json)
+{
+    const auto doc = QJsonDocument::fromJson(json);
+    if (!doc.isObject()) {
+        sendErrorReply(QStringLiteral("com.github.loofi.hardwarepulse.InvalidArguments"), QStringLiteral("Expected JSON object for preferences."));
+        return {};
+    }
+    const auto map = doc.object().toVariantMap();
+    if (map.contains(QStringLiteral("minNotificationSeverity")))
+        m_settings.setValue(QStringLiteral("minNotificationSeverity"), map.value(QStringLiteral("minNotificationSeverity")).toInt());
+    if (map.contains(QStringLiteral("mutedNotificationDomains")))
+        m_settings.setValue(QStringLiteral("mutedNotificationDomains"), map.value(QStringLiteral("mutedNotificationDomains")).toStringList());
+    if (map.contains(QStringLiteral("quietHoursEnabled")))
+        m_settings.setValue(QStringLiteral("quietHoursEnabled"), map.value(QStringLiteral("quietHoursEnabled")).toBool());
+    if (map.contains(QStringLiteral("quietHoursStart")))
+        m_settings.setValue(QStringLiteral("quietHoursStart"), map.value(QStringLiteral("quietHoursStart")).toString());
+    if (map.contains(QStringLiteral("quietHoursEnd")))
+        m_settings.setValue(QStringLiteral("quietHoursEnd"), map.value(QStringLiteral("quietHoursEnd")).toString());
+    if (map.contains(QStringLiteral("longTermHistoryEnabled")))
+        m_settings.setValue(QStringLiteral("longTermHistoryEnabled"), map.value(QStringLiteral("longTermHistoryEnabled")).toBool());
+    if (map.contains(QStringLiteral("longTermHistoryRetentionDays")))
+        m_settings.setValue(QStringLiteral("longTermHistoryRetentionDays"), map.value(QStringLiteral("longTermHistoryRetentionDays")).toInt());
+    if (map.contains(QStringLiteral("backgroundMonitoring")))
+        SetBackground(map.value(QStringLiteral("backgroundMonitoring")).toBool());
+    if (map.contains(QStringLiteral("startAtLogin")))
+        SetStartAtLogin(map.value(QStringLiteral("startAtLogin")).toBool());
+    m_settings.sync();
+    const QByteArray current = GetPreferences();
+    Q_EMIT PreferencesChanged(current);
+    if (!m_latest.isEmpty()) publish(m_latest);
+    return success();
+}
+
 void CollectorService::publish(const QByteArray &bytes)
 {
     auto packet = QJsonDocument::fromJson(bytes).object().toVariantMap();
     auto live = packet.value(QStringLiteral("live")).toMap();
     live[QStringLiteral("backgroundMonitoring")] = backgroundActive();
     live[QStringLiteral("startAtLogin")] = m_settings.value(QStringLiteral("startAtLogin"), false);
+    live[QStringLiteral("preferences")] = QJsonDocument::fromJson(GetPreferences()).object().toVariantMap();
     packet[QStringLiteral("live")] = live;
     m_latest = QJsonDocument(QJsonObject::fromVariantMap(packet)).toJson(QJsonDocument::Compact);
     notify(packet); Q_EMIT FrameReady(m_latest);
 }
+
 void CollectorService::notify(const QVariantMap &packet)
 {
     bool enabled = m_clients.isEmpty() && backgroundActive()
         && m_settings.value(QStringLiteral("backgroundNotificationsEnabled"), true).toBool();
     for (const auto &client : std::as_const(m_clients)) enabled = enabled || client.notifications;
     if (!enabled || QDateTime::currentMSecsSinceEpoch() < m_snoozeUntil) return;
+
     const auto live = packet.value(QStringLiteral("live")).toMap();
     const int severity = live.value(QStringLiteral("verdictSeverity")).toInt();
-    if (severity != 2 && severity != 3) return;
+    const int minSeverity = m_settings.value(QStringLiteral("minNotificationSeverity"), 2).toInt();
+    if (minSeverity > 3 || severity < minSeverity) return;
+
+    if (m_settings.value(QStringLiteral("quietHoursEnabled"), false).toBool()) {
+        const QTime now = QTime::currentTime();
+        const QTime start = QTime::fromString(m_settings.value(QStringLiteral("quietHoursStart"), QStringLiteral("22:00")).toString(), QStringLiteral("HH:mm"));
+        const QTime end = QTime::fromString(m_settings.value(QStringLiteral("quietHoursEnd"), QStringLiteral("08:00")).toString(), QStringLiteral("HH:mm"));
+        if (start.isValid() && end.isValid()) {
+            bool inQuietHours = false;
+            if (start <= end) {
+                inQuietHours = (now >= start && now < end);
+            } else {
+                inQuietHours = (now >= start || now < end);
+            }
+            if (inQuietHours) return;
+        }
+    }
+
+    const QStringList mutedDomains = m_settings.value(QStringLiteral("mutedNotificationDomains")).toStringList();
+    if (!mutedDomains.isEmpty()) {
+        const QString domain = live.value(QStringLiteral("primaryBottleneckDomain")).toString().toLower();
+        const QString ruleId = live.value(QStringLiteral("verdictRuleId")).toString().toLower();
+        for (const QString &muted : mutedDomains) {
+            const QString m = muted.trimmed().toLower();
+            if (!m.isEmpty() && (domain.contains(m) || ruleId.contains(m))) {
+                return;
+            }
+        }
+    }
+
     const auto incidents = packet.value(QStringLiteral("incidents")).toList();
     QString id;
     for (const auto &entry : incidents) { const auto episode = entry.toMap(); if (episode.value(QStringLiteral("active")).toBool()) { id = episode.value(QStringLiteral("incidentId")).toString(); break; } }
@@ -248,3 +329,4 @@ void CollectorService::notify(const QVariantMap &packet)
     notification->sendEvent();
 }
 }
+

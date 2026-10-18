@@ -27,8 +27,11 @@ public Q_SLOTS:
     QByteArray SetStartAtLogin(bool enabled);
     QByteArray Snooze();
     QByteArray StopMonitoring();
+    QByteArray GetPreferences();
+    QByteArray SetPreferences(const QByteArray &json);
 Q_SIGNALS:
     void FrameReady(const QByteArray &packet);
+    void PreferencesChanged(const QByteArray &packet);
 private Q_SLOTS:
     void ownerChanged(const QString &name, const QString &previous, const QString &owner);
     void onPrepareForSleep(bool goingToSleep);

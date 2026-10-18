@@ -257,8 +257,31 @@ private Q_SLOTS:
         QTRY_VERIFY_WITH_TIMEOUT(client.startAtLogin(), 5000);
         client.setBackgroundMonitoring(false);
         QTRY_VERIFY_WITH_TIMEOUT(!client.backgroundMonitoring(), 5000);
-        QVERIFY(client.startAtLogin());
         client.setStartAtLogin(false); QTRY_VERIFY_WITH_TIMEOUT(!client.startAtLogin(), 5000);
+
+        const auto initialPrefs = object(request(QStringLiteral("GetPreferences")));
+        QCOMPARE(initialPrefs.value(QStringLiteral("minNotificationSeverity")).toInt(), 2);
+        QVERIFY(initialPrefs.contains(QStringLiteral("quietHoursStart")));
+
+        const QVariantMap newPrefs{
+            {QStringLiteral("minNotificationSeverity"), 3},
+            {QStringLiteral("quietHoursEnabled"), true},
+            {QStringLiteral("quietHoursStart"), QStringLiteral("23:30")},
+            {QStringLiteral("quietHoursEnd"), QStringLiteral("07:15")},
+            {QStringLiteral("mutedNotificationDomains"), QStringList{QStringLiteral("cpu"), QStringLiteral("gpu")}}
+        };
+        const auto setReply = request(QStringLiteral("SetPreferences"), {QJsonDocument(QJsonObject::fromVariantMap(newPrefs)).toJson(QJsonDocument::Compact)});
+        QVERIFY(!setReply.isEmpty());
+
+        const auto updatedPrefs = object(request(QStringLiteral("GetPreferences")));
+        QCOMPARE(updatedPrefs.value(QStringLiteral("minNotificationSeverity")).toInt(), 3);
+        QVERIFY(updatedPrefs.value(QStringLiteral("quietHoursEnabled")).toBool());
+        QCOMPARE(updatedPrefs.value(QStringLiteral("quietHoursStart")).toString(), QStringLiteral("23:30"));
+        QCOMPARE(updatedPrefs.value(QStringLiteral("quietHoursEnd")).toString(), QStringLiteral("07:15"));
+        QCOMPARE(updatedPrefs.value(QStringLiteral("mutedNotificationDomains")).toStringList(), QStringList({QStringLiteral("cpu"), QStringLiteral("gpu")}));
+
+        QTRY_VERIFY_WITH_TIMEOUT(client.collectorPreferences().value(QStringLiteral("minNotificationSeverity")).toInt() == 3, 5000);
+
         helper.terminate(); QVERIFY(helper.waitForFinished(5000));
         startHelper();
         QTRY_VERIFY_WITH_TIMEOUT(!client.historySamples().isEmpty() && client.historySamples().last().toMap().value(QStringLiteral("captureId")) != capture, 10000);

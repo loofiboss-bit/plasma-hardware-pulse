@@ -183,6 +183,32 @@ private Q_SLOTS:
         controller.refreshNow();
         QVERIFY(controller.historySamples().last().toMap().value(QStringLiteral("gapBefore")).toBool());
     }
+
+    void testTemperatureUnitPreference()
+    {
+        PulseTelemetryController controller(QDBusConnection::systemBus());
+        QCOMPARE(controller.temperatureUnit(), QStringLiteral("C"));
+        QSignalSpy spy(&controller, &PulseTelemetryController::temperatureUnitChanged);
+        controller.setTemperatureUnit(QStringLiteral("f"));
+        QCOMPARE(controller.temperatureUnit(), QStringLiteral("F"));
+        QCOMPARE(spy.count(), 1);
+        controller.setTemperatureUnit(QStringLiteral("F"));
+        QCOMPARE(spy.count(), 1);
+        controller.setTemperatureUnit(QStringLiteral("Celsius"));
+        QCOMPARE(controller.temperatureUnit(), QStringLiteral("C"));
+        QCOMPARE(spy.count(), 2);
+    }
+
+    void testCollectorPreferencesUpdate()
+    {
+        PulseTelemetryController controller(QDBusConnection::systemBus());
+        QVERIFY(controller.collectorPreferences().isEmpty());
+        QSignalSpy spy(&controller, &PulseTelemetryController::collectorPreferencesChanged);
+        QVariantMap prefs{{QStringLiteral("minNotificationSeverity"), 3}, {QStringLiteral("quietHoursEnabled"), true}};
+        controller.updateCollectorPreferences(prefs);
+        QCOMPARE(controller.collectorPreferences(), prefs);
+        QCOMPARE(spy.count(), 1);
+    }
 };
 
 QTEST_MAIN(TestControllerActions)

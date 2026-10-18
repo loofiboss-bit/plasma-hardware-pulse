@@ -372,6 +372,8 @@ Q_SIGNALS:
     void notificationsEnabledChanged();
     void recordingPausedChanged();
     void lastActionStatusChanged();
+    void collectorPreferencesChanged();
+    void temperatureUnitChanged();
 
 public:
     Q_PROPERTY(QVariantList allProcesses READ allProcesses NOTIFY telemetryUpdated)
@@ -383,6 +385,8 @@ public:
     Q_PROPERTY(bool collectorConnected READ collectorConnected NOTIFY telemetryUpdated)
     Q_PROPERTY(bool backgroundMonitoring READ backgroundMonitoring WRITE setBackgroundMonitoring NOTIFY telemetryUpdated)
     Q_PROPERTY(bool startAtLogin READ startAtLogin WRITE setStartAtLogin NOTIFY telemetryUpdated)
+    Q_PROPERTY(QVariantMap collectorPreferences READ collectorPreferences NOTIFY collectorPreferencesChanged)
+    Q_PROPERTY(QString temperatureUnit READ temperatureUnit WRITE setTemperatureUnit NOTIFY temperatureUnitChanged)
     Q_PROPERTY(bool sessionMode READ sessionMode NOTIFY telemetryUpdated)
     Q_PROPERTY(QString sessionPath READ sessionPath NOTIFY telemetryUpdated)
     Q_PROPERTY(bool unsavedInvestigation READ unsavedInvestigation NOTIFY telemetryUpdated)
@@ -401,6 +405,10 @@ public:
     bool startAtLogin() const { return m_remoteValues.value(QStringLiteral("startAtLogin")).toBool(); }
     void setBackgroundMonitoring(bool enabled);
     void setStartAtLogin(bool enabled);
+    QVariantMap collectorPreferences() const { return m_collectorPreferences; }
+    QString temperatureUnit() const { return m_temperatureUnit; }
+    void setTemperatureUnit(const QString &unit);
+    Q_INVOKABLE void updateCollectorPreferences(const QVariantMap &prefs);
     bool sessionMode() const { return m_sessionMode; }
     QString sessionPath() const { return m_sessionPath; }
     bool unsavedInvestigation() const { return m_unsavedInvestigation; }
@@ -472,6 +480,8 @@ private:
     QString m_connectionState = QStringLiteral("Connecting");
     QVariantMap m_remoteValues;
     QVariantMap m_investigationSummary;
+    QVariantMap m_collectorPreferences;
+    QString m_temperatureUnit = QStringLiteral("C");
     bool m_openedSession = false;
     QHash<QString, SessionSnapshot> m_markedInvestigations;
     QStringList m_markedOrder;

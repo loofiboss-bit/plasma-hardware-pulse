@@ -152,6 +152,13 @@ void PulseTelemetryController::receiveCollectorFrame(const QByteArray &data)
     }
     const auto values = packet.value(QStringLiteral("live")).toMap();
     for (auto it = values.cbegin(); it != values.cend(); ++it) m_remoteValues[it.key()] = it.value();
+    if (values.contains(QStringLiteral("preferences"))) {
+        const auto prefs = values.value(QStringLiteral("preferences")).toMap();
+        if (prefs != m_collectorPreferences) {
+            m_collectorPreferences = prefs;
+            Q_EMIT collectorPreferencesChanged();
+        }
+    }
     m_receivedAt.restart();
     m_connectionState = m_recordingPaused ? QStringLiteral("Paused") : QStringLiteral("Live");
     const auto sample = packet.value(QStringLiteral("sample")).toMap();
@@ -348,6 +355,23 @@ void PulseTelemetryController::setBackgroundMonitoring(bool value) { callCollect
 void PulseTelemetryController::setStartAtLogin(bool value) { callCollector(QStringLiteral("SetStartAtLogin"), {value}); }
 void PulseTelemetryController::snoozeNotifications() { callCollector(QStringLiteral("Snooze"), {}, [this](const QByteArray &) { setActionResult(true, QStringLiteral("Notifications snoozed for 15 minutes.")); }); }
 void PulseTelemetryController::quitMonitoring() { callCollector(QStringLiteral("StopMonitoring")); }
+
+void PulseTelemetryController::updateCollectorPreferences(const QVariantMap &prefs)
+{
+    m_collectorPreferences = prefs;
+    Q_EMIT collectorPreferencesChanged();
+    if (m_remoteClient) {
+        callCollector(QStringLiteral("SetPreferences"), {QJsonDocument(QJsonObject::fromVariantMap(prefs)).toJson(QJsonDocument::Compact)});
+    }
+}
+
+void PulseTelemetryController::setTemperatureUnit(const QString &unit)
+{
+    const QString u = (unit.toUpper() == QStringLiteral("F")) ? QStringLiteral("F") : QStringLiteral("C");
+    if (m_temperatureUnit == u) return;
+    m_temperatureUnit = u;
+    Q_EMIT temperatureUnitChanged();
+}
 
 void PulseTelemetryController::rebuildHistoryView()
 {

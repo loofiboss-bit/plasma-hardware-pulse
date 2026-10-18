@@ -6,6 +6,7 @@ import QtQuick.Dialogs
 import org.kde.kirigami as Kirigami
 import QtCore as QtCore
 import com.github.loofi.hardwarepulse 1.0
+import "MeasurementLabels.js" as MeasurementLabels
 
 Kirigami.ApplicationWindow {
     id: appWindow
@@ -37,6 +38,7 @@ Kirigami.ApplicationWindow {
         property bool savedNotificationsEnabled: true
         property var savedNetworkInterfaces: []
         property bool savedExportIncludeProcessDetails: false
+        property string savedTemperatureUnit: "C"
     }
 
     PulseTelemetryController {
@@ -47,11 +49,13 @@ Kirigami.ApplicationWindow {
         notificationsEnabled: appSettings.savedNotificationsEnabled
         selectedNetworkInterfaces: appSettings.savedNetworkInterfaces
         exportIncludeProcessDetails: appSettings.savedExportIncludeProcessDetails
+        temperatureUnit: appSettings.savedTemperatureUnit
         onSelectedNetworkInterfacesChanged: appSettings.savedNetworkInterfaces = selectedNetworkInterfaces
         onExportIncludeProcessDetailsChanged: appSettings.savedExportIncludeProcessDetails = exportIncludeProcessDetails
         onPollIntervalChanged: appSettings.savedPollInterval = pollIntervalMs
         onHistoryRetentionChanged: appSettings.savedHistoryRetentionSeconds = historyRetentionSeconds
         onNotificationsEnabledChanged: appSettings.savedNotificationsEnabled = notificationsEnabled
+        onTemperatureUnitChanged: appSettings.savedTemperatureUnit = temperatureUnit
     }
 
     Shortcut {
@@ -87,6 +91,8 @@ Kirigami.ApplicationWindow {
     Shortcut { sequence: "Ctrl+Shift+S"; onActivated: saveSessionDialog.open() }
     Shortcut { sequence: "Ctrl+5"; onActivated: appWindow.switchToPage("processes") }
     Shortcut { sequence: "Ctrl+6"; onActivated: appWindow.switchToPage("storage") }
+    Shortcut { sequences: ["Ctrl+,", "Ctrl+Alt+S"]; onActivated: appWindow.switchToPage("settings") }
+    Shortcut { sequences: ["F1", "Ctrl+?"]; onActivated: shortcutsDialog.open() }
 
     FileDialog {
         id: openSessionDialog
@@ -130,6 +136,8 @@ Kirigami.ApplicationWindow {
     function openSession(path) { telemetry.openSession(path); switchToPage("flight") }
     function openIncident(id) { telemetry.selectIncident(id); switchToPage("flight", "inspector") }
     function navigateTo(name, section) { switchToPage(name, section) }
+    function openAboutDialog() { aboutDialog.open() }
+    function openShortcutsDialog() { shortcutsDialog.open() }
     function restoreFromBackground() {
         appWindow.show()
         appWindow.raise()
@@ -158,6 +166,9 @@ Kirigami.ApplicationWindow {
         } else if (name === "power") {
             targetComp = powerComp
             normalized = "power"
+        } else if (name === "settings") {
+            targetComp = settingsComp
+            normalized = "settings"
         }
         appWindow.currentPageName = normalized
         var targetPage = appWindow.pageStack.depth > 0
@@ -274,6 +285,127 @@ Kirigami.ApplicationWindow {
         }
     }
 
+    QQC2.Dialog {
+        id: aboutDialog
+        objectName: "aboutDialog"
+        title: "About Loofi Pulse"
+        modal: true
+        anchors.centerIn: parent
+        width: Math.min(appWindow.width - 40, 520)
+        standardButtons: QQC2.Dialog.Close
+
+        ColumnLayout {
+            width: parent.width
+            spacing: Kirigami.Units.largeSpacing
+
+            RowLayout {
+                spacing: Kirigami.Units.largeSpacing
+                Kirigami.Icon {
+                    source: "utilities-system-monitor"
+                    implicitWidth: 64
+                    implicitHeight: 64
+                }
+                ColumnLayout {
+                    spacing: Kirigami.Units.smallSpacing
+                    QQC2.Label {
+                        text: "Loofi Pulse"
+                        font.bold: true
+                        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.4
+                    }
+                    QQC2.Label {
+                        text: "Version 0.11.0 · KDE Plasma 6"
+                        color: Kirigami.Theme.disabledTextColor
+                    }
+                    QQC2.Label {
+                        text: "Next-generation Linux hardware telemetry, PSI stall detection, and causal diagnosis engine."
+                        wrapMode: Text.WordWrap
+                        Layout.maximumWidth: 380
+                    }
+                }
+            }
+
+            Kirigami.Separator { Layout.fillWidth: true }
+
+            ColumnLayout {
+                spacing: Kirigami.Units.smallSpacing
+                QQC2.Label {
+                    text: "License: GNU General Public License v3.0"
+                    color: Kirigami.Theme.disabledTextColor
+                }
+                QQC2.Label {
+                    text: "Author: Loofi Boss & Antigravity pair"
+                    color: Kirigami.Theme.disabledTextColor
+                }
+                QQC2.Label {
+                    text: "GitHub: https://github.com/loofiboss-bit/plasma-hardware-pulse"
+                    color: Kirigami.Theme.highlightColor
+                }
+            }
+        }
+    }
+
+    QQC2.Dialog {
+        id: shortcutsDialog
+        objectName: "shortcutsDialog"
+        title: "Keyboard Shortcuts"
+        modal: true
+        anchors.centerIn: parent
+        width: Math.min(appWindow.width - 40, 540)
+        standardButtons: QQC2.Dialog.Close
+
+        ColumnLayout {
+            width: parent.width
+            spacing: Kirigami.Units.mediumSpacing
+
+            QQC2.Label {
+                text: "Navigation & Actions"
+                font.bold: true
+            }
+
+            GridLayout {
+                columns: 2
+                columnSpacing: Kirigami.Units.largeSpacing
+                rowSpacing: Kirigami.Units.smallSpacing
+
+                QQC2.Label { text: "Ctrl+1 / Alt+1"; font.family: "monospace"; font.bold: true }
+                QQC2.Label { text: "Overview page" }
+
+                QQC2.Label { text: "Ctrl+2 / Alt+2"; font.family: "monospace"; font.bold: true }
+                QQC2.Label { text: "History & Flight Recorder" }
+
+                QQC2.Label { text: "Ctrl+3 / Alt+3"; font.family: "monospace"; font.bold: true }
+                QQC2.Label { text: "Memory & PSI Pressure" }
+
+                QQC2.Label { text: "Ctrl+4 / Alt+4"; font.family: "monospace"; font.bold: true }
+                QQC2.Label { text: "Power & Cooling" }
+
+                QQC2.Label { text: "Ctrl+5"; font.family: "monospace"; font.bold: true }
+                QQC2.Label { text: "Processes" }
+
+                QQC2.Label { text: "Ctrl+6"; font.family: "monospace"; font.bold: true }
+                QQC2.Label { text: "Storage & Network" }
+
+                QQC2.Label { text: "Ctrl+,"; font.family: "monospace"; font.bold: true }
+                QQC2.Label { text: "Settings page" }
+
+                QQC2.Label { text: "Ctrl+P"; font.family: "monospace"; font.bold: true }
+                QQC2.Label { text: "Pause / Resume Flight Recorder" }
+
+                QQC2.Label { text: "Ctrl+S"; font.family: "monospace"; font.bold: true }
+                QQC2.Label { text: "Export incident report" }
+
+                QQC2.Label { text: "Ctrl+Shift+C"; font.family: "monospace"; font.bold: true }
+                QQC2.Label { text: "Copy report to clipboard" }
+
+                QQC2.Label { text: "Ctrl+O / Ctrl+Shift+S"; font.family: "monospace"; font.bold: true }
+                QQC2.Label { text: "Open / Save session file" }
+
+                QQC2.Label { text: "F1 / Ctrl+?"; font.family: "monospace"; font.bold: true }
+                QQC2.Label { text: "Show this cheat sheet" }
+            }
+        }
+    }
+
     globalDrawer: Kirigami.GlobalDrawer {
         title: "Loofi Pulse"
         titleIcon: "utilities-system-monitor"
@@ -323,6 +455,13 @@ Kirigami.ApplicationWindow {
                 onTriggered: appWindow.switchToPage("storage")
             },
             Kirigami.Action {
+                objectName: "navigateSettings"
+                text: "Settings"
+                icon.name: "configure"
+                checked: appWindow.currentPageName === "settings"
+                onTriggered: appWindow.switchToPage("settings")
+            },
+            Kirigami.Action {
                 text: "Open session…"
                 icon.name: "document-open"
                 onTriggered: openSessionDialog.open()
@@ -346,12 +485,24 @@ Kirigami.ApplicationWindow {
                 onTriggered: telemetry.recordingPaused = !telemetry.recordingPaused
             },
             Kirigami.Action {
+                objectName: "openAbout"
+                text: "About Loofi Pulse"
+                icon.name: "help-about"
+                onTriggered: appWindow.openAboutDialog()
+            },
+            Kirigami.Action {
+                objectName: "openShortcuts"
+                text: "Keyboard Shortcuts"
+                icon.name: "input-keyboard"
+                onTriggered: appWindow.openShortcutsDialog()
+            },
+            Kirigami.Action {
                 objectName: "openSettings"
-                text: "Settings"
-                icon.name: "configure"
+                text: "Quick Settings…"
+                icon.name: "settings-configure"
+                visible: false
                 onTriggered: settingsDialog.open()
             }
-
         ]
     }
 
@@ -468,7 +619,7 @@ Kirigami.ApplicationWindow {
 
                         QQC2.Label {
                             text: telemetry.cpuTempAvailable
-                                  ? Math.round(telemetry.cpuPackageTemp) + "°C"
+                                  ? MeasurementLabels.formatTemperature(telemetry.cpuPackageTemp, telemetry.temperatureUnit)
                                   : "Temp N/A"
                             color: theme.tempAccent
                             font.bold: true
@@ -737,6 +888,7 @@ Kirigami.ApplicationWindow {
 
     Component { id: processesComp; ProcessesPage { controller: telemetry } }
     Component { id: storageComp; StorageNetworkPage { controller: telemetry } }
+    Component { id: settingsComp; SettingsPage { controller: telemetry; appWindow: appWindow } }
 
     pageStack.initialPage: overviewComp
 }

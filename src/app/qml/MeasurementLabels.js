@@ -21,3 +21,12 @@ function qualityLabel(state) {
     }
     return labels[state] || String(state || "Unavailable").replace(/-/g, " ").replace(/^./, function(c) { return c.toUpperCase() })
 }
+
+function formatTemperature(celsius, unit) {
+    if (typeof celsius !== "number" || isNaN(celsius)) return "N/A"
+    if (unit === "F") {
+        const f = (celsius * 9 / 5) + 32
+        return Math.round(f) + "°F"
+    }
+    return Math.round(celsius) + "°C"
+}
