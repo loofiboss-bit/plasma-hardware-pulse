@@ -39,6 +39,20 @@ Kirigami.ApplicationWindow {
         property var savedNetworkInterfaces: []
         property bool savedExportIncludeProcessDetails: false
         property string savedTemperatureUnit: "C"
+        property bool savedShowTrayIcon: true
+        property bool savedMinimizeToTray: true
+        property bool savedTrayCloseNoticeShown: false
+    }
+
+    property alias savedShowTrayIcon: appSettings.savedShowTrayIcon
+    property alias savedMinimizeToTray: appSettings.savedMinimizeToTray
+    property var tray: null
+
+    onTrayChanged: {
+        if (appWindow.tray) {
+            appWindow.tray.visible = appSettings.savedShowTrayIcon
+            appWindow.tray.minimizeToTrayOnClose = appSettings.savedMinimizeToTray
+        }
     }
 
     PulseTelemetryController {
@@ -115,6 +129,18 @@ Kirigami.ApplicationWindow {
         if (!telemetry.canQuitWithoutSaving()) {
             close.accepted = false
             unsavedDialog.open()
+            return
+        }
+        if (appSettings.savedShowTrayIcon && appSettings.savedMinimizeToTray && appWindow.tray && appWindow.tray.available) {
+            close.accepted = false
+            appWindow.hide()
+            if (!appSettings.savedTrayCloseNoticeShown) {
+                appSettings.savedTrayCloseNoticeShown = true
+                appWindow.tray.showInformation(
+                    "Loofi Pulse",
+                    "Loofi Pulse is still running in the system tray. Right-click the tray icon to quit."
+                )
+            }
         }
     }
     QQC2.Dialog {

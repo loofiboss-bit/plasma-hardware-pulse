@@ -362,6 +362,7 @@ Kirigami.Page {
                 anchors.margins: Kirigami.Units.mediumSpacing
                 spacing: 6
                 readonly property var row: page.selectedProcess || page.lastSelection || ({})
+                readonly property var ioStats: page.selectedProcess ? page.controller.processIoStats(Number(selCardCol.row.pid) || 0) : ({available: false})
 
                 RowLayout {
                     Layout.fillWidth: true
@@ -392,6 +393,15 @@ Kirigami.Page {
                         text: "System Monitor"
                         icon.name: "utilities-system-monitor"
                         onClicked: page.controller.openSystemMonitor()
+                    }
+
+                    PulseButton {
+                        id: endProcessBtn
+                        objectName: "endProcessButton"
+                        text: "End process…"
+                        icon.name: "process-stop"
+                        enabled: page.selectedProcess !== null && page.controller.canTerminateProcess(Number(selCardCol.row.pid) || 0, selCardCol.row.startTimeTicks || 0)
+                        onClicked: endProcessDialog.openForProcess(selCardCol.row)
                     }
 
                     QQC2.Label {
@@ -468,6 +478,22 @@ Kirigami.Page {
                             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                         }
                     }
+                    Rectangle {
+                        radius: theme.pillRadius
+                        color: theme.subtleSurfaceColor
+                        border.width: 1
+                        border.color: theme.subtleBorderColor
+                        implicitWidth: p6.implicitWidth + 12
+                        implicitHeight: p6.implicitHeight + 4
+                        QQC2.Label {
+                            id: p6
+                            anchors.centerIn: parent
+                            text: "Disk I/O: " + (selCardCol.ioStats && selCardCol.ioStats.available
+                                  ? "Read " + Number(selCardCol.ioStats.readMib).toFixed(1) + " MiB · Write " + Number(selCardCol.ioStats.writeMib).toFixed(1) + " MiB"
+                                  : "Unavailable")
+                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                        }
+                    }
                 }
 
                 QQC2.Label {
@@ -476,6 +502,101 @@ Kirigami.Page {
                     font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 1)
                     color: Kirigami.Theme.disabledTextColor
                     text: "Observed CPU and resident memory describe resource use; a busy process alone does not establish causation."
+                }
+            }
+        }
+    }
+
+    QQC2.Dialog {
+        id: endProcessDialog
+        objectName: "endProcessDialog"
+        title: "End process?"
+        modal: true
+        anchors.centerIn: parent
+        width: Math.min(page.width - 40, 460)
+        standardButtons: QQC2.Dialog.Cancel
+
+        property int targetPid: 0
+        property var targetStartTime: 0
+        property string targetName: ""
+        property double targetCpu: 0.0
+        property double targetRss: 0.0
+        property string targetOwner: ""
+
+        function openForProcess(row) {
+            if (!row) return
+            targetPid = Number(row.pid) || 0
+            targetStartTime = row.startTimeTicks || 0
+            targetName = String(row.name || "")
+            targetCpu = Number(row.cpuPercent) || 0.0
+            targetRss = Number(row.rssMegabytes) || 0.0
+            targetOwner = String(row.owner || "")
+            forceCheckBox.checked = false
+            endProcessDialog.open()
+        }
+
+        ColumnLayout {
+            width: parent.width
+            spacing: Kirigami.Units.smallSpacing
+
+            QQC2.Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                text: "Are you sure you want to terminate <b>" + endProcessDialog.targetName
+                      + "</b> (PID " + endProcessDialog.targetPid + ")?"
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                implicitHeight: procSummaryCol.implicitHeight + 12
+                radius: theme.innerRadius
+                color: theme.subtleSurfaceColor
+                border.width: 1
+                border.color: theme.subtleBorderColor
+
+                ColumnLayout {
+                    id: procSummaryCol
+                    anchors.fill: parent
+                    anchors.margins: 6
+                    spacing: 2
+                    QQC2.Label {
+                        text: "CPU: " + page.metric(endProcessDialog.targetCpu, "%")
+                              + " · Memory: " + page.metric(endProcessDialog.targetRss, " MiB")
+                        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                        color: Kirigami.Theme.disabledTextColor
+                    }
+                    QQC2.Label {
+                        text: "Owner: " + (endProcessDialog.targetOwner || "Unavailable")
+                        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                        color: Kirigami.Theme.disabledTextColor
+                    }
+                }
+            }
+
+            QQC2.CheckBox {
+                id: forceCheckBox
+                objectName: "forceTerminateCheckBox"
+                text: "Force terminate immediately (SIGKILL)"
+                Accessible.name: "Force terminate with SIGKILL"
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.topMargin: Kirigami.Units.smallSpacing
+                Item { Layout.fillWidth: true }
+                PulseButton {
+                    text: "Cancel"
+                    onClicked: endProcessDialog.close()
+                }
+                PulseButton {
+                    objectName: "confirmTerminateButton"
+                    text: forceCheckBox.checked ? "Force kill process" : "End process"
+                    icon.name: "process-stop"
+                    accentColor: Kirigami.Theme.negativeTextColor
+                    onClicked: {
+                        endProcessDialog.close()
+                        page.controller.terminateProcess(endProcessDialog.targetPid, endProcessDialog.targetStartTime, forceCheckBox.checked)
+                    }
                 }
             }
         }

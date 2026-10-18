@@ -2,6 +2,8 @@ qt_add_executable(loofi-pulse
     main.cpp
     appinstance.cpp
     appinstance.h
+    trayicon.cpp
+    trayicon.h
     ${CMAKE_SOURCE_DIR}/src/plugin/pulsetelemetrycontroller.cpp
     ${CMAKE_SOURCE_DIR}/src/plugin/collectorclient.cpp
     ${CMAKE_SOURCE_DIR}/src/plugin/telemetryselection.cpp

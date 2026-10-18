@@ -1,5 +1,6 @@
 #include "appinstance.h"
 #include "pulsetelemetrycontroller.h"
+#include "trayicon.h"
 
 #include <KAboutData>
 #include <KCrash>
@@ -11,6 +12,7 @@
 #include <QDir>
 #include <QIcon>
 #include <QQmlApplicationEngine>
+#include <QQmlContext>
 #include <QQuickStyle>
 #include <QQuickWindow>
 #include <QTimer>
@@ -132,6 +134,9 @@ int main(int argc, char *argv[])
     }
     engine.addImportPath(appDir);
 
+    LoofiPulse::TrayIcon trayIcon;
+    engine.rootContext()->setContextProperty(QStringLiteral("appTray"), &trayIcon);
+
     QObject::connect(
         &engine,
         &QQmlApplicationEngine::objectCreationFailed,
@@ -144,6 +149,13 @@ int main(int argc, char *argv[])
         return 1;
     }
     auto *root = engine.rootObjects().constFirst();
+
+    if (!automated) {
+        auto *window = qobject_cast<QQuickWindow *>(root);
+        auto *telemetry = root->findChild<LoofiPulse::PulseTelemetryController *>(QStringLiteral("telemetryController"));
+        trayIcon.init(telemetry, window);
+        root->setProperty("tray", QVariant::fromValue(&trayIcon));
+    }
 
     const QString page = LoofiPulse::PulseTelemetryController::normalizedPageName(parser.value(options.page));
     root->setProperty("initialSectionName",

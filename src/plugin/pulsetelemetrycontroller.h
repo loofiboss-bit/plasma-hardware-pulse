@@ -365,6 +365,9 @@ public:
     Q_INVOKABLE void loadTrendsRange(const QString &rangeKey);
     Q_INVOKABLE void loadPersistedIncidents(qint64 fromMs, qint64 toMs, int limit = 100);
     Q_INVOKABLE void clearPersistedHistory();
+    Q_INVOKABLE bool canTerminateProcess(int pid, qulonglong startTime = 0) const;
+    Q_INVOKABLE bool terminateProcess(int pid, qulonglong startTime = 0, bool force = false);
+    Q_INVOKABLE QVariantMap processIoStats(int pid) const;
 
 Q_SIGNALS:
     void selectedNetworkInterfacesChanged();

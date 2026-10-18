@@ -123,6 +123,32 @@ Kirigami.ScrollablePage {
             onToggled: root.controller.startAtLogin = checked
         }
 
+        QQC2.CheckBox {
+            Kirigami.FormData.label: "System Tray:"
+            text: "Show system tray icon with live status"
+            Accessible.name: "System tray icon toggle"
+            checked: root.appWindow ? root.appWindow.savedShowTrayIcon : true
+            onToggled: {
+                if (root.appWindow) {
+                    root.appWindow.savedShowTrayIcon = checked
+                    if (root.appWindow.tray) root.appWindow.tray.visible = checked
+                }
+            }
+        }
+
+        QQC2.CheckBox {
+            text: "Minimize to system tray when closing window"
+            Accessible.name: "Minimize to tray on close toggle"
+            enabled: root.appWindow ? root.appWindow.savedShowTrayIcon : true
+            checked: root.appWindow ? root.appWindow.savedMinimizeToTray : true
+            onToggled: {
+                if (root.appWindow) {
+                    root.appWindow.savedMinimizeToTray = checked
+                    if (root.appWindow.tray) root.appWindow.tray.minimizeToTrayOnClose = checked
+                }
+            }
+        }
+
         QQC2.Label {
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
