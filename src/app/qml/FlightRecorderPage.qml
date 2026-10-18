@@ -10,6 +10,11 @@ Kirigami.ScrollablePage {
     id: flightPage
     objectName: "historyPage"
     title: "History"
+    titleDelegate: Item {
+        width: parent ? parent.width : 0
+        height: 0
+        visible: false
+    }
 
     required property var controller
     signal saveSessionRequested()
@@ -152,15 +157,15 @@ Kirigami.ScrollablePage {
 
                     // 1. Playback cluster
                     RowLayout {
-                        spacing: 2
-                        QQC2.Button {
+                        spacing: 4
+                        PulseButton {
                             icon.name: "media-playback-start"
                             text: "Follow Live"
                             enabled: flightPage.controller.sessionMode || flightPage.controller.selectedHistorySampleId !== 0
                             onClicked: flightPage.controller.returnToLive()
                         }
 
-                        QQC2.Button {
+                        PulseButton {
                             icon.name: flightPage.controller.recordingPaused ? "media-playback-start" : "media-playback-pause"
                             text: flightPage.controller.recordingPaused ? "Resume" : "Pause"
                             checkable: true
@@ -171,11 +176,13 @@ Kirigami.ScrollablePage {
 
                     // 2. Incident & Marking cluster
                     RowLayout {
-                        spacing: 2
-                        QQC2.Button {
+                        spacing: 4
+                        PulseButton {
                             objectName: "markProblemNowButton"
                             text: "Mark problem now"
                             icon.name: "bookmark-new"
+                            isPrimary: true
+                            accentColor: theme.negativeColor
                             enabled: !flightPage.controller.sessionMode
                             onClicked: flightPage.controller.markProblemNow()
                         }
@@ -183,18 +190,18 @@ Kirigami.ScrollablePage {
 
                     // 3. Sessions & Export cluster
                     RowLayout {
-                        spacing: 2
-                        QQC2.Button {
+                        spacing: 4
+                        PulseButton {
                             text: "Save session…"
                             icon.name: "document-save-as"
                             onClicked: flightPage.saveSessionRequested()
                         }
-                        QQC2.Button {
+                        PulseButton {
                             text: "Open session…"
                             icon.name: "document-open"
                             onClicked: flightPage.openSessionRequested()
                         }
-                        QQC2.Button {
+                        PulseButton {
                             icon.name: "document-save"
                             text: flightPage.controller.sessionMode ? "Export incident" : "Export recording"
                             onClicked: {
@@ -202,7 +209,7 @@ Kirigami.ScrollablePage {
                                 else flightPage.controller.exportEntireRecording()
                             }
                         }
-                        QQC2.ToolButton {
+                        PulseButton {
                             text: "More"
                             icon.name: "overflow-menu"
                             onClicked: historyMenu.popup()
@@ -440,22 +447,23 @@ Kirigami.ScrollablePage {
                     Layout.fillWidth: true
                     spacing: Kirigami.Units.smallSpacing
 
-                    QQC2.Button {
+                    PulseButton {
                         text: "Set beginning"
                         icon.name: "go-first"
                         enabled: flightPage.controller.selectedHistorySampleId !== 0
                         onClicked: { flightPage.rangeStartId = flightPage.controller.selectedHistorySampleId; flightPage.rangeStartTimeMs = Number(flightPage.inspectedDetail.timestampMs) }
                     }
-                    QQC2.Button {
+                    PulseButton {
                         text: "Set end"
                         icon.name: "go-last"
                         enabled: flightPage.controller.selectedHistorySampleId !== 0
                         onClicked: { flightPage.rangeEndId = flightPage.controller.selectedHistorySampleId; flightPage.rangeEndTimeMs = Number(flightPage.inspectedDetail.timestampMs) }
                     }
-                    QQC2.Button {
+                    PulseButton {
                         objectName: "freezeHistoryRangeButton"
                         text: "Freeze selected range"
                         icon.name: "media-playback-pause"
+                        isPrimary: flightPage.rangeStartId > 0 && flightPage.rangeEndId >= flightPage.rangeStartId
                         enabled: flightPage.rangeStartId > 0 && flightPage.rangeEndId >= flightPage.rangeStartId
                         onClicked: flightPage.controller.selectHistoryRange(flightPage.rangeStartId, flightPage.rangeEndId)
                     }
@@ -941,10 +949,11 @@ Kirigami.ScrollablePage {
 
                     Repeater {
                         model: flightPage.controller.incidentHistory
-                        delegate: QQC2.Button {
+                        delegate: PulseButton {
                             id: incidentChip
                             required property var modelData
                             icon.name: incidentChip.modelData.throttled || incidentChip.modelData.severity >= 2 ? "dialog-warning" : "dialog-information"
+                            accentColor: incidentChip.modelData.throttled || incidentChip.modelData.severity >= 2 ? theme.negativeColor : theme.neutralColor
                             text: incidentChip.modelData.timeString
                                   + (incidentChip.modelData.durationSeconds > 1 ? " (" + incidentChip.modelData.durationSeconds + "s)" : "")
                                   + " · " + incidentChip.modelData.headline
@@ -1013,7 +1022,7 @@ Kirigami.ScrollablePage {
                         wrapMode: Text.WordWrap
                     }
 
-                    QQC2.Button {
+                    PulseButton {
                         text: "Open System Monitor"
                         icon.name: "utilities-system-monitor"
                         onClicked: flightPage.controller.openSystemMonitor()

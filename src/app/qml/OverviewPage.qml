@@ -9,6 +9,11 @@ Kirigami.ScrollablePage {
     id: page
     objectName: "overviewPage"
     title: "Overview"
+    titleDelegate: Item {
+        width: parent ? parent.width : 0
+        height: 0
+        visible: false
+    }
     required property var controller
 
     function focusSection(section) {
@@ -159,7 +164,7 @@ Kirigami.ScrollablePage {
                         color: Kirigami.Theme.textColor
                     }
 
-                    QQC2.Button {
+                    PulseButton {
                         objectName: "whyStatusButton"
                         text: page.whyExpanded ? "Hide status explanation" : "Why this status?"
                         icon.name: page.whyExpanded ? "collapse-all" : "help-about"
@@ -325,27 +330,28 @@ Kirigami.ScrollablePage {
                         Layout.fillWidth: true
                         spacing: Kirigami.Units.smallSpacing
 
-                        QQC2.Button {
+                        PulseButton {
                             icon.name: "go-next"
                             text: page.controller.verdictSeverity > 0 && page.controller.verdictSeverity < 4
                                   ? "Inspect " + (page.controller.primaryBottleneckDomain || "details")
                                   : "Power & Cooling"
+                            isPrimary: page.controller.verdictSeverity > 0 && page.controller.verdictSeverity < 4
                             onClicked: page.navigateRequested(page.targetPageForDomain(page.controller.primaryBottleneckDomain), page.sectionForDomain(page.controller.primaryBottleneckDomain))
                         }
 
-                        QQC2.Button {
+                        PulseButton {
                             icon.name: "chronometer"
                             text: "Open History"
                             onClicked: page.navigateRequested("flight", "timeline")
                         }
 
-                        QQC2.Button {
+                        PulseButton {
                             icon.name: "memory"
                             text: "Memory & Pressure"
                             onClicked: page.navigateRequested("pressure", "overview")
                         }
 
-                        QQC2.Button {
+                        PulseButton {
                             visible: page.controller.powerProfileServiceAvailable
                                      && page.controller.activePowerProfile === "power-saver"
                                      && page.controller.verdictSeverity >= 1
@@ -828,28 +834,28 @@ Kirigami.ScrollablePage {
                     Layout.fillWidth: true
                     spacing: Kirigami.Units.smallSpacing
 
-                    QQC2.Button {
+                    PulseButton {
                         text: "Open System Monitor"
                         icon.name: "utilities-system-monitor"
                         onClicked: page.controller.openSystemMonitor()
                     }
-                    QQC2.Button {
+                    PulseButton {
                         text: "Copy report"
                         icon.name: "edit-copy"
                         onClicked: page.controller.copyIncidentReportToClipboard()
                     }
-                    QQC2.Button {
+                    PulseButton {
                         text: "Save report + JSON"
                         icon.name: "document-save"
                         onClicked: page.controller.exportIncidentReportToFile()
                     }
-                    QQC2.Button {
+                    PulseButton {
                         visible: page.controller.lastActionPath.length > 0
                         text: "Open reports folder"
                         icon.name: "folder-open"
                         onClicked: page.controller.openReportsFolder()
                     }
-                    QQC2.Button {
+                    PulseButton {
                         objectName: "measurementDetailsButton"
                         icon.name: page.detailsExpanded ? "collapse-all" : "expand-all"
                         text: page.detailsExpanded ? "Hide measurement details" : "Show measurement details"

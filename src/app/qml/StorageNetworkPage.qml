@@ -8,6 +8,11 @@ Kirigami.ScrollablePage {
     id: page
     objectName: "storageNetworkPage"
     title: "Storage & Network"
+    titleDelegate: Item {
+        width: parent ? parent.width : 0
+        height: 0
+        visible: false
+    }
     required property var controller
 
     readonly property PulseTheme theme: PulseTheme {

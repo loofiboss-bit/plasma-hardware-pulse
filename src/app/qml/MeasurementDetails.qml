@@ -9,7 +9,7 @@ ColumnLayout {
     required property var metadata
     property bool expanded: false
     Layout.fillWidth: true
-    QQC2.Button {
+    PulseButton {
         text: details.expanded ? "Hide measurement details" : "Show measurement details"
         icon.name: details.expanded ? "collapse-all" : "expand-all"
         checkable: true

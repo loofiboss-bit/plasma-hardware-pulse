@@ -8,6 +8,11 @@ Kirigami.ScrollablePage {
     id: powerPage
     objectName: "powerPage"
     title: "Power & Cooling"
+    titleDelegate: Item {
+        width: parent ? parent.width : 0
+        height: 0
+        visible: false
+    }
     required property var controller
 
     function focusSection(section) {
@@ -513,7 +518,7 @@ Kirigami.ScrollablePage {
 
                     Repeater {
                         model: powerPage.controller.availablePowerProfiles
-                        delegate: QQC2.Button {
+                        delegate: PulseButton {
                             id: profBtn
                             required property string modelData
                             icon.name: powerPage.profileIcon(profBtn.modelData)
@@ -699,7 +704,7 @@ Kirigami.ScrollablePage {
                 text: "CPU cores and sensors"
                 wrapMode: Text.WordWrap
             }
-            QQC2.Button {
+            PulseButton {
                 text: powerPage.sortCoresByLoad ? "Sorted by load" : "Sort by load"
                 icon.name: "view-sort-descending"
                 checkable: true

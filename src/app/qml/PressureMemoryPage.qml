@@ -8,6 +8,11 @@ Kirigami.ScrollablePage {
     id: psiPage
     objectName: "pressurePage"
     title: "Memory & Pressure"
+    titleDelegate: Item {
+        width: parent ? parent.width : 0
+        height: 0
+        visible: false
+    }
 
     required property var controller
 
@@ -712,7 +717,7 @@ Kirigami.ScrollablePage {
                     { key: "rss", label: "Sort: Memory RSS" },
                     { key: "disk", label: "Sort: Disk Wait" }
                 ]
-                delegate: QQC2.Button {
+                delegate: PulseButton {
                     id: sortBtn
                     required property var modelData
                     text: sortBtn.modelData.label
@@ -722,7 +727,7 @@ Kirigami.ScrollablePage {
                 }
             }
 
-            QQC2.Button {
+            PulseButton {
                 icon.name: "utilities-system-monitor"
                 text: "Open System Monitor"
                 onClicked: psiPage.controller.openSystemMonitor()

@@ -494,7 +494,7 @@ Kirigami.ApplicationWindow {
                 }
 
                 // Live / Pause pill button
-                QQC2.ToolButton {
+                PulseButton {
                     icon.name: telemetry.recordingPaused ? "media-playback-start" : "media-playback-pause"
                     text: telemetry.recordingPaused ? "Recording paused" : (telemetry.collectorState + " · " + telemetry.pollIntervalMs + " ms")
                     display: appWindow.width < 680 ? QQC2.AbstractButton.IconOnly : QQC2.AbstractButton.TextBesideIcon
@@ -542,70 +542,80 @@ Kirigami.ApplicationWindow {
                 Item { Layout.fillWidth: true }
             }
 
-            // Segmented View Switcher Row (Non-wrapping, responsive labels)
-            RowLayout {
+            // Segmented View Switcher Row (Recessed track container with elevated active tab)
+            Rectangle {
                 Layout.fillWidth: true
-                spacing: 4
+                implicitHeight: navTabsRow.implicitHeight + 8
+                radius: theme.innerRadius + 2
+                color: theme.cardNestedBg
+                border.width: 1
+                border.color: theme.subtleBorderColor
 
-                Repeater {
-                    model: [
-                        { id: "overview", label: "Overview", shortLabel: "Overview", icon: "view-statistics" },
-                        { id: "flight", label: "History", shortLabel: "History", icon: "chronometer" },
-                        { id: "pressure", label: "Memory & Pressure", shortLabel: "Memory & PSI", icon: "memory" },
-                        { id: "power", label: "Power & Cooling", shortLabel: "Power & Fan", icon: "battery-profile-performance" },
-                        { id: "processes", label: "Processes", shortLabel: "Processes", icon: "view-process-all" },
-                        { id: "storage", label: "Storage & Network", shortLabel: "Storage & Net", icon: "drive-harddisk" }
-                    ]
-                    delegate: QQC2.AbstractButton {
-                        id: navTabBtn
-                        required property var modelData
-                        readonly property bool isCurrent: appWindow.currentPageName === navTabBtn.modelData.id
-                        Layout.fillWidth: true
-                        implicitHeight: 34
-                        hoverEnabled: true
-                        Accessible.name: navTabBtn.modelData.label + " tab"
-                        checkable: true
-                        checked: navTabBtn.isCurrent
-                        onClicked: appWindow.switchToPage(navTabBtn.modelData.id)
+                RowLayout {
+                    id: navTabsRow
+                    anchors.fill: parent
+                    anchors.margins: 4
+                    spacing: 4
 
-                        background: Rectangle {
-                            radius: theme.innerRadius
-                            color: navTabBtn.isCurrent
-                                   ? theme.accentTint(Kirigami.Theme.highlightColor, theme.isDark ? 0.20 : 0.12)
-                                   : (navTabBtn.hovered ? theme.elevatedSurfaceColor : "transparent")
-                            border.width: 1
-                            border.color: navTabBtn.activeFocus ? Kirigami.Theme.focusColor : navTabBtn.isCurrent
-                                          ? theme.accentTint(Kirigami.Theme.highlightColor, 0.45)
-                                          : (navTabBtn.hovered ? theme.cardBorderColor : "transparent")
+                    Repeater {
+                        model: [
+                            { id: "overview", label: "Overview", shortLabel: "Overview", icon: "view-statistics" },
+                            { id: "flight", label: "History", shortLabel: "History", icon: "chronometer" },
+                            { id: "pressure", label: "Memory & Pressure", shortLabel: "Memory & PSI", icon: "memory" },
+                            { id: "power", label: "Power & Cooling", shortLabel: "Power & Fan", icon: "battery-profile-performance" },
+                            { id: "processes", label: "Processes", shortLabel: "Processes", icon: "view-process-all" },
+                            { id: "storage", label: "Storage & Network", shortLabel: "Storage & Net", icon: "drive-harddisk" }
+                        ]
+                        delegate: QQC2.AbstractButton {
+                            id: navTabBtn
+                            required property var modelData
+                            readonly property bool isCurrent: appWindow.currentPageName === navTabBtn.modelData.id
+                            Layout.fillWidth: true
+                            implicitHeight: 32
+                            hoverEnabled: true
+                            Accessible.name: navTabBtn.modelData.label + " tab"
+                            checkable: true
+                            checked: navTabBtn.isCurrent
+                            onClicked: appWindow.switchToPage(navTabBtn.modelData.id)
 
-                            // Active indicator line at bottom
-                            Rectangle {
-                                anchors.bottom: parent.bottom
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                width: navTabBtn.isCurrent ? parent.width - 16 : 0
-                                height: 2
-                                radius: 1
-                                color: Kirigami.Theme.highlightColor
-                                visible: navTabBtn.isCurrent
+                            background: Rectangle {
+                                radius: theme.innerRadius
+                                color: navTabBtn.isCurrent
+                                       ? (theme.isDark ? Qt.rgba(1, 1, 1, 0.12) : Qt.rgba(1, 1, 1, 0.95))
+                                       : (navTabBtn.hovered ? (theme.isDark ? Qt.rgba(1, 1, 1, 0.06) : Qt.rgba(1, 1, 1, 0.5)) : "transparent")
+                                border.width: 1
+                                border.color: navTabBtn.activeFocus ? Kirigami.Theme.focusColor
+                                              : (navTabBtn.isCurrent ? (theme.isDark ? Qt.rgba(1, 1, 1, 0.22) : Qt.rgba(0, 0, 0, 0.15)) : "transparent")
+
+                                // Active indicator line at bottom
+                                Rectangle {
+                                    anchors.bottom: parent.bottom
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    width: navTabBtn.isCurrent ? parent.width - 20 : 0
+                                    height: 2
+                                    radius: 1
+                                    color: Kirigami.Theme.highlightColor
+                                    visible: navTabBtn.isCurrent
+                                }
                             }
-                        }
 
-                        contentItem: RowLayout {
-                            anchors.centerIn: parent
-                            spacing: 6
-                            Kirigami.Icon {
-                                source: navTabBtn.modelData.icon
-                                Layout.preferredWidth: Kirigami.Units.iconSizes.small
-                                Layout.preferredHeight: Kirigami.Units.iconSizes.small
-                                color: navTabBtn.isCurrent ? Kirigami.Theme.highlightColor : Kirigami.Theme.textColor
-                            }
-                            QQC2.Label {
-                                text: appWindow.width < 980 ? navTabBtn.modelData.shortLabel : navTabBtn.modelData.label
-                                font.bold: navTabBtn.isCurrent
-                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                                color: navTabBtn.isCurrent ? Kirigami.Theme.textColor : Kirigami.Theme.disabledTextColor
-                                elide: Text.ElideRight
-                                visible: appWindow.width >= 620
+                            contentItem: RowLayout {
+                                anchors.centerIn: parent
+                                spacing: 6
+                                Kirigami.Icon {
+                                    source: navTabBtn.modelData.icon
+                                    Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                                    Layout.preferredHeight: Kirigami.Units.iconSizes.small
+                                    color: navTabBtn.isCurrent ? Kirigami.Theme.highlightColor : Kirigami.Theme.disabledTextColor
+                                }
+                                QQC2.Label {
+                                    text: appWindow.width < 980 ? navTabBtn.modelData.shortLabel : navTabBtn.modelData.label
+                                    font.bold: navTabBtn.isCurrent
+                                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                                    color: navTabBtn.isCurrent ? Kirigami.Theme.textColor : Kirigami.Theme.disabledTextColor
+                                    elide: Text.ElideRight
+                                    visible: appWindow.width >= 620
+                                }
                             }
                         }
                     }

@@ -8,6 +8,11 @@ Kirigami.Page {
     id: page
     objectName: "processesPage"
     title: "Processes"
+    titleDelegate: Item {
+        width: parent ? parent.width : 0
+        height: 0
+        visible: false
+    }
     required property var controller
     property string selectedIdentity: ""
     property var lastSelection: null
@@ -381,6 +386,12 @@ Kirigami.Page {
                         text: (selCardCol.row.name || "Process") + " (PID " + (selCardCol.row.pid || "") + ")"
                         color: Kirigami.Theme.textColor
                         Layout.fillWidth: true
+                    }
+
+                    PulseButton {
+                        text: "System Monitor"
+                        icon.name: "utilities-system-monitor"
+                        onClicked: page.controller.openSystemMonitor()
                     }
 
                     QQC2.Label {

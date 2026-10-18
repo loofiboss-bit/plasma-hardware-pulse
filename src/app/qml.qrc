@@ -2,6 +2,7 @@
 <RCC version="1.0">
     <qresource prefix="/loofipulse">
         <file>qml/PulseTheme.qml</file>
+        <file>qml/PulseButton.qml</file>
         <file>qml/MeasurementDetails.qml</file>
         <file>qml/MeasurementLabels.js</file>
         <file>qml/Main.qml</file>
