@@ -14,12 +14,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verify release tag version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: test "$GITHUB_REF_NAME" = "v$(cat VERSION)"
+
       - name: Install build dependencies
         run: |
           dnf install --assumeyes \
             cmake \
+            bash \
+            coreutils \
+            util-linux-core \
             extra-cmake-modules \
             gcc-c++ \
+            git \
+            tar \
+            gzip \
+            rpm-build \
+            redhat-rpm-config \
+            kf6-rpm-macros \
+            libappstream-glib \
             dbus-daemon \
             kf6-kcmutils \
             kf6-kcoreaddons-devel \
@@ -41,6 +55,7 @@ jobs:
           -DBUILD_TESTING=ON
           -DBUILD_LIVE_HARDWARE_TESTS=OFF
           -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          -DCMAKE_INSTALL_PREFIX=/usr
 
       - name: Build
         run: cmake --build build --parallel 2
@@ -65,8 +80,14 @@ jobs:
         run: |
           INSTALL_ROOT="${RUNNER_TEMP:-/tmp}/loofi-pulse-install-root"
           rm -rf "$INSTALL_ROOT"
-          cmake --install build --prefix "$INSTALL_ROOT/usr"
+          DESTDIR="$INSTALL_ROOT" cmake --install build
           test -x "$INSTALL_ROOT/usr/bin/loofi-pulse"
+          test -x "$INSTALL_ROOT/usr/bin/loofi-pulse-service"
+          SERVICE_FILE="$INSTALL_ROOT/usr/share/dbus-1/services/com.github.loofi.hardwarepulse.Collector1.service"
+          test -f "$SERVICE_FILE"
+          grep -Fx "Name=com.github.loofi.hardwarepulse.Collector1" "$SERVICE_FILE"
+          grep -Fx "Exec=/usr/bin/loofi-pulse-service" "$SERVICE_FILE"
+          test ! -e "$INSTALL_ROOT/etc/xdg/autostart/com.github.loofi.hardwarepulse.desktop"
           test -f "$INSTALL_ROOT/usr/share/applications/com.github.loofi.hardwarepulse.desktop"
           test -f "$INSTALL_ROOT/usr/share/metainfo/com.github.loofi.hardwarepulse.metainfo.xml"
           test -f "$INSTALL_ROOT/usr/share/plasma/plasmoids/com.github.loofi.hardwarepulse/metadata.json"
@@ -74,3 +95,62 @@ jobs:
           (cd package && zip -r "../build/dist/com.github.loofi.hardwarepulse.plasmoid" metadata.json contents/)
           test -s build/dist/com.github.loofi.hardwarepulse.plasmoid
 
+
+      - name: Build Fedora RPM and SRPM
+        run: |
+          PULSE_VERSION="$(cat VERSION)"
+          PULSE_RPM_ROOT="${RUNNER_TEMP:-/tmp}/loofi-pulse-rpmbuild"
+          mkdir -p "$PULSE_RPM_ROOT/SOURCES"
+          git archive --format=tar --prefix="plasma-hardware-pulse-$PULSE_VERSION/" HEAD | gzip -n > "$PULSE_RPM_ROOT/SOURCES/plasma-hardware-pulse-$PULSE_VERSION.tar.gz"
+          rpmbuild -ba packaging/plasma-hardware-pulse.spec \
+            --define "_topdir $PULSE_RPM_ROOT" \
+            --define "_smp_build_ncpus 2"
+          cp "$PULSE_RPM_ROOT/SOURCES/plasma-hardware-pulse-$PULSE_VERSION.tar.gz" build/dist/
+          find "$PULSE_RPM_ROOT/RPMS" "$PULSE_RPM_ROOT/SRPMS" -name '*.rpm' -exec cp {} build/dist/ \;
+
+      - name: Checksum release assets
+        run: |
+          cd build/dist
+          sha256sum -- *.tar.gz *.rpm *.plasmoid > SHA256SUMS
+          sha256sum --check SHA256SUMS
+
+      - name: Upload local build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: loofi-pulse-linux-packages
+          path: build/dist/
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build-and-test
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: loofi-pulse-linux-packages
+          path: release-assets
+
+      - name: Verify packaged assets
+        working-directory: release-assets
+        run: sha256sum --check SHA256SUMS
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --title "Loofi Pulse $GITHUB_REF_NAME" \
+            --notes-file RELEASE_NOTES.md \
+            release-assets/*.tar.gz \
+            release-assets/*.rpm \
+            release-assets/*.plasmoid \
+            release-assets/SHA256SUMS

@@ -24,90 +24,118 @@ PowerFlowSnapshot PowerFlowSampler::sample(qint64 elapsedMs, double cpuLoadPerce
 {
     PowerFlowSnapshot snap;
     const QDir psyRoot(QDir(m_config.sysRoot).filePath(QStringLiteral("class/power_supply")));
+    bool externalKnown = false, externalOnline = false;
     if (psyRoot.exists()) {
-        const QStringList entries = psyRoot.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
-        for (const QString &entry : entries) {
-            const QDir devDir(psyRoot.filePath(entry));
-            const QString type = SysfsReader::readTrimmedLine(devDir.filePath(QStringLiteral("type"))).toLower();
-
-            if (type == QStringLiteral("mains") || entry.startsWith(QStringLiteral("AC"))) {
+        const auto entries = psyRoot.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+        for (const auto &entry : entries) {
+            const QDir dev(psyRoot.filePath(entry));
+            const QString type = SysfsReader::readTrimmedLine(dev.filePath(QStringLiteral("type"))).toLower();
+            if (type != QStringLiteral("battery") && !entry.startsWith(QStringLiteral("BAT"))) {
                 bool ok = false;
-                const qint64 online = SysfsReader::readInt64(devDir.filePath(QStringLiteral("online")), 1, &ok);
-                if (ok) {
-                    snap.batteryStateAvailable = true;
-                    snap.onAcPower = (online != 0);
+                const auto online = SysfsReader::readInt64(dev.filePath(QStringLiteral("online")), 0, &ok);
+                if (ok && (type == QStringLiteral("mains") || type.startsWith(QStringLiteral("usb")) || entry.startsWith(QStringLiteral("AC")))) {
+                    externalKnown = true;
+                    externalOnline = externalOnline || online != 0;
                 }
-            } else if (type == QStringLiteral("battery") || entry.startsWith(QStringLiteral("BAT"))) {
-                snap.batteryPresent = true;
-                snap.batteryStatus = SysfsReader::readTrimmedLine(devDir.filePath(QStringLiteral("status")));
-                const QString powerStatus = snap.batteryStatus.toLower();
-                if (powerStatus == QStringLiteral("discharging")) {
-                    snap.onAcPower = false;
-                    snap.batteryStateAvailable = true;
-                } else if (powerStatus == QStringLiteral("charging")) {
-                    snap.onAcPower = true;
-                    snap.batteryStateAvailable = true;
-                }
-                bool capacityOk = false;
-                snap.batteryPercent = SysfsReader::readScaledDouble(devDir.filePath(QStringLiteral("capacity")), 1.0, 0.0, &capacityOk);
-                snap.batteryLevelAvailable = capacityOk && snap.batteryPercent >= 0.0 && snap.batteryPercent <= 100.0;
-
-                bool vOk = false;
-                const double voltageV = SysfsReader::readScaledDouble(devDir.filePath(QStringLiteral("voltage_now")), 1000000.0, 0.0, &vOk);
-                if (vOk) {
-                    snap.batteryVoltageVolts = voltageV;
-                }
-
-                bool pOk = false;
-                const double powerW = SysfsReader::readScaledDouble(devDir.filePath(QStringLiteral("power_now")), 1000000.0, 0.0, &pOk);
-                if (pOk && powerW >= 0.0) {
-                    snap.batteryWatts = powerW;
-                    snap.batteryPowerAvailable = true;
-                } else {
-                    bool cOk = false;
-                    const double currentA = SysfsReader::readScaledDouble(devDir.filePath(QStringLiteral("current_now")), 1000000.0, 0.0, &cOk);
-                    if (cOk && vOk && currentA >= 0.0 && voltageV >= 0.0) {
-                        snap.batteryWatts = currentA * voltageV;
-                        snap.batteryPowerAvailable = true;
-                    }
-                }
-
-                // Read energy_now / energy_full / energy_full_design (in uWh -> Wh) or fallback to charge_* (uAh)
-                bool eNowOk = false;
-                double energyNowWh = SysfsReader::readScaledDouble(devDir.filePath(QStringLiteral("energy_now")), 1000000.0, 0.0, &eNowOk);
-                double energyFullWh = SysfsReader::readScaledDouble(devDir.filePath(QStringLiteral("energy_full")), 1000000.0, 0.0);
-                double energyDesignWh = SysfsReader::readScaledDouble(devDir.filePath(QStringLiteral("energy_full_design")), 1000000.0, 0.0);
-
-                if (!eNowOk) {
-                    const double effV = (voltageV > 1.0) ? voltageV : 11.4;
-                    const double chargeNowAh = SysfsReader::readScaledDouble(devDir.filePath(QStringLiteral("charge_now")), 1000000.0, 0.0, &eNowOk);
-                    const double chargeFullAh = SysfsReader::readScaledDouble(devDir.filePath(QStringLiteral("charge_full")), 1000000.0, 0.0);
-                    const double chargeDesignAh = SysfsReader::readScaledDouble(devDir.filePath(QStringLiteral("charge_full_design")), 1000000.0, 0.0);
-                    if (eNowOk) {
-                        energyNowWh = chargeNowAh * effV;
-                        energyFullWh = chargeFullAh * effV;
-                        energyDesignWh = chargeDesignAh * effV;
-                    }
-                }
-
-                if (energyFullWh > 0.1 && energyDesignWh > 0.1) {
-                    snap.batteryHealthPercent = std::clamp((energyFullWh * 100.0) / energyDesignWh, 10.0, 100.0);
-                    snap.batteryHealthAvailable = true;
-                }
-
-                if (snap.batteryWatts > 0.25 && energyNowWh > 0.0) {
-                    const QString lowerStatus = snap.batteryStatus.toLower();
-                    if (lowerStatus.contains(QStringLiteral("discharging"))) {
-                        snap.batteryTimeRemainingMinutes = std::clamp(
-                            static_cast<int>((energyNowWh / snap.batteryWatts) * 60.0), 1, 2400);
-                    } else if (lowerStatus.contains(QStringLiteral("charging")) && energyFullWh > energyNowWh) {
-                        snap.batteryTimeRemainingMinutes = std::clamp(
-                            static_cast<int>(((energyFullWh - energyNowWh) / snap.batteryWatts) * 60.0), 1, 2400);
-                    }
+                continue;
+            }
+            BatteryTelemetry battery;
+            battery.identity = dev.canonicalPath();
+            battery.name = entry;
+            bool presentOk = false;
+            const auto present = SysfsReader::readInt64(dev.filePath(QStringLiteral("present")), 1, &presentOk);
+            battery.present = !presentOk || present != 0;
+            if (!battery.present) { snap.batteries.append(battery); continue; }
+            battery.status = SysfsReader::readTrimmedLine(dev.filePath(QStringLiteral("status")));
+            auto read = [&dev](const QString &file, bool &ok) { return SysfsReader::readScaledDouble(dev.filePath(file), 1000000.0, 0.0, &ok); };
+            battery.percent = SysfsReader::readScaledDouble(dev.filePath(QStringLiteral("capacity")), 1.0, 0.0, &battery.levelAvailable);
+            battery.levelAvailable = battery.levelAvailable && battery.percent >= 0 && battery.percent <= 100;
+            battery.voltageVolts = read(QStringLiteral("voltage_now"), battery.voltageAvailable);
+            battery.voltageAvailable = battery.voltageAvailable && battery.voltageVolts > 0;
+            battery.watts = read(QStringLiteral("power_now"), battery.powerAvailable);
+            battery.powerAvailable = battery.powerAvailable && battery.watts >= 0;
+            if (!battery.powerAvailable && battery.voltageAvailable) {
+                bool currentOk = false;
+                const auto current = read(QStringLiteral("current_now"), currentOk);
+                battery.powerAvailable = currentOk && current >= 0;
+                if (battery.powerAvailable) battery.watts = current * battery.voltageVolts;
+            }
+            bool nowOk = false, fullOk = false, designOk = false;
+            battery.energyNowWh = read(QStringLiteral("energy_now"), nowOk);
+            battery.energyFullWh = read(QStringLiteral("energy_full"), fullOk);
+            battery.energyDesignWh = read(QStringLiteral("energy_full_design"), designOk);
+            // Charge can only become energy with a measured voltage. Never invent one.
+            if (!nowOk && battery.voltageAvailable) {
+                battery.energyNowWh = read(QStringLiteral("charge_now"), nowOk) * battery.voltageVolts;
+                battery.energyFullWh = read(QStringLiteral("charge_full"), fullOk) * battery.voltageVolts;
+                battery.energyDesignWh = read(QStringLiteral("charge_full_design"), designOk) * battery.voltageVolts;
+            }
+            battery.energyAvailable = nowOk && fullOk && battery.energyNowWh >= 0 && battery.energyFullWh > 0 && battery.energyNowWh <= battery.energyFullWh;
+            battery.healthAvailable = fullOk && designOk && battery.energyFullWh > 0 && battery.energyDesignWh > 0;
+            if (battery.healthAvailable) battery.healthPercent = std::clamp(100.0 * battery.energyFullWh / battery.energyDesignWh, 0.0, 100.0);
+            // Charge ratios provide health even when voltage and energy are unavailable.
+            if (!battery.healthAvailable) {
+                bool chargeFullOk = false, chargeDesignOk = false;
+                const auto full = read(QStringLiteral("charge_full"), chargeFullOk);
+                const auto design = read(QStringLiteral("charge_full_design"), chargeDesignOk);
+                if (chargeFullOk && chargeDesignOk && full > 0 && design > 0) {
+                    battery.healthAvailable = true;
+                    battery.healthPercent = std::clamp(100.0 * full / design, 0.0, 100.0);
                 }
             }
+            if (!battery.levelAvailable && battery.energyAvailable) {
+                battery.percent = 100.0 * battery.energyNowWh / battery.energyFullWh;
+                battery.levelAvailable = true;
+            }
+            if (battery.energyAvailable && battery.powerAvailable && battery.watts > 0.25) {
+                const auto status = battery.status.toLower();
+                const double remainingWh = status == QStringLiteral("charging") ? battery.energyFullWh - battery.energyNowWh : battery.energyNowWh;
+                if (status == QStringLiteral("charging") || status == QStringLiteral("discharging"))
+                    battery.timeRemainingMinutes = std::clamp(int(60.0 * remainingWh / battery.watts), 1, 2400);
+            }
+            snap.batteries.append(battery);
         }
     }
+    int presentCount = 0;
+    bool allEnergy = true, allPower = true, allHealthEnergy = true;
+    bool charging = false, discharging = false;
+    double nowWh = 0, fullWh = 0, designWh = 0, totalPower = 0;
+    const BatteryTelemetry *single = nullptr;
+    QString commonStatus;
+    for (const auto &battery : snap.batteries) {
+        if (!battery.present) continue;
+        ++presentCount; single = &battery;
+        allEnergy = allEnergy && battery.energyAvailable;
+        allPower = allPower && battery.powerAvailable;
+        allHealthEnergy = allHealthEnergy && battery.healthAvailable && battery.energyFullWh > 0 && battery.energyDesignWh > 0;
+        nowWh += battery.energyNowWh; fullWh += battery.energyFullWh; designWh += battery.energyDesignWh;
+        totalPower += battery.watts;
+        charging = charging || battery.status.compare(QStringLiteral("charging"), Qt::CaseInsensitive) == 0;
+        discharging = discharging || battery.status.compare(QStringLiteral("discharging"), Qt::CaseInsensitive) == 0;
+        if (presentCount == 1) commonStatus = battery.status;
+        else if (commonStatus != battery.status) commonStatus = QStringLiteral("Mixed");
+    }
+    snap.batteryPresent = presentCount > 0;
+    snap.batteryStatus = commonStatus;
+    if (externalKnown) { snap.batteryStateAvailable = true; snap.onAcPower = externalOnline; }
+    else if (charging != discharging) { snap.batteryStateAvailable = true; snap.onAcPower = charging; }
+    if (presentCount == 1) {
+        snap.batteryLevelAvailable = single->levelAvailable;
+        snap.batteryPercent = single->percent;
+        snap.batteryHealthAvailable = single->healthAvailable;
+        snap.batteryHealthPercent = single->healthPercent;
+        snap.batteryVoltageVolts = single->voltageVolts;
+        snap.batteryTimeRemainingMinutes = single->timeRemainingMinutes;
+    } else if (presentCount > 1) {
+        snap.batteryLevelAvailable = allEnergy;
+        if (allEnergy && fullWh > 0) snap.batteryPercent = 100.0 * nowWh / fullWh;
+        snap.batteryHealthAvailable = allHealthEnergy;
+        if (allHealthEnergy && designWh > 0) snap.batteryHealthPercent = std::clamp(100.0 * fullWh / designWh, 0.0, 100.0);
+        if (allEnergy && allPower && totalPower > 0.25 && charging != discharging)
+            snap.batteryTimeRemainingMinutes = std::clamp(int(60.0 * (charging ? fullWh - nowWh : nowWh) / totalPower), 1, 2400);
+    }
+    snap.batteryPowerAvailable = presentCount > 0 && allPower && !(charging && discharging);
+    if (snap.batteryPowerAvailable) snap.batteryWatts = totalPower;
 
     // Read Intel RAPL PL1/PL2 and energy_uj if readable
     const QDir raplDir(QDir(m_config.sysRoot).filePath(QStringLiteral("class/powercap/intel-rapl:0")));

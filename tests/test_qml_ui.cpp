@@ -8,6 +8,20 @@
 #include <QQuickWindow>
 #include <QTest>
 #include <QSignalSpy>
+#include <QJSValue>
+
+class ProcessControllerFixture : public QObject
+{
+    Q_OBJECT
+    Q_PROPERTY(QVariantList allProcesses READ allProcesses NOTIFY allProcessesChanged)
+public:
+    QVariantList allProcesses() const { return m_rows; }
+    void setProcesses(const QVariantList &rows) { m_rows = rows; Q_EMIT allProcessesChanged(); }
+Q_SIGNALS:
+    void allProcessesChanged();
+private:
+    QVariantList m_rows;
+};
 
 class TestQmlUi : public QObject
 {
@@ -56,6 +70,7 @@ private:
 private Q_SLOTS:
     void initTestCase()
     {
+        QCoreApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
         QCoreApplication::setOrganizationName(QStringLiteral("LoofiPulseTests"));
         QCoreApplication::setOrganizationDomain(QStringLiteral("tests.invalid"));
     }
@@ -94,7 +109,9 @@ private Q_SLOTS:
             {"navigateOverview", "overviewPage"},
             {"navigateHistory", "historyPage"},
             {"navigatePressure", "pressurePage"},
-            {"navigatePower", "powerPage"}
+            {"navigatePower", "powerPage"},
+            {"navigateProcesses", "processesPage"},
+            {"navigateStorage", "storageNetworkPage"}
         };
         for (const auto &entry : pages) {
             QObject *action = window->findChild<QObject *>(QLatin1String(entry.action));
@@ -154,8 +171,9 @@ private Q_SLOTS:
         QVERIFY(historyPage);
         QObject *controller = qvariant_cast<QObject *>(historyPage->property("controller"));
         QVERIFY(controller);
-        QVERIFY(controller->property("historyMaxWatts").toDouble() >= 60.0);
         QVERIFY(controller->property("incidentHistory").isValid());
+        QTRY_VERIFY_WITH_TIMEOUT(!controller->property("historySamples").toList().isEmpty(), 5000);
+        QVERIFY(controller->property("historyMaxWatts").toDouble() >= 60.0);
         QTest::keyClick(window, Qt::Key_Left);
         QVERIFY(controller->property("selectedHistorySampleId").toULongLong() > 0);
         QTest::keyClick(window, Qt::Key_Right);
@@ -195,6 +213,106 @@ private Q_SLOTS:
         QGuiApplication::setPalette(originalPalette);
         QGuiApplication::setFont(originalFont);
         QVERIFY2(runtimeErrors.isEmpty(), qPrintable(runtimeErrors.join(QLatin1Char('\n'))));
+    }
+
+    void testProcessInspectionIdentityAndFiltering()
+    {
+        QQmlEngine engine;
+        addImportPaths(engine);
+        ProcessControllerFixture fixture;
+        auto row = [](int pid, int start, const QString &name, const QString &owner, double cpu, double memory) {
+            return QVariantMap{{QStringLiteral("pid"), pid}, {QStringLiteral("startTimeTicks"), start},
+                {QStringLiteral("name"), name}, {QStringLiteral("owner"), owner},
+                {QStringLiteral("cpuPercent"), cpu}, {QStringLiteral("rssMegabytes"), memory},
+                {QStringLiteral("state"), QStringLiteral("S")}, {QStringLiteral("observedAtMs"), 1700000000000LL}};
+        };
+        QVariantMap editor = row(10, 100, QStringLiteral("editor"), QStringLiteral("alice"), 10, 400);
+        const QVariantMap compiler = row(20, 200, QStringLiteral("compiler"), QStringLiteral("bob"), 90, 80);
+        fixture.setProcesses({editor, compiler});
+        QQmlComponent component(&engine, QUrl::fromLocalFile(QStringLiteral(PULSE_APP_QML "/ProcessesPage.qml")));
+        QVERIFY2(component.isReady(), qPrintable(component.errorString()));
+        QScopedPointer<QObject> root(component.createWithInitialProperties({
+            {QStringLiteral("controller"), QVariant::fromValue(static_cast<QObject *>(&fixture))}}));
+        QVERIFY2(root, qPrintable(component.errorString()));
+        auto *page = qobject_cast<QQuickItem *>(root.data());
+        QVERIFY(page);
+        QQuickWindow window;
+        window.resize(600, 700);
+        page->setParentItem(window.contentItem());
+        page->setSize(QSizeF(window.size()));
+        window.show();
+        QTest::qWait(80);
+        const auto propertyValue = [&root](const char *name) {
+            const QVariant value = root->property(name);
+            return value.metaType() == QMetaType::fromType<QJSValue>() ? value.value<QJSValue>().toVariant() : value;
+        };
+        const auto visibleRows = [&propertyValue]() { return propertyValue("visibleProcesses").toList(); };
+        QCOMPARE(visibleRows().size(), 2);
+        QCOMPARE(visibleRows().first().toMap().value(QStringLiteral("pid")).toInt(), 20);
+        auto *search = findVisualChild(page, QStringLiteral("processSearch"));
+        auto *sort = findVisualChild(page, QStringLiteral("processSort"));
+        QVERIFY(search);
+        QVERIFY(sort);
+        search->setProperty("text", QStringLiteral("alice"));
+        QCOMPARE(visibleRows().size(), 1);
+        QCOMPARE(visibleRows().first().toMap().value(QStringLiteral("pid")).toInt(), 10);
+        search->setProperty("text", QStringLiteral("20"));
+        QCOMPARE(visibleRows().first().toMap().value(QStringLiteral("pid")).toInt(), 20);
+        search->setProperty("text", QString());
+        sort->setProperty("currentIndex", 1);
+        QCOMPARE(visibleRows().first().toMap().value(QStringLiteral("pid")).toInt(), 10);
+        auto *editorButton = findVisualChild(page, QStringLiteral("processRow-10:100"));
+        QTRY_VERIFY((editorButton = findVisualChild(page, QStringLiteral("processRow-10:100"))));
+        QVERIFY(QMetaObject::invokeMethod(editorButton, "click"));
+        QCOMPARE(root->property("selectedIdentity").toString(), QStringLiteral("10:100"));
+        editor[QStringLiteral("cpuPercent")] = 99;
+        fixture.setProcesses({compiler, editor});
+        QCOMPARE(root->property("selectedIdentity").toString(), QStringLiteral("10:100"));
+        QCOMPARE(propertyValue("selectedProcess").toMap().value(QStringLiteral("cpuPercent")).toDouble(), 99.0);
+        // A reused PID must never silently select a different process.
+        fixture.setProcesses({row(10, 999, QStringLiteral("replacement"), QStringLiteral("alice"), 100, 1)});
+        QVERIFY(propertyValue("selectedProcess").isNull());
+        QCOMPARE(root->property("selectedIdentity").toString(), QStringLiteral("10:100"));
+        QCOMPARE(propertyValue("lastSelection").toMap().value(QStringLiteral("name")).toString(), QStringLiteral("editor"));
+        QCOMPARE(propertyValue("lastSelection").toMap().value(QStringLiteral("cpuPercent")).toDouble(), 99.0);
+        search->setProperty("text", QStringLiteral("does-not-exist"));
+        QCOMPARE(visibleRows().size(), 0);
+        page->setParentItem(nullptr);
+    }
+
+    void testSessionDialogsAndUnsavedClose()
+    {
+        QQmlApplicationEngine engine;
+        addImportPaths(engine);
+        engine.load(QUrl::fromLocalFile(QStringLiteral(PULSE_APP_QML "/Main.qml")));
+        QVERIFY(!engine.rootObjects().isEmpty());
+        auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
+        QVERIFY(window);
+        window->show();
+        window->requestActivate();
+        QTest::qWait(100);
+        auto *openDialog = window->findChild<QObject *>(QStringLiteral("openSessionDialog"));
+        auto *saveDialog = window->findChild<QObject *>(QStringLiteral("saveSessionDialog"));
+        auto *unsavedDialog = window->findChild<QObject *>(QStringLiteral("unsavedInvestigationDialog"));
+        QVERIFY(openDialog);
+        QVERIFY(saveDialog);
+        QVERIFY(unsavedDialog);
+        QTest::keyClick(window, Qt::Key_O, Qt::ControlModifier);
+        QTRY_VERIFY(openDialog->property("visible").toBool());
+        QVERIFY(QMetaObject::invokeMethod(openDialog, "reject"));
+        QTest::keyClick(window, Qt::Key_S, Qt::ControlModifier | Qt::ShiftModifier);
+        QTRY_VERIFY(saveDialog->property("visible").toBool());
+        QVERIFY(QMetaObject::invokeMethod(saveDialog, "reject"));
+        auto *controller = window->findChild<QObject *>(QStringLiteral("telemetryController"));
+        QVERIFY(controller);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller->property("historySamples").toList().isEmpty(), 5000);
+        QVERIFY(QMetaObject::invokeMethod(controller, "markProblemNow"));
+        QTRY_VERIFY(controller->property("unsavedInvestigation").toBool());
+        QVERIFY(!window->close());
+        QTRY_VERIFY(unsavedDialog->property("visible").toBool());
+        QVERIFY(window->isVisible());
+        QVERIFY(QMetaObject::invokeMethod(unsavedDialog, "reject"));
+        QVERIFY(window->isVisible());
     }
 
     void testPanelPresetsPreserveCustomMetrics()

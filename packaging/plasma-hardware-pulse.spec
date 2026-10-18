@@ -1,5 +1,5 @@
 Name:           plasma-hardware-pulse
-Version:        0.8.0
+Version:        0.9.0
 Release:        1%{?dist}
 Summary:        Hardware, temperature, memory pressure, and power monitor for KDE Plasma 6
 
@@ -8,8 +8,13 @@ URL:            https://github.com/loofiboss-bit/plasma-hardware-pulse
 Source0:        %{url}/archive/v%{version}/%{name}-%{version}.tar.gz
 
 BuildRequires:  cmake >= 3.24
+BuildRequires:  bash
+BuildRequires:  coreutils
+BuildRequires:  util-linux-core
 BuildRequires:  extra-cmake-modules
 BuildRequires:  gcc-c++
+BuildRequires:  dbus-daemon
+BuildRequires:  kf6-rpm-macros
 BuildRequires:  kf6-kcmutils
 BuildRequires:  kf6-kcoreaddons-devel
 BuildRequires:  kf6-ki18n-devel
@@ -26,11 +31,15 @@ BuildRequires:  libappstream-glib
 Requires:       kf6-kirigami
 Requires:       kf6-qqc2-desktop-style
 Requires:       libplasma
+Requires:       dbus-daemon
 
 %description
 Loofi Pulse provides a KDE Plasma 6 panel applet and a Kirigami desktop
 application for viewing system hardware readings, temperatures, Linux memory
-and I/O pressure, disk and network throughput, power, and recent telemetry history.
+and I/O pressure, per-device storage and network activity, processes, power,
+and recent telemetry history. A shared user-session collector supports the app
+and widget. Incident investigations can be saved and reopened locally; background
+monitoring and login startup are optional.
 
 %prep
 %autosetup -n %{name}-%{version}
@@ -52,6 +61,8 @@ QT_QPA_PLATFORM=offscreen QML_IMPORT_PATH="%{_vpath_builddir}/bin" ctest --test-
 %license LICENSE
 %doc README.md ROADMAP.md
 %{_bindir}/loofi-pulse
+%{_bindir}/loofi-pulse-service
+%{_datadir}/dbus-1/services/com.github.loofi.hardwarepulse.Collector1.service
 %{_libdir}/qt6/qml/com/github/loofi/hardwarepulse/
 %{_datadir}/plasma/plasmoids/com.github.loofi.hardwarepulse/
 %{_datadir}/knotifications6/plasma_applet_com.github.loofi.hardwarepulse.notifyrc
@@ -60,6 +71,9 @@ QT_QPA_PLATFORM=offscreen QML_IMPORT_PATH="%{_vpath_builddir}/bin" ctest --test-
 %{_kf6_metainfodir}/com.github.loofi.hardwarepulse.metainfo.xml
 
 %changelog
+* Sun Oct 18 2026 Loofi <loofi@github.com> - 0.9.0-1
+- Add a shared session collector, incident investigations and local session files
+- Add full process inspection, per-device storage and network data, and multiple GPU and battery support
 * Sat Oct 17 2026 Loofi <loofi@github.com> - 0.8.0-1
 - Clarify measurement semantics, stabilize diagnoses, harden telemetry identity and history, and simplify application and panel workflows
 * Sat Oct 17 2026 Loofi <loofi@github.com> - 0.7.0-1

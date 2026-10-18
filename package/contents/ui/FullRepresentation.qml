@@ -219,10 +219,45 @@ Item {
                     Accessible.name: "Action result: " + text
                 }
                 PlasmaComponents3.Button {
-                    visible: fullRoot.controller.lastActionSucceeded && fullRoot.controller.lastActionPath.length > 0
+                    visible: fullRoot.controller.lastActionPath.length > 0
                     text: "Open folder"
                     icon.name: "folder-open"
                     onClicked: fullRoot.controller.openReportsFolder()
+                }
+            }
+
+            PlasmaComponents3.Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                text: "Collector: " + fullRoot.controller.collectorState
+                Accessible.name: text
+            }
+            Flow {
+                Layout.fillWidth: true
+                spacing: Kirigami.Units.smallSpacing
+                PlasmaComponents3.Button {
+                    text: "Processes"
+                    icon.name: "view-process-all"
+                    onClicked: fullRoot.controller.launchStudioApp("processes")
+                }
+                PlasmaComponents3.Button {
+                    text: "Mark problem now"
+                    icon.name: "bookmark-new"
+                    onClicked: fullRoot.controller.markProblemAndLaunch()
+                }
+                PlasmaComponents3.Button {
+                    text: "Snooze 15 min"
+                    onClicked: fullRoot.controller.snoozeNotifications()
+                }
+            }
+            Repeater {
+                model: fullRoot.controller.incidentHistory.slice(-5).reverse()
+                delegate: PlasmaComponents3.Button {
+                    required property var modelData
+                    Layout.fillWidth: true
+                    text: modelData.timeString + " · " + modelData.headline
+                    Accessible.name: "Investigate incident: " + text
+                    onClicked: fullRoot.controller.launchIncident(modelData.incidentId)
                 }
             }
 

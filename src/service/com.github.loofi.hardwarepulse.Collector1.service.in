@@ -1,0 +1,3 @@
+[D-BUS Service]
+Name=com.github.loofi.hardwarepulse.Collector1
+Exec=@PULSE_SERVICE_EXEC@

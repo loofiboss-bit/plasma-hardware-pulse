@@ -22,7 +22,7 @@ private:
     quint64 m_prevCpuSomeUs = 0;
     quint64 m_prevMemSomeUs = 0;
     quint64 m_prevIoSomeUs = 0;
-    struct Counters { quint64 received = 0; quint64 sent = 0; };
+    struct Counters { quint64 received = 0; quint64 sent = 0; quint64 reads = 0; quint64 writes = 0; quint64 requestMs = 0; };
     QHash<QString, Counters> m_diskCounters;
     QHash<QString, Counters> m_netCounters;
     QStringList m_includedNetworkInterfaces;

@@ -1,6 +1,14 @@
 #include "pulsetelemetrycontroller.h"
 
 #include <KNotification>
+#include "collectorprotocol.h"
+#include <QMetaProperty>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QPointer>
+#include <QRunnable>
+#include <QUuid>
 #include <QClipboard>
 #include <QCoreApplication>
 #include <QDateTime>
@@ -42,8 +50,37 @@ qint64 systemBoottimeMs()
 } // namespace
 
 PulseTelemetryController::PulseTelemetryController(QObject *parent)
-    : PulseTelemetryController(QDBusConnection::systemBus(), parent)
+    : QObject(parent), m_recorder(7201), m_powerProfileBus(QDBusConnection::systemBus())
 {
+    m_remoteClient = true;
+    m_timer.setInterval(1000);
+    m_filePool.setMaxThreadCount(1);
+    m_serviceWatcher = new QDBusServiceWatcher(QString::fromLatin1(CollectorServiceName), QDBusConnection::sessionBus(),
+        QDBusServiceWatcher::WatchForOwnerChange, this);
+    connect(m_serviceWatcher, &QDBusServiceWatcher::serviceOwnerChanged, this,
+        [this](const QString &, const QString &, const QString &owner) {
+            ++m_connectionGeneration; m_pendingSamples.clear(); m_syncing = false;
+            m_connecting = false;
+            m_connectionState = owner.isEmpty() ? QStringLiteral("Disconnected") : QStringLiteral("Connecting");
+            Q_EMIT telemetryUpdated();
+            if (!owner.isEmpty()) subscribeCollector();
+        });
+    QDBusConnection::sessionBus().connect(QString::fromLatin1(CollectorServiceName), QString::fromLatin1(CollectorObjectPath),
+        QString::fromLatin1(CollectorInterface), QStringLiteral("FrameReady"), this, SLOT(receiveCollectorFrame(QByteArray)));
+    m_reconnectTimer.setInterval(3000);
+    connect(&m_reconnectTimer, &QTimer::timeout, this, [this] {
+        if (!m_receivedAt.isValid() || m_receivedAt.elapsed() > std::max(5000, m_timer.interval() * 3)) {
+            if (m_receivedAt.isValid()) m_connectionState = QStringLiteral("Stale — reconnecting");
+            connectCollector();
+            Q_EMIT telemetryUpdated();
+        }
+    });
+    m_reconnectTimer.start();
+    QTimer::singleShot(0, this, &PulseTelemetryController::connectCollector);
+    refreshPowerProfileProperties();
+    m_powerProfileRefreshTimer.setInterval(10000);
+    connect(&m_powerProfileRefreshTimer, &QTimer::timeout, this, &PulseTelemetryController::refreshPowerProfileProperties);
+    m_powerProfileRefreshTimer.start();
 }
 
 PulseTelemetryController::PulseTelemetryController(const QDBusConnection &powerProfileBus, QObject *parent)
@@ -51,13 +88,20 @@ PulseTelemetryController::PulseTelemetryController(const QDBusConnection &powerP
     , m_recorder(7201)
     , m_powerProfileBus(powerProfileBus)
 {
+    const SysfsRootConfig roots{qEnvironmentVariable("LOOFI_PULSE_SYS_ROOT", QStringLiteral("/sys")),
+                                qEnvironmentVariable("LOOFI_PULSE_PROC_ROOT", QStringLiteral("/proc"))};
+    m_sysfsReader.setRootConfig(roots); m_cpuSampler.setRootConfig(roots); m_processSampler.setRootConfig(roots);
+    m_psiSampler.setRootConfig(roots); m_powerSampler.setRootConfig(roots);
     m_uptime.start();
     m_recorder.setRetentionMs(5 * 60 * 1000);
     m_timer.setInterval(1000);
     connect(&m_timer, &QTimer::timeout, this, &PulseTelemetryController::refreshNow);
 
-    // Take two immediate initial samples so delta metrics (CPU load, PSI rate) are populated immediately
-    refreshNow();
+    m_captureId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    m_processTimer.setInterval(2000);
+    connect(&m_processTimer, &QTimer::timeout, this, &PulseTelemetryController::refreshProcesses);
+    m_processTimer.start();
+    m_filePool.setMaxThreadCount(1);
     refreshNow();
     m_timer.start();
     m_powerProfileRefreshTimer.setInterval(10000);
@@ -68,6 +112,11 @@ PulseTelemetryController::PulseTelemetryController(const QDBusConnection &powerP
 
 QVariantList PulseTelemetryController::networkInterfaces() const
 {
+    if (m_remoteClient) {
+        QVariantList items = remoteCollection("networkInterfaces");
+        for (auto &item : items) { auto row = item.toMap(); row[QStringLiteral("included")] = m_selectedNetworkInterfaces.isEmpty() ? row.value(QStringLiteral("physical")) : m_selectedNetworkInterfaces.contains(row.value(QStringLiteral("name")).toString()); item = row; }
+        return items;
+    }
     QVariantList items;
     for (const auto &interface : m_psiMem.networkInterfaces) {
         items.append(QVariantMap{
@@ -78,7 +127,9 @@ QVariantList PulseTelemetryController::networkInterfaces() const
             {QStringLiteral("included"), interface.included},
             {QStringLiteral("available"), interface.throughputAvailable},
             {QStringLiteral("rxMibPerSec"), interface.rxMibPerSec},
-            {QStringLiteral("txMibPerSec"), interface.txMibPerSec}
+            {QStringLiteral("txMibPerSec"), interface.txMibPerSec},
+            {QStringLiteral("rxErrors"), interface.rxErrors}, {QStringLiteral("txErrors"), interface.txErrors},
+            {QStringLiteral("rxDropped"), interface.rxDropped}, {QStringLiteral("txDropped"), interface.txDropped}, {QStringLiteral("countersAvailable"), interface.countersAvailable}
         });
     }
     return items;
@@ -94,9 +145,10 @@ void PulseTelemetryController::setSelectedNetworkInterfaces(const QStringList &i
     normalized.sort();
     if (m_selectedNetworkInterfaces == normalized) return;
     m_selectedNetworkInterfaces = normalized;
-    m_psiSampler.setIncludedNetworkInterfaces(normalized);
+    if (!m_remoteClient) m_psiSampler.setIncludedNetworkInterfaces(normalized);
+    if (m_remoteClient) { rebuildHistoryView(); Q_EMIT telemetryUpdated(); }
     Q_EMIT selectedNetworkInterfacesChanged();
-    refreshNow();
+    if (!m_remoteClient) refreshNow();
 }
 
 void PulseTelemetryController::setExportIncludeProcessDetails(bool include)
@@ -130,8 +182,8 @@ QStringList PulseTelemetryController::verdictMissingEvidence() const
 
 QString PulseTelemetryController::normalizedPageName(const QString &page)
 {
-    const QString normalized = page.trimmed();
-    return QStringList{QStringLiteral("overview"), QStringLiteral("flight"), QStringLiteral("pressure"), QStringLiteral("power")}.contains(normalized)
+    const QString normalized = page.trimmed() == QStringLiteral("devices") ? QStringLiteral("storage") : page.trimmed();
+    return QStringList{QStringLiteral("overview"), QStringLiteral("flight"), QStringLiteral("pressure"), QStringLiteral("power"), QStringLiteral("processes"), QStringLiteral("storage")}.contains(normalized)
         ? normalized : QStringLiteral("overview");
 }
 
@@ -153,6 +205,7 @@ void PulseTelemetryController::setPollIntervalMs(int intervalMs)
         return;
     }
     m_timer.setInterval(clamped);
+    if (m_remoteClient) subscribeCollector();
     Q_EMIT pollIntervalChanged();
 }
 
@@ -160,10 +213,24 @@ void PulseTelemetryController::setHistoryRetentionSeconds(int seconds)
 {
     const int clamped = std::clamp(seconds, 60, 1800);
     const qint64 nextRetentionMs = static_cast<qint64>(clamped) * 1000LL;
+    if (m_remoteClient) {
+        if (m_requestedRetentionSeconds == clamped) return;
+        m_requestedRetentionSeconds = clamped;
+        if (m_sessionMode) m_liveRecorder.setRetentionMs(nextRetentionMs);
+        else { m_recorder.setRetentionMs(nextRetentionMs); m_liveRecorder.setRetentionMs(nextRetentionMs); rebuildHistoryView(); }
+        subscribeCollector();
+        setLastActionStatus(QStringLiteral("History retention set to %1m.").arg(clamped / 60));
+        Q_EMIT historyRetentionChanged(); Q_EMIT telemetryUpdated(); Q_EMIT selectedHistoryChanged();
+        return;
+    }
+    m_requestedRetentionSeconds = clamped;
     if (m_recorder.retentionMs() == nextRetentionMs) {
         return;
     }
     m_recorder.setRetentionMs(nextRetentionMs);
+    m_liveRecorder.setRetentionMs(nextRetentionMs);
+    m_incidentHistoryVariant = m_recorder.incidentEpisodes();
+    if (m_remoteClient) subscribeCollector();
     while (m_historySamplesVariant.size() > m_recorder.count()) {
         m_historySamplesVariant.removeFirst();
     }
@@ -171,6 +238,7 @@ void PulseTelemetryController::setHistoryRetentionSeconds(int seconds)
         && (m_historySamplesVariant.size() != m_recorder.count()
             || m_historySamplesVariant.first().toMap().value(QStringLiteral("sampleId")).toULongLong() != m_recorder.sampleAt(0).sampleId)) {
         m_historySamplesVariant.clear();
+        m_historyPlotSamples.clear();
         for (int i = 0; i < m_recorder.count(); ++i) {
             m_historySamplesVariant.append(sampleToVariantMap(m_recorder.sampleAt(i), i));
         }
@@ -184,8 +252,12 @@ void PulseTelemetryController::setHistoryRetentionSeconds(int seconds)
 
 void PulseTelemetryController::clearHistory()
 {
+    if (m_remoteClient) { callCollector(QStringLiteral("ClearHistory")); m_liveRecorder.clear(); }
     m_recorder.clear();
+    m_captureId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    m_markedInvestigations.clear(); m_markedOrder.clear();
     m_historySamplesVariant.clear();
+    m_historyPlotSamples.clear();
     m_incidentHistoryVariant.clear();
     m_selectedHistorySampleId = 0;
     m_selectedHistoryIndex = -1;
@@ -202,6 +274,7 @@ void PulseTelemetryController::setNotificationsEnabled(bool enabled)
         return;
     }
     m_notificationsEnabled = enabled;
+    if (m_remoteClient) subscribeCollector();
     Q_EMIT notificationsEnabledChanged();
 }
 
@@ -211,6 +284,7 @@ void PulseTelemetryController::setRecordingPaused(bool paused)
         return;
     }
     m_recordingPaused = paused;
+    if (m_remoteClient) { m_connectionState = paused ? QStringLiteral("Paused") : QStringLiteral("Live"); }
     m_gapPending = true;
     setLastActionStatus(paused ? QStringLiteral("Flight Recorder paused") : QStringLiteral("Flight Recorder resumed"));
     Q_EMIT recordingPausedChanged();
@@ -264,8 +338,7 @@ void PulseTelemetryController::setSelectedHistoryIndex(int index)
         m_selectedHistorySnapshot.clear();
     } else {
         const FlightSample s = m_recorder.sampleAt(clamped);
-        m_selectedHistorySnapshot = sampleToVariantMap(s, clamped);
-        m_selectedHistorySnapshot.insert(QStringLiteral("metricMetadata"), FlightRecorder::sampleMetricMetadata(s));
+        m_selectedHistorySnapshot = sampleForView(s, clamped);
     }
     Q_EMIT selectedHistoryChanged();
 }
@@ -281,16 +354,15 @@ void PulseTelemetryController::setSelectedHistorySampleId(qulonglong sampleId)
         m_selectedHistoryIndex = m_recorder.indexOfSample(sampleId);
         if (m_selectedHistoryIndex >= 0) {
             const FlightSample s = m_recorder.sampleAt(m_selectedHistoryIndex);
-            m_selectedHistorySnapshot = sampleToVariantMap(s, m_selectedHistoryIndex);
-            m_selectedHistorySnapshot.insert(QStringLiteral("metricMetadata"), FlightRecorder::sampleMetricMetadata(s));
-        }
+            m_selectedHistorySnapshot = sampleForView(s, m_selectedHistoryIndex);
+            }
     }
     Q_EMIT selectedHistoryChanged();
 }
 
 QVariantMap PulseTelemetryController::sampleToVariantMap(const FlightSample &s, int index)
 {
-    QVariantMap m;
+    QVariantMap m = SessionStore::sampleToMap(s);
     m.insert(QStringLiteral("index"), index);
     m.insert(QStringLiteral("sampleId"), static_cast<qulonglong>(s.sampleId));
     m.insert(QStringLiteral("timestampMs"), s.timestampMs);
@@ -344,8 +416,7 @@ QVariantMap PulseTelemetryController::selectedHistoryDetail() const
         const int idx = m_recorder.indexOfSample(m_selectedHistorySampleId);
         if (idx >= 0) {
             const FlightSample s = m_recorder.sampleAt(idx);
-            QVariantMap detail = sampleToVariantMap(s, idx);
-            detail.insert(QStringLiteral("metricMetadata"), FlightRecorder::sampleMetricMetadata(s));
+            QVariantMap detail = sampleForView(s, idx);
             return detail;
         }
         return m_selectedHistorySnapshot;
@@ -355,13 +426,13 @@ QVariantMap PulseTelemetryController::selectedHistoryDetail() const
         return {};
     }
     const FlightSample s = m_recorder.sampleAt(idx);
-    QVariantMap detail = sampleToVariantMap(s, idx);
-    detail.insert(QStringLiteral("metricMetadata"), FlightRecorder::sampleMetricMetadata(s));
+    QVariantMap detail = sampleForView(s, idx);
     return detail;
 }
 
 QVariantMap PulseTelemetryController::metricMetadata() const
 {
+    if (m_remoteClient) return remoteTelemetryValue("metricMetadata").toMap();
     const qint64 sampledAt = m_lastSampleWallTimeMs;
     const auto metric = [sampledAt](const QString &state, const QString &source, const QString &detail = QString()) {
         return QVariantMap{{QStringLiteral("state"), state},
@@ -426,6 +497,7 @@ QVariantMap PulseTelemetryController::metricMetadata() const
 
 void PulseTelemetryController::refreshNow()
 {
+    if (m_remoteClient) { connectCollector(); return; }
     const qint64 sampleBoottimeMs = systemBoottimeMs();
     const qint64 sampleWallTimeMs = QDateTime::currentMSecsSinceEpoch();
     const qint64 elapsedMs = m_lastBoottimeMs > 0
@@ -437,43 +509,25 @@ void PulseTelemetryController::refreshNow()
     m_lastBoottimeMs = sampleBoottimeMs;
     m_lastSampleWallTimeMs = sampleWallTimeMs;
 
+    if (m_gapPending) {
+        m_verdictStabilizer = VerdictStabilizer();
+        m_cpuSampler = CpuSocSampler(m_sysfsReader.rootConfig());
+        m_processSampler = CpuSocSampler(m_sysfsReader.rootConfig());
+        m_lastProcessScanBoottimeMs = 0;
+        m_psiSampler = PsiMemorySampler(m_sysfsReader.rootConfig());
+        m_powerSampler = PowerFlowSampler(m_sysfsReader.rootConfig());
+    }
     m_domains = m_sysfsReader.sampleHwmonDomains(elapsedMs);
     m_cpu = m_cpuSampler.sampleCpu(m_domains, elapsedMs);
-    m_gpu = m_cpuSampler.sampleGpu(m_domains);
+    m_gpus = m_cpuSampler.sampleGpus(m_domains);
+    m_gpu = {};
+    for (const auto &gpu : m_gpus) if (gpu.available) { m_gpu = gpu; break; }
     m_psiMem = m_psiSampler.sample(elapsedMs);
     const double validCpuLoad = cpuLoadAvailable() ? m_cpu.totalLoadPercent : -1.0;
     m_power = m_powerSampler.sample(elapsedMs, validCpuLoad, m_cpu.avgFreqMhz, m_cpu.maxFreqMhz);
     m_power.activePowerProfile = m_activePowerProfile;
     m_power.availablePowerProfiles = m_availablePowerProfiles;
-    const bool elevatedActivity = (m_cpu.loadAvailable && m_cpu.totalLoadPercent >= 35.0)
-        || m_cpu.deltaThrottleEvents > 0
-        || (m_psiMem.responsivenessAvailable && m_psiMem.responsivenessScore < 92.0)
-        || m_psiMem.memoryPsi.someAvg10 >= 2.0
-        || m_psiMem.ioPsi.fullAvg10 >= 4.0;
-    const bool shouldScanProcesses = m_processScanWarmupCount < 2
-        || elevatedActivity
-        || m_lastProcessScanBoottimeMs == 0
-        || (sampleBoottimeMs - m_lastProcessScanBoottimeMs) >= 2500;
-    if (shouldScanProcesses) {
-        m_processRadar = m_cpuSampler.sampleProcessRadar(8);
-        m_lastProcessScanBoottimeMs = sampleBoottimeMs;
-        if (m_processScanWarmupCount < 2) {
-            ++m_processScanWarmupCount;
-        }
-        m_topProcessesVariant.clear();
-        for (const CulpritProcess &p : std::as_const(m_processRadar.topProcesses)) {
-            QVariantMap pm;
-            pm.insert(QStringLiteral("pid"), p.pid);
-            pm.insert(QStringLiteral("name"), p.name);
-            pm.insert(QStringLiteral("state"), p.state);
-            pm.insert(QStringLiteral("inDiskWait"), p.inDiskWait);
-            pm.insert(QStringLiteral("cpuPercent"), p.cpuPercent);
-            pm.insert(QStringLiteral("rssMegabytes"), p.rssMegabytes);
-            pm.insert(QStringLiteral("startTimeTicks"), static_cast<qulonglong>(p.startTimeTicks));
-            pm.insert(QStringLiteral("observedAtMs"), p.observedAtMs);
-            m_topProcessesVariant.append(pm);
-        }
-    }
+    if (m_lastProcessScanBoottimeMs == 0) refreshProcesses();
 
     const CausalVerdict candidateVerdict = CausalDiagnosisEngine::evaluate(
         m_cpu,
@@ -655,6 +709,15 @@ void PulseTelemetryController::refreshNow()
                 m_selectedHistorySnapshot.insert(QStringLiteral("metricMetadata"), FlightRecorder::sampleMetricMetadata(sel));
             }
         }
+        sample.captureId = m_captureId;
+        sample.engineVersion = QStringLiteral(LOOFI_PULSE_VERSION);
+        sample.verdictRecommendation = m_verdict.recommendation;
+        sample.verdictCausalChain = m_verdict.causalChain;
+        sample.contributingSignals = m_verdict.contributingSignals;
+        sample.gpuDevices = gpuDevices(); sample.storageDevices = storageDevices();
+        sample.networkDevices = networkInterfaces(); sample.batteries = batteries();
+        sample.processObservations = m_processObservations;
+        m_processObservations.clear();
         sample.sampleId = m_recorder.appendSample(sample);
         m_gapPending = false;
         const int latestIdx = m_recorder.count() - 1;
@@ -673,62 +736,21 @@ void PulseTelemetryController::refreshNow()
             && (m_historySamplesVariant.size() != m_recorder.count()
                 || m_historySamplesVariant.first().toMap().value(QStringLiteral("sampleId")).toULongLong() != m_recorder.sampleAt(0).sampleId)) {
             m_historySamplesVariant.clear();
+            m_historyPlotSamples.clear();
             for (int i = 0; i < m_recorder.count(); ++i) {
                 m_historySamplesVariant.append(sampleToVariantMap(m_recorder.sampleAt(i), i));
             }
         }
         m_selectedHistoryIndex = m_recorder.indexOfSample(m_selectedHistorySampleId);
 
-        double peakWatts = std::max({65.0, m_power.pl1LimitWatts, m_power.pl2LimitWatts});
-        double peakDiskMib = 50.0;
-        const QList<FlightSample> &recorded = m_recorder.samples();
-        for (int i = 0; i < recorded.size(); ++i) {
-            const FlightSample &s = recorded.at(i);
-            if (s.metricQuality.value(QStringLiteral("packagePowerAvailable")).toBool()) peakWatts = std::max(peakWatts, s.packageWatts);
-            if (s.metricQuality.value(QStringLiteral("batteryPowerAvailable")).toBool()) peakWatts = std::max(peakWatts, s.batteryWatts);
-            const double totalDiskMib = s.diskReadMibPerSec + s.diskWriteMibPerSec;
-            if (s.metricQuality.value(QStringLiteral("diskThroughputAvailable")).toBool() && totalDiskMib > peakDiskMib) {
-                peakDiskMib = totalDiskMib;
-            }
-        }
         m_incidentHistoryVariant = m_recorder.incidentEpisodes();
-        const int roundedWatts = static_cast<int>((peakWatts + 24.9) / 25.0) * 25;
-        m_historyMaxWatts = std::max(65.0, static_cast<double>(roundedWatts));
-        const int roundedDiskMib = static_cast<int>((peakDiskMib + 49.9) / 50.0) * 50;
-        m_historyMaxDiskMibPerSec = std::max(50.0, static_cast<double>(roundedDiskMib));
+        m_historyMaxWatts = std::max(m_historyMaxWatts, std::max(m_power.packageWatts, m_power.batteryWatts) * 1.1);
+        m_historyMaxDiskMibPerSec = std::max(m_historyMaxDiskMibPerSec, (m_psiMem.diskReadMibPerSec + m_psiMem.diskWriteMibPerSec) * 1.1);
     }
 
-    maybeEmitAlertNotifications();
 
     Q_EMIT telemetryUpdated();
     Q_EMIT selectedHistoryChanged();
-}
-
-void PulseTelemetryController::maybeEmitAlertNotifications()
-{
-    if (!m_notificationsEnabled || m_verdict.severity == VerdictSeverity::Unknown) {
-        return;
-    }
-    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
-    if (nowMs - m_lastAlertTimestampMs < 60000) {
-        return; // 60s cooldown between alert popups
-    }
-
-    if (m_verdict.severity == VerdictSeverity::CriticalThrottle) {
-        m_lastAlertTimestampMs = nowMs;
-        auto *notif = new KNotification(QStringLiteral("thermalThrottle"), KNotification::CloseOnTimeout, this);
-        notif->setComponentName(QStringLiteral("plasma_applet_com.github.loofi.hardwarepulse"));
-        notif->setTitle(m_verdict.headline);
-        notif->setText(m_verdict.causalChain);
-        notif->sendEvent();
-    } else if (m_verdict.severity == VerdictSeverity::Bottleneck && m_psiMem.responsivenessScore < 85.0) {
-        m_lastAlertTimestampMs = nowMs;
-        auto *notif = new KNotification(QStringLiteral("psiBottleneck"), KNotification::CloseOnTimeout, this);
-        notif->setComponentName(QStringLiteral("plasma_applet_com.github.loofi.hardwarepulse"));
-        notif->setTitle(m_verdict.headline);
-        notif->setText(m_verdict.causalChain);
-        notif->sendEvent();
-    }
 }
 
 bool PulseTelemetryController::setPowerProfile(const QString &profile)
@@ -901,6 +923,12 @@ bool PulseTelemetryController::openReportsFolder()
 
 void PulseTelemetryController::launchStudioApp(const QString &pageName, const QString &sectionName)
 {
+    if (m_remoteClient) {
+        callCollector(QStringLiteral("OpenApplication"), {normalizedPageName(pageName), sectionName}, [this](const QByteArray &) {
+            setActionResult(true, QStringLiteral("Opened the application matching the shared collector."));
+        });
+        return;
+    }
     QString exe;
     const QString localBin = QDir(QDir::homePath()).filePath(QStringLiteral(".local/bin/loofi-pulse"));
     if (QFileInfo(localBin).isExecutable()) {
@@ -961,6 +989,7 @@ QString PulseTelemetryController::copyIncidentReportToClipboard()
 
 QString PulseTelemetryController::exportIncidentReportToFile()
 {
+    if (m_remoteClient) { exportRecorderAsync(m_recorder, m_sessionMode ? m_session.metadata : QVariantMap{}); return {}; }
     const QString baseDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     if (baseDir.isEmpty()) {
         setActionResult(false, QStringLiteral("No writable application data folder is available."));

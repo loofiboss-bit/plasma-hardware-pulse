@@ -57,6 +57,50 @@ Kirigami.ScrollablePage {
         Layout.fillWidth: true
         spacing: Kirigami.Units.largeSpacing
 
+        QQC2.GroupBox {
+            Layout.fillWidth: true
+            title: "Graphics devices"
+            ColumnLayout {
+                width: parent.width
+                QQC2.Label { visible: powerPage.controller.gpuDevices.length === 0; text: "No supported GPU telemetry interface found" }
+                Repeater {
+                    model: powerPage.controller.gpuDevices
+                    delegate: QQC2.RadioButton {
+                        id: gpuChoice
+                        required property var modelData
+                        Layout.fillWidth: true
+                        text: modelData.name + " · "
+                              + (modelData.busyAvailable ? Number(modelData.busyPercent).toFixed(0) + "% activity" : "Activity unavailable")
+                              + " · " + (modelData.temperatureAvailable ? Number(modelData.tempCelsius).toFixed(1) + " °C" : "Temperature unavailable")
+                              + (modelData.available ? "" : " · Disconnected or unsupported")
+                        checked: powerPage.controller.selectedGpuId === modelData.id
+                        onClicked: powerPage.controller.selectedGpuId = modelData.id
+                        contentItem: QQC2.Label { text: gpuChoice.text; wrapMode: Text.WordWrap; leftPadding: gpuChoice.indicator.width + 8 }
+                    }
+                }
+                QQC2.Label { Layout.fillWidth: true; wrapMode: Text.WordWrap; text: "Select a GPU for the live summary and recorded history. Availability depends on the driver; see Measurement capabilities in Storage & Network for limitations." }
+            }
+        }
+        QQC2.GroupBox {
+            Layout.fillWidth: true
+            title: "Individual batteries"
+            ColumnLayout {
+                width: parent.width
+                QQC2.Label { visible: powerPage.controller.batteries.length === 0; text: "No readable batteries" }
+                Repeater {
+                    model: powerPage.controller.batteries
+                    delegate: QQC2.Label {
+                        required property var modelData
+                        Layout.fillWidth: true; wrapMode: Text.WordWrap
+                        text: modelData.name + " · " + modelData.status + " · "
+                              + (modelData.available ? Number(modelData.percent).toFixed(0) + "%" : "Charge unavailable")
+                              + " · " + (modelData.powerAvailable ? Number(modelData.watts).toFixed(1) + " W" : "Power unavailable")
+                    }
+                }
+                QQC2.Label { Layout.fillWidth: true; wrapMode: Text.WordWrap; text: "Battery totals combine compatible energy readings only. Power-source status and battery charging are independent, including USB-C supplies." }
+            }
+        }
+
         // 1. Four Primary Power & Thermal Envelope Cards
         GridLayout {
             Layout.fillWidth: true

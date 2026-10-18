@@ -28,6 +28,10 @@ void CpuSocSampler::setRootConfig(const SysfsRootConfig &config)
     m_prevThrottleCounters.clear();
     m_prevProcTicks.clear();
     m_prevSystemTotalTicks = 0;
+    m_ownerNames.clear();
+    m_ownerMetadataAge.invalidate();
+    m_gpuDrivers.clear();
+    m_gpuMetadataAge.invalidate();
 }
 
 CpuSocSnapshot CpuSocSampler::sampleCpu(const QList<DomainSensorReading> &domainReadings, qint64 elapsedMs)
@@ -244,12 +248,17 @@ CpuSocSnapshot CpuSocSampler::sampleCpu(const QList<DomainSensorReading> &domain
     return snap;
 }
 
-GpuSnapshot CpuSocSampler::sampleGpu(const QList<DomainSensorReading> &domainReadings)
+QList<GpuSnapshot> CpuSocSampler::sampleGpus(const QList<DomainSensorReading> &domainReadings)
 {
-    GpuSnapshot gpu;
+    QList<GpuSnapshot> devices;
+    if (!m_gpuMetadataAge.isValid() || m_gpuMetadataAge.elapsed() >= 10000) {
+        m_gpuDrivers.clear();
+        m_gpuMetadataAge.start();
+    }
     const QDir drmRoot(QDir(m_config.sysRoot).filePath(QStringLiteral("class/drm")));
     if (!drmRoot.exists()) {
-        return gpu;
+        m_gpuDrivers.clear();
+        return devices;
     }
 
     const QStringList cards = drmRoot.entryList(QStringList{QStringLiteral("card*")}, QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
@@ -257,8 +266,20 @@ GpuSnapshot CpuSocSampler::sampleGpu(const QList<DomainSensorReading> &domainRea
         if (card.contains(QLatin1Char('-'))) {
             continue; // skip connector subdirectories like card1-eDP-1
         }
+        GpuSnapshot gpu;
+        gpu.name = card;
         const QDir cardDir(drmRoot.filePath(card));
         const QString devicePath = QFileInfo(cardDir.filePath(QStringLiteral("device"))).canonicalFilePath();
+
+        gpu.sysfsPath = devicePath;
+        gpu.identity = devicePath.isEmpty() ? cardDir.absolutePath() : devicePath;
+        // Enumerate identities on every poll so cached labels cannot hide hotplug.
+        if (!m_gpuDrivers.contains(gpu.identity)) {
+            QString driver = QFileInfo(cardDir.filePath(QStringLiteral("device/driver"))).symLinkTarget().section(QLatin1Char('/'), -1);
+            if (driver.isEmpty()) driver = QStringLiteral("DRM");
+            m_gpuDrivers.insert(gpu.identity, driver);
+        }
+        gpu.driverName = m_gpuDrivers.value(gpu.identity);
 
         bool actOk = false;
         int actMhz = static_cast<int>(SysfsReader::readInt64(cardDir.filePath(QStringLiteral("gt_act_freq_mhz")), 0, &actOk));
@@ -279,8 +300,8 @@ GpuSnapshot CpuSocSampler::sampleGpu(const QList<DomainSensorReading> &domainRea
         bool busyOk = false;
         const qint64 amdBusy = SysfsReader::readInt64(cardDir.filePath(QStringLiteral("device/gpu_busy_percent")), 0, &busyOk);
 
-        if (actOk || busyOk) {
-            gpu.available = true;
+        {
+            gpu.available = actOk || busyOk;
             gpu.sysfsPath = devicePath;
             gpu.currentFreqMhz = actMhz;
             gpu.frequencyAvailable = actOk;
@@ -289,8 +310,6 @@ GpuSnapshot CpuSocSampler::sampleGpu(const QList<DomainSensorReading> &domainRea
                 gpu.busyPercent = static_cast<double>(amdBusy);
                 gpu.busyAvailable = amdBusy >= 0 && amdBusy <= 100;
             }
-            gpu.driverName = QFileInfo(cardDir.filePath(QStringLiteral("device/driver"))).symLinkTarget().section(QLatin1Char('/'), -1);
-            if (gpu.driverName.isEmpty()) gpu.driverName = QStringLiteral("DRM");
 
             bool vramUsedOk = false;
             const qint64 vramUsedBytes = SysfsReader::readInt64(cardDir.filePath(QStringLiteral("device/mem_info_vram_used")), 0, &vramUsedOk);
@@ -336,12 +355,25 @@ GpuSnapshot CpuSocSampler::sampleGpu(const QList<DomainSensorReading> &domainRea
                 if (gpu.driverName.isEmpty()) gpu.driverName = reading.chipName;
             }
         }
-        if (gpu.available && gpu.sysfsPath == devicePath) {
-            break;
-        }
+        gpu.available = gpu.frequencyAvailable || gpu.busyAvailable || gpu.temperatureAvailable || gpu.powerAvailable || gpu.vramAvailable;
+        if (!gpu.available) gpu.unavailableReason = QStringLiteral("The driver exposes no readable DRM telemetry for this device.");
+        const bool duplicate = std::any_of(devices.cbegin(), devices.cend(), [&gpu](const GpuSnapshot &item) { return item.identity == gpu.identity; });
+        if (!duplicate) devices.append(gpu);
     }
 
-    return gpu;
+    QSet<QString> present;
+    for (const auto &device : devices) present.insert(device.identity);
+    for (auto it = m_gpuDrivers.begin(); it != m_gpuDrivers.end();) {
+        if (!present.contains(it.key())) it = m_gpuDrivers.erase(it); else ++it;
+    }
+    return devices;
+}
+
+GpuSnapshot CpuSocSampler::sampleGpu(const QList<DomainSensorReading> &domainReadings)
+{
+    const auto devices = sampleGpus(domainReadings);
+    for (const auto &device : devices) if (device.available) return device;
+    return devices.isEmpty() ? GpuSnapshot{} : devices.first();
 }
 
 CulpritProcess CpuSocSampler::sampleTopCulpritProcess()
@@ -351,6 +383,12 @@ CulpritProcess CpuSocSampler::sampleTopCulpritProcess()
 
 ProcessRadarSnapshot CpuSocSampler::sampleProcessRadar(int maxTopProcesses)
 {
+    // NSS owner-name resolution is inventory metadata, not a per-process metric.
+    // Cache by UID across processes while continuing to read each current UID/stat.
+    if (!m_ownerMetadataAge.isValid() || m_ownerMetadataAge.elapsed() >= 10000) {
+        m_ownerNames.clear();
+        m_ownerMetadataAge.start();
+    }
     ProcessRadarSnapshot radar;
     radar.observedAtMs = QDateTime::currentMSecsSinceEpoch();
     const QDir procDir(m_config.procRoot);
@@ -362,6 +400,7 @@ ProcessRadarSnapshot CpuSocSampler::sampleProcessRadar(int maxTopProcesses)
     const quint64 deltaSysTicks = (m_prevSystemTotalTicks > 0 && currentSysTicks > m_prevSystemTotalTicks)
         ? (currentSysTicks - m_prevSystemTotalTicks)
         : 100ULL;
+    const bool systemIntervalAvailable = m_prevSystemTotalTicks > 0 && currentSysTicks > m_prevSystemTotalTicks;
     m_prevSystemTotalTicks = currentSysTicks;
 
     QDirIterator procIt(m_config.procRoot, QDir::Dirs | QDir::NoDotAndDotDot);
@@ -377,7 +416,7 @@ ProcessRadarSnapshot CpuSocSampler::sampleProcessRadar(int maxTopProcesses)
         const QString entry = procIt.fileName();
         bool pidOk = false;
         const int pid = entry.toInt(&pidOk);
-        if (!pidOk || pid <= 1) {
+        if (!pidOk || pid <= 0) {
             continue;
         }
 
@@ -413,7 +452,7 @@ ProcessRadarSnapshot CpuSocSampler::sampleProcessRadar(int maxTopProcesses)
         const double rssMb = static_cast<double>(rssPages * pageSizeKb) / 1024.0;
 
         double cpuPct = 0.0;
-        if (m_prevProcTicks.contains(pid) && m_prevProcTicks.value(pid).startTimeTicks == startTime) {
+        if (systemIntervalAvailable && m_prevProcTicks.contains(pid) && m_prevProcTicks.value(pid).startTimeTicks == startTime) {
             const quint64 prevTicks = m_prevProcTicks.value(pid).ticks;
             if (totalTicks > prevTicks) {
                 const quint64 dTicks = totalTicks - prevTicks;
@@ -440,7 +479,7 @@ ProcessRadarSnapshot CpuSocSampler::sampleProcessRadar(int maxTopProcesses)
             }
         }
 
-        if (cpuPct > 0.05 || rssMb >= 8.0 || isDiskWait) {
+        {
             CulpritProcess cp;
             cp.startTimeTicks = startTime;
             cp.observedAtMs = radar.observedAtMs;
@@ -450,7 +489,18 @@ ProcessRadarSnapshot CpuSocSampler::sampleProcessRadar(int maxTopProcesses)
             cp.rssMegabytes = rssMb;
             cp.state = procState;
             cp.inDiskWait = isDiskWait;
-            candidates.append(cp);
+            const QFileInfo processInfo(procIt.filePath());
+            cp.ownerUid = processInfo.ownerId();
+            cp.ownerAvailable = cp.ownerUid != quint32(-2);
+            if (cp.ownerAvailable) {
+                if (!m_ownerNames.contains(cp.ownerUid)) m_ownerNames.insert(cp.ownerUid, processInfo.owner());
+                cp.ownerName = m_ownerNames.value(cp.ownerUid);
+            }
+            cp.cpuAvailable = systemIntervalAvailable && m_prevProcTicks.contains(pid)
+                && m_prevProcTicks.value(pid).startTimeTicks == startTime
+                && totalTicks >= m_prevProcTicks.value(pid).ticks;
+            radar.allProcesses.append(cp);
+            if (cpuPct > 0.05 || rssMb >= 8.0 || isDiskWait) candidates.append(cp);
         }
 
         if (cpuPct > radar.topCpuProcess.cpuPercent) {
@@ -490,6 +540,19 @@ ProcessRadarSnapshot CpuSocSampler::sampleProcessRadar(int maxTopProcesses)
         radar.topProcesses.append(candidates.at(i));
     }
 
+    QSet<int> selected;
+    auto addRanked = [&radar, &selected](QList<CulpritProcess> rows, auto less, bool diskWaitOnly) {
+        std::sort(rows.begin(), rows.end(), less);
+        int count = 0;
+        for (const auto &row : rows) {
+            if (diskWaitOnly && !row.inDiskWait) continue;
+            if (++count > 8) break;
+            if (!selected.contains(row.pid)) { selected.insert(row.pid); radar.historicalProcesses.append(row); }
+        }
+    };
+    addRanked(radar.allProcesses, [](const auto &a, const auto &b) { return a.cpuPercent != b.cpuPercent ? a.cpuPercent > b.cpuPercent : a.pid < b.pid; }, false);
+    addRanked(radar.allProcesses, [](const auto &a, const auto &b) { return a.rssMegabytes != b.rssMegabytes ? a.rssMegabytes > b.rssMegabytes : a.pid < b.pid; }, false);
+    addRanked(radar.allProcesses, [](const auto &a, const auto &b) { return a.rssMegabytes != b.rssMegabytes ? a.rssMegabytes > b.rssMegabytes : a.pid < b.pid; }, true);
     return radar;
 }
 

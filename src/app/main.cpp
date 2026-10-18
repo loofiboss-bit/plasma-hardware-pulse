@@ -12,6 +12,7 @@
 #include <QQuickWindow>
 #include <QTimer>
 #include <QUrl>
+#include <memory>
 
 int main(int argc, char *argv[])
 {
@@ -27,6 +28,7 @@ int main(int argc, char *argv[])
         qputenv("QT_QPA_PLATFORM", QByteArrayLiteral("offscreen"));
     }
 
+    if (isSmokeTest) QCoreApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
     QApplication app(argc, argv);
     QLocale::setDefault(QLocale(QLocale::English, QLocale::UnitedStates));
     KLocalizedString::setApplicationDomain("loofi-pulse");
@@ -51,8 +53,12 @@ int main(int argc, char *argv[])
     aboutData.setupCommandLine(&parser);
     QCommandLineOption smokeOpt(QStringLiteral("smoke-test"), QStringLiteral("Run automated QML & telemetry verification and exit."));
     QCommandLineOption screenshotOpt(QStringLiteral("screenshot"), QStringLiteral("Render window to PNG file and exit."), QStringLiteral("path"));
-    QCommandLineOption pageOpt(QStringLiteral("page"), QStringLiteral("Initial view to open (overview, flight, pressure, power)."), QStringLiteral("name"));
+    QCommandLineOption pageOpt(QStringLiteral("page"), QStringLiteral("Initial view to open (overview, flight, pressure, power, processes, storage; devices is an alias)."), QStringLiteral("name"));
     QCommandLineOption sectionOpt(QStringLiteral("section"), QStringLiteral("Section to focus within the initial view."), QStringLiteral("name"));
+    QCommandLineOption sessionOpt(QStringLiteral("session"), QStringLiteral("Open a saved Pulse session."), QStringLiteral("path"));
+    QCommandLineOption incidentOpt(QStringLiteral("incident"), QStringLiteral("Open an incident from the shared collector."), QStringLiteral("id"));
+    parser.addOption(sessionOpt);
+    parser.addOption(incidentOpt);
     parser.addOption(smokeOpt);
     parser.addOption(screenshotOpt);
     parser.addOption(pageOpt);
@@ -92,8 +98,27 @@ int main(int argc, char *argv[])
         LoofiPulse::PulseTelemetryController::validatedSectionName(page, parser.value(sectionOpt)));
     engine.rootObjects().constFirst()->setProperty("initialPageName", page);
 
+    if (parser.isSet(sessionOpt)) {
+        QMetaObject::invokeMethod(engine.rootObjects().constFirst(), "openSession", Q_ARG(QVariant, parser.value(sessionOpt)));
+    }
+    if (parser.isSet(incidentOpt)) {
+        auto *root = engine.rootObjects().constFirst();
+        auto *telemetry = root->findChild<QObject *>(QStringLiteral("telemetryController"));
+        const QString incident = parser.value(incidentOpt);
+        auto opened = std::make_shared<bool>(false);
+        auto open = [root, telemetry, incident, opened] {
+            if (!telemetry || *opened || !telemetry->property("collectorState").toString().startsWith(QStringLiteral("Live"))) return;
+            *opened = true;
+            QMetaObject::invokeMethod(root, "openIncident", Q_ARG(QVariant, incident));
+        };
+        auto *activationTimer = new QTimer(root);
+        activationTimer->setInterval(100);
+        QObject::connect(activationTimer, &QTimer::timeout, root, [open, opened, activationTimer] { open(); if (*opened) activationTimer->stop(); });
+        activationTimer->start();
+    }
+
     if (parser.isSet(smokeOpt)) {
-        LoofiPulse::PulseTelemetryController probe;
+        LoofiPulse::PulseTelemetryController probe(QDBusConnection::systemBus());
         probe.refreshNow();
         if (probe.verdictHeadline().isEmpty()) {
             qCritical("Smoke test could not obtain a controller status headline.");

@@ -33,11 +33,15 @@ find_package(KF6CoreAddons REQUIRED)
 find_package(KF6Notifications REQUIRED)
 find_package(KF6I18n REQUIRED)
 
+configure_file(packaging/plasma_applet_com.github.loofi.hardwarepulse.notifyrc
+    ${CMAKE_BINARY_DIR}/share/knotifications6/plasma_applet_com.github.loofi.hardwarepulse.notifyrc COPYONLY)
+
 include(CTest)
 
 add_subdirectory(src/core)
 add_subdirectory(src/plugin)
 add_subdirectory(src/app)
+add_subdirectory(src/service)
 
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)

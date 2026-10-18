@@ -1,5 +1,8 @@
 set(hardwarepulseplugin_SRCS
     pulsetelemetrycontroller.cpp
+    collectorclient.cpp
+    telemetryselection.cpp
+    reportexport.cpp
 )
 
 set(hardwarepulseplugin_HDRS

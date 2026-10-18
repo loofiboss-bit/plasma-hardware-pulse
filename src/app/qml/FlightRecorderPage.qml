@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
+import "MeasurementLabels.js" as MeasurementLabels
 import org.kde.kirigami as Kirigami
 import Qt.labs.settings
 
@@ -11,6 +12,26 @@ Kirigami.ScrollablePage {
     title: "History"
 
     required property var controller
+    signal saveSessionRequested()
+    signal openSessionRequested()
+    property var rangeStartId: 0
+    property var rangeEndId: 0
+    property double rangeStartTimeMs: 0
+    property double rangeEndTimeMs: 0
+    readonly property var historyInfo: controller.historySummary
+    readonly property var inspectedDetail: controller.selectedHistoryDetail
+    readonly property string rangeCaptureId: String(historyInfo.captureId || "")
+    onRangeCaptureIdChanged: { rangeStartId = 0; rangeEndId = 0; rangeStartTimeMs = 0; rangeEndTimeMs = 0 }
+
+    function comparisonText(window) {
+        if (!window || !window.available) return "No observations available"
+        return window.sampleCount + " observations · " + (Number(window.coverageMs) / 1000).toFixed(1) + " s coverage"
+             + (window.complete ? " · Complete" : " · Partial coverage")
+             + " · " + (window.gapCount || 0) + " gaps"
+             + "\nCPU average: " + (window.cpuLoadAvailable ? Number(window.cpuLoadPercent).toFixed(1) + "%" : "Unavailable")
+             + " · Responsiveness: " + (window.responsivenessAvailable ? Number(window.responsivenessScore).toFixed(1) + "/100" : "Unavailable")
+    }
+
 
     function focusSection(section) {
         if (!section) return true
@@ -67,11 +88,11 @@ Kirigami.ScrollablePage {
     onShowDiskTraceChanged: historySettings.showDisk = showDiskTrace
 
     function selectStep(delta) {
-        var samples = controller.historySamples
-        if (!samples || samples.length === 0) return
+        var count = historyInfo.count
+        if (!count) return
         var index = controller.selectedHistoryIndex
-        index = index < 0 ? samples.length - 1 : Math.max(0, Math.min(samples.length - 1, index + delta))
-        controller.selectedHistorySampleId = samples[index].sampleId
+        index = index < 0 ? count - 1 : Math.max(0, Math.min(count - 1, index + delta))
+        controller.selectedHistorySampleId = controller.historySampleAt(index).sampleId
     }
 
     function yAxisLabelAt(fraction) {
@@ -92,11 +113,8 @@ Kirigami.ScrollablePage {
     }
 
     function hoveredSampleText() {
-        var samples = flightPage.controller.historySamples
-        if (!samples || flightPage.hoveredSampleIndex < 0 || flightPage.hoveredSampleIndex >= samples.length) {
-            return ""
-        }
-        var s = samples[flightPage.hoveredSampleIndex]
+        if (flightPage.hoveredSampleIndex < 0 || flightPage.hoveredSampleIndex >= flightPage.historyInfo.count) return ""
+        var s = flightPage.controller.historySampleAt(flightPage.hoveredSampleIndex)
         var parts = ["Hover @ " + (s.timeString || "--:--:--")]
         if (s.cpuTempAvailable) parts.push("CPU " + Number(s.cpuTemp).toFixed(1) + " °C")
         if (s.cpuLoadAvailable) parts.push("Load " + Number(s.cpuLoad).toFixed(0) + "%")
@@ -134,8 +152,8 @@ Kirigami.ScrollablePage {
                     QQC2.Button {
                         icon.name: "media-playback-start"
                         text: "Follow Live"
-                        enabled: flightPage.controller.selectedHistorySampleId !== 0
-                        onClicked: flightPage.controller.selectedHistorySampleId = 0
+                        enabled: flightPage.controller.sessionMode || flightPage.controller.selectedHistorySampleId !== 0
+                        onClicked: flightPage.controller.returnToLive()
                     }
 
                     QQC2.Button {
@@ -148,9 +166,23 @@ Kirigami.ScrollablePage {
 
                     QQC2.Button {
                         icon.name: "document-save"
-                        text: "Save report + JSON"
-                        onClicked: flightPage.controller.exportIncidentReportToFile()
+                        text: "Export entire recording"
+                        onClicked: flightPage.controller.exportEntireRecording()
                     }
+                    QQC2.Button {
+                        objectName: "markProblemNowButton"
+                        text: "Mark problem now"
+                        icon.name: "bookmark-new"
+                        enabled: !flightPage.controller.sessionMode
+                        onClicked: flightPage.controller.markProblemNow()
+                    }
+                    QQC2.Button {
+                        text: "Export selected incident"
+                        enabled: flightPage.controller.sessionMode
+                        onClicked: flightPage.controller.exportSelectedIncident()
+                    }
+                    QQC2.Button { text: "Save session…"; onClicked: flightPage.saveSessionRequested() }
+                    QQC2.Button { text: "Open session…"; onClicked: flightPage.openSessionRequested() }
                     QQC2.ToolButton {
                         text: "More"
                         icon.name: "overflow-menu"
@@ -178,7 +210,7 @@ Kirigami.ScrollablePage {
                             QQC2.MenuItem {
                                 objectName: "clearHistoryButton"
                                 text: "Clear history"
-                                enabled: flightPage.controller.historySamples.length > 0
+                                enabled: flightPage.historyInfo.count > 0
                                 onTriggered: clearHistoryDialog.open()
                             }
                         }
@@ -203,7 +235,7 @@ Kirigami.ScrollablePage {
                         QQC2.Label {
                             id: sampleCountLbl
                             anchors.centerIn: parent
-                            text: flightPage.controller.historySamples.length + " samples · "
+                            text: flightPage.historyInfo.count + " samples · "
                                   + flightPage.controller.actualHistorySeconds.toFixed(0) + " s recorded / "
                                   + Math.round(flightPage.controller.historyRetentionSeconds / 60) + " min configured"
                             color: Kirigami.Theme.disabledTextColor
@@ -321,6 +353,50 @@ Kirigami.ScrollablePage {
             }
         }
 
+        QQC2.GroupBox {
+            Layout.fillWidth: true
+            title: flightPage.controller.sessionMode ? "Frozen investigation" : "Select an investigation range"
+            ColumnLayout {
+                width: parent.width
+                QQC2.Label {
+                    Layout.fillWidth: true; wrapMode: Text.WordWrap
+                    text: flightPage.controller.sessionMode
+                        ? "Original observations are frozen. Live monitoring continues separately. " + (flightPage.controller.sessionPath || "Unsaved in-memory investigation")
+                        : "Select a moment in the timeline, set the beginning and end, then freeze the range. Comparisons use up to 30 seconds on either side."
+                }
+                Flow {
+                    Layout.fillWidth: true
+                    spacing: Kirigami.Units.smallSpacing
+                    QQC2.Button {
+                        text: "Set beginning"
+                        enabled: flightPage.controller.selectedHistorySampleId !== 0
+                        onClicked: { flightPage.rangeStartId = flightPage.controller.selectedHistorySampleId; flightPage.rangeStartTimeMs = Number(flightPage.inspectedDetail.timestampMs) }
+                    }
+                    QQC2.Button {
+                        text: "Set end"
+                        enabled: flightPage.controller.selectedHistorySampleId !== 0
+                        onClicked: { flightPage.rangeEndId = flightPage.controller.selectedHistorySampleId; flightPage.rangeEndTimeMs = Number(flightPage.inspectedDetail.timestampMs) }
+                    }
+                    QQC2.Button {
+                        objectName: "freezeHistoryRangeButton"
+                        text: "Freeze selected range"
+                        enabled: flightPage.rangeStartId > 0 && flightPage.rangeEndId >= flightPage.rangeStartId
+                        onClicked: flightPage.controller.selectHistoryRange(flightPage.rangeStartId, flightPage.rangeEndId)
+                    }
+                }
+                QQC2.Label { visible: !flightPage.controller.sessionMode; Layout.fillWidth: true; wrapMode: Text.WordWrap; text: "Selected period: " + (flightPage.rangeStartTimeMs ? new Date(flightPage.rangeStartTimeMs).toLocaleTimeString() : "Beginning not set") + " — " + (flightPage.rangeEndTimeMs ? new Date(flightPage.rangeEndTimeMs).toLocaleTimeString() : "End not set") }
+                Repeater {
+                    model: flightPage.controller.sessionMode ? ["before", "during", "after"] : []
+                    delegate: QQC2.Label {
+                        required property string modelData
+                        Layout.fillWidth: true; wrapMode: Text.WordWrap
+                        text: modelData.charAt(0).toUpperCase() + modelData.slice(1) + "\n"
+                              + flightPage.comparisonText(flightPage.controller.investigationSummary[modelData])
+                    }
+                }
+            }
+        }
+
         // 2. Interactive Multi-Channel Canvas Timeline with Dedicated Y/X Axes
         Rectangle {
             Layout.fillWidth: true
@@ -340,7 +416,7 @@ Kirigami.ScrollablePage {
                 anchors.bottomMargin: 32
                 anchors.leftMargin: 10
                 width: 72
-                visible: flightPage.controller.historySamples.length >= 2
+                visible: flightPage.historyInfo.count >= 2
 
                 QQC2.Label {
                     text: flightPage.yAxisLabelAt(1.0)
@@ -381,27 +457,27 @@ Kirigami.ScrollablePage {
                 anchors.leftMargin: 88
                 anchors.rightMargin: 16
                 anchors.bottomMargin: 8
-                visible: flightPage.controller.historySamples.length >= 2
+                visible: flightPage.historyInfo.count >= 2
 
                 QQC2.Label {
-                    text: flightPage.controller.historySamples.length > 0
-                          ? (flightPage.controller.historySamples[0].timeString || "")
+                    text: flightPage.historyInfo.count > 0
+                          ? (flightPage.historyInfo.firstLabel || "")
                           : ""
                     font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 1)
                     color: Kirigami.Theme.disabledTextColor
                 }
                 Item { Layout.fillWidth: true }
                 QQC2.Label {
-                    text: flightPage.controller.historySamples.length > 2
-                          ? (flightPage.controller.historySamples[Math.floor(flightPage.controller.historySamples.length / 2)].timeString || "")
+                    text: flightPage.historyInfo.count > 2
+                          ? (flightPage.historyInfo.middleLabel || "")
                           : ""
                     font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 1)
                     color: Kirigami.Theme.disabledTextColor
                 }
                 Item { Layout.fillWidth: true }
                 QQC2.Label {
-                    text: flightPage.controller.historySamples.length > 0
-                          ? (flightPage.controller.historySamples[flightPage.controller.historySamples.length - 1].timeString || "") + " (Latest)"
+                    text: flightPage.historyInfo.count > 0
+                          ? (flightPage.historyInfo.lastLabel || "") + " (Latest)"
                           : ""
                     font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 1)
                     color: Kirigami.Theme.disabledTextColor
@@ -410,6 +486,7 @@ Kirigami.ScrollablePage {
 
             Canvas {
                 id: timelineCanvas
+                renderStrategy: Canvas.Threaded
                 activeFocusOnTab: true
                 objectName: "section_timeline"
                 anchors.fill: parent
@@ -419,14 +496,22 @@ Kirigami.ScrollablePage {
                 anchors.bottomMargin: 30
                 focus: true
                 property real hoverX: -1
+                property var plotData: ({})
+                function refreshPlot() {
+                    if (visible && width > 0) plotData = JSON.parse(flightPage.controller.historyPlotJson(Math.ceil(width)))
+                    requestPaint()
+                }
+                Component.onCompleted: refreshPlot()
+                onWidthChanged: refreshPlot()
+                onVisibleChanged: { if (visible) refreshPlot() }
                 Accessible.role: Accessible.Graphic
                 Accessible.name: "Hardware history timeline. Select a sample with left and right arrow keys."
-                Accessible.description: "Inspected sample " + (flightPage.controller.selectedHistoryDetail.timeString || "unavailable")
-                    + ". Responsiveness index " + (flightPage.controller.selectedHistoryDetail.psiAvailable
-                      ? Number(flightPage.controller.selectedHistoryDetail.responsivenessScore).toFixed(1) + " out of 100; higher is better" : "unavailable")
+                Accessible.description: "Inspected sample " + (flightPage.inspectedDetail.timeString || "unavailable")
+                    + ". Responsiveness index " + (flightPage.inspectedDetail.psiAvailable
+                      ? Number(flightPage.inspectedDetail.responsivenessScore).toFixed(1) + " out of 100; higher is better" : "unavailable")
                 Keys.onPressed: (event) => {
-                    if (event.key === Qt.Key_Home && flightPage.controller.historySamples.length) {
-                        flightPage.controller.selectedHistorySampleId = flightPage.controller.historySamples[0].sampleId
+                    if (event.key === Qt.Key_Home && flightPage.historyInfo.count) {
+                        flightPage.controller.selectedHistorySampleId = flightPage.historyInfo.firstId
                         event.accepted = true
                     } else if (event.key === Qt.Key_End) {
                         flightPage.controller.selectedHistorySampleId = 0
@@ -438,7 +523,7 @@ Kirigami.ScrollablePage {
 
                 Connections {
                     target: flightPage.controller
-                    function onTelemetryUpdated() { timelineCanvas.requestPaint() }
+                    function onTelemetryUpdated() { timelineCanvas.refreshPlot() }
                     function onSelectedHistoryChanged() { timelineCanvas.requestPaint() }
                 }
 
@@ -453,65 +538,48 @@ Kirigami.ScrollablePage {
                     var pts = []
                     for (var i = 0; i < samples.length; ++i) {
                         var sample = samples[i]
-                        var val = sampleMetricValue(sample, valueKey)
-                        if (!sample[availableKey] || !isFinite(val)) {
-                            pts.push(null)
-                            continue
-                        }
                         var x = ((sample.timestampMs - firstTime) / timeSpan) * width
-                        var normal = Math.min(1, Math.max(0, (val - minValue) / Math.max(1, maxValue - minValue)))
-                        var y = height - normal * (height - 12) - 6
-                        pts.push({ x: x, y: y, gap: sample.gapBefore === true })
+                        var normal = Math.min(1, Math.max(0, (sample.value - minValue) / Math.max(1, maxValue - minValue)))
+                        pts.push({ x: x, y: height - normal * (height - 12) - 6, gap: sample.gapBefore === true })
                     }
 
-                    // Draw translucent gradient fill under continuous segments
+                    // Bound raster path complexity for dense extrema. A single
+                    // long zigzag makes the software stroker construct a costly
+                    // self-intersecting outline even when points are pixel-bound.
+                    var gradient = null
                     if (fillAlpha > 0) {
-                        var grad = ctx.createLinearGradient(0, 0, 0, height)
-                        grad.addColorStop(0, Qt.rgba(color.r, color.g, color.b, fillAlpha).toString())
-                        grad.addColorStop(1, Qt.rgba(color.r, color.g, color.b, 0.0).toString())
-                        ctx.fillStyle = grad
-                        var segStart = -1
-                        for (var k = 0; k < pts.length; ++k) {
-                            if (pts[k] !== null && !pts[k].gap) {
-                                if (segStart < 0) segStart = k
-                            } else {
-                                if (segStart >= 0 && (k - 1) > segStart) {
-                                    ctx.beginPath()
-                                    ctx.moveTo(pts[segStart].x, height)
-                                    for (var m = segStart; m < k; ++m) ctx.lineTo(pts[m].x, pts[m].y)
-                                    ctx.lineTo(pts[k - 1].x, height)
-                                    ctx.closePath()
-                                    ctx.fill()
-                                }
-                                segStart = (pts[k] !== null) ? k : -1
-                            }
-                        }
-                        if (segStart >= 0 && (pts.length - 1) > segStart) {
-                            ctx.beginPath()
-                            ctx.moveTo(pts[segStart].x, height)
-                            for (var n = segStart; n < pts.length; ++n) ctx.lineTo(pts[n].x, pts[n].y)
-                            ctx.lineTo(pts[pts.length - 1].x, height)
-                            ctx.closePath()
-                            ctx.fill()
-                        }
+                        gradient = ctx.createLinearGradient(0, 0, 0, height)
+                        gradient.addColorStop(0, Qt.rgba(color.r, color.g, color.b, fillAlpha).toString())
+                        gradient.addColorStop(1, Qt.rgba(color.r, color.g, color.b, 0.0).toString())
                     }
-
-                    // Draw crisp curve stroke
                     ctx.strokeStyle = color.toString()
                     ctx.lineWidth = 2.2
-                    ctx.beginPath()
-                    var drawing = false
-                    for (var j = 0; j < pts.length; ++j) {
-                        var pt = pts[j]
-                        if (pt === null) {
-                            drawing = false
-                            continue
+                    ctx.lineJoin = "bevel"
+                    ctx.lineCap = "butt"
+                    var start = 0
+                    while (start < pts.length) {
+                        var end = start
+                        while (end + 1 < pts.length && end - start < 4 && !pts[end + 1].gap) ++end
+                        if (end > start) {
+                            if (gradient) {
+                                ctx.fillStyle = gradient
+                                ctx.beginPath()
+                                ctx.moveTo(pts[start].x, height)
+                                for (var f = start; f <= end; ++f) ctx.lineTo(pts[f].x, pts[f].y)
+                                ctx.lineTo(pts[end].x, height)
+                                ctx.closePath()
+                                ctx.fill()
+                            }
+                            ctx.beginPath()
+                            ctx.moveTo(pts[start].x, pts[start].y)
+                            for (var j = start + 1; j <= end; ++j) ctx.lineTo(pts[j].x, pts[j].y)
+                            ctx.stroke()
+                        } else {
+                            ctx.fillStyle = color.toString()
+                            ctx.fillRect(pts[start].x - 1, pts[start].y - 1, 2, 2)
                         }
-                        if (!drawing || pt.gap) ctx.moveTo(pt.x, pt.y)
-                        else ctx.lineTo(pt.x, pt.y)
-                        drawing = true
+                        start = end + 1 < pts.length && !pts[end + 1].gap ? end : end + 1
                     }
-                    ctx.stroke()
                 }
 
                 function drawMarkerAtSample(ctx, sample, firstTime, timeSpan, valueKey, availableKey, minValue, maxValue, color) {
@@ -530,10 +598,10 @@ Kirigami.ScrollablePage {
                 onPaint: {
                     var ctx = getContext("2d")
                     ctx.clearRect(0, 0, width, height)
-                    var samples = flightPage.controller.historySamples
-                    if (!samples || samples.length < 2) return
-                    var firstTime = samples[0].timestampMs
-                    var lastTime = samples[samples.length - 1].timestampMs
+                    if (flightPage.historyInfo.count < 2) return
+                    var samples = timelineCanvas.plotData.markers || []
+                    var firstTime = flightPage.historyInfo.firstTime
+                    var lastTime = flightPage.historyInfo.lastTime
                     var timeSpan = Math.max(1, lastTime - firstTime)
                     var maxWatts = Math.max(65, flightPage.controller.historyMaxWatts)
                     var maxDiskMib = Math.max(50, flightPage.controller.historyMaxDiskMibPerSec)
@@ -567,19 +635,19 @@ Kirigami.ScrollablePage {
                     ctx.globalAlpha = 1.0
 
                     if (flightPage.showTempTrace)
-                        drawTrace(ctx, samples, firstTime, timeSpan, "cpuTemp", "cpuTempAvailable", 25, 100, theme.tempAccent, 0.14)
+                        drawTrace(ctx, timelineCanvas.plotData.cpuTemp || [], firstTime, timeSpan, "cpuTemp", "cpuTempAvailable", 25, 100, theme.tempAccent, 0.14)
                     if (flightPage.showLoadTrace)
-                        drawTrace(ctx, samples, firstTime, timeSpan, "cpuLoad", "cpuLoadAvailable", 0, 100, theme.cpuAccent, 0.12)
+                        drawTrace(ctx, timelineCanvas.plotData.cpuLoad || [], firstTime, timeSpan, "cpuLoad", "cpuLoadAvailable", 0, 100, theme.cpuAccent, 0.12)
                     if (flightPage.showPsiTrace)
-                        drawTrace(ctx, samples, firstTime, timeSpan, "responsivenessScore", "psiAvailable", 0, 100, theme.psiAccent, 0.08)
+                        drawTrace(ctx, timelineCanvas.plotData.responsivenessScore || [], firstTime, timeSpan, "responsivenessScore", "psiAvailable", 0, 100, theme.psiAccent, 0.08)
                     if (flightPage.showWattsTrace)
-                        drawTrace(ctx, samples, firstTime, timeSpan, "packageWatts", "packagePowerAvailable", 0, maxWatts, theme.powerAccent, 0.10)
+                        drawTrace(ctx, timelineCanvas.plotData.packageWatts || [], firstTime, timeSpan, "packageWatts", "packagePowerAvailable", 0, maxWatts, theme.powerAccent, 0.10)
                     if (flightPage.showBatteryTrace)
-                        drawTrace(ctx, samples, firstTime, timeSpan, "batteryWatts", "batteryDischargeAvailable", 0, maxWatts, theme.batteryAccent, 0.06)
+                        drawTrace(ctx, timelineCanvas.plotData.batteryWatts || [], firstTime, timeSpan, "batteryWatts", "batteryDischargeAvailable", 0, maxWatts, theme.batteryAccent, 0.06)
                     if (flightPage.showGpuTrace)
-                        drawTrace(ctx, samples, firstTime, timeSpan, "gpuBusy", "gpuBusyAvailable", 0, 100, theme.gpuAccent, 0.10)
+                        drawTrace(ctx, timelineCanvas.plotData.gpuBusy || [], firstTime, timeSpan, "gpuBusy", "gpuBusyAvailable", 0, 100, theme.gpuAccent, 0.10)
                     if (flightPage.showDiskTrace)
-                        drawTrace(ctx, samples, firstTime, timeSpan, "diskTotalMibPerSec", "diskThroughputAvailable", 0, maxDiskMib, theme.storageAccent, 0.10)
+                        drawTrace(ctx, timelineCanvas.plotData.diskTotalMibPerSec || [], firstTime, timeSpan, "diskTotalMibPerSec", "diskThroughputAvailable", 0, maxDiskMib, theme.storageAccent, 0.10)
 
                     // Hover crosshair
                     if (timelineCanvas.hoverX >= 0 && timelineCanvas.hoverX <= width) {
@@ -597,8 +665,8 @@ Kirigami.ScrollablePage {
                     var activeIdx = flightPage.hoveredSampleIndex >= 0
                                     ? flightPage.hoveredSampleIndex
                                     : flightPage.controller.selectedHistoryIndex
-                    if (activeIdx >= 0 && activeIdx < samples.length) {
-                        var actSample = samples[activeIdx]
+                    if (activeIdx >= 0 && activeIdx < flightPage.historyInfo.count) {
+                        var actSample = flightPage.controller.historySampleAt(activeIdx)
                         var sx = ((actSample.timestampMs - firstTime) / timeSpan) * width
                         ctx.strokeStyle = Kirigami.Theme.highlightColor.toString()
                         ctx.lineWidth = 2
@@ -629,24 +697,11 @@ Kirigami.ScrollablePage {
                     hoverEnabled: true
                     cursorShape: Qt.CrossCursor
                     function nearestIndexAtX(mouseX) {
-                        var samples = flightPage.controller.historySamples
-                        if (!samples || samples.length === 0) return -1
-                        var ratio = Math.min(1.0, Math.max(0.0, mouseX / Math.max(1.0, width)))
-                        var targetTime = samples[0].timestampMs
-                                + ratio * (samples[samples.length - 1].timestampMs - samples[0].timestampMs)
-                        var nearest = 0
-                        for (var i = 1; i < samples.length; ++i) {
-                            if (Math.abs(samples[i].timestampMs - targetTime)
-                                    < Math.abs(samples[nearest].timestampMs - targetTime)) nearest = i
-                        }
-                        return nearest
+                        return flightPage.controller.historyIndexAtRatio(mouseX / Math.max(1.0, width))
                     }
                     function selectAtX(mouseX) {
-                        var samples = flightPage.controller.historySamples
                         var nearest = nearestIndexAtX(mouseX)
-                        if (nearest >= 0 && nearest < samples.length) {
-                            flightPage.controller.selectedHistorySampleId = samples[nearest].sampleId
-                        }
+                        if (nearest >= 0) flightPage.controller.selectedHistorySampleId = flightPage.controller.historySampleAt(nearest).sampleId
                     }
                     onPressed: (mouse) => { timelineCanvas.forceActiveFocus(); selectAtX(mouse.x) }
                     onPositionChanged: (mouse) => {
@@ -665,7 +720,7 @@ Kirigami.ScrollablePage {
 
             QQC2.Label {
                 anchors.centerIn: parent
-                visible: flightPage.controller.historySamples.length === 0
+                visible: flightPage.historyInfo.count === 0
                 text: "No history has been recorded yet"
                 color: Kirigami.Theme.disabledTextColor
             }
@@ -689,9 +744,9 @@ Kirigami.ScrollablePage {
                 wrapMode: Text.WordWrap
                 text: flightPage.hoveredSampleIndex >= 0
                       ? flightPage.hoveredSampleText()
-                      : (flightPage.controller.historySamples.length
-                         ? "Recorded window: " + new Date(flightPage.controller.historySamples[0].timestampMs).toLocaleTimeString()
-                           + " — " + new Date(flightPage.controller.historySamples[flightPage.controller.historySamples.length - 1].timestampMs).toLocaleTimeString()
+                      : (flightPage.historyInfo.count
+                         ? "Recorded window: " + new Date(flightPage.historyInfo.firstTime).toLocaleTimeString()
+                           + " — " + new Date(flightPage.historyInfo.lastTime).toLocaleTimeString()
                            + "  ·  Click or drag on the timeline (or press Left/Right arrow keys) to inspect any sample."
                          : "No history yet. Measurements appear here after the next sample.")
                 color: flightPage.hoveredSampleIndex >= 0 ? Kirigami.Theme.textColor : Kirigami.Theme.disabledTextColor
@@ -721,7 +776,7 @@ Kirigami.ScrollablePage {
 
                 QQC2.Label {
                     Layout.fillWidth: true
-                    text: "Recorded incidents (click to jump to peak moment):"
+                    text: "Recorded incidents (open original evidence and comparison):"
                     font.bold: true
                     color: Kirigami.Theme.disabledTextColor
                     wrapMode: Text.WordWrap
@@ -740,7 +795,7 @@ Kirigami.ScrollablePage {
                             text: incidentChip.modelData.timeString
                                   + (incidentChip.modelData.durationSeconds > 1 ? " (" + incidentChip.modelData.durationSeconds + "s)" : "")
                                   + " · " + incidentChip.modelData.headline
-                            onClicked: flightPage.controller.selectedHistorySampleId = incidentChip.modelData.sampleId
+                            onClicked: flightPage.controller.selectIncident(incidentChip.modelData.incidentId)
                         }
                     }
                 }
@@ -799,7 +854,7 @@ Kirigami.ScrollablePage {
 
                     Kirigami.Heading {
                         level: 3
-                        text: "Inspected moment: " + (flightPage.controller.selectedHistoryDetail.timeString || "--:--:--")
+                        text: "Inspected moment: " + (flightPage.inspectedDetail.timeString || "--:--:--")
                         color: Kirigami.Theme.textColor
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
@@ -824,7 +879,7 @@ Kirigami.ScrollablePage {
                         id: statusAtTimeLbl
                         anchors.fill: parent
                         anchors.margins: 7
-                        text: "Status at this time: " + (flightPage.controller.selectedHistoryDetail.verdictHeadline || "No recorded sample")
+                        text: "Status at this time: " + (flightPage.inspectedDetail.verdictHeadline || "No recorded sample")
                         color: Kirigami.Theme.highlightColor
                         font.bold: true
                         wrapMode: Text.WordWrap
@@ -843,67 +898,67 @@ Kirigami.ScrollablePage {
                             {
                                 label: "CPU load & frequency",
                                 accentKey: "cpu",
-                                value: flightPage.controller.selectedHistoryDetail.cpuLoadAvailable
-                                    ? Number(flightPage.controller.selectedHistoryDetail.cpuLoad).toFixed(1) + "%"
-                                      + (flightPage.controller.selectedHistoryDetail.cpuFrequencyAvailable
-                                         ? " · " + flightPage.controller.selectedHistoryDetail.cpuFreqMhz + " MHz" : "")
+                                value: flightPage.inspectedDetail.cpuLoadAvailable
+                                    ? Number(flightPage.inspectedDetail.cpuLoad).toFixed(1) + "%"
+                                      + (flightPage.inspectedDetail.cpuFrequencyAvailable
+                                         ? " · " + flightPage.inspectedDetail.cpuFreqMhz + " MHz" : "")
                                     : "Unavailable",
-                                sub: "New throttle events: " + (!flightPage.controller.selectedHistoryDetail.throttleCountersAvailable
-                                    ? "Unavailable" : (flightPage.controller.selectedHistoryDetail.throttled ? "Observed" : "None observed"))
+                                sub: "New throttle events: " + (!flightPage.inspectedDetail.throttleCountersAvailable
+                                    ? "Unavailable" : (flightPage.inspectedDetail.throttled ? "Observed" : "None observed"))
                             },
                             {
                                 label: "CPU & NVMe thermals",
                                 accentKey: "temp",
-                                value: "CPU " + (flightPage.controller.selectedHistoryDetail.cpuTempAvailable
-                                    ? Number(flightPage.controller.selectedHistoryDetail.cpuTemp).toFixed(1) + " °C" : "Unavailable"),
-                                sub: "NVMe: " + (flightPage.controller.selectedHistoryDetail.nvmeTempAvailable
-                                    ? Number(flightPage.controller.selectedHistoryDetail.nvmeTemp).toFixed(1) + " °C" : "Unavailable")
+                                value: "CPU " + (flightPage.inspectedDetail.cpuTempAvailable
+                                    ? Number(flightPage.inspectedDetail.cpuTemp).toFixed(1) + " °C" : "Unavailable"),
+                                sub: "NVMe: " + (flightPage.inspectedDetail.nvmeTempAvailable
+                                    ? Number(flightPage.inspectedDetail.nvmeTemp).toFixed(1) + " °C" : "Unavailable")
                             },
                             {
                                 label: "Package power",
                                 accentKey: "power",
-                                value: flightPage.controller.selectedHistoryDetail.packagePowerAvailable
-                                    ? Number(flightPage.controller.selectedHistoryDetail.packageWatts).toFixed(1) + " W"
+                                value: flightPage.inspectedDetail.packagePowerAvailable
+                                    ? Number(flightPage.inspectedDetail.packageWatts).toFixed(1) + " W"
                                     : "Unavailable",
-                                sub: flightPage.controller.selectedHistoryDetail.packagePowerAvailable
-                                    ? (flightPage.controller.selectedHistoryDetail.packagePowerEstimated ? "Estimated power" : "Measured hardware power")
+                                sub: flightPage.inspectedDetail.packagePowerAvailable
+                                    ? (flightPage.inspectedDetail.packagePowerEstimated ? "Estimated power" : "Measured hardware power")
                                     : "No power channel"
                             },
                             {
                                 label: "Battery discharge",
                                 accentKey: "battery",
-                                value: flightPage.controller.selectedHistoryDetail.batteryDischargeAvailable
-                                    ? Number(flightPage.controller.selectedHistoryDetail.batteryWatts).toFixed(1) + " W" : "Unavailable",
+                                value: flightPage.inspectedDetail.batteryDischargeAvailable
+                                    ? Number(flightPage.inspectedDetail.batteryWatts).toFixed(1) + " W" : "Unavailable",
                                 sub: "Battery discharge channel; separate from CPU package power"
                             },
                             {
                                 label: "Graphics (GPU)",
                                 accentKey: "gpu",
-                                value: (flightPage.controller.selectedHistoryDetail.gpuBusyAvailable
-                                    ? Number(flightPage.controller.selectedHistoryDetail.gpuBusy).toFixed(0) + "% load" : "Load N/A")
-                                    + " · " + (flightPage.controller.selectedHistoryDetail.gpuTempAvailable
-                                    ? Number(flightPage.controller.selectedHistoryDetail.gpuTemp).toFixed(0) + " °C" : "Temp N/A"),
+                                value: (flightPage.inspectedDetail.gpuBusyAvailable
+                                    ? Number(flightPage.inspectedDetail.gpuBusy).toFixed(0) + "% load" : "Load N/A")
+                                    + " · " + (flightPage.inspectedDetail.gpuTempAvailable
+                                    ? Number(flightPage.inspectedDetail.gpuTemp).toFixed(0) + " °C" : "Temp N/A"),
                                 sub: "GPU telemetry at sample"
                             },
                             {
                                 label: "Pressure & Disk I/O",
                                 accentKey: "psi",
-                                value: "Responsiveness index: " + (flightPage.controller.selectedHistoryDetail.psiAvailable
-                                    ? Number(flightPage.controller.selectedHistoryDetail.responsivenessScore).toFixed(1) + "/100" : "Unavailable"),
-                                sub: flightPage.controller.selectedHistoryDetail.diskThroughputAvailable
-                                    ? "Disk R " + Number(flightPage.controller.selectedHistoryDetail.diskReadMibPerSec).toFixed(1)
-                                      + " · W " + Number(flightPage.controller.selectedHistoryDetail.diskWriteMibPerSec).toFixed(1) + " MiB/s"
+                                value: "Responsiveness index: " + (flightPage.inspectedDetail.psiAvailable
+                                    ? Number(flightPage.inspectedDetail.responsivenessScore).toFixed(1) + "/100" : "Unavailable"),
+                                sub: flightPage.inspectedDetail.diskThroughputAvailable
+                                    ? "Disk R " + Number(flightPage.inspectedDetail.diskReadMibPerSec).toFixed(1)
+                                      + " · W " + Number(flightPage.inspectedDetail.diskWriteMibPerSec).toFixed(1) + " MiB/s"
                                     : "Disk I/O throughput: Unavailable"
                             },
                             {
                                 label: "Concurrent process",
                                 accentKey: "storage",
-                                value: (flightPage.controller.selectedHistoryDetail.culpritName || "Unavailable")
-                                    + (flightPage.controller.selectedHistoryDetail.culpritName
-                                       ? " (PID " + flightPage.controller.selectedHistoryDetail.culpritPid + ")" : ""),
-                                sub: flightPage.controller.selectedHistoryDetail.culpritName
-                                    ? Number(flightPage.controller.selectedHistoryDetail.culpritCpuPercent).toFixed(1)
-                                      + "% CPU · " + Math.round(Number(flightPage.controller.selectedHistoryDetail.culpritRssMb)) + " MiB RSS"
+                                value: (flightPage.inspectedDetail.culpritName || "Unavailable")
+                                    + (flightPage.inspectedDetail.culpritName
+                                       ? " (PID " + flightPage.inspectedDetail.culpritPid + ")" : ""),
+                                sub: flightPage.inspectedDetail.culpritName
+                                    ? Number(flightPage.inspectedDetail.culpritCpuPercent).toFixed(1)
+                                      + "% CPU · " + Math.round(Number(flightPage.inspectedDetail.culpritRssMb)) + " MiB RSS"
                                     : "Observed process use: Unavailable"
                             }
                         ]
@@ -955,6 +1010,33 @@ Kirigami.ScrollablePage {
 
                 QQC2.GroupBox {
                     Layout.fillWidth: true
+                    title: "Recorded process observations"
+                    ColumnLayout {
+                        width: parent.width
+                        QQC2.Label {
+                            Layout.fillWidth: true; wrapMode: Text.WordWrap
+                            text: "Observed every 2 seconds: the union of the top 8 CPU, memory and disk-wait processes. This is a bounded sample, not a complete historical process list. Process identities are excluded from saved files unless enabled in Settings."
+                        }
+                        QQC2.Label {
+                            visible: !(flightPage.inspectedDetail.processObservations || []).length
+                            text: "No process identities recorded at this moment"
+                        }
+                        Repeater {
+                            model: flightPage.inspectedDetail.processObservations || []
+                            delegate: QQC2.Label {
+                                required property var modelData
+                                Layout.fillWidth: true; wrapMode: Text.WordWrap
+                                text: (modelData.name || "Identity omitted") + (modelData.pid ? " · PID " + modelData.pid : "")
+                                      + " · " + (modelData.cpuAvailable === false ? "CPU warming up" : Number(modelData.cpuPercent || 0).toFixed(1) + "% CPU")
+                                      + " · " + Number(modelData.rssMegabytes || 0).toFixed(1) + " MiB"
+                                      + " · Observed " + new Date(Number(modelData.observedAtMs)).toLocaleTimeString()
+                            }
+                        }
+                    }
+                }
+
+                QQC2.GroupBox {
+                    Layout.fillWidth: true
                     title: "Recorded data quality"
                     ColumnLayout {
                         anchors.left: parent.left
@@ -964,13 +1046,13 @@ Kirigami.ScrollablePage {
                             model: ["cpuLoad", "cpuTemperature", "gpuLoad", "pressureIndex", "diskThroughput", "packagePower"]
                             delegate: QQC2.Label {
                                 required property string modelData
-                                readonly property var quality: flightPage.controller.selectedHistoryDetail.metricMetadata
-                                                               ? flightPage.controller.selectedHistoryDetail.metricMetadata[modelData] : null
+                                readonly property var quality: flightPage.inspectedDetail.metricMetadata
+                                                               ? flightPage.inspectedDetail.metricMetadata[modelData] : null
                                 Layout.fillWidth: true
                                 wrapMode: Text.WordWrap
                                 font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                                 color: Kirigami.Theme.disabledTextColor
-                                text: modelData + ": " + (quality ? quality.state + " · " + quality.source
+                                text: MeasurementLabels.metricLabel(modelData) + ": " + (quality ? MeasurementLabels.qualityLabel(quality.state) + " · " + quality.source
                                       + " · " + new Date(quality.sampledAtMs).toLocaleTimeString() : "Unavailable")
                             }
                         }
