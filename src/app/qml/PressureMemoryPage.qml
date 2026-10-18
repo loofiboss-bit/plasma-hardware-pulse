@@ -731,15 +731,24 @@ Kirigami.ScrollablePage {
 
         Repeater {
             model: psiPage.sortedProcesses()
-            delegate: QQC2.Frame {
+            delegate: Rectangle {
                 id: processCard
                 required property var modelData
                 readonly property string identity: String(modelData.pid) + ":" + String(modelData.startTimeTicks)
                 readonly property bool expanded: psiPage.expandedProcessIdentity === identity
                 Layout.fillWidth: true
-                padding: Kirigami.Units.smallSpacing
+                implicitHeight: pCardCol.implicitHeight + Kirigami.Units.smallSpacing * 2
+                radius: theme.innerRadius
+                color: processCard.expanded ? theme.elevatedSurfaceColor : theme.surfaceColor
+                border.width: 1
+                border.color: processCard.expanded ? Kirigami.Theme.highlightColor : theme.cardBorderColor
+
                 ColumnLayout {
+                    id: pCardCol
                     anchors.fill: parent
+                    anchors.margins: Kirigami.Units.smallSpacing
+                    spacing: 4
+
                     QQC2.ToolButton {
                         Layout.fillWidth: true
                         objectName: "processRow"
@@ -751,15 +760,75 @@ Kirigami.ScrollablePage {
                         checked: processCard.expanded
                         Accessible.name: text + (checked ? ". Collapse process details" : ". Expand process details")
                         onClicked: psiPage.expandedProcessIdentity = processCard.expanded ? "" : processCard.identity
+
+                        contentItem: RowLayout {
+                            spacing: 8
+                            Kirigami.Icon {
+                                source: processCard.expanded ? "arrow-down" : "arrow-right"
+                                Layout.preferredWidth: 12
+                                Layout.preferredHeight: 12
+                                color: Kirigami.Theme.disabledTextColor
+                            }
+                            QQC2.Label {
+                                text: processCard.modelData.name
+                                font.bold: true
+                                color: Kirigami.Theme.textColor
+                                Layout.fillWidth: true
+                                elide: Text.ElideRight
+                            }
+                            Rectangle {
+                                visible: processCard.modelData.inDiskWait
+                                radius: theme.pillRadius
+                                color: theme.accentTint(Kirigami.Theme.negativeTextColor, 0.20)
+                                border.width: 1
+                                border.color: Kirigami.Theme.negativeTextColor
+                                implicitWidth: dwLbl.implicitWidth + 8
+                                implicitHeight: dwLbl.implicitHeight + 4
+                                QQC2.Label { id: dwLbl; anchors.centerIn: parent; text: "DISK WAIT (D)"; font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 2); font.bold: true; color: Kirigami.Theme.negativeTextColor }
+                            }
+                            Rectangle {
+                                radius: theme.pillRadius
+                                color: theme.accentTint(theme.cpuAccent, 0.14)
+                                border.width: 1
+                                border.color: theme.cpuAccent
+                                implicitWidth: cpuPillLbl.implicitWidth + 8
+                                implicitHeight: cpuPillLbl.implicitHeight + 4
+                                QQC2.Label { id: cpuPillLbl; anchors.centerIn: parent; text: Number(processCard.modelData.cpuPercent).toFixed(1) + "% CPU"; font.pixelSize: Kirigami.Theme.smallFont.pixelSize; font.bold: true; color: theme.cpuAccent }
+                            }
+                            Rectangle {
+                                radius: theme.pillRadius
+                                color: theme.subtleSurfaceColor
+                                border.width: 1
+                                border.color: theme.subtleBorderColor
+                                implicitWidth: rssPillLbl.implicitWidth + 8
+                                implicitHeight: rssPillLbl.implicitHeight + 4
+                                QQC2.Label { id: rssPillLbl; anchors.centerIn: parent; text: Math.round(Number(processCard.modelData.rssMegabytes)) + " MiB"; font.pixelSize: Kirigami.Theme.smallFont.pixelSize; color: Kirigami.Theme.disabledTextColor }
+                            }
+                        }
                     }
-                    QQC2.Label {
+
+                    Rectangle {
                         visible: processCard.expanded
                         Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        text: "PID " + processCard.modelData.pid + " · start ticks " + processCard.modelData.startTimeTicks
-                              + " · observed " + (Number(processCard.modelData.observedAtMs) > 0
-                                  ? new Date(Number(processCard.modelData.observedAtMs)).toLocaleTimeString() : "Unavailable")
-                              + ". Concurrent resource use does not establish causation."
+                        implicitHeight: expDetailsCol.implicitHeight + 12
+                        radius: theme.innerRadius
+                        color: theme.cardNestedBg
+
+                        ColumnLayout {
+                            id: expDetailsCol
+                            anchors.fill: parent
+                            anchors.margins: 6
+                            spacing: 2
+                            QQC2.Label {
+                                Layout.fillWidth: true
+                                wrapMode: Text.WordWrap
+                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                                text: "PID " + processCard.modelData.pid + " · start ticks " + processCard.modelData.startTimeTicks
+                                      + " · observed " + (Number(processCard.modelData.observedAtMs) > 0
+                                          ? new Date(Number(processCard.modelData.observedAtMs)).toLocaleTimeString() : "Unavailable")
+                                      + ". Concurrent resource use does not establish causation."
+                            }
+                        }
                     }
                 }
             }

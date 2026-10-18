@@ -76,6 +76,7 @@ Item {
                 anchors.fill: parent
                 spacing: Kirigami.Units.smallSpacing
                 Rectangle {
+                    Layout.alignment: Qt.AlignVCenter
                     Layout.preferredWidth: 7
                     Layout.preferredHeight: 7
                     radius: 3.5
@@ -84,6 +85,7 @@ Item {
                 PlasmaComponents3.Label {
                     id: panelLabel
                     Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignVCenter
                     text: compactRoot.verticalPanel ? compactRoot.temperatureText : compactRoot.panelText
                     elide: Text.ElideRight
                     font.bold: true

@@ -22,6 +22,11 @@
   </developer>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.10.0" date="2026-10-18">
+      <description>
+        <p>Comprehensive UI/UX overhaul: structured modern KDE Plasma 6 interface, responsive navigation tabs, column-aligned process table, polished storage and network telemetry cards, streamlined incident action workflow, and refined Plasmoid widget.</p>
+      </description>
+    </release>
     <release version="0.9.0" date="2026-10-18">
       <description>
         <p>Shared user-session collection, incident investigations and saved local sessions,

@@ -145,76 +145,102 @@ Kirigami.ScrollablePage {
                 anchors.margins: Kirigami.Units.largeSpacing
                 spacing: Kirigami.Units.mediumSpacing
 
+                // Logical Toolbar Groups
                 Flow {
                     Layout.fillWidth: true
                     spacing: Kirigami.Units.smallSpacing
 
-                    QQC2.Button {
-                        icon.name: "media-playback-start"
-                        text: "Follow Live"
-                        enabled: flightPage.controller.sessionMode || flightPage.controller.selectedHistorySampleId !== 0
-                        onClicked: flightPage.controller.returnToLive()
+                    // 1. Playback cluster
+                    RowLayout {
+                        spacing: 2
+                        QQC2.Button {
+                            icon.name: "media-playback-start"
+                            text: "Follow Live"
+                            enabled: flightPage.controller.sessionMode || flightPage.controller.selectedHistorySampleId !== 0
+                            onClicked: flightPage.controller.returnToLive()
+                        }
+
+                        QQC2.Button {
+                            icon.name: flightPage.controller.recordingPaused ? "media-playback-start" : "media-playback-pause"
+                            text: flightPage.controller.recordingPaused ? "Resume" : "Pause"
+                            checkable: true
+                            checked: flightPage.controller.recordingPaused
+                            onClicked: flightPage.controller.recordingPaused = !flightPage.controller.recordingPaused
+                        }
                     }
 
-                    QQC2.Button {
-                        icon.name: flightPage.controller.recordingPaused ? "media-playback-start" : "media-playback-pause"
-                        text: flightPage.controller.recordingPaused ? "Resume Recording" : "Pause Recording"
-                        checkable: true
-                        checked: flightPage.controller.recordingPaused
-                        onClicked: flightPage.controller.recordingPaused = !flightPage.controller.recordingPaused
+                    // 2. Incident & Marking cluster
+                    RowLayout {
+                        spacing: 2
+                        QQC2.Button {
+                            objectName: "markProblemNowButton"
+                            text: "Mark problem now"
+                            icon.name: "bookmark-new"
+                            enabled: !flightPage.controller.sessionMode
+                            onClicked: flightPage.controller.markProblemNow()
+                        }
                     }
 
-                    QQC2.Button {
-                        icon.name: "document-save"
-                        text: "Export entire recording"
-                        onClicked: flightPage.controller.exportEntireRecording()
-                    }
-                    QQC2.Button {
-                        objectName: "markProblemNowButton"
-                        text: "Mark problem now"
-                        icon.name: "bookmark-new"
-                        enabled: !flightPage.controller.sessionMode
-                        onClicked: flightPage.controller.markProblemNow()
-                    }
-                    QQC2.Button {
-                        text: "Export selected incident"
-                        enabled: flightPage.controller.sessionMode
-                        onClicked: flightPage.controller.exportSelectedIncident()
-                    }
-                    QQC2.Button { text: "Save session…"; onClicked: flightPage.saveSessionRequested() }
-                    QQC2.Button { text: "Open session…"; onClicked: flightPage.openSessionRequested() }
-                    QQC2.ToolButton {
-                        text: "More"
-                        icon.name: "overflow-menu"
-                        onClicked: historyMenu.popup()
-                        QQC2.Menu {
-                            id: historyMenu
-                            QQC2.MenuItem {
-                                text: "Peak thermal spike"
-                                onTriggered: flightPage.controller.jumpToPeakThermalSpike()
+                    // 3. Sessions & Export cluster
+                    RowLayout {
+                        spacing: 2
+                        QQC2.Button {
+                            text: "Save session…"
+                            icon.name: "document-save-as"
+                            onClicked: flightPage.saveSessionRequested()
+                        }
+                        QQC2.Button {
+                            text: "Open session…"
+                            icon.name: "document-open"
+                            onClicked: flightPage.openSessionRequested()
+                        }
+                        QQC2.Button {
+                            icon.name: "document-save"
+                            text: flightPage.controller.sessionMode ? "Export incident" : "Export recording"
+                            onClicked: {
+                                if (flightPage.controller.sessionMode) flightPage.controller.exportSelectedIncident()
+                                else flightPage.controller.exportEntireRecording()
                             }
-                            QQC2.MenuItem {
-                                text: "Worst PSI wait"
-                                onTriggered: flightPage.controller.jumpToWorstStallSpike()
-                            }
-                            QQC2.MenuItem {
-                                text: "Copy report"
-                                onTriggered: flightPage.controller.copyIncidentReportToClipboard()
-                            }
-                            QQC2.MenuItem {
-                                text: "Open reports folder"
-                                enabled: flightPage.controller.lastActionPath.length > 0
-                                onTriggered: flightPage.controller.openReportsFolder()
-                            }
-                            QQC2.MenuSeparator {}
-                            QQC2.MenuItem {
-                                objectName: "clearHistoryButton"
-                                text: "Clear history"
-                                enabled: flightPage.historyInfo.count > 0
-                                onTriggered: clearHistoryDialog.open()
+                        }
+                        QQC2.ToolButton {
+                            text: "More"
+                            icon.name: "overflow-menu"
+                            onClicked: historyMenu.popup()
+                            QQC2.Menu {
+                                id: historyMenu
+                                QQC2.MenuItem {
+                                    text: "Peak thermal spike"
+                                    icon.name: "temperature-normal"
+                                    onTriggered: flightPage.controller.jumpToPeakThermalSpike()
+                                }
+                                QQC2.MenuItem {
+                                    text: "Worst PSI wait"
+                                    icon.name: "memory"
+                                    onTriggered: flightPage.controller.jumpToWorstStallSpike()
+                                }
+                                QQC2.MenuItem {
+                                    text: "Copy incident report"
+                                    icon.name: "edit-copy"
+                                    onTriggered: flightPage.controller.copyIncidentReportToClipboard()
+                                }
+                                QQC2.MenuItem {
+                                    text: "Open reports folder"
+                                    icon.name: "folder-open"
+                                    enabled: flightPage.controller.lastActionPath.length > 0
+                                    onTriggered: flightPage.controller.openReportsFolder()
+                                }
+                                QQC2.MenuSeparator {}
+                                QQC2.MenuItem {
+                                    objectName: "clearHistoryButton"
+                                    text: "Clear recorded history"
+                                    icon.name: "edit-clear-all"
+                                    enabled: flightPage.historyInfo.count > 0
+                                    onTriggered: clearHistoryDialog.open()
+                                }
                             }
                         }
                     }
+
                     QQC2.Dialog {
                         id: clearHistoryDialog
                         title: "Clear recorded history?"
@@ -224,20 +250,21 @@ Kirigami.ScrollablePage {
                         QQC2.Label { text: "This clears the current in-memory recording and incidents."; wrapMode: Text.WordWrap }
                     }
 
+                    // Recording Info Pill
                     Rectangle {
                         radius: theme.pillRadius
                         color: theme.subtleSurfaceColor
                         border.width: 1
                         border.color: theme.subtleBorderColor
-                        implicitWidth: sampleCountLbl.implicitWidth + 16
-                        implicitHeight: sampleCountLbl.implicitHeight + 10
+                        implicitWidth: sampleCountLbl.implicitWidth + 14
+                        implicitHeight: sampleCountLbl.implicitHeight + 8
 
                         QQC2.Label {
                             id: sampleCountLbl
                             anchors.centerIn: parent
                             text: flightPage.historyInfo.count + " samples · "
-                                  + flightPage.controller.actualHistorySeconds.toFixed(0) + " s recorded / "
-                                  + Math.round(flightPage.controller.historyRetentionSeconds / 60) + " min configured"
+                                  + flightPage.controller.actualHistorySeconds.toFixed(0) + " s / "
+                                  + Math.round(flightPage.controller.historyRetentionSeconds / 60) + " min"
                             color: Kirigami.Theme.disabledTextColor
                             font.bold: true
                             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
@@ -266,19 +293,19 @@ Kirigami.ScrollablePage {
                             },
                             {
                                 key: "psi",
-                                label: "Responsiveness index (0–100; higher is better)",
+                                label: "Responsiveness (0–100)",
                                 accentKey: "psi",
                                 active: flightPage.showPsiTrace
                             },
                             {
                                 key: "watts",
-                                label: "Package power (0–" + Math.round(flightPage.controller.historyMaxWatts) + " W)",
+                                label: "Power (0–" + Math.round(flightPage.controller.historyMaxWatts) + " W)",
                                 accentKey: "power",
                                 active: flightPage.showWattsTrace
                             },
                             {
                                 key: "battery",
-                                label: "Battery discharge (0–" + Math.round(flightPage.controller.historyMaxWatts) + " W)",
+                                label: "Battery (0–" + Math.round(flightPage.controller.historyMaxWatts) + " W)",
                                 accentKey: "battery",
                                 active: flightPage.showBatteryTrace
                             },
@@ -303,8 +330,8 @@ Kirigami.ScrollablePage {
                             checkable: true
                             checked: channelChip.modelData.active
                             hoverEnabled: true
-                            implicitWidth: chipRow.implicitWidth + 20
-                            implicitHeight: chipRow.implicitHeight + 10
+                            implicitWidth: chipRow.implicitWidth + 18
+                            implicitHeight: chipRow.implicitHeight + 8
                             Accessible.name: channelChip.modelData.label
 
                             onToggled: {
@@ -333,9 +360,9 @@ Kirigami.ScrollablePage {
                                 spacing: 6
 
                                 Rectangle {
-                                    Layout.preferredWidth: 10
-                                    Layout.preferredHeight: 10
-                                    radius: 5
+                                    Layout.preferredWidth: 8
+                                    Layout.preferredHeight: 8
+                                    radius: 4
                                     color: channelChip.chipAccent
                                     opacity: channelChip.checked ? 1.0 : 0.35
                                 }
@@ -353,45 +380,171 @@ Kirigami.ScrollablePage {
             }
         }
 
-        QQC2.GroupBox {
+        // Investigation Range & Comparative Analysis Card
+        Rectangle {
             Layout.fillWidth: true
-            title: flightPage.controller.sessionMode ? "Frozen investigation" : "Select an investigation range"
+            implicitHeight: rangeCol.implicitHeight + Kirigami.Units.largeSpacing * 2
+            radius: theme.cardRadius
+            color: theme.surfaceColor
+            border.width: 1
+            border.color: theme.cardBorderColor
+
             ColumnLayout {
-                width: parent.width
-                QQC2.Label {
-                    Layout.fillWidth: true; wrapMode: Text.WordWrap
-                    text: flightPage.controller.sessionMode
-                        ? "Original observations are frozen. Live monitoring continues separately. " + (flightPage.controller.sessionPath || "Unsaved in-memory investigation")
-                        : "Select a moment in the timeline, set the beginning and end, then freeze the range. Comparisons use up to 30 seconds on either side."
+                id: rangeCol
+                anchors.fill: parent
+                anchors.margins: Kirigami.Units.largeSpacing
+                spacing: Kirigami.Units.smallSpacing
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Kirigami.Heading {
+                        level: 3
+                        text: flightPage.controller.sessionMode ? "Frozen investigation session" : "Investigation range"
+                        Layout.fillWidth: true
+                    }
+
+                    Rectangle {
+                        visible: flightPage.controller.sessionMode
+                        radius: theme.pillRadius
+                        color: theme.accentTint(theme.neutralColor, 0.16)
+                        border.width: 1
+                        border.color: theme.neutralColor
+                        implicitWidth: sPillLbl.implicitWidth + 12
+                        implicitHeight: sPillLbl.implicitHeight + 4
+                        QQC2.Label {
+                            id: sPillLbl
+                            anchors.centerIn: parent
+                            text: flightPage.controller.sessionPath ? "Saved session" : "In-memory investigation"
+                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                            font.bold: true
+                            color: theme.neutralColor
+                        }
+                    }
                 }
+
+                QQC2.Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                    color: Kirigami.Theme.disabledTextColor
+                    text: flightPage.controller.sessionMode
+                        ? "Original observations are frozen. Live monitoring continues separately. " + (flightPage.controller.sessionPath || "")
+                        : "Select a sample in the timeline, set the beginning and end, then freeze the range. Comparisons use up to 30 seconds on either side."
+                }
+
+                // Range Selection Actions Bar
                 Flow {
+                    visible: !flightPage.controller.sessionMode
                     Layout.fillWidth: true
                     spacing: Kirigami.Units.smallSpacing
+
                     QQC2.Button {
                         text: "Set beginning"
+                        icon.name: "go-first"
                         enabled: flightPage.controller.selectedHistorySampleId !== 0
                         onClicked: { flightPage.rangeStartId = flightPage.controller.selectedHistorySampleId; flightPage.rangeStartTimeMs = Number(flightPage.inspectedDetail.timestampMs) }
                     }
                     QQC2.Button {
                         text: "Set end"
+                        icon.name: "go-last"
                         enabled: flightPage.controller.selectedHistorySampleId !== 0
                         onClicked: { flightPage.rangeEndId = flightPage.controller.selectedHistorySampleId; flightPage.rangeEndTimeMs = Number(flightPage.inspectedDetail.timestampMs) }
                     }
                     QQC2.Button {
                         objectName: "freezeHistoryRangeButton"
                         text: "Freeze selected range"
+                        icon.name: "media-playback-pause"
                         enabled: flightPage.rangeStartId > 0 && flightPage.rangeEndId >= flightPage.rangeStartId
                         onClicked: flightPage.controller.selectHistoryRange(flightPage.rangeStartId, flightPage.rangeEndId)
                     }
+
+                    Rectangle {
+                        radius: theme.pillRadius
+                        color: theme.subtleSurfaceColor
+                        border.width: 1
+                        border.color: theme.subtleBorderColor
+                        implicitWidth: periodLbl.implicitWidth + 14
+                        implicitHeight: periodLbl.implicitHeight + 8
+
+                        QQC2.Label {
+                            id: periodLbl
+                            anchors.centerIn: parent
+                            text: "Range: " + (flightPage.rangeStartTimeMs ? new Date(flightPage.rangeStartTimeMs).toLocaleTimeString() : "Start unset")
+                                  + " → " + (flightPage.rangeEndTimeMs ? new Date(flightPage.rangeEndTimeMs).toLocaleTimeString() : "End unset")
+                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                            color: Kirigami.Theme.textColor
+                            font.bold: flightPage.rangeStartId > 0
+                        }
+                    }
                 }
-                QQC2.Label { visible: !flightPage.controller.sessionMode; Layout.fillWidth: true; wrapMode: Text.WordWrap; text: "Selected period: " + (flightPage.rangeStartTimeMs ? new Date(flightPage.rangeStartTimeMs).toLocaleTimeString() : "Beginning not set") + " — " + (flightPage.rangeEndTimeMs ? new Date(flightPage.rangeEndTimeMs).toLocaleTimeString() : "End not set") }
-                Repeater {
-                    model: flightPage.controller.sessionMode ? ["before", "during", "after"] : []
-                    delegate: QQC2.Label {
-                        required property string modelData
-                        Layout.fillWidth: true; wrapMode: Text.WordWrap
-                        text: modelData.charAt(0).toUpperCase() + modelData.slice(1) + "\n"
-                              + flightPage.comparisonText(flightPage.controller.investigationSummary[modelData])
+
+                // Before / During / After Comparison Tiles in Session Mode
+                GridLayout {
+                    visible: flightPage.controller.sessionMode
+                    Layout.fillWidth: true
+                    columns: flightPage.width < 720 ? 1 : 3
+                    columnSpacing: Kirigami.Units.smallSpacing
+                    rowSpacing: Kirigami.Units.smallSpacing
+
+                    Repeater {
+                        model: flightPage.controller.sessionMode ? ["before", "during", "after"] : []
+                        delegate: Rectangle {
+                            id: compTile
+                            required property string modelData
+                            readonly property var windowData: flightPage.controller.investigationSummary[compTile.modelData]
+                            Layout.fillWidth: true
+                            implicitHeight: compTileCol.implicitHeight + 16
+                            radius: theme.innerRadius
+                            color: compTile.modelData === "during"
+                                   ? theme.accentTint(theme.neutralColor, theme.isDark ? 0.16 : 0.09)
+                                   : theme.cardNestedBg
+                            border.width: 1
+                            border.color: compTile.modelData === "during" ? theme.neutralColor : theme.subtleBorderColor
+
+                            ColumnLayout {
+                                id: compTileCol
+                                anchors.fill: parent
+                                anchors.margins: 8
+                                spacing: 4
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    QQC2.Label {
+                                        text: compTile.modelData.toUpperCase()
+                                        font.bold: true
+                                        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                                        color: compTile.modelData === "during" ? theme.neutralColor : Kirigami.Theme.textColor
+                                        Layout.fillWidth: true
+                                    }
+                                    Rectangle {
+                                        radius: theme.pillRadius
+                                        color: theme.subtleSurfaceColor
+                                        implicitWidth: countBadgeLbl.implicitWidth + 8
+                                        implicitHeight: countBadgeLbl.implicitHeight + 4
+                                        QQC2.Label {
+                                            id: countBadgeLbl
+                                            anchors.centerIn: parent
+                                            text: (compTile.windowData ? compTile.windowData.sampleCount : 0) + " samples"
+                                            font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 2)
+                                            color: Kirigami.Theme.disabledTextColor
+                                        }
+                                    }
+                                }
+
+                                QQC2.Label {
+                                    Layout.fillWidth: true
+                                    wrapMode: Text.WordWrap
+                                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                                    text: compTile.windowData
+                                          ? "CPU avg: " + (compTile.windowData.cpuLoadAvailable ? Number(compTile.windowData.cpuLoadPercent).toFixed(1) + "%" : "—")
+                                            + " · Responsiveness: " + (compTile.windowData.responsivenessAvailable ? Number(compTile.windowData.responsivenessScore).toFixed(1) + "/100" : "—")
+                                            + "\nCoverage: " + (Number(compTile.windowData.coverageMs || 0) / 1000).toFixed(1) + " s · " + (compTile.windowData.gapCount || 0) + " gaps"
+                                          : "No observations available"
+                                }
+                            }
+                        }
                     }
                 }
             }

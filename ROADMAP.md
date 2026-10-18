@@ -1,5 +1,10 @@
 # Loofi Pulse roadmap
 
+## v0.10.0 — Modern UI/UX Refinement & Visual Polish
+- Systematic UI/UX redesign of desktop application and Plasma widget.
+- Segmented navigation, structured process inspection table, modern storage/network cards, grouped incident controls, unclipped widget cards.
+- Complete backward compatibility across all 52 automated tests.
+
 ## v0.9.0 — Complete local incident investigation
 
 The implementation brings incident investigation and expanded hardware coverage into one update:

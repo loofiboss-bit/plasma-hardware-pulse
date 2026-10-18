@@ -2,6 +2,15 @@
 
 Loofi Pulse is a local Linux hardware monitor and incident investigation tool for KDE Plasma 6. The C++20/Qt 6 application and Plasma widget share one user-session collector. Fedora KDE is the primary target.
 
+## Version 0.10.0 (UI/UX Refinement)
+
+- **Segmented Navigation & Window Frame**: Non-wrapping responsive navigation tabs with active indicator line and adaptive short labels below 980px. Polished header with status pill and theme tokens.
+- **Structured Processes Table**: Replaced raw text concatenations with a column-aligned table (PROCESS, PID, USER, CPU %, RAM, STATE) featuring mini CPU load meters, semantic state badges (`D` disk wait, `R`, `S`), live process counters, and a dedicated inspector card.
+- **Storage & Network Telemetry Cards**: Replaced monolithic GroupBoxes with modern cards displaying read/write speed gauges, IOPS, latency, directional network transfer meters, and drop/error counter badges.
+- **Flight Recorder Incident Workflow**: Organized history controls into 3 distinct clusters (Playback, Incident Actions, Session Export) and added sleek comparative analysis tiles (Before / During / After).
+- **Refined Overview & Diagnosis**: Nested causal diagnosis card with rule badge, evidence checkmarks, signal chips, and recommendation pill.
+- **Streamlined Plasma 6 Widget**: Unified compact action bar, unclipped domain card titles (`CPU & SoC`, `Memory & PSI`, `GPU & Sensors`, `Power & Battery`), and vertically centered panel indicators.
+
 ## Version 0.9.0
 
 - **Overview** connects the current diagnosis to CPU, GPU, temperature, memory pressure, storage and power details. **Why this status?** explains evidence, uncertainty and recommended next steps. High activity alone remains neutral.

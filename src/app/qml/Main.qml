@@ -503,35 +503,65 @@ Kirigami.ApplicationWindow {
                 }
             }
 
-            QQC2.Label {
+            // Collector and Mode Status Indicator
+            RowLayout {
                 Layout.fillWidth: true
-                wrapMode: Text.WordWrap
-                text: "Collector: " + telemetry.collectorState
-                      + (telemetry.sessionMode ? " · HISTORICAL investigation — live monitoring continues separately" : " · Live recording")
-                      + (telemetry.unsavedInvestigation ? " · Unsaved investigation" : "")
-                Accessible.name: text
+                spacing: 8
+
+                Rectangle {
+                    radius: theme.pillRadius
+                    color: telemetry.sessionMode ? theme.accentTint(theme.neutralColor, 0.16) : theme.subtleSurfaceColor
+                    border.width: 1
+                    border.color: telemetry.sessionMode ? theme.neutralColor : theme.subtleBorderColor
+                    implicitWidth: collStatusRow.implicitWidth + 12
+                    implicitHeight: collStatusRow.implicitHeight + 4
+
+                    RowLayout {
+                        id: collStatusRow
+                        anchors.centerIn: parent
+                        spacing: 6
+                        Rectangle {
+                            Layout.preferredWidth: 6
+                            Layout.preferredHeight: 6
+                            radius: 3
+                            color: telemetry.collectorState.indexOf("Disconnected") === 0
+                                   ? Kirigami.Theme.negativeTextColor
+                                   : (telemetry.sessionMode ? theme.neutralColor : Kirigami.Theme.positiveTextColor)
+                        }
+                        QQC2.Label {
+                            text: "Collector: " + telemetry.collectorState
+                                  + (telemetry.sessionMode ? " · HISTORICAL investigation (live monitoring continues separately)" : " · Live recording")
+                                  + (telemetry.unsavedInvestigation ? " · Unsaved" : "")
+                            color: telemetry.sessionMode ? theme.neutralColor : Kirigami.Theme.disabledTextColor
+                            font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 1)
+                            font.bold: telemetry.sessionMode
+                        }
+                    }
+                }
+
+                Item { Layout.fillWidth: true }
             }
 
-            // Segmented View Switcher Row
-            Flow {
+            // Segmented View Switcher Row (Non-wrapping, responsive labels)
+            RowLayout {
                 Layout.fillWidth: true
-                spacing: Kirigami.Units.smallSpacing
+                spacing: 4
 
                 Repeater {
                     model: [
-                        { id: "overview", label: "Overview", icon: "view-statistics" },
-                        { id: "flight", label: "History", icon: "chronometer" },
-                        { id: "pressure", label: "Memory & Pressure", icon: "memory" },
-                        { id: "power", label: "Power & Cooling", icon: "battery-profile-performance" },
-                        { id: "processes", label: "Processes", icon: "view-process-all" },
-                        { id: "storage", label: "Storage & Network", icon: "drive-harddisk" }
+                        { id: "overview", label: "Overview", shortLabel: "Overview", icon: "view-statistics" },
+                        { id: "flight", label: "History", shortLabel: "History", icon: "chronometer" },
+                        { id: "pressure", label: "Memory & Pressure", shortLabel: "Memory & PSI", icon: "memory" },
+                        { id: "power", label: "Power & Cooling", shortLabel: "Power & Fan", icon: "battery-profile-performance" },
+                        { id: "processes", label: "Processes", shortLabel: "Processes", icon: "view-process-all" },
+                        { id: "storage", label: "Storage & Network", shortLabel: "Storage & Net", icon: "drive-harddisk" }
                     ]
                     delegate: QQC2.AbstractButton {
                         id: navTabBtn
                         required property var modelData
                         readonly property bool isCurrent: appWindow.currentPageName === navTabBtn.modelData.id
-                        implicitWidth: tabContentRow.implicitWidth + 18
-                        implicitHeight: tabContentRow.implicitHeight + 10
+                        Layout.fillWidth: true
+                        implicitHeight: 34
                         hoverEnabled: true
                         Accessible.name: navTabBtn.modelData.label + " tab"
                         checkable: true
@@ -541,16 +571,27 @@ Kirigami.ApplicationWindow {
                         background: Rectangle {
                             radius: theme.innerRadius
                             color: navTabBtn.isCurrent
-                                   ? theme.accentTint(Kirigami.Theme.highlightColor, theme.isDark ? 0.22 : 0.14)
+                                   ? theme.accentTint(Kirigami.Theme.highlightColor, theme.isDark ? 0.20 : 0.12)
                                    : (navTabBtn.hovered ? theme.elevatedSurfaceColor : "transparent")
-                            border.width: navTabBtn.isCurrent ? 1.5 : 1
+                            border.width: 1
                             border.color: navTabBtn.activeFocus ? Kirigami.Theme.focusColor : navTabBtn.isCurrent
-                                          ? Kirigami.Theme.highlightColor
+                                          ? theme.accentTint(Kirigami.Theme.highlightColor, 0.45)
                                           : (navTabBtn.hovered ? theme.cardBorderColor : "transparent")
+
+                            // Active indicator line at bottom
+                            Rectangle {
+                                anchors.bottom: parent.bottom
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                width: navTabBtn.isCurrent ? parent.width - 16 : 0
+                                height: 2
+                                radius: 1
+                                color: Kirigami.Theme.highlightColor
+                                visible: navTabBtn.isCurrent
+                            }
                         }
 
                         contentItem: RowLayout {
-                            id: tabContentRow
+                            anchors.centerIn: parent
                             spacing: 6
                             Kirigami.Icon {
                                 source: navTabBtn.modelData.icon
@@ -559,9 +600,12 @@ Kirigami.ApplicationWindow {
                                 color: navTabBtn.isCurrent ? Kirigami.Theme.highlightColor : Kirigami.Theme.textColor
                             }
                             QQC2.Label {
-                                text: navTabBtn.modelData.label
+                                text: appWindow.width < 980 ? navTabBtn.modelData.shortLabel : navTabBtn.modelData.label
                                 font.bold: navTabBtn.isCurrent
+                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                                 color: navTabBtn.isCurrent ? Kirigami.Theme.textColor : Kirigami.Theme.disabledTextColor
+                                elide: Text.ElideRight
+                                visible: appWindow.width >= 620
                             }
                         }
                     }

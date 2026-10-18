@@ -56,51 +56,6 @@ Kirigami.ScrollablePage {
     ColumnLayout {
         Layout.fillWidth: true
         spacing: Kirigami.Units.largeSpacing
-
-        QQC2.GroupBox {
-            Layout.fillWidth: true
-            title: "Graphics devices"
-            ColumnLayout {
-                width: parent.width
-                QQC2.Label { visible: powerPage.controller.gpuDevices.length === 0; text: "No supported GPU telemetry interface found" }
-                Repeater {
-                    model: powerPage.controller.gpuDevices
-                    delegate: QQC2.RadioButton {
-                        id: gpuChoice
-                        required property var modelData
-                        Layout.fillWidth: true
-                        text: modelData.name + " · "
-                              + (modelData.busyAvailable ? Number(modelData.busyPercent).toFixed(0) + "% activity" : "Activity unavailable")
-                              + " · " + (modelData.temperatureAvailable ? Number(modelData.tempCelsius).toFixed(1) + " °C" : "Temperature unavailable")
-                              + (modelData.available ? "" : " · Disconnected or unsupported")
-                        checked: powerPage.controller.selectedGpuId === modelData.id
-                        onClicked: powerPage.controller.selectedGpuId = modelData.id
-                        contentItem: QQC2.Label { text: gpuChoice.text; wrapMode: Text.WordWrap; leftPadding: gpuChoice.indicator.width + 8 }
-                    }
-                }
-                QQC2.Label { Layout.fillWidth: true; wrapMode: Text.WordWrap; text: "Select a GPU for the live summary and recorded history. Availability depends on the driver; see Measurement capabilities in Storage & Network for limitations." }
-            }
-        }
-        QQC2.GroupBox {
-            Layout.fillWidth: true
-            title: "Individual batteries"
-            ColumnLayout {
-                width: parent.width
-                QQC2.Label { visible: powerPage.controller.batteries.length === 0; text: "No readable batteries" }
-                Repeater {
-                    model: powerPage.controller.batteries
-                    delegate: QQC2.Label {
-                        required property var modelData
-                        Layout.fillWidth: true; wrapMode: Text.WordWrap
-                        text: modelData.name + " · " + modelData.status + " · "
-                              + (modelData.available ? Number(modelData.percent).toFixed(0) + "%" : "Charge unavailable")
-                              + " · " + (modelData.powerAvailable ? Number(modelData.watts).toFixed(1) + " W" : "Power unavailable")
-                    }
-                }
-                QQC2.Label { Layout.fillWidth: true; wrapMode: Text.WordWrap; text: "Battery totals combine compatible energy readings only. Power-source status and battery charging are independent, including USB-C supplies." }
-            }
-        }
-
         // 1. Four Primary Power & Thermal Envelope Cards
         GridLayout {
             Layout.fillWidth: true
@@ -570,6 +525,163 @@ Kirigami.ScrollablePage {
                             Accessible.name: profBtn.modelData + (checked ? ", active profile" : ", change power profile")
                             onClicked: powerPage.controller.setPowerProfile(profBtn.modelData)
                         }
+                    }
+                }
+            }
+        }
+
+        // Multi-Device Selectors (Graphics & Batteries)
+        GridLayout {
+            Layout.fillWidth: true
+            columns: width < 720 ? 1 : 2
+            columnSpacing: Kirigami.Units.mediumSpacing
+            rowSpacing: Kirigami.Units.mediumSpacing
+
+            // Graphics Devices Card
+            Rectangle {
+                Layout.fillWidth: true
+                implicitHeight: gpuDevCol.implicitHeight + Kirigami.Units.largeSpacing * 2
+                radius: theme.cardRadius
+                color: theme.surfaceColor
+                border.width: 1
+                border.color: theme.cardBorderColor
+
+                ColumnLayout {
+                    id: gpuDevCol
+                    anchors.fill: parent
+                    anchors.margins: Kirigami.Units.largeSpacing
+                    spacing: Kirigami.Units.smallSpacing
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        Kirigami.Icon {
+                            source: "video-display"
+                            Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                            Layout.preferredHeight: Kirigami.Units.iconSizes.small
+                            color: theme.gpuAccent
+                        }
+                        Kirigami.Heading {
+                            level: 3
+                            text: "Graphics devices"
+                            Layout.fillWidth: true
+                        }
+                    }
+
+                    QQC2.Label {
+                        visible: powerPage.controller.gpuDevices.length === 0
+                        text: "No supported GPU telemetry interface found"
+                        color: Kirigami.Theme.disabledTextColor
+                    }
+
+                    Repeater {
+                        model: powerPage.controller.gpuDevices
+                        delegate: QQC2.RadioButton {
+                            id: gpuChoice
+                            required property var modelData
+                            Layout.fillWidth: true
+                            text: modelData.name + " · "
+                                  + (modelData.busyAvailable ? Number(modelData.busyPercent).toFixed(0) + "% activity" : "Activity unavailable")
+                                  + " · " + (modelData.temperatureAvailable ? Number(modelData.tempCelsius).toFixed(1) + " °C" : "Temperature unavailable")
+                                  + (modelData.available ? "" : " · Disconnected or unsupported")
+                            checked: powerPage.controller.selectedGpuId === modelData.id
+                            onClicked: powerPage.controller.selectedGpuId = modelData.id
+                            contentItem: QQC2.Label { text: gpuChoice.text; wrapMode: Text.WordWrap; leftPadding: gpuChoice.indicator.width + 8 }
+                        }
+                    }
+
+                    QQC2.Label {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                        color: Kirigami.Theme.disabledTextColor
+                        text: "Select a GPU for the live summary and recorded history. Availability depends on the driver."
+                    }
+                }
+            }
+
+            // Individual Batteries Card
+            Rectangle {
+                Layout.fillWidth: true
+                implicitHeight: batDevCol.implicitHeight + Kirigami.Units.largeSpacing * 2
+                radius: theme.cardRadius
+                color: theme.surfaceColor
+                border.width: 1
+                border.color: theme.cardBorderColor
+
+                ColumnLayout {
+                    id: batDevCol
+                    anchors.fill: parent
+                    anchors.margins: Kirigami.Units.largeSpacing
+                    spacing: Kirigami.Units.smallSpacing
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        Kirigami.Icon {
+                            source: "battery-profile-performance"
+                            Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                            Layout.preferredHeight: Kirigami.Units.iconSizes.small
+                            color: theme.batteryAccent
+                        }
+                        Kirigami.Heading {
+                            level: 3
+                            text: "Individual batteries"
+                            Layout.fillWidth: true
+                        }
+                    }
+
+                    QQC2.Label {
+                        visible: powerPage.controller.batteries.length === 0
+                        text: "No readable batteries present"
+                        color: Kirigami.Theme.disabledTextColor
+                    }
+
+                    Repeater {
+                        model: powerPage.controller.batteries
+                        delegate: Rectangle {
+                            id: batRow
+                            required property var modelData
+                            Layout.fillWidth: true
+                            implicitHeight: bRowCol.implicitHeight + 10
+                            radius: theme.innerRadius
+                            color: theme.cardNestedBg
+
+                            ColumnLayout {
+                                id: bRowCol
+                                anchors.fill: parent
+                                anchors.margins: 6
+                                spacing: 2
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    QQC2.Label { text: batRow.modelData.name; font.bold: true; Layout.fillWidth: true }
+                                    Rectangle {
+                                        radius: theme.pillRadius
+                                        color: theme.subtleSurfaceColor
+                                        implicitWidth: bStatLbl.implicitWidth + 8
+                                        implicitHeight: bStatLbl.implicitHeight + 4
+                                        QQC2.Label { id: bStatLbl; anchors.centerIn: parent; text: batRow.modelData.status; font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 2); font.bold: true }
+                                    }
+                                }
+
+                                QQC2.Label {
+                                    Layout.fillWidth: true
+                                    wrapMode: Text.WordWrap
+                                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                                    text: (batRow.modelData.available ? Number(batRow.modelData.percent).toFixed(0) + "% charge" : "Charge unavailable")
+                                          + " · " + (batRow.modelData.powerAvailable ? Number(batRow.modelData.watts).toFixed(1) + " W" : "Power unavailable")
+                                }
+                            }
+                        }
+                    }
+
+                    QQC2.Label {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                        color: Kirigami.Theme.disabledTextColor
+                        text: "Battery totals combine compatible energy readings only. Power-source status and battery charging are independent, including USB-C supplies."
                     }
                 }
             }

@@ -161,41 +161,115 @@ Kirigami.ScrollablePage {
 
                     QQC2.Button {
                         objectName: "whyStatusButton"
-                        text: "Why this status?"
+                        text: page.whyExpanded ? "Hide status explanation" : "Why this status?"
+                        icon.name: page.whyExpanded ? "collapse-all" : "help-about"
                         checkable: true
                         checked: page.whyExpanded
                         onClicked: page.whyExpanded = checked
                     }
-                    ColumnLayout {
+
+                    Rectangle {
                         visible: page.whyExpanded
                         Layout.fillWidth: true
-                        QQC2.Label {
-                            Layout.fillWidth: true
-                            wrapMode: Text.WordWrap
-                            text: "Rule: " + page.controller.verdictRuleId + " · observed for " + page.controller.verdictDurationSeconds.toFixed(1) + " s"
-                        }
-                        Repeater {
-                            model: page.controller.verdictEvidence
-                            delegate: QQC2.Label {
-                                required property string modelData
+                        implicitHeight: whyInnerCol.implicitHeight + 20
+                        radius: theme.innerRadius
+                        color: theme.cardNestedBg
+                        border.width: 1
+                        border.color: theme.subtleBorderColor
+
+                        ColumnLayout {
+                            id: whyInnerCol
+                            anchors.fill: parent
+                            anchors.margins: 10
+                            spacing: 6
+
+                            RowLayout {
                                 Layout.fillWidth: true
-                                wrapMode: Text.WordWrap
-                                text: "Evidence: " + modelData
+                                spacing: 6
+
+                                Rectangle {
+                                    radius: theme.pillRadius
+                                    color: theme.subtleSurfaceColor
+                                    border.width: 1
+                                    border.color: theme.subtleBorderColor
+                                    implicitWidth: ruleBadgeLbl.implicitWidth + 12
+                                    implicitHeight: ruleBadgeLbl.implicitHeight + 4
+                                    QQC2.Label {
+                                        id: ruleBadgeLbl
+                                        anchors.centerIn: parent
+                                        text: "Rule: " + page.controller.verdictRuleId
+                                        font.bold: true
+                                        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                                        color: Kirigami.Theme.textColor
+                                    }
+                                }
+
+                                QQC2.Label {
+                                    text: "Observed for " + page.controller.verdictDurationSeconds.toFixed(1) + " s"
+                                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                                    color: Kirigami.Theme.disabledTextColor
+                                }
                             }
-                        }
-                        Repeater {
-                            model: page.controller.verdictMissingEvidence
-                            delegate: QQC2.Label {
-                                required property string modelData
+
+                            Repeater {
+                                model: page.controller.verdictEvidence
+                                delegate: RowLayout {
+                                    required property string modelData
+                                    Layout.fillWidth: true
+                                    spacing: 6
+                                    Kirigami.Icon {
+                                        source: "dialog-ok"
+                                        Layout.preferredWidth: 12
+                                        Layout.preferredHeight: 12
+                                        color: Kirigami.Theme.positiveTextColor
+                                    }
+                                    QQC2.Label {
+                                        Layout.fillWidth: true
+                                        wrapMode: Text.WordWrap
+                                        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                                        text: parent.modelData
+                                    }
+                                }
+                            }
+
+                            Repeater {
+                                model: page.controller.verdictMissingEvidence
+                                delegate: RowLayout {
+                                    required property string modelData
+                                    Layout.fillWidth: true
+                                    spacing: 6
+                                    Kirigami.Icon {
+                                        source: "dialog-information"
+                                        Layout.preferredWidth: 12
+                                        Layout.preferredHeight: 12
+                                        color: Kirigami.Theme.disabledTextColor
+                                    }
+                                    QQC2.Label {
+                                        Layout.fillWidth: true
+                                        wrapMode: Text.WordWrap
+                                        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                                        color: Kirigami.Theme.disabledTextColor
+                                        text: "Missing: " + parent.modelData
+                                    }
+                                }
+                            }
+
+                            Rectangle {
                                 Layout.fillWidth: true
-                                wrapMode: Text.WordWrap
-                                text: "Missing evidence: " + modelData
+                                implicitHeight: whyRecLbl.implicitHeight + 8
+                                radius: 4
+                                color: theme.subtleSurfaceColor
+                                QQC2.Label {
+                                    id: whyRecLbl
+                                    anchors.fill: parent
+                                    anchors.margins: 4
+                                    wrapMode: Text.WordWrap
+                                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                                    font.bold: true
+                                    color: Kirigami.Theme.textColor
+                                    text: "Recommendation: " + page.controller.verdictRecommendation
+                                }
                             }
-                        }
-                        QQC2.Label {
-                            Layout.fillWidth: true
-                            wrapMode: Text.WordWrap
-                            text: "Recommendation: " + page.controller.verdictRecommendation
                         }
                     }
 
@@ -683,23 +757,70 @@ Kirigami.ScrollablePage {
 
                 RowLayout {
                     Layout.fillWidth: true
-                    spacing: Kirigami.Units.smallSpacing
+                    spacing: 8
 
-                    Kirigami.Icon {
-                        source: "utilities-system-monitor"
-                        Layout.preferredWidth: Kirigami.Units.iconSizes.small
-                        Layout.preferredHeight: Kirigami.Units.iconSizes.small
+                    Rectangle {
+                        Layout.preferredWidth: 24
+                        Layout.preferredHeight: 24
+                        radius: 6
+                        color: theme.accentTint(Kirigami.Theme.highlightColor, 0.16)
+                        Kirigami.Icon {
+                            anchors.centerIn: parent
+                            width: 14
+                            height: 14
+                            source: "utilities-system-monitor"
+                            color: Kirigami.Theme.highlightColor
+                        }
+                    }
+
+                    QQC2.Label {
+                        text: "Top process (concurrent CPU load):"
+                        color: Kirigami.Theme.disabledTextColor
+                        font.bold: true
+                        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                     }
 
                     QQC2.Label {
                         Layout.fillWidth: true
-                        text: "Top process: " + (page.controller.culpritName
-                              ? page.controller.culpritName + " (" + page.controller.culpritCpuPercent.toFixed(1) + "% CPU, "
-                                + Math.round(page.controller.culpritRssMb) + " MiB RSS) · concurrent CPU load, not proof of cause"
-                              : "Unavailable")
+                        text: page.controller.culpritName ? page.controller.culpritName : "None / Unavailable"
                         color: Kirigami.Theme.textColor
                         font.bold: true
-                        wrapMode: Text.WordWrap
+                        elide: Text.ElideRight
+                    }
+
+                    Rectangle {
+                        visible: page.controller.culpritName && page.controller.culpritCpuPercent > 0
+                        radius: theme.pillRadius
+                        color: theme.accentTint(theme.cpuAccent, 0.14)
+                        border.width: 1
+                        border.color: theme.cpuAccent
+                        implicitWidth: cCpuLbl.implicitWidth + 10
+                        implicitHeight: cCpuLbl.implicitHeight + 4
+                        QQC2.Label {
+                            id: cCpuLbl
+                            anchors.centerIn: parent
+                            text: page.controller.culpritCpuPercent.toFixed(1) + "% CPU"
+                            font.bold: true
+                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                            color: theme.cpuAccent
+                        }
+                    }
+
+                    Rectangle {
+                        visible: page.controller.culpritName && page.controller.culpritRssMb > 0
+                        radius: theme.pillRadius
+                        color: theme.subtleSurfaceColor
+                        border.width: 1
+                        border.color: theme.subtleBorderColor
+                        implicitWidth: cRssLbl.implicitWidth + 10
+                        implicitHeight: cRssLbl.implicitHeight + 4
+                        QQC2.Label {
+                            id: cRssLbl
+                            anchors.centerIn: parent
+                            text: Math.round(page.controller.culpritRssMb) + " MiB RSS"
+                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                            color: Kirigami.Theme.disabledTextColor
+                        }
                     }
                 }
 

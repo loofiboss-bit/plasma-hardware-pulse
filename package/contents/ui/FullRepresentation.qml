@@ -155,6 +155,32 @@ Item {
                     }
 
                     Rectangle {
+                        radius: 5
+                        color: fullRoot.cardSurface
+                        border.width: 1
+                        border.color: fullRoot.cardBorder
+                        implicitWidth: colRow.implicitWidth + 10
+                        implicitHeight: colRow.implicitHeight + 4
+                        RowLayout {
+                            id: colRow
+                            anchors.centerIn: parent
+                            spacing: 5
+                            Rectangle {
+                                width: 6
+                                height: 6
+                                radius: 3
+                                color: fullRoot.controller.collectorState.startsWith("Live")
+                                       ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.disabledTextColor
+                            }
+                            PlasmaComponents3.Label {
+                                text: fullRoot.controller.collectorState
+                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                                opacity: 0.85
+                            }
+                        }
+                    }
+
+                    Rectangle {
                         visible: fullRoot.controller.activePowerProfile.length > 0
                         radius: 5
                         color: fullRoot.cardSurface
@@ -173,15 +199,23 @@ Item {
                     }
                 }
 
-                Flow {
+                RowLayout {
                     Layout.fillWidth: true
                     spacing: Kirigami.Units.smallSpacing
 
                     PlasmaComponents3.Button {
+                        Layout.fillWidth: true
                         icon.name: "window-new"
-                        text: "Open app"
+                        text: "Open App"
                         Accessible.name: "Open Loofi Pulse app"
                         onClicked: fullRoot.controller.launchStudioApp("overview")
+                    }
+
+                    PlasmaComponents3.Button {
+                        icon.name: "view-process-all"
+                        text: "Processes"
+                        Accessible.name: "Open Loofi Pulse Processes view"
+                        onClicked: fullRoot.controller.launchStudioApp("processes")
                     }
 
                     PlasmaComponents3.Button {
@@ -192,17 +226,37 @@ Item {
                     }
 
                     PlasmaComponents3.Button {
-                        icon.name: "edit-copy"
-                        text: "Copy report"
-                        Accessible.name: "Copy current incident report"
-                        onClicked: fullRoot.controller.copyIncidentReportToClipboard()
-                    }
-
-                    PlasmaComponents3.Button {
                         icon.name: "utilities-system-monitor"
                         text: "System Monitor"
                         Accessible.name: "Open KDE System Monitor process view"
                         onClicked: fullRoot.controller.openSystemMonitor()
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: Kirigami.Units.smallSpacing
+
+                    PlasmaComponents3.Button {
+                        Layout.fillWidth: true
+                        icon.name: "bookmark-new"
+                        text: "Mark problem now"
+                        Accessible.name: "Mark problem and open history"
+                        onClicked: fullRoot.controller.markProblemAndLaunch()
+                    }
+
+                    PlasmaComponents3.Button {
+                        icon.name: "notifications-disabled"
+                        text: "Snooze 15 min"
+                        Accessible.name: "Snooze notifications for 15 minutes"
+                        onClicked: fullRoot.controller.snoozeNotifications()
+                    }
+
+                    PlasmaComponents3.Button {
+                        icon.name: "edit-copy"
+                        text: "Copy report"
+                        Accessible.name: "Copy current incident report"
+                        onClicked: fullRoot.controller.copyIncidentReportToClipboard()
                     }
                 }
             }
@@ -226,30 +280,6 @@ Item {
                 }
             }
 
-            PlasmaComponents3.Label {
-                Layout.fillWidth: true
-                wrapMode: Text.WordWrap
-                text: "Collector: " + fullRoot.controller.collectorState
-                Accessible.name: text
-            }
-            Flow {
-                Layout.fillWidth: true
-                spacing: Kirigami.Units.smallSpacing
-                PlasmaComponents3.Button {
-                    text: "Processes"
-                    icon.name: "view-process-all"
-                    onClicked: fullRoot.controller.launchStudioApp("processes")
-                }
-                PlasmaComponents3.Button {
-                    text: "Mark problem now"
-                    icon.name: "bookmark-new"
-                    onClicked: fullRoot.controller.markProblemAndLaunch()
-                }
-                PlasmaComponents3.Button {
-                    text: "Snooze 15 min"
-                    onClicked: fullRoot.controller.snoozeNotifications()
-                }
-            }
             Repeater {
                 model: fullRoot.controller.incidentHistory.slice(-5).reverse()
                 delegate: PlasmaComponents3.Button {
@@ -393,7 +423,7 @@ Item {
                 Repeater {
                     model: [
                         {
-                            title: "CPU & SoC Package",
+                            title: "CPU & SoC",
                             targetPage: "power",
                             targetSection: "cpu",
                             accessibleName: "Open CPU and Power details",
@@ -408,16 +438,16 @@ Item {
                             barVisible: fullRoot.controller.cpuLoadAvailable
                         },
                         {
-                            title: "Memory, Disk I/O & Pressure",
+                            title: "Memory & PSI",
                             targetPage: "pressure",
                             targetSection: "overview",
                             accessibleName: "Open Memory and Pressure details",
                             accentKey: "psi",
-                            headline: "Responsiveness index: " + (fullRoot.controller.psiAvailable ? fullRoot.controller.responsivenessScore.toFixed(1) + "/100" : "Unavailable")
+                            headline: "Responsiveness: " + (fullRoot.controller.psiAvailable ? fullRoot.controller.responsivenessScore.toFixed(1) + "/100" : "Unavailable")
                                       + " · ZRAM: " + (fullRoot.controller.zramCompressionAvailable
                                       ? fullRoot.controller.zramCompressionRatio.toFixed(1) + "×"
                                       : (fullRoot.controller.zramAvailable ? "Idle" : "Unavailable")),
-                            subtitle: "Higher is better. PSI wait · CPU " + (fullRoot.controller.psiCpuAvailable ? fullRoot.controller.psiCpuSome10.toFixed(1) + "%" : "N/A")
+                            subtitle: "PSI wait · CPU " + (fullRoot.controller.psiCpuAvailable ? fullRoot.controller.psiCpuSome10.toFixed(1) + "%" : "N/A")
                                       + " · Mem " + (fullRoot.controller.psiMemoryAvailable ? fullRoot.controller.psiMemSome10.toFixed(1) + "%" : "N/A")
                                       + (fullRoot.controller.diskThroughputAvailable
                                          ? " · Disk " + Number(fullRoot.controller.diskReadMibPerSec + fullRoot.controller.diskWriteMibPerSec).toFixed(1) + " MiB/s"
@@ -430,7 +460,7 @@ Item {
                             barVisible: fullRoot.controller.psiAvailable
                         },
                         {
-                            title: "GPU, NVMe & Wireless",
+                            title: "GPU & Sensors",
                             targetPage: "power",
                             targetSection: "gpu",
                             accessibleName: "Open GPU and sensor details",
@@ -445,21 +475,21 @@ Item {
                             barVisible: fullRoot.controller.gpuBusyAvailable
                         },
                         {
-                            title: "CPU package & battery",
+                            title: "Power & Battery",
                             targetPage: "power",
                             targetSection: "battery",
                             accessibleName: "Open Power and Cooling details",
                             accentKey: "power",
-                            headline: "CPU package: " + (fullRoot.controller.packagePowerAvailable
+                            headline: "CPU: " + (fullRoot.controller.packagePowerAvailable
                                        ? fullRoot.controller.packageWatts.toFixed(1) + " W" + (fullRoot.controller.packagePowerEstimated ? " · Est." : " · Measured")
-                                       : "Power unavailable") + "  •  "
+                                       : "N/A") + "  •  "
                                       + (fullRoot.controller.batteryStateAvailable ? fullRoot.controller.batteryTimeRemainingText : "Battery unavailable"),
-                            subtitle: "Battery discharge: " + (fullRoot.controller.batteryPowerAvailable && fullRoot.controller.batteryStatus === "Discharging"
-                                      ? fullRoot.controller.batteryWatts.toFixed(1) + " W" : "Unavailable or not discharging")
-                                      + " · Power limits: " + (fullRoot.controller.powerLimitsAvailable
+                            subtitle: "Discharge: " + (fullRoot.controller.batteryPowerAvailable && fullRoot.controller.batteryStatus === "Discharging"
+                                      ? fullRoot.controller.batteryWatts.toFixed(1) + " W" : "Unavailable or AC")
+                                      + " · Limits: " + (fullRoot.controller.powerLimitsAvailable
                                       ? Math.round(fullRoot.controller.pl1LimitWatts) + "/" + Math.round(fullRoot.controller.pl2LimitWatts) + " W"
-                                      : "Unavailable") + " · Fan: "
-                                      + (fullRoot.controller.fanAvailable ? (fullRoot.controller.primaryFanRpm + " RPM") : "Fan unavailable"),
+                                      : "N/A") + " · Fan: "
+                                      + (fullRoot.controller.fanAvailable ? (fullRoot.controller.primaryFanRpm + " RPM") : "N/A"),
                             ratio: fullRoot.controller.packagePowerAvailable
                                    ? Math.min(1.0, Math.max(0.0, fullRoot.controller.packageWatts / Math.max(25.0, fullRoot.controller.pl1LimitWatts > 0 ? fullRoot.controller.pl1LimitWatts : 45.0))) : 0.0,
                             barVisible: fullRoot.controller.packagePowerAvailable
