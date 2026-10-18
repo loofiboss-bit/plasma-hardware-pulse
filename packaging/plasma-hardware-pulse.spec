@@ -1,5 +1,5 @@
 Name:           plasma-hardware-pulse
-Version:        0.9.0
+Version:        0.10.0
 Release:        1%{?dist}
 Summary:        Hardware, temperature, memory pressure, and power monitor for KDE Plasma 6
 
@@ -71,6 +71,8 @@ QT_QPA_PLATFORM=offscreen QML_IMPORT_PATH="%{_vpath_builddir}/bin" ctest --test-
 %{_kf6_metainfodir}/com.github.loofi.hardwarepulse.metainfo.xml
 
 %changelog
+* Sun Oct 18 2026 Loofi <loofi@github.com> - 0.10.0-1
+- Comprehensive UI/UX overhaul: structured Plasma 6 layout, responsive navigation tabs, column-aligned process table, polished storage/network cards, streamlined incident action workflow, and refined Plasmoid widget
 * Sun Oct 18 2026 Loofi <loofi@github.com> - 0.9.0-1
 - Add a shared session collector, incident investigations and local session files
 - Add full process inspection, per-device storage and network data, and multiple GPU and battery support

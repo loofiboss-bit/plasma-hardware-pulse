@@ -23,20 +23,35 @@ QtObject {
         ? Qt.tint(bgColor, Qt.rgba(1, 1, 1, 0.045))
         : Qt.tint(bgColor, Qt.rgba(0, 0, 0, 0.025))
     readonly property color elevatedSurfaceColor: isDark
-        ? Qt.tint(bgColor, Qt.rgba(1, 1, 1, 0.08))
-        : Qt.tint(bgColor, Qt.rgba(0, 0, 0, 0.05))
+        ? Qt.tint(bgColor, Qt.rgba(1, 1, 1, 0.075))
+        : Qt.tint(bgColor, Qt.rgba(0, 0, 0, 0.045))
     readonly property color subtleSurfaceColor: isDark
-        ? Qt.rgba(1, 1, 1, 0.035)
+        ? Qt.rgba(1, 1, 1, 0.03)
+        : Qt.rgba(0, 0, 0, 0.025)
+    readonly property color cardNestedBg: isDark
+        ? Qt.rgba(0, 0, 0, 0.22)
         : Qt.rgba(0, 0, 0, 0.035)
     readonly property color trackColor: isDark
-        ? Qt.rgba(1, 1, 1, 0.09)
-        : Qt.rgba(0, 0, 0, 0.08)
+        ? Qt.rgba(1, 1, 1, 0.08)
+        : Qt.rgba(0, 0, 0, 0.07)
     readonly property color cardBorderColor: isDark
-        ? Qt.rgba(1, 1, 1, 0.11)
-        : Qt.rgba(0, 0, 0, 0.12)
+        ? Qt.rgba(1, 1, 1, 0.08)
+        : Qt.rgba(0, 0, 0, 0.09)
+    readonly property color cardHoverBorderColor: isDark
+        ? Qt.rgba(1, 1, 1, 0.22)
+        : Qt.rgba(0, 0, 0, 0.20)
     readonly property color subtleBorderColor: isDark
-        ? Qt.rgba(1, 1, 1, 0.07)
-        : Qt.rgba(0, 0, 0, 0.08)
+        ? Qt.rgba(1, 1, 1, 0.05)
+        : Qt.rgba(0, 0, 0, 0.05)
+    readonly property color tableHeaderBg: isDark
+        ? Qt.rgba(1, 1, 1, 0.04)
+        : Qt.rgba(0, 0, 0, 0.035)
+    readonly property color tableRowHoverBg: isDark
+        ? Qt.rgba(1, 1, 1, 0.06)
+        : Qt.rgba(0, 0, 0, 0.04)
+    readonly property color tableRowAltBg: isDark
+        ? Qt.rgba(1, 1, 1, 0.015)
+        : Qt.rgba(0, 0, 0, 0.015)
 
     // Semantic telemetry channel colors (high contrast in both dark and light mode)
     readonly property color tempAccent: isDark ? "#fb923c" : "#d97706"
@@ -48,8 +63,8 @@ QtObject {
     readonly property color storageAccent: isDark ? "#2dd4bf" : "#0d9488"
 
     // Standard radius tokens
-    readonly property int cardRadius: 12
-    readonly property int innerRadius: 8
+    readonly property int cardRadius: 10
+    readonly property int innerRadius: 7
     readonly property int pillRadius: 6
 
     function severityColor(sev) {
@@ -62,12 +77,12 @@ QtObject {
 
     function severityBgColor(sev) {
         var base = severityColor(sev)
-        return Qt.rgba(base.r, base.g, base.b, isDark ? 0.13 : 0.09)
+        return Qt.rgba(base.r, base.g, base.b, isDark ? 0.12 : 0.08)
     }
 
     function severityBorderColor(sev) {
         var base = severityColor(sev)
-        return Qt.rgba(base.r, base.g, base.b, isDark ? 0.55 : 0.45)
+        return Qt.rgba(base.r, base.g, base.b, isDark ? 0.45 : 0.35)
     }
 
     function severityBadgeText(sev) {
@@ -76,6 +91,14 @@ QtObject {
         if (sev === 2) return "BOTTLENECK"
         if (sev === 1) return "ELEVATED"
         return "NOMINAL"
+    }
+
+    function severityIcon(sev) {
+        if (sev === 4) return "state-sync"
+        if (sev === 3) return "dialog-error"
+        if (sev === 2) return "dialog-warning"
+        if (sev === 1) return "dialog-information"
+        return "dialog-ok"
     }
 
     function accentTint(accentColor, alphaValue) {
@@ -92,6 +115,4 @@ QtObject {
         if (key === "storage") return storageAccent
         return cpuAccent
     }
-
-
 }
