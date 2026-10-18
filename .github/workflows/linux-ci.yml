@@ -48,6 +48,9 @@ jobs:
 
       - uses: actions/checkout@v4
 
+      - name: Verify checkout identity
+        run: test "$(git -c safe.directory="$GITHUB_WORKSPACE" rev-parse HEAD)" = "$GITHUB_SHA"
+
       - name: Verify release tag version
         if: startsWith(github.ref, 'refs/tags/')
         run: test "$GITHUB_REF_NAME" = "v$(cat VERSION)"
@@ -104,7 +107,7 @@ jobs:
           PULSE_VERSION="$(cat VERSION)"
           PULSE_RPM_ROOT="${RUNNER_TEMP:-/tmp}/loofi-pulse-rpmbuild"
           mkdir -p "$PULSE_RPM_ROOT/SOURCES"
-          git archive --format=tar --prefix="plasma-hardware-pulse-$PULSE_VERSION/" HEAD | gzip -n > "$PULSE_RPM_ROOT/SOURCES/plasma-hardware-pulse-$PULSE_VERSION.tar.gz"
+          git -c safe.directory="$GITHUB_WORKSPACE" archive --format=tar --prefix="plasma-hardware-pulse-$PULSE_VERSION/" HEAD | gzip -n > "$PULSE_RPM_ROOT/SOURCES/plasma-hardware-pulse-$PULSE_VERSION.tar.gz"
           rpmbuild -ba packaging/plasma-hardware-pulse.spec \
             --define "_topdir $PULSE_RPM_ROOT" \
             --define "_smp_build_ncpus 2"
