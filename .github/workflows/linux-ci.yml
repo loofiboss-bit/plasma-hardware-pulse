@@ -11,13 +11,10 @@ jobs:
     container: fedora:latest
     permissions:
       contents: read
+    defaults:
+      run:
+        shell: bash --noprofile --norc -eo pipefail {0}
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Verify release tag version
-        if: startsWith(github.ref, 'refs/tags/')
-        run: test "$GITHUB_REF_NAME" = "v$(cat VERSION)"
-
       - name: Install build dependencies
         run: |
           dnf install --assumeyes \
@@ -48,6 +45,12 @@ jobs:
             qt6-qttools-devel \
             appstream \
             zip
+
+      - uses: actions/checkout@v4
+
+      - name: Verify release tag version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: test "$GITHUB_REF_NAME" = "v$(cat VERSION)"
 
       - name: Configure
         run: >-
