@@ -39,6 +39,9 @@ CollectorService::CollectorService(QObject *parent) : QObject(parent)
     QDBusConnection::sessionBus().connect(QStringLiteral("org.freedesktop.DBus"), QStringLiteral("/org/freedesktop/DBus"),
         QStringLiteral("org.freedesktop.DBus"), QStringLiteral("NameOwnerChanged"), this,
         SLOT(ownerChanged(QString,QString,QString)));
+    QDBusConnection::systemBus().connect(QStringLiteral("org.freedesktop.login1"), QStringLiteral("/org/freedesktop/login1"),
+        QStringLiteral("org.freedesktop.login1.Manager"), QStringLiteral("PrepareForSleep"), this,
+        SLOT(onPrepareForSleep(bool)));
     m_busHealth.setInterval(500);
     connect(&m_busHealth, &QTimer::timeout, this, [] {
         if (!QDBusConnection::sessionBus().isConnected()) QCoreApplication::quit();
@@ -101,13 +104,38 @@ QByteArray CollectorService::History(qulonglong afterId, int limit) { return dis
 QByteArray CollectorService::Incident(const QString &id) { return dispatch([id](auto *e) { return e->collectorIncident(id); }); }
 QByteArray CollectorService::MarkProblem() { return dispatch([](auto *e) { return e->collectorMarkProblem(); }); }
 
+void CollectorService::onPrepareForSleep(bool goingToSleep)
+{
+    if (goingToSleep) {
+        QMetaObject::invokeMethod(m_anchor, [this] {
+            if (m_engine) m_engine->setRecordingPaused(true);
+        }, Qt::QueuedConnection);
+    } else {
+        QMetaObject::invokeMethod(m_anchor, [this] {
+            if (m_engine) {
+                m_engine->handleSystemResume();
+                m_engine->setRecordingPaused(false);
+            }
+        }, Qt::QueuedConnection);
+    }
+}
+
 QByteArray CollectorService::OpenApplication(const QString &page, const QString &section)
 {
-    const QString executable = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("loofi-pulse"));
     const QString target = PulseTelemetryController::normalizedPageName(page);
     QStringList arguments{QStringLiteral("--page"), target};
     const QString validSection = PulseTelemetryController::validatedSectionName(target, section);
     if (!validSection.isEmpty()) arguments << QStringLiteral("--section") << validSection;
+
+    auto bus = QDBusConnection::sessionBus();
+    auto call = QDBusMessage::createMethodCall(QStringLiteral("com.github.loofi.hardwarepulse.App"),
+        QStringLiteral("/com/github/loofi/hardwarepulse/App"),
+        QStringLiteral("com.github.loofi.hardwarepulse.App1"), QStringLiteral("Activate"));
+    call << arguments << QDir::currentPath() << QString();
+    auto reply = bus.call(call, QDBus::Block, 1000);
+    if (reply.type() == QDBusMessage::ReplyMessage) return success();
+
+    const QString executable = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("loofi-pulse"));
     if (!QFileInfo(executable).isExecutable() || !QProcess::startDetached(executable, arguments)) {
         sendErrorReply(QStringLiteral("com.github.loofi.hardwarepulse.LaunchFailed"), QStringLiteral("The application matching this collector could not be opened.")); return {};
     }
@@ -115,9 +143,21 @@ QByteArray CollectorService::OpenApplication(const QString &page, const QString 
 }
 QByteArray CollectorService::OpenIncident(const QString &id)
 {
+    if (id.isEmpty() || id.size() > 200) {
+        sendErrorReply(QStringLiteral("com.github.loofi.hardwarepulse.LaunchFailed"), QStringLiteral("The recorded incident could not be opened in the matching application.")); return {};
+    }
+    const QStringList arguments{QStringLiteral("--incident"), id};
+    auto bus = QDBusConnection::sessionBus();
+    auto call = QDBusMessage::createMethodCall(QStringLiteral("com.github.loofi.hardwarepulse.App"),
+        QStringLiteral("/com/github/loofi/hardwarepulse/App"),
+        QStringLiteral("com.github.loofi.hardwarepulse.App1"), QStringLiteral("Activate"));
+    call << arguments << QDir::currentPath() << QString();
+    auto reply = bus.call(call, QDBus::Block, 1000);
+    if (reply.type() == QDBusMessage::ReplyMessage) return success();
+
     const QString executable = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("loofi-pulse"));
-    if (id.isEmpty() || id.size() > 200 || !QFileInfo(executable).isExecutable()
-        || !QProcess::startDetached(executable, {QStringLiteral("--incident"), id})) {
+    if (!QFileInfo(executable).isExecutable()
+        || !QProcess::startDetached(executable, arguments)) {
         sendErrorReply(QStringLiteral("com.github.loofi.hardwarepulse.LaunchFailed"), QStringLiteral("The recorded incident could not be opened in the matching application.")); return {};
     }
     return success();
@@ -192,8 +232,17 @@ void CollectorService::notify(const QVariantMap &packet)
     auto *open = notification->addAction(QStringLiteral("Open incident"));
     auto *snooze = notification->addAction(QStringLiteral("Snooze 15 minutes"));
     connect(open, &KNotificationAction::activated, this, [id] {
+        const QStringList arguments{QStringLiteral("--incident"), id};
+        auto bus = QDBusConnection::sessionBus();
+        auto call = QDBusMessage::createMethodCall(QStringLiteral("com.github.loofi.hardwarepulse.App"),
+            QStringLiteral("/com/github/loofi/hardwarepulse/App"),
+            QStringLiteral("com.github.loofi.hardwarepulse.App1"), QStringLiteral("Activate"));
+        call << arguments << QDir::currentPath() << QString();
+        auto reply = bus.call(call, QDBus::Block, 1000);
+        if (reply.type() == QDBusMessage::ReplyMessage) return;
+
         const QString executable = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("loofi-pulse"));
-        QProcess::startDetached(executable, {QStringLiteral("--incident"), id});
+        QProcess::startDetached(executable, arguments);
     });
     connect(snooze, &KNotificationAction::activated, this, [this] { m_snoozeUntil = QDateTime::currentMSecsSinceEpoch() + 900000; });
     notification->sendEvent();

@@ -21,6 +21,7 @@ public:
     GpuSnapshot sampleGpu(const QList<DomainSensorReading> &domainReadings);
     CulpritProcess sampleTopCulpritProcess();
     ProcessRadarSnapshot sampleProcessRadar(int maxTopProcesses = 5);
+    void resetBaselines();
 
 private:
     struct CpuJiffies

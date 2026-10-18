@@ -1,5 +1,7 @@
 qt_add_executable(loofi-pulse
     main.cpp
+    appinstance.cpp
+    appinstance.h
     ${CMAKE_SOURCE_DIR}/src/plugin/pulsetelemetrycontroller.cpp
     ${CMAKE_SOURCE_DIR}/src/plugin/collectorclient.cpp
     ${CMAKE_SOURCE_DIR}/src/plugin/telemetryselection.cpp
@@ -34,6 +36,9 @@ target_link_libraries(loofi-pulse
     KF6::CoreAddons
     KF6::Notifications
     KF6::I18n
+    KF6::Crash
+    KF6::WindowSystem
+    Qt6::DBus
 )
 
 install(TARGETS loofi-pulse RUNTIME DESTINATION ${KDE_INSTALL_BINDIR})

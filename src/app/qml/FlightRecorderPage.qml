@@ -4,7 +4,7 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import "MeasurementLabels.js" as MeasurementLabels
 import org.kde.kirigami as Kirigami
-import Qt.labs.settings
+import QtCore as QtCore
 
 Kirigami.ScrollablePage {
     id: flightPage
@@ -63,7 +63,7 @@ Kirigami.ScrollablePage {
         positiveColor: flightPage.Kirigami.Theme.positiveTextColor
     }
 
-    Settings {
+    QtCore.Settings {
         id: historySettings
         category: "LoofiPulseHistory"
         property bool showTemp: true

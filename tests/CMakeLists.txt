@@ -90,7 +90,7 @@ target_link_libraries(test_controller_actions PRIVATE
     loofipulsecore Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::DBus Qt6::Widgets Qt6::Test
     KF6::Notifications KF6::I18n
 )
-foreach(test_name IN ITEMS testNavigationValidationAndPrivacyDefaults testNetworkSelectionAndHistoryMetadata testMissingSystemMonitorReportsFailure testUnsupportedProfileNeverStartsChange testUnwritableReportLocationReportsFailure testHistoryRetentionAndClearHistory)
+foreach(test_name IN ITEMS testNavigationValidationAndPrivacyDefaults testNetworkSelectionAndHistoryMetadata testMissingSystemMonitorReportsFailure testUnsupportedProfileNeverStartsChange testUnwritableReportLocationReportsFailure testHistoryRetentionAndClearHistory testCollectorConnectedAndReconnect testSystemResumeResetsBaselinesAndSetsGap)
     add_test(NAME controller_${test_name} COMMAND test_controller_actions ${test_name})
     set_tests_properties(controller_${test_name} PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;${PULSE_TEST_XDG_ENV}")
 endforeach()
@@ -100,6 +100,14 @@ if(DBUS_RUN_SESSION)
         COMMAND ${DBUS_RUN_SESSION} -- $<TARGET_FILE:test_controller_actions> testAsyncProfileSetFailure)
     set_tests_properties(controller_async_profile_failure PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;${PULSE_TEST_XDG_ENV}" TIMEOUT 15)
 endif()
+
+qt_add_executable(test_single_instance
+    test_single_instance.cpp
+    ${PROJECT_SOURCE_DIR}/src/app/appinstance.cpp
+)
+target_include_directories(test_single_instance PRIVATE ${PROJECT_SOURCE_DIR}/src/app)
+target_link_libraries(test_single_instance PRIVATE Qt6::Core Qt6::DBus Qt6::Test)
+pulse_add_dbus_test(app_single_instance test_single_instance 15)
 
 qt_add_executable(test_qml_ui test_qml_ui.cpp)
 target_compile_definitions(test_qml_ui PRIVATE

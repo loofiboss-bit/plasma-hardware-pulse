@@ -1045,4 +1045,14 @@ QString PulseTelemetryController::exportIncidentReportToFile()
     return {};
 }
 
+void PulseTelemetryController::handleSystemResume()
+{
+    m_cpuSampler.resetBaselines();
+    m_psiSampler.resetBaselines();
+    m_gapPending = true;
+    if (m_remoteClient) {
+        reconnectCollector();
+    }
+}
+
 } // namespace LoofiPulse

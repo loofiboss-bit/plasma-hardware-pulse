@@ -380,6 +380,7 @@ public:
     Q_PROPERTY(QVariantList batteries READ batteries NOTIFY telemetryUpdated)
     Q_PROPERTY(QVariantList capabilities READ capabilities NOTIFY telemetryUpdated)
     Q_PROPERTY(QString collectorState READ collectorState NOTIFY telemetryUpdated)
+    Q_PROPERTY(bool collectorConnected READ collectorConnected NOTIFY telemetryUpdated)
     Q_PROPERTY(bool backgroundMonitoring READ backgroundMonitoring WRITE setBackgroundMonitoring NOTIFY telemetryUpdated)
     Q_PROPERTY(bool startAtLogin READ startAtLogin WRITE setStartAtLogin NOTIFY telemetryUpdated)
     Q_PROPERTY(bool sessionMode READ sessionMode NOTIFY telemetryUpdated)
@@ -395,6 +396,7 @@ public:
     QVariantList batteries() const;
     QVariantList capabilities() const;
     QString collectorState() const;
+    bool collectorConnected() const;
     bool backgroundMonitoring() const { return m_remoteValues.value(QStringLiteral("backgroundMonitoring")).toBool(); }
     bool startAtLogin() const { return m_remoteValues.value(QStringLiteral("startAtLogin")).toBool(); }
     void setBackgroundMonitoring(bool enabled);
@@ -408,6 +410,7 @@ public:
     void setSelectedGpuId(const QString &id);
     void setSelectedStorageId(const QString &id);
     bool actionPending() const { return m_actionPending; }
+    Q_INVOKABLE void reconnectCollector();
     Q_INVOKABLE void markProblemNow();
     Q_INVOKABLE void markProblemAndLaunch();
     Q_INVOKABLE void selectIncident(const QString &id);
@@ -421,6 +424,7 @@ public:
     Q_INVOKABLE void snoozeNotifications();
     Q_INVOKABLE void quitMonitoring();
     Q_INVOKABLE bool canQuitWithoutSaving() const { return !m_unsavedInvestigation; }
+    void handleSystemResume();
 
 private Q_SLOTS:
     void receiveCollectorFrame(const QByteArray &data);

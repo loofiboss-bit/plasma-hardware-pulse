@@ -4,7 +4,7 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import QtQuick.Dialogs
 import org.kde.kirigami as Kirigami
-import Qt.labs.settings
+import QtCore as QtCore
 import com.github.loofi.hardwarepulse 1.0
 
 Kirigami.ApplicationWindow {
@@ -29,7 +29,7 @@ Kirigami.ApplicationWindow {
         positiveColor: appWindow.Kirigami.Theme.positiveTextColor
     }
 
-    Settings {
+    QtCore.Settings {
         id: appSettings
         category: "LoofiPulse"
         property int savedPollInterval: 1000
@@ -129,6 +129,12 @@ Kirigami.ApplicationWindow {
 
     function openSession(path) { telemetry.openSession(path); switchToPage("flight") }
     function openIncident(id) { telemetry.selectIncident(id); switchToPage("flight", "inspector") }
+    function navigateTo(name, section) { switchToPage(name, section) }
+    function restoreFromBackground() {
+        appWindow.show()
+        appWindow.raise()
+        appWindow.requestActivate()
+    }
 
     function focusPageSection(item: var, section: string): void {
         if (item && typeof item.focusSection === "function") item.focusSection(section)
@@ -372,6 +378,21 @@ Kirigami.ApplicationWindow {
             anchors.leftMargin: Kirigami.Units.largeSpacing
             anchors.rightMargin: Kirigami.Units.largeSpacing
             spacing: Kirigami.Units.smallSpacing
+
+            Kirigami.InlineMessage {
+                id: collectorAlertMessage
+                Layout.fillWidth: true
+                visible: !telemetry.collectorConnected
+                type: Kirigami.MessageType.Error
+                text: "Collector service is disconnected (" + telemetry.collectorState + "). Real-time telemetry is paused."
+                actions: [
+                    Kirigami.Action {
+                        text: "Reconnect"
+                        icon.name: "view-refresh"
+                        onTriggered: telemetry.reconnectCollector()
+                    }
+                ]
+            }
 
             RowLayout {
                 Layout.fillWidth: true

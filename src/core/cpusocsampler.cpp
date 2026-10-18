@@ -34,16 +34,21 @@ void CpuSocSampler::setRootConfig(const SysfsRootConfig &config)
     m_gpuMetadataAge.invalidate();
 }
 
+void CpuSocSampler::resetBaselines()
+{
+    m_prevTotalJiffies = {};
+    m_prevCoreJiffies.clear();
+    m_prevThrottleCounters.clear();
+    m_prevProcTicks.clear();
+    m_prevSystemTotalTicks = 0;
+}
+
 CpuSocSnapshot CpuSocSampler::sampleCpu(const QList<DomainSensorReading> &domainReadings, qint64 elapsedMs)
 {
     CpuSocSnapshot snap;
 
     if (elapsedMs > 30000) {
-        m_prevTotalJiffies = {};
-        m_prevCoreJiffies.clear();
-        m_prevThrottleCounters.clear();
-        m_prevProcTicks.clear();
-        m_prevSystemTotalTicks = 0;
+        resetBaselines();
     }
 
     // 1. Parse /proc/stat for aggregate and per-core load

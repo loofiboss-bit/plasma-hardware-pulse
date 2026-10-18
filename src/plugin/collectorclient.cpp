@@ -322,6 +322,28 @@ QString PulseTelemetryController::collectorState() const
     if (m_receivedAt.isValid() && m_receivedAt.elapsed() > std::max(5000, m_timer.interval() * 3)) return QStringLiteral("Stale — last sample is old");
     return m_connectionState;
 }
+
+bool PulseTelemetryController::collectorConnected() const
+{
+    if (!m_remoteClient) return true;
+    if (m_connectionState.startsWith(QStringLiteral("Disconnected")) || m_connectionState.startsWith(QStringLiteral("Connecting"))) {
+        return false;
+    }
+    return !m_receivedAt.isValid() || m_receivedAt.elapsed() <= std::max(5000, m_timer.interval() * 3);
+}
+
+void PulseTelemetryController::reconnectCollector()
+{
+    if (!m_remoteClient) return;
+    m_lastLaunchAttempt.invalidate();
+    ++m_connectionGeneration;
+    m_connecting = false;
+    m_syncing = false;
+    m_connectionState = QStringLiteral("Connecting");
+    subscribeCollector();
+    Q_EMIT telemetryUpdated();
+}
+
 void PulseTelemetryController::setBackgroundMonitoring(bool value) { callCollector(QStringLiteral("SetBackground"), {value}); }
 void PulseTelemetryController::setStartAtLogin(bool value) { callCollector(QStringLiteral("SetStartAtLogin"), {value}); }
 void PulseTelemetryController::snoozeNotifications() { callCollector(QStringLiteral("Snooze"), {}, [this](const QByteArray &) { setActionResult(true, QStringLiteral("Notifications snoozed for 15 minutes.")); }); }

@@ -17,9 +17,12 @@ BuildRequires:  dbus-daemon
 BuildRequires:  kf6-rpm-macros
 BuildRequires:  kf6-kcmutils
 BuildRequires:  kf6-kcoreaddons-devel
+BuildRequires:  kf6-kcrash-devel
 BuildRequires:  kf6-ki18n-devel
 BuildRequires:  kf6-kirigami-devel
 BuildRequires:  kf6-knotifications-devel
+BuildRequires:  kf6-kwindowsystem-devel
+BuildRequires:  gettext
 BuildRequires:  kf6-kpackage
 BuildRequires:  kf6-qqc2-desktop-style
 BuildRequires:  libplasma-devel

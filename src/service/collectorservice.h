@@ -31,6 +31,7 @@ Q_SIGNALS:
     void FrameReady(const QByteArray &packet);
 private Q_SLOTS:
     void ownerChanged(const QString &name, const QString &previous, const QString &owner);
+    void onPrepareForSleep(bool goingToSleep);
 private:
     struct Client { QString owner; int interval = 1000; int retention = 300; bool notifications = true; };
     QByteArray dispatch(std::function<QByteArray(PulseTelemetryController *)> operation);

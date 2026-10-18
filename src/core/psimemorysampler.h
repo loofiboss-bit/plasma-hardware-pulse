@@ -14,6 +14,7 @@ public:
     void setRootConfig(const SysfsRootConfig &config);
     void setIncludedNetworkInterfaces(const QStringList &interfaces);
     PsiAndMemorySnapshot sample(qint64 elapsedMs);
+    void resetBaselines();
 
     static PsiMetric parsePsiContent(const QString &content, quint64 prevTotalUs, qint64 elapsedMs);
 

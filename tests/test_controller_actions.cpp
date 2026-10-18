@@ -162,6 +162,27 @@ private Q_SLOTS:
         QVERIFY(controller.lastActionSucceeded());
         QVERIFY(controller.lastActionStatus().contains(QStringLiteral("Cleared")));
     }
+
+    void testCollectorConnectedAndReconnect()
+    {
+        PulseTelemetryController localController(QDBusConnection::systemBus());
+        QVERIFY(localController.collectorConnected());
+
+        PulseTelemetryController remoteController;
+        // In local unit test without collector daemon running, remote defaults to disconnected/connecting
+        QVERIFY(!remoteController.collectorConnected());
+        remoteController.reconnectCollector();
+        QCOMPARE(remoteController.collectorState(), QStringLiteral("Connecting"));
+    }
+
+    void testSystemResumeResetsBaselinesAndSetsGap()
+    {
+        PulseTelemetryController controller(QDBusConnection::systemBus());
+        controller.refreshNow();
+        controller.handleSystemResume();
+        controller.refreshNow();
+        QVERIFY(controller.historySamples().last().toMap().value(QStringLiteral("gapBefore")).toBool());
+    }
 };
 
 QTEST_MAIN(TestControllerActions)

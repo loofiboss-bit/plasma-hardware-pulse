@@ -32,6 +32,8 @@ find_package(KF6Kirigami REQUIRED)
 find_package(KF6CoreAddons REQUIRED)
 find_package(KF6Notifications REQUIRED)
 find_package(KF6I18n REQUIRED)
+find_package(KF6Crash REQUIRED)
+find_package(KF6WindowSystem REQUIRED)
 
 configure_file(packaging/plasma_applet_com.github.loofi.hardwarepulse.notifyrc
     ${CMAKE_BINARY_DIR}/share/knotifications6/plasma_applet_com.github.loofi.hardwarepulse.notifyrc COPYONLY)
