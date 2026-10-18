@@ -438,6 +438,97 @@ private Q_SLOTS:
         }
         QVERIFY2(runtimeErrors.isEmpty(), qPrintable(runtimeErrors.join(QLatin1Char('\n'))));
     }
+
+    void testAccessibilityAndFocusAudit()
+    {
+        QQmlApplicationEngine engine;
+        addImportPaths(engine);
+        engine.load(QUrl::fromLocalFile(QStringLiteral(PULSE_APP_QML "/Main.qml")));
+        QVERIFY(!engine.rootObjects().isEmpty());
+        auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
+        QVERIFY(window);
+        window->show();
+        QTest::qWait(100);
+
+        const QStringList pages = {
+            QStringLiteral("overview"),
+            QStringLiteral("power"),
+            QStringLiteral("pressure"),
+            QStringLiteral("processes"),
+            QStringLiteral("flightRecorder"),
+            QStringLiteral("storageNetwork"),
+            QStringLiteral("settings"),
+            QStringLiteral("trends")
+        };
+
+        QStringList auditErrors;
+
+        std::function<void(QQuickItem *)> auditItem = [&](QQuickItem *item) {
+            if (!item) return;
+
+            const QString className = QString::fromLatin1(item->metaObject()->className());
+            const QString objName = item->objectName();
+
+            // Check 1: Static items must NEVER have activeFocusOnTab: true
+            if (item->property("activeFocusOnTab").toBool()) {
+                const bool isInteractive = item->inherits("QQuickAbstractButton")
+                                        || item->inherits("QQuickTextField")
+                                        || item->inherits("QQuickTextInput")
+                                        || item->inherits("QQuickSpinBox")
+                                        || item->inherits("QQuickComboBox")
+                                        || item->inherits("QQuickScrollBar")
+                                        || item->inherits("QQuickCanvas")
+                                        || item->inherits("QQuickControl");
+                if (!isInteractive && (className.contains(QStringLiteral("Layout"))
+                                    || className.contains(QStringLiteral("Heading"))
+                                    || className.contains(QStringLiteral("Label"))
+                                    || className.contains(QStringLiteral("Text")))) {
+                    auditErrors.append(QStringLiteral("Static item '%1' (class %2) has activeFocusOnTab: true!")
+                                       .arg(objName, className));
+                }
+            }
+
+            // Check 2: Interactive controls must have an accessible name (Accessible.name or text)
+            if (item->isVisible() && (item->inherits("QQuickAbstractButton")
+                                   || item->inherits("QQuickTextField")
+                                   || item->inherits("QQuickSpinBox")
+                                   || item->inherits("QQuickComboBox"))) {
+                QString accName;
+                QVariant textProp = item->property("text");
+                if (textProp.isValid() && !textProp.toString().trimmed().isEmpty()) {
+                    accName = textProp.toString().trimmed();
+                } else {
+                    for (QObject *child : item->children()) {
+                        if (child && child->metaObject()->className()
+                            && QString::fromLatin1(child->metaObject()->className()).contains(QStringLiteral("AccessibleAttached"))) {
+                            accName = child->property("name").toString().trimmed();
+                            break;
+                        }
+                    }
+                }
+
+                if (accName.isEmpty() && !objName.startsWith(QStringLiteral("qt_")) && item->width() > 0 && item->height() > 0) {
+                    auditErrors.append(QStringLiteral("Interactive control '%1' (class %2) missing accessible name or text!")
+                                       .arg(objName, className));
+                }
+            }
+
+            for (auto *child : item->childItems()) {
+                auditItem(child);
+            }
+        };
+
+        for (const QString &pageName : pages) {
+            QVERIFY(QMetaObject::invokeMethod(window, "switchToPage", Q_ARG(QVariant, pageName), Q_ARG(QVariant, QString())));
+            QCoreApplication::processEvents();
+            QTest::qWait(80);
+            auto *page = currentPage(window);
+            QVERIFY2(page, qPrintable(QStringLiteral("Failed to load page: ") + pageName));
+            auditItem(page);
+        }
+
+        QVERIFY2(auditErrors.isEmpty(), qPrintable(auditErrors.join(QLatin1Char('\n'))));
+    }
 };
 
 QTEST_MAIN(TestQmlUi)

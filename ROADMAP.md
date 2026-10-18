@@ -1,5 +1,13 @@
 # Loofi Pulse roadmap
 
+## v0.11.0 — Daily-Driver Robustness, Trends & Management Hub
+- **Lifecycle & Resilience**: Single-instance D-Bus application enforcement (`KDBusService`), collector auto-reconnect with exponential backoff (1s to 30s) and jitter, logind sleep/resume detection resetting baseline telemetry counters with explicit recording gaps, and persistent UI window geometry and state.
+- **Settings & Preferences Hub**: Dedicated in-app `SettingsPage.qml` with D-Bus settings sync, configurable alert thresholds, quiet hours scheduler, per-domain alert muting, temperature unit preference (°C/°F), and standard About/Shortcuts dialogs.
+- **Persistent Long-Term History**: Opt-in SQLite WAL telemetry store (`history.db`) recording 1-minute numerical aggregates (min, avg, max) with retention policies (1 to 30 days) and zero process identity persistence. Full interactive `TrendsView.qml` oscilloscope with multi-timeframe navigation.
+- **System Tray & Process Management**: Status-adaptive system tray icon with live telemetry tooltips, minimize-to-tray on close, fast incident marking, and safe process termination with strict multi-layer security verification (UID check, session blacklist, stat start-time recycling prevention).
+- **Internationalization (ki18n)**: Full KDE Localization infrastructure with comprehensive Swedish translations (`po/sv/*.po`), standard `Messages.sh` catalog extraction, and localized desktop metadata.
+- **Accessibility & Layout Polish**: Refined keyboard navigation with Tab focus chain cleanup, FontMetrics-driven responsive process table columns, collapsible hardware cards for missing battery/GPU setups, and automated accessibility test auditing.
+
 ## v0.10.0 — Modern UI/UX Refinement & Visual Polish
 - Systematic UI/UX redesign of desktop application and Plasma widget.
 - Segmented navigation, structured process inspection table, modern storage/network cards, grouped incident controls, unclipped widget cards.

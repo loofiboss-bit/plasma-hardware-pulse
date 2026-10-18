@@ -973,7 +973,7 @@ Kirigami.ScrollablePage {
             ColumnLayout {
                 id: incCol
                 objectName: "section_incidents"
-                activeFocusOnTab: true
+                focus: true
                 Accessible.name: "incidents section"
                 anchors.fill: parent
                 anchors.margins: Kirigami.Units.largeSpacing
@@ -1022,7 +1022,7 @@ Kirigami.ScrollablePage {
             ColumnLayout {
                 id: inspectorCol
                 objectName: "section_inspector"
-                activeFocusOnTab: true
+                focus: true
                 Accessible.name: "inspector section"
                 anchors.fill: parent
                 anchors.margins: Kirigami.Units.largeSpacing

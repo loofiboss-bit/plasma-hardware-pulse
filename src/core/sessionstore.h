@@ -4,7 +4,7 @@
 namespace LoofiPulse {
 struct SessionSnapshot {
     QString recordingId;
-    QString engineVersion = QStringLiteral("0.10.0");
+    QString engineVersion = QStringLiteral("0.11.0");
     QList<FlightSample> samples;
     QVariantList incidents;
     QVariantList markers;

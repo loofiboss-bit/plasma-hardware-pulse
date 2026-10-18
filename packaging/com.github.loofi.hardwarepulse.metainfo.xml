@@ -24,6 +24,11 @@
   </developer>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.11.0" date="2026-10-19">
+      <description>
+        <p>Major Daily-Driver Release: robust single-instance D-Bus lifecycle, collector auto-reconnect with exponential backoff, logind sleep/resume recovery, dedicated Settings and Preferences Hub, persistent opt-in SQLite WAL telemetry history with trends visualization, system tray integration with live telemetry tooltip and quick actions, safe process termination with UID and PID recycling verification, native Swedish localization (ki18n), and comprehensive accessibility refinements.</p>
+      </description>
+    </release>
     <release version="0.10.0" date="2026-10-18">
       <description>
         <p>Comprehensive UI/UX overhaul: structured modern KDE Plasma 6 interface, responsive navigation tabs, column-aligned process table, polished storage and network telemetry cards, streamlined incident action workflow, and refined Plasmoid widget.</p>

@@ -117,7 +117,7 @@ target_compile_definitions(test_qml_ui PRIVATE
 )
 target_link_libraries(test_qml_ui PRIVATE Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::Test)
 add_dependencies(test_qml_ui hardwarepulseplugin)
-foreach(test_name IN ITEMS testAppNavigationKeyboardAndResponsiveRendering testWidgetComponentsLoad testPanelPresetsPreserveCustomMetrics testProcessInspectionIdentityAndFiltering testSessionDialogsAndUnsavedClose)
+foreach(test_name IN ITEMS testAppNavigationKeyboardAndResponsiveRendering testWidgetComponentsLoad testPanelPresetsPreserveCustomMetrics testProcessInspectionIdentityAndFiltering testSessionDialogsAndUnsavedClose testAccessibilityAndFocusAudit)
     pulse_add_dbus_test(qml_${test_name} test_qml_ui 25 ${test_name})
     set_tests_properties(qml_${test_name} PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}/bin;XDG_DATA_DIRS=${CMAKE_BINARY_DIR}/share:/usr/local/share:/usr/share;PULSE_TEST_ARTIFACT_DIR=${CMAKE_BINARY_DIR}/test-artifacts;${PULSE_TEST_XDG_ENV}"

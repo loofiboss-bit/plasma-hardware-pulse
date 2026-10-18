@@ -26,6 +26,17 @@ Kirigami.Page {
         positiveColor: page.Kirigami.Theme.positiveTextColor
     }
 
+    FontMetrics {
+        id: smallMetrics
+        font: Kirigami.Theme.smallFont
+    }
+
+    readonly property real colPidWidth: Math.max(64, Math.ceil(smallMetrics.advanceWidth(" 9999999 ") + 8))
+    readonly property real colUserWidth: Math.max(80, Math.ceil(smallMetrics.advanceWidth("systemd-coredump") + 12))
+    readonly property real colCpuWidth: Math.max(100, Math.ceil(smallMetrics.advanceWidth(" 100.0% ") + 52))
+    readonly property real colRamWidth: Math.max(90, Math.max(Math.ceil(smallMetrics.advanceWidth("RESIDENT RAM") + 12), Math.ceil(smallMetrics.advanceWidth(" 99999.9 MiB ") + 12)))
+    readonly property real colStateWidth: Math.max(44, Math.ceil(smallMetrics.advanceWidth(" D (wait) ") + 12))
+
     readonly property var visibleProcesses: {
         var query = search.text.trim().toLowerCase()
         var rows = page.controller.allProcesses.filter(function(row) {
@@ -139,48 +150,48 @@ Kirigami.Page {
                     Layout.fillWidth: true
                     text: "PROCESS"
                     font.bold: true
-                    font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 1)
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                     color: Kirigami.Theme.disabledTextColor
                 }
                 QQC2.Label {
-                    Layout.preferredWidth: 64
+                    Layout.preferredWidth: page.colPidWidth
                     horizontalAlignment: Text.AlignRight
                     text: "PID"
                     font.bold: true
-                    font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 1)
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                     color: Kirigami.Theme.disabledTextColor
                 }
                 QQC2.Label {
                     visible: page.width >= 620
-                    Layout.preferredWidth: 80
+                    Layout.preferredWidth: page.colUserWidth
                     text: "USER"
                     font.bold: true
-                    font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 1)
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                     color: Kirigami.Theme.disabledTextColor
                 }
                 QQC2.Label {
-                    Layout.preferredWidth: 100
+                    Layout.preferredWidth: page.colCpuWidth
                     horizontalAlignment: Text.AlignRight
                     text: "CPU %"
                     font.bold: true
-                    font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 1)
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                     color: Kirigami.Theme.disabledTextColor
                 }
                 QQC2.Label {
-                    Layout.preferredWidth: 90
+                    Layout.preferredWidth: page.colRamWidth
                     horizontalAlignment: Text.AlignRight
                     text: "RESIDENT RAM"
                     font.bold: true
-                    font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 1)
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                     color: Kirigami.Theme.disabledTextColor
                 }
                 QQC2.Label {
                     visible: page.width >= 560
-                    Layout.preferredWidth: 44
+                    Layout.preferredWidth: page.colStateWidth
                     horizontalAlignment: Text.AlignHCenter
                     text: "STATE"
                     font.bold: true
-                    font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 1)
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                     color: Kirigami.Theme.disabledTextColor
                 }
             }
@@ -249,7 +260,7 @@ Kirigami.Page {
 
                     // PID Column
                     QQC2.Label {
-                        Layout.preferredWidth: 64
+                        Layout.preferredWidth: page.colPidWidth
                         horizontalAlignment: Text.AlignRight
                         text: processRow.modelData.pid
                         font.family: "monospace"
@@ -260,7 +271,7 @@ Kirigami.Page {
                     // User / Owner Column
                     QQC2.Label {
                         visible: page.width >= 620
-                        Layout.preferredWidth: 80
+                        Layout.preferredWidth: page.colUserWidth
                         text: processRow.modelData.owner || "—"
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                         color: Kirigami.Theme.disabledTextColor
@@ -269,7 +280,7 @@ Kirigami.Page {
 
                     // CPU % Column with mini bar
                     RowLayout {
-                        Layout.preferredWidth: 100
+                        Layout.preferredWidth: page.colCpuWidth
                         spacing: 6
 
                         Rectangle {
@@ -288,7 +299,7 @@ Kirigami.Page {
                         }
 
                         QQC2.Label {
-                            Layout.preferredWidth: 48
+                            Layout.preferredWidth: Math.max(48, Math.ceil(smallMetrics.advanceWidth(" 100.0% ")))
                             horizontalAlignment: Text.AlignRight
                             text: processRow.modelData.cpuAvailable === false
                                   ? "wait…" : page.metric(processRow.modelData.cpuPercent, "%")
@@ -301,7 +312,7 @@ Kirigami.Page {
 
                     // Memory RSS Column
                     QQC2.Label {
-                        Layout.preferredWidth: 90
+                        Layout.preferredWidth: page.colRamWidth
                         horizontalAlignment: Text.AlignRight
                         text: page.metric(processRow.modelData.rssMegabytes, " MiB")
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
@@ -311,7 +322,7 @@ Kirigami.Page {
                     // State Badge Column
                     Rectangle {
                         visible: page.width >= 560
-                        Layout.preferredWidth: 44
+                        Layout.preferredWidth: page.colStateWidth
                         Layout.preferredHeight: 18
                         radius: 4
                         color: processRow.modelData.inDiskWait
@@ -328,7 +339,7 @@ Kirigami.Page {
                             anchors.centerIn: parent
                             text: processRow.modelData.inDiskWait ? "D (wait)" : (processRow.modelData.state || "—")
                             font.bold: true
-                            font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 2)
+                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                             color: processRow.modelData.inDiskWait
                                    ? Kirigami.Theme.negativeTextColor
                                    : (processRow.modelData.state === "R" ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.disabledTextColor)
@@ -499,7 +510,7 @@ Kirigami.Page {
                 QQC2.Label {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
-                    font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 1)
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                     color: Kirigami.Theme.disabledTextColor
                     text: "Observed CPU and resident memory describe resource use; a busy process alone does not establish causation."
                 }

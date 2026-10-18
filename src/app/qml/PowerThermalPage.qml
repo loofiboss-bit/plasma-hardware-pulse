@@ -36,6 +36,8 @@ Kirigami.ScrollablePage {
     }
 
     property bool sortCoresByLoad: false
+    readonly property bool hasGpuHardware: powerPage.controller.gpuAvailable && ((powerPage.controller.gpuDevices && powerPage.controller.gpuDevices.length > 0) || powerPage.controller.gpuBusyAvailable)
+    readonly property bool hasBatteryHardware: powerPage.controller.batteryPresent
 
     readonly property PulseTheme theme: PulseTheme {
         id: theme
@@ -96,9 +98,9 @@ Kirigami.ScrollablePage {
 
                 ColumnLayout {
                     id: pkgCol
-                objectName: "section_cpu"
-                activeFocusOnTab: true
-                Accessible.name: "cpu section"
+                    objectName: "section_cpu"
+                    focus: true
+                    Accessible.name: "cpu section"
                     anchors.fill: parent
                     anchors.margins: Kirigami.Units.largeSpacing
                     spacing: Kirigami.Units.smallSpacing
@@ -200,9 +202,9 @@ Kirigami.ScrollablePage {
 
                 ColumnLayout {
                     id: gpuCol
-                objectName: "section_gpu"
-                activeFocusOnTab: true
-                Accessible.name: "gpu section"
+                    objectName: "section_gpu"
+                    focus: true
+                    Accessible.name: "gpu section"
                     anchors.fill: parent
                     anchors.margins: Kirigami.Units.largeSpacing
                     spacing: Kirigami.Units.smallSpacing
@@ -230,9 +232,16 @@ Kirigami.ScrollablePage {
                             Layout.fillWidth: true
                             wrapMode: Text.WordWrap
                         }
+                        QQC2.Label {
+                            visible: !powerPage.hasGpuHardware
+                            text: "No GPU detected"
+                            color: Kirigami.Theme.disabledTextColor
+                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                        }
                     }
 
                     Kirigami.Heading {
+                        visible: powerPage.hasGpuHardware
                         level: 3
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
@@ -243,6 +252,7 @@ Kirigami.ScrollablePage {
                     }
 
                     Rectangle {
+                        visible: powerPage.hasGpuHardware
                         Layout.fillWidth: true
                         Layout.preferredHeight: 8
                         radius: 4
@@ -257,6 +267,7 @@ Kirigami.ScrollablePage {
                     }
 
                     QQC2.Label {
+                        visible: powerPage.hasGpuHardware
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                         font.bold: true
@@ -269,6 +280,7 @@ Kirigami.ScrollablePage {
                     }
 
                     QQC2.Label {
+                        visible: powerPage.hasGpuHardware
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                         color: Kirigami.Theme.disabledTextColor
@@ -305,9 +317,9 @@ Kirigami.ScrollablePage {
 
                 ColumnLayout {
                     id: batCol
-                objectName: "section_battery"
-                activeFocusOnTab: true
-                Accessible.name: "battery section"
+                    objectName: "section_battery"
+                    focus: true
+                    Accessible.name: "battery section"
                     anchors.fill: parent
                     anchors.margins: Kirigami.Units.largeSpacing
                     spacing: Kirigami.Units.smallSpacing
@@ -324,7 +336,7 @@ Kirigami.ScrollablePage {
                                 anchors.centerIn: parent
                                 width: 15
                                 height: 15
-                                source: "battery-profile-performance"
+                                source: powerPage.hasBatteryHardware ? "battery-profile-performance" : "ac-adapter"
                                 color: theme.psiAccent
                             }
                         }
@@ -335,9 +347,18 @@ Kirigami.ScrollablePage {
                             Layout.fillWidth: true
                             wrapMode: Text.WordWrap
                         }
+                        QQC2.Label {
+                            visible: !powerPage.hasBatteryHardware
+                            text: powerPage.controller.batteryStateAvailable
+                                  ? (powerPage.controller.onAcPower ? "AC power · No battery" : "No battery")
+                                  : "No battery detected"
+                            color: Kirigami.Theme.disabledTextColor
+                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                        }
                     }
 
                     Kirigami.Heading {
+                        visible: powerPage.hasBatteryHardware
                         level: 3
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
@@ -346,6 +367,7 @@ Kirigami.ScrollablePage {
                     }
 
                     Rectangle {
+                        visible: powerPage.hasBatteryHardware
                         Layout.fillWidth: true
                         Layout.preferredHeight: 8
                         radius: 4
@@ -360,6 +382,7 @@ Kirigami.ScrollablePage {
                     }
 
                     QQC2.Label {
+                        visible: powerPage.hasBatteryHardware
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                         font.bold: true
@@ -372,6 +395,7 @@ Kirigami.ScrollablePage {
                     }
 
                     QQC2.Label {
+                        visible: powerPage.hasBatteryHardware
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                         color: Kirigami.Theme.disabledTextColor
@@ -407,9 +431,9 @@ Kirigami.ScrollablePage {
 
                 ColumnLayout {
                     id: coolCol
-                objectName: "section_cooling"
-                activeFocusOnTab: true
-                Accessible.name: "cooling section"
+                    objectName: "section_cooling"
+                    focus: true
+                    Accessible.name: "cooling section"
                     anchors.fill: parent
                     anchors.margins: Kirigami.Units.largeSpacing
                     spacing: Kirigami.Units.smallSpacing
@@ -493,7 +517,7 @@ Kirigami.ScrollablePage {
             ColumnLayout {
                 id: profCol
                 objectName: "section_profile"
-                activeFocusOnTab: true
+                focus: true
                 Accessible.name: "profile section"
                 anchors.fill: parent
                 anchors.margins: Kirigami.Units.largeSpacing
@@ -705,7 +729,7 @@ Kirigami.ScrollablePage {
                 level: 2
                 id: coresHeading
                 objectName: "section_cores"
-                activeFocusOnTab: true
+                focus: true
                 text: "CPU cores and sensors"
                 wrapMode: Text.WordWrap
             }
@@ -820,7 +844,7 @@ Kirigami.ScrollablePage {
             ColumnLayout {
                 id: sensorsCol
                 objectName: "section_sensors"
-                activeFocusOnTab: true
+                focus: true
                 Accessible.name: "sensors section"
                 anchors.fill: parent
                 anchors.margins: Kirigami.Units.largeSpacing

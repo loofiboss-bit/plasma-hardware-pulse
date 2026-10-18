@@ -153,8 +153,8 @@ Kirigami.ScrollablePage {
 
                     Kirigami.Heading {
                         id: verdictHeading
-                objectName: "section_status"
-                        activeFocusOnTab: true
+                        objectName: "section_status"
+                        focus: true
                         text: page.controller.verdictHeadline
                         level: 2
                         Layout.fillWidth: true
@@ -885,7 +885,7 @@ Kirigami.ScrollablePage {
             ColumnLayout {
                 id: detailsCol
                 objectName: "section_measurements"
-                activeFocusOnTab: true
+                focus: true
                 Accessible.name: "measurements section"
                 anchors.fill: parent
                 anchors.margins: Kirigami.Units.largeSpacing
