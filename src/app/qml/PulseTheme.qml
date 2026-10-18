@@ -37,6 +37,9 @@ QtObject {
     readonly property color cardBorderColor: isDark
         ? Qt.rgba(1, 1, 1, 0.08)
         : Qt.rgba(0, 0, 0, 0.09)
+    readonly property color cardHoverBorderColor: isDark
+        ? Qt.rgba(1, 1, 1, 0.22)
+        : Qt.rgba(0, 0, 0, 0.20)
     readonly property color subtleBorderColor: isDark
         ? Qt.rgba(1, 1, 1, 0.05)
         : Qt.rgba(0, 0, 0, 0.05)

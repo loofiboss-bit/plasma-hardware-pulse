@@ -166,8 +166,8 @@ Item {
                             anchors.centerIn: parent
                             spacing: 5
                             Rectangle {
-                                width: 6
-                                height: 6
+                                Layout.preferredWidth: 6
+                                Layout.preferredHeight: 6
                                 radius: 3
                                 color: fullRoot.controller.collectorState.startsWith("Live")
                                        ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.disabledTextColor
