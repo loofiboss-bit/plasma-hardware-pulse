@@ -209,6 +209,20 @@ private Q_SLOTS:
         QCOMPARE(controller.collectorPreferences(), prefs);
         QCOMPARE(spy.count(), 1);
     }
+
+    void testTrendsPropertiesAndRanges()
+    {
+        PulseTelemetryController controller(QDBusConnection::systemBus());
+        QCOMPARE(controller.trendsRange(), QStringLiteral("1h"));
+        QVERIFY(!controller.trendsLoading());
+        QVERIFY(controller.trendsData().isEmpty());
+        QVERIFY(controller.persistedIncidents().isEmpty());
+
+        QSignalSpy rangeSpy(&controller, &PulseTelemetryController::trendsRangeChanged);
+        controller.setTrendsRange(QStringLiteral("24h"));
+        QCOMPARE(controller.trendsRange(), QStringLiteral("24h"));
+        QCOMPARE(rangeSpy.count(), 1);
+    }
 };
 
 QTEST_MAIN(TestControllerActions)

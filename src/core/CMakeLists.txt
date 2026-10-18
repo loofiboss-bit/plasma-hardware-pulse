@@ -6,6 +6,7 @@ set(loofipulsecore_SRCS
     causaldiagnosisengine.cpp
     flightrecorder.cpp
     sessionstore.cpp
+    historystore.cpp
 )
 
 set(loofipulsecore_HDRS
@@ -17,6 +18,7 @@ set(loofipulsecore_HDRS
     causaldiagnosisengine.h
     flightrecorder.h
     sessionstore.h
+    historystore.h
 )
 
 add_library(loofipulsecore STATIC
@@ -33,4 +35,5 @@ target_include_directories(loofipulsecore PUBLIC
 target_link_libraries(loofipulsecore PUBLIC
     Qt6::Core
     Qt6::DBus
+    Qt6::Sql
 )

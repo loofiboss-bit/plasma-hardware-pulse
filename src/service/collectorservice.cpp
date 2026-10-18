@@ -8,6 +8,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QProcess>
@@ -48,11 +49,47 @@ CollectorService::CollectorService(QObject *parent) : QObject(parent)
         if (!QDBusConnection::sessionBus().isConnected()) QCoreApplication::quit();
     });
     m_busHealth.start();
+
+    if (m_settings.value(QStringLiteral("longTermHistoryEnabled"), false).toBool()) {
+        ensureHistoryStoreOpen();
+    }
+    m_historyFlushTimer.setInterval(60000);
+    connect(&m_historyFlushTimer, &QTimer::timeout, this, [this] {
+        if (m_historyStore.isOpen()) {
+            m_historyStore.flush();
+        }
+    });
+    m_historyFlushTimer.start();
+
     m_thread.start();
     updateRequests();
 }
 bool CollectorService::backgroundActive() const { return m_loginMonitoring || m_settings.value(QStringLiteral("backgroundMonitoring"), false).toBool(); }
-CollectorService::~CollectorService() { m_thread.quit(); m_thread.wait(); }
+CollectorService::~CollectorService()
+{
+    if (m_historyStore.isOpen()) {
+        m_historyStore.flush(true);
+        m_historyStore.close();
+    }
+    m_thread.quit();
+    m_thread.wait();
+}
+
+void CollectorService::ensureHistoryStoreOpen()
+{
+    const QString dir = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + QStringLiteral("/loofi-pulse");
+    QDir().mkpath(dir);
+    const QString dbPath = dir + QStringLiteral("/history.sqlite");
+    const int days = std::clamp(m_settings.value(QStringLiteral("longTermHistoryRetentionDays"), 7).toInt(), 1, 31);
+    const qint64 retentionMs = qint64(days) * 86400000LL;
+    if (m_historyStore.open(dbPath, retentionMs)) {
+        const qint64 lastMs = m_historyStore.newestMs();
+        const qint64 now = QDateTime::currentMSecsSinceEpoch();
+        if (lastMs > 0 && (now - lastMs) > 120000LL) {
+            m_historyStore.recordGap(lastMs, now, QStringLiteral("collector_offline"));
+        }
+    }
+}
 
 QByteArray CollectorService::dispatch(std::function<QByteArray(PulseTelemetryController *)> operation)
 {
@@ -108,10 +145,19 @@ QByteArray CollectorService::MarkProblem() { return dispatch([](auto *e) { retur
 void CollectorService::onPrepareForSleep(bool goingToSleep)
 {
     if (goingToSleep) {
+        m_sleepStartMs = QDateTime::currentMSecsSinceEpoch();
+        if (m_historyStore.isOpen()) {
+            m_historyStore.flush(true);
+        }
         QMetaObject::invokeMethod(m_anchor, [this] {
             if (m_engine) m_engine->setRecordingPaused(true);
         }, Qt::QueuedConnection);
     } else {
+        const qint64 now = QDateTime::currentMSecsSinceEpoch();
+        if (m_sleepStartMs > 0 && m_historyStore.isOpen()) {
+            m_historyStore.recordGap(m_sleepStartMs, now, QStringLiteral("suspend"));
+        }
+        m_sleepStartMs = 0;
         QMetaObject::invokeMethod(m_anchor, [this] {
             if (m_engine) {
                 m_engine->handleSystemResume();
@@ -212,6 +258,10 @@ QByteArray CollectorService::GetPreferences()
     prefs[QStringLiteral("longTermHistoryRetentionDays")] = m_settings.value(QStringLiteral("longTermHistoryRetentionDays"), 7).toInt();
     prefs[QStringLiteral("backgroundMonitoring")] = backgroundActive();
     prefs[QStringLiteral("startAtLogin")] = m_settings.value(QStringLiteral("startAtLogin"), false).toBool();
+    prefs[QStringLiteral("historyStoreBytes")] = m_historyStore.isOpen() ? m_historyStore.sizeBytes() : 0;
+    prefs[QStringLiteral("historyStoreOldestMs")] = m_historyStore.isOpen() ? m_historyStore.oldestMs() : 0;
+    prefs[QStringLiteral("historyStoreNewestMs")] = m_historyStore.isOpen() ? m_historyStore.newestMs() : 0;
+    prefs[QStringLiteral("historyStoreRecoveryNotice")] = m_historyStore.recoveryNotice();
     return QJsonDocument(QJsonObject::fromVariantMap(prefs)).toJson(QJsonDocument::Compact);
 }
 
@@ -233,10 +283,23 @@ QByteArray CollectorService::SetPreferences(const QByteArray &json)
         m_settings.setValue(QStringLiteral("quietHoursStart"), map.value(QStringLiteral("quietHoursStart")).toString());
     if (map.contains(QStringLiteral("quietHoursEnd")))
         m_settings.setValue(QStringLiteral("quietHoursEnd"), map.value(QStringLiteral("quietHoursEnd")).toString());
-    if (map.contains(QStringLiteral("longTermHistoryEnabled")))
-        m_settings.setValue(QStringLiteral("longTermHistoryEnabled"), map.value(QStringLiteral("longTermHistoryEnabled")).toBool());
-    if (map.contains(QStringLiteral("longTermHistoryRetentionDays")))
-        m_settings.setValue(QStringLiteral("longTermHistoryRetentionDays"), map.value(QStringLiteral("longTermHistoryRetentionDays")).toInt());
+    if (map.contains(QStringLiteral("longTermHistoryEnabled"))) {
+        const bool enabled = map.value(QStringLiteral("longTermHistoryEnabled")).toBool();
+        m_settings.setValue(QStringLiteral("longTermHistoryEnabled"), enabled);
+        if (enabled && !m_historyStore.isOpen()) {
+            ensureHistoryStoreOpen();
+        } else if (!enabled && m_historyStore.isOpen()) {
+            m_historyStore.flush(true);
+            m_historyStore.close();
+        }
+    }
+    if (map.contains(QStringLiteral("longTermHistoryRetentionDays"))) {
+        const int days = std::clamp(map.value(QStringLiteral("longTermHistoryRetentionDays")).toInt(), 1, 31);
+        m_settings.setValue(QStringLiteral("longTermHistoryRetentionDays"), days);
+        if (m_historyStore.isOpen()) {
+            m_historyStore.setRetentionMs(qint64(days) * 86400000LL);
+        }
+    }
     if (map.contains(QStringLiteral("backgroundMonitoring")))
         SetBackground(map.value(QStringLiteral("backgroundMonitoring")).toBool());
     if (map.contains(QStringLiteral("startAtLogin")))
@@ -248,6 +311,28 @@ QByteArray CollectorService::SetPreferences(const QByteArray &json)
     return success();
 }
 
+QByteArray CollectorService::Trends(qint64 fromMs, qint64 toMs, int maxPoints, const QStringList &metricIds)
+{
+    if (!m_historyStore.isOpen()) return QByteArrayLiteral("{}");
+    const auto result = m_historyStore.trends(fromMs, toMs, maxPoints, metricIds);
+    return QJsonDocument(QJsonObject::fromVariantMap(result)).toJson(QJsonDocument::Compact);
+}
+
+QByteArray CollectorService::PersistedIncidents(qint64 fromMs, qint64 toMs, int limit)
+{
+    if (!m_historyStore.isOpen()) return QByteArrayLiteral("[]");
+    const auto list = m_historyStore.incidents(fromMs, toMs, limit);
+    return QJsonDocument(QJsonArray::fromVariantList(list)).toJson(QJsonDocument::Compact);
+}
+
+QByteArray CollectorService::ClearPersistedHistory()
+{
+    if (m_historyStore.isOpen()) {
+        m_historyStore.clear();
+    }
+    return success();
+}
+
 void CollectorService::publish(const QByteArray &bytes)
 {
     auto packet = QJsonDocument::fromJson(bytes).object().toVariantMap();
@@ -256,6 +341,17 @@ void CollectorService::publish(const QByteArray &bytes)
     live[QStringLiteral("startAtLogin")] = m_settings.value(QStringLiteral("startAtLogin"), false);
     live[QStringLiteral("preferences")] = QJsonDocument::fromJson(GetPreferences()).object().toVariantMap();
     packet[QStringLiteral("live")] = live;
+
+    if (m_historyStore.isOpen()) {
+        const qint64 ts = packet.value(QStringLiteral("sample")).toMap().value(QStringLiteral("timestampMs")).toLongLong();
+        const qint64 timestampMs = (ts > 0) ? ts : QDateTime::currentMSecsSinceEpoch();
+        m_historyStore.addSample(timestampMs, live);
+        const auto incidents = packet.value(QStringLiteral("incidents")).toList();
+        for (const auto &entry : incidents) {
+            m_historyStore.recordIncident(entry.toMap());
+        }
+    }
+
     m_latest = QJsonDocument(QJsonObject::fromVariantMap(packet)).toJson(QJsonDocument::Compact);
     notify(packet); Q_EMIT FrameReady(m_latest);
 }

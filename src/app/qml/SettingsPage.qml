@@ -21,6 +21,7 @@ Kirigami.ScrollablePage {
     readonly property string currentQuietHoursStart: prefs.quietHoursStart || "22:00"
     readonly property string currentQuietHoursEnd: prefs.quietHoursEnd || "08:00"
     readonly property bool currentLongTermHistoryEnabled: !!prefs.longTermHistoryEnabled
+    readonly property int currentHistoryRetentionDays: Number(prefs.longTermHistoryRetentionDays || 7)
 
     function saveCollectorPreference(key, value) {
         var copy = Object.assign({}, prefs)
@@ -257,6 +258,50 @@ Kirigami.ScrollablePage {
             Accessible.name: "Enable persistent long-term metrics history"
             checked: root.currentLongTermHistoryEnabled
             onToggled: root.saveCollectorPreference("longTermHistoryEnabled", checked)
+        }
+
+        QQC2.ComboBox {
+            id: longTermRetentionCombo
+            visible: root.currentLongTermHistoryEnabled
+            Kirigami.FormData.label: "Retention period:"
+            Accessible.name: "Long term history retention period"
+            model: [
+                { text: "1 Day", value: 1 },
+                { text: "7 Days (Recommended)", value: 7 },
+                { text: "14 Days", value: 14 },
+                { text: "30 Days", value: 30 }
+            ]
+            textRole: "text"
+            valueRole: "value"
+            currentIndex: {
+                var d = root.currentHistoryRetentionDays || 7
+                if (d <= 1) return 0
+                if (d <= 7) return 1
+                if (d <= 14) return 2
+                return 3
+            }
+            onActivated: root.saveCollectorPreference("longTermHistoryRetentionDays", model[currentIndex].value)
+        }
+
+        RowLayout {
+            visible: root.currentLongTermHistoryEnabled
+            Kirigami.FormData.label: "Storage usage:"
+            spacing: Kirigami.Units.mediumSpacing
+
+            QQC2.Label {
+                text: {
+                    var bytes = Number(root.prefs.historyStoreBytes || 0)
+                    if (bytes < 1024) return bytes + " B"
+                    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KiB"
+                    return (bytes / 1048576).toFixed(2) + " MiB"
+                }
+            }
+
+            PulseButton {
+                text: "Clear Database"
+                icon.name: "edit-delete"
+                onClicked: root.controller.clearPersistedHistory()
+            }
         }
 
         Kirigami.InlineMessage {

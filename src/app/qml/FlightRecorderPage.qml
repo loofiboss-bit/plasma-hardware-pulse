@@ -19,6 +19,8 @@ Kirigami.ScrollablePage {
     required property var controller
     signal saveSessionRequested()
     signal openSessionRequested()
+    signal openSettingsRequested()
+    property string activeViewMode: "flight"
     property var rangeStartId: 0
     property var rangeEndId: 0
     property double rangeStartTimeMs: 0
@@ -135,8 +137,50 @@ Kirigami.ScrollablePage {
         Layout.fillWidth: true
         spacing: Kirigami.Units.largeSpacing
 
-        // 1. Telemetry Controls & Export Toolbar Card
-        Rectangle {
+        // Mode Selector: Flight Recorder vs Long-Term Trends
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Kirigami.Units.smallSpacing
+
+            PulseButton {
+                text: "Live Flight Recorder"
+                icon.name: "media-record"
+                checkable: true
+                checked: flightPage.activeViewMode === "flight"
+                onClicked: flightPage.activeViewMode = "flight"
+            }
+
+            PulseButton {
+                text: "Long-Term Trends (1h – 30d)"
+                icon.name: "view-history"
+                checkable: true
+                checked: flightPage.activeViewMode === "trends"
+                onClicked: {
+                    flightPage.activeViewMode = "trends"
+                    flightPage.controller.loadTrendsRange(flightPage.controller.trendsRange || "1h")
+                }
+            }
+
+            Item { Layout.fillWidth: true }
+        }
+
+        // Long-Term Trends View
+        TrendsView {
+            Layout.fillWidth: true
+            visible: flightPage.activeViewMode === "trends"
+            controller: flightPage.controller
+            theme: flightPage.theme
+            onOpenSettingsRequested: flightPage.openSettingsRequested()
+        }
+
+        ColumnLayout {
+            id: flightSubLayout
+            Layout.fillWidth: true
+            visible: flightPage.activeViewMode === "flight"
+            spacing: Kirigami.Units.largeSpacing
+
+            // 1. Telemetry Controls & Export Toolbar Card
+            Rectangle {
             Layout.fillWidth: true
             implicitHeight: toolbarCol.implicitHeight + Kirigami.Units.largeSpacing * 2
             radius: theme.cardRadius
@@ -1223,4 +1267,5 @@ Kirigami.ScrollablePage {
             }
         }
     }
+}
 }

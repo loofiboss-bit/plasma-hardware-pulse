@@ -513,4 +513,70 @@ QString PulseTelemetryController::exportSelectedIncident()
     if (!m_sessionMode) { setActionResult(false, QStringLiteral("Select an incident or time range first.")); return {}; }
     return exportIncidentReportToFile();
 }
+
+void PulseTelemetryController::setTrendsRange(const QString &range)
+{
+    if (m_trendsRange != range) {
+        loadTrendsRange(range);
+    }
+}
+
+void PulseTelemetryController::requestTrends(qint64 fromMs, qint64 toMs, int maxPoints, const QStringList &metricIds)
+{
+    m_trendsLoading = true;
+    Q_EMIT trendsLoadingChanged();
+    const QStringList metrics = metricIds.isEmpty() ? QStringList{
+        QStringLiteral("cpuLoad"), QStringLiteral("cpuTemp"), QStringLiteral("cpuPower"),
+        QStringLiteral("gpuBusy"), QStringLiteral("gpuTemp"), QStringLiteral("gpuPower"),
+        QStringLiteral("ramUsed"), QStringLiteral("swapUsed"),
+        QStringLiteral("psiCpuSome"), QStringLiteral("psiMemSome"), QStringLiteral("psiIoSome"),
+        QStringLiteral("diskRead"), QStringLiteral("diskWrite"),
+        QStringLiteral("batteryWatts"), QStringLiteral("fanRpm")
+    } : metricIds;
+
+    callCollector(QStringLiteral("Trends"), {fromMs, toMs, maxPoints, metrics}, [this](const QByteArray &data) {
+        m_trendsLoading = false;
+        m_trendsData = object(data);
+        Q_EMIT trendsLoadingChanged();
+        Q_EMIT trendsDataChanged();
+    });
+}
+
+void PulseTelemetryController::loadTrendsRange(const QString &rangeKey)
+{
+    m_trendsRange = rangeKey;
+    Q_EMIT trendsRangeChanged();
+
+    qint64 durationMs = 3600000LL; // default 1h
+    if (rangeKey == QStringLiteral("6h")) durationMs = 6LL * 3600000LL;
+    else if (rangeKey == QStringLiteral("24h")) durationMs = 24LL * 3600000LL;
+    else if (rangeKey == QStringLiteral("7d")) durationMs = 7LL * 86400000LL;
+    else if (rangeKey == QStringLiteral("30d")) durationMs = 30LL * 86400000LL;
+
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    requestTrends(now - durationMs, now, 120, {});
+}
+
+void PulseTelemetryController::loadPersistedIncidents(qint64 fromMs, qint64 toMs, int limit)
+{
+    callCollector(QStringLiteral("PersistedIncidents"), {fromMs, toMs, limit}, [this](const QByteArray &data) {
+        const auto doc = QJsonDocument::fromJson(data);
+        if (doc.isArray()) {
+            m_persistedIncidents = doc.array().toVariantList();
+            Q_EMIT persistedIncidentsChanged();
+        }
+    });
+}
+
+void PulseTelemetryController::clearPersistedHistory()
+{
+    callCollector(QStringLiteral("ClearPersistedHistory"), {}, [this](const QByteArray &) {
+        m_trendsData.clear();
+        m_persistedIncidents.clear();
+        Q_EMIT trendsDataChanged();
+        Q_EMIT persistedIncidentsChanged();
+        setActionResult(true, QStringLiteral("Persistent long-term history cleared."));
+    });
+}
+
 }

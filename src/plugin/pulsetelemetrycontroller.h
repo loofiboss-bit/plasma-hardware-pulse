@@ -361,6 +361,10 @@ public:
     Q_INVOKABLE int jumpToWorstStallSpike();
     Q_INVOKABLE QString copyIncidentReportToClipboard();
     Q_INVOKABLE QString exportIncidentReportToFile();
+    Q_INVOKABLE void requestTrends(qint64 fromMs, qint64 toMs, int maxPoints = 120, const QStringList &metricIds = QStringList());
+    Q_INVOKABLE void loadTrendsRange(const QString &rangeKey);
+    Q_INVOKABLE void loadPersistedIncidents(qint64 fromMs, qint64 toMs, int limit = 100);
+    Q_INVOKABLE void clearPersistedHistory();
 
 Q_SIGNALS:
     void selectedNetworkInterfacesChanged();
@@ -374,6 +378,10 @@ Q_SIGNALS:
     void lastActionStatusChanged();
     void collectorPreferencesChanged();
     void temperatureUnitChanged();
+    void trendsDataChanged();
+    void trendsLoadingChanged();
+    void trendsRangeChanged();
+    void persistedIncidentsChanged();
 
 public:
     Q_PROPERTY(QVariantList allProcesses READ allProcesses NOTIFY telemetryUpdated)
@@ -387,6 +395,10 @@ public:
     Q_PROPERTY(bool startAtLogin READ startAtLogin WRITE setStartAtLogin NOTIFY telemetryUpdated)
     Q_PROPERTY(QVariantMap collectorPreferences READ collectorPreferences NOTIFY collectorPreferencesChanged)
     Q_PROPERTY(QString temperatureUnit READ temperatureUnit WRITE setTemperatureUnit NOTIFY temperatureUnitChanged)
+    Q_PROPERTY(QVariantMap trendsData READ trendsData NOTIFY trendsDataChanged)
+    Q_PROPERTY(bool trendsLoading READ trendsLoading NOTIFY trendsLoadingChanged)
+    Q_PROPERTY(QString trendsRange READ trendsRange WRITE setTrendsRange NOTIFY trendsRangeChanged)
+    Q_PROPERTY(QVariantList persistedIncidents READ persistedIncidents NOTIFY persistedIncidentsChanged)
     Q_PROPERTY(bool sessionMode READ sessionMode NOTIFY telemetryUpdated)
     Q_PROPERTY(QString sessionPath READ sessionPath NOTIFY telemetryUpdated)
     Q_PROPERTY(bool unsavedInvestigation READ unsavedInvestigation NOTIFY telemetryUpdated)
@@ -409,6 +421,11 @@ public:
     QString temperatureUnit() const { return m_temperatureUnit; }
     void setTemperatureUnit(const QString &unit);
     Q_INVOKABLE void updateCollectorPreferences(const QVariantMap &prefs);
+    QVariantMap trendsData() const { return m_trendsData; }
+    bool trendsLoading() const { return m_trendsLoading; }
+    QString trendsRange() const { return m_trendsRange; }
+    void setTrendsRange(const QString &range);
+    QVariantList persistedIncidents() const { return m_persistedIncidents; }
     bool sessionMode() const { return m_sessionMode; }
     QString sessionPath() const { return m_sessionPath; }
     bool unsavedInvestigation() const { return m_unsavedInvestigation; }
@@ -558,6 +575,10 @@ private:
     double m_historyMaxWatts = 65.0;
     double m_historyMaxDiskMibPerSec = 100.0;
     int m_selectedHistoryIndex = -1;
+    QVariantMap m_trendsData;
+    bool m_trendsLoading = false;
+    QString m_trendsRange = QStringLiteral("1h");
+    QVariantList m_persistedIncidents;
 };
 
 } // namespace LoofiPulse

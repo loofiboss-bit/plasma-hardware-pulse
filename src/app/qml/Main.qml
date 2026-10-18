@@ -869,6 +869,7 @@ Kirigami.ApplicationWindow {
             controller: telemetry
             onSaveSessionRequested: saveSessionDialog.open()
             onOpenSessionRequested: openSessionDialog.open()
+            onOpenSettingsRequested: appWindow.switchToPage("settings")
         }
     }
 

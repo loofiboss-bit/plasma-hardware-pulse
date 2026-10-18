@@ -13,5 +13,6 @@
         <file>qml/PressureMemoryPage.qml</file>
         <file>qml/PowerThermalPage.qml</file>
         <file>qml/SettingsPage.qml</file>
+        <file>qml/TrendsView.qml</file>
     </qresource>
 </RCC>

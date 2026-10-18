@@ -90,7 +90,7 @@ target_link_libraries(test_controller_actions PRIVATE
     loofipulsecore Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::DBus Qt6::Widgets Qt6::Test
     KF6::Notifications KF6::I18n
 )
-foreach(test_name IN ITEMS testNavigationValidationAndPrivacyDefaults testNetworkSelectionAndHistoryMetadata testMissingSystemMonitorReportsFailure testUnsupportedProfileNeverStartsChange testUnwritableReportLocationReportsFailure testHistoryRetentionAndClearHistory testCollectorConnectedAndReconnect testSystemResumeResetsBaselinesAndSetsGap testTemperatureUnitPreference testCollectorPreferencesUpdate)
+foreach(test_name IN ITEMS testNavigationValidationAndPrivacyDefaults testNetworkSelectionAndHistoryMetadata testMissingSystemMonitorReportsFailure testUnsupportedProfileNeverStartsChange testUnwritableReportLocationReportsFailure testHistoryRetentionAndClearHistory testCollectorConnectedAndReconnect testSystemResumeResetsBaselinesAndSetsGap testTemperatureUnitPreference testCollectorPreferencesUpdate testTrendsPropertiesAndRanges)
     add_test(NAME controller_${test_name} COMMAND test_controller_actions ${test_name})
     set_tests_properties(controller_${test_name} PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;${PULSE_TEST_XDG_ENV}")
 endforeach()
@@ -153,3 +153,9 @@ target_link_libraries(test_notifications_v09 PRIVATE Qt6::Core Qt6::DBus Qt6::Te
 add_dependencies(test_notifications_v09 loofi-pulse-service)
 pulse_add_dbus_test(notifications_v09 test_notifications_v09 80)
 set_tests_properties(notifications_v09 PROPERTIES TIMEOUT 90 ENVIRONMENT "QT_QPA_PLATFORM=offscreen;XDG_DATA_DIRS=${CMAKE_BINARY_DIR}/share:/usr/share;XDG_CONFIG_HOME=${CMAKE_BINARY_DIR}/test-state/notifications/config;XDG_DATA_HOME=${CMAKE_BINARY_DIR}/test-state/notifications/data;XDG_CACHE_HOME=${CMAKE_BINARY_DIR}/test-state/notifications/cache")
+
+qt_add_executable(test_historystore test_historystore.cpp)
+target_link_libraries(test_historystore PRIVATE loofipulsecore Qt6::Core Qt6::Sql Qt6::Test)
+add_test(NAME historystore COMMAND test_historystore)
+set_tests_properties(historystore PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;${PULSE_TEST_XDG_ENV}")
+
