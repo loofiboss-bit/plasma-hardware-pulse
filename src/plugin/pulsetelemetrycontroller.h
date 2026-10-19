@@ -361,6 +361,13 @@ public:
     Q_INVOKABLE int jumpToWorstStallSpike();
     Q_INVOKABLE QString copyIncidentReportToClipboard();
     Q_INVOKABLE QString exportIncidentReportToFile();
+    Q_INVOKABLE void requestTrends(qint64 fromMs, qint64 toMs, int maxPoints = 120, const QStringList &metricIds = QStringList());
+    Q_INVOKABLE void loadTrendsRange(const QString &rangeKey);
+    Q_INVOKABLE void loadPersistedIncidents(qint64 fromMs, qint64 toMs, int limit = 100);
+    Q_INVOKABLE void clearPersistedHistory();
+    Q_INVOKABLE bool canTerminateProcess(int pid, qulonglong startTime = 0) const;
+    Q_INVOKABLE bool terminateProcess(int pid, qulonglong startTime = 0, bool force = false);
+    Q_INVOKABLE QVariantMap processIoStats(int pid) const;
 
 Q_SIGNALS:
     void selectedNetworkInterfacesChanged();
@@ -372,6 +379,12 @@ Q_SIGNALS:
     void notificationsEnabledChanged();
     void recordingPausedChanged();
     void lastActionStatusChanged();
+    void collectorPreferencesChanged();
+    void temperatureUnitChanged();
+    void trendsDataChanged();
+    void trendsLoadingChanged();
+    void trendsRangeChanged();
+    void persistedIncidentsChanged();
 
 public:
     Q_PROPERTY(QVariantList allProcesses READ allProcesses NOTIFY telemetryUpdated)
@@ -380,8 +393,15 @@ public:
     Q_PROPERTY(QVariantList batteries READ batteries NOTIFY telemetryUpdated)
     Q_PROPERTY(QVariantList capabilities READ capabilities NOTIFY telemetryUpdated)
     Q_PROPERTY(QString collectorState READ collectorState NOTIFY telemetryUpdated)
+    Q_PROPERTY(bool collectorConnected READ collectorConnected NOTIFY telemetryUpdated)
     Q_PROPERTY(bool backgroundMonitoring READ backgroundMonitoring WRITE setBackgroundMonitoring NOTIFY telemetryUpdated)
     Q_PROPERTY(bool startAtLogin READ startAtLogin WRITE setStartAtLogin NOTIFY telemetryUpdated)
+    Q_PROPERTY(QVariantMap collectorPreferences READ collectorPreferences NOTIFY collectorPreferencesChanged)
+    Q_PROPERTY(QString temperatureUnit READ temperatureUnit WRITE setTemperatureUnit NOTIFY temperatureUnitChanged)
+    Q_PROPERTY(QVariantMap trendsData READ trendsData NOTIFY trendsDataChanged)
+    Q_PROPERTY(bool trendsLoading READ trendsLoading NOTIFY trendsLoadingChanged)
+    Q_PROPERTY(QString trendsRange READ trendsRange WRITE setTrendsRange NOTIFY trendsRangeChanged)
+    Q_PROPERTY(QVariantList persistedIncidents READ persistedIncidents NOTIFY persistedIncidentsChanged)
     Q_PROPERTY(bool sessionMode READ sessionMode NOTIFY telemetryUpdated)
     Q_PROPERTY(QString sessionPath READ sessionPath NOTIFY telemetryUpdated)
     Q_PROPERTY(bool unsavedInvestigation READ unsavedInvestigation NOTIFY telemetryUpdated)
@@ -395,10 +415,20 @@ public:
     QVariantList batteries() const;
     QVariantList capabilities() const;
     QString collectorState() const;
+    bool collectorConnected() const;
     bool backgroundMonitoring() const { return m_remoteValues.value(QStringLiteral("backgroundMonitoring")).toBool(); }
     bool startAtLogin() const { return m_remoteValues.value(QStringLiteral("startAtLogin")).toBool(); }
     void setBackgroundMonitoring(bool enabled);
     void setStartAtLogin(bool enabled);
+    QVariantMap collectorPreferences() const { return m_collectorPreferences; }
+    QString temperatureUnit() const { return m_temperatureUnit; }
+    void setTemperatureUnit(const QString &unit);
+    Q_INVOKABLE void updateCollectorPreferences(const QVariantMap &prefs);
+    QVariantMap trendsData() const { return m_trendsData; }
+    bool trendsLoading() const { return m_trendsLoading; }
+    QString trendsRange() const { return m_trendsRange; }
+    void setTrendsRange(const QString &range);
+    QVariantList persistedIncidents() const { return m_persistedIncidents; }
     bool sessionMode() const { return m_sessionMode; }
     QString sessionPath() const { return m_sessionPath; }
     bool unsavedInvestigation() const { return m_unsavedInvestigation; }
@@ -408,6 +438,7 @@ public:
     void setSelectedGpuId(const QString &id);
     void setSelectedStorageId(const QString &id);
     bool actionPending() const { return m_actionPending; }
+    Q_INVOKABLE void reconnectCollector();
     Q_INVOKABLE void markProblemNow();
     Q_INVOKABLE void markProblemAndLaunch();
     Q_INVOKABLE void selectIncident(const QString &id);
@@ -421,6 +452,7 @@ public:
     Q_INVOKABLE void snoozeNotifications();
     Q_INVOKABLE void quitMonitoring();
     Q_INVOKABLE bool canQuitWithoutSaving() const { return !m_unsavedInvestigation; }
+    void handleSystemResume();
 
 private Q_SLOTS:
     void receiveCollectorFrame(const QByteArray &data);
@@ -468,6 +500,8 @@ private:
     QString m_connectionState = QStringLiteral("Connecting");
     QVariantMap m_remoteValues;
     QVariantMap m_investigationSummary;
+    QVariantMap m_collectorPreferences;
+    QString m_temperatureUnit = QStringLiteral("C");
     bool m_openedSession = false;
     QHash<QString, SessionSnapshot> m_markedInvestigations;
     QStringList m_markedOrder;
@@ -544,6 +578,10 @@ private:
     double m_historyMaxWatts = 65.0;
     double m_historyMaxDiskMibPerSec = 100.0;
     int m_selectedHistoryIndex = -1;
+    QVariantMap m_trendsData;
+    bool m_trendsLoading = false;
+    QString m_trendsRange = QStringLiteral("1h");
+    QVariantList m_persistedIncidents;
 };
 
 } // namespace LoofiPulse

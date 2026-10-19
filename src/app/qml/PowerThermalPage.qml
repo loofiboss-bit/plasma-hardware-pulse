@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
+import "MeasurementLabels.js" as MeasurementLabels
 
 Kirigami.ScrollablePage {
     id: powerPage
@@ -14,6 +15,10 @@ Kirigami.ScrollablePage {
         visible: false
     }
     required property var controller
+
+    function formatTemp(celsius) {
+        return MeasurementLabels.formatTemperature(celsius, powerPage.controller.temperatureUnit)
+    }
 
     function focusSection(section) {
         if (!section) return true
@@ -31,6 +36,8 @@ Kirigami.ScrollablePage {
     }
 
     property bool sortCoresByLoad: false
+    readonly property bool hasGpuHardware: powerPage.controller.gpuAvailable && ((powerPage.controller.gpuDevices && powerPage.controller.gpuDevices.length > 0) || powerPage.controller.gpuBusyAvailable)
+    readonly property bool hasBatteryHardware: powerPage.controller.batteryPresent
 
     readonly property PulseTheme theme: PulseTheme {
         id: theme
@@ -91,9 +98,9 @@ Kirigami.ScrollablePage {
 
                 ColumnLayout {
                     id: pkgCol
-                objectName: "section_cpu"
-                activeFocusOnTab: true
-                Accessible.name: "cpu section"
+                    objectName: "section_cpu"
+                    focus: true
+                    Accessible.name: "cpu section"
                     anchors.fill: parent
                     anchors.margins: Kirigami.Units.largeSpacing
                     spacing: Kirigami.Units.smallSpacing
@@ -195,9 +202,9 @@ Kirigami.ScrollablePage {
 
                 ColumnLayout {
                     id: gpuCol
-                objectName: "section_gpu"
-                activeFocusOnTab: true
-                Accessible.name: "gpu section"
+                    objectName: "section_gpu"
+                    focus: true
+                    Accessible.name: "gpu section"
                     anchors.fill: parent
                     anchors.margins: Kirigami.Units.largeSpacing
                     spacing: Kirigami.Units.smallSpacing
@@ -225,19 +232,27 @@ Kirigami.ScrollablePage {
                             Layout.fillWidth: true
                             wrapMode: Text.WordWrap
                         }
+                        QQC2.Label {
+                            visible: !powerPage.hasGpuHardware
+                            text: "No GPU detected"
+                            color: Kirigami.Theme.disabledTextColor
+                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                        }
                     }
 
                     Kirigami.Heading {
+                        visible: powerPage.hasGpuHardware
                         level: 3
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                         text: "GPU load: " + (powerPage.controller.gpuBusyAvailable
                               ? Math.round(powerPage.controller.gpuBusyPercent) + "%" : "Unavailable")
                               + " · GPU temperature: " + (powerPage.controller.gpuTempAvailable
-                              ? Math.round(powerPage.controller.gpuTempCelsius) + " °C" : "Unavailable")
+                              ? powerPage.formatTemp(powerPage.controller.gpuTempCelsius) : "Unavailable")
                     }
 
                     Rectangle {
+                        visible: powerPage.hasGpuHardware
                         Layout.fillWidth: true
                         Layout.preferredHeight: 8
                         radius: 4
@@ -252,6 +267,7 @@ Kirigami.ScrollablePage {
                     }
 
                     QQC2.Label {
+                        visible: powerPage.hasGpuHardware
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                         font.bold: true
@@ -264,6 +280,7 @@ Kirigami.ScrollablePage {
                     }
 
                     QQC2.Label {
+                        visible: powerPage.hasGpuHardware
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                         color: Kirigami.Theme.disabledTextColor
@@ -300,9 +317,9 @@ Kirigami.ScrollablePage {
 
                 ColumnLayout {
                     id: batCol
-                objectName: "section_battery"
-                activeFocusOnTab: true
-                Accessible.name: "battery section"
+                    objectName: "section_battery"
+                    focus: true
+                    Accessible.name: "battery section"
                     anchors.fill: parent
                     anchors.margins: Kirigami.Units.largeSpacing
                     spacing: Kirigami.Units.smallSpacing
@@ -319,7 +336,7 @@ Kirigami.ScrollablePage {
                                 anchors.centerIn: parent
                                 width: 15
                                 height: 15
-                                source: "battery-profile-performance"
+                                source: powerPage.hasBatteryHardware ? "battery-profile-performance" : "ac-adapter"
                                 color: theme.psiAccent
                             }
                         }
@@ -330,9 +347,18 @@ Kirigami.ScrollablePage {
                             Layout.fillWidth: true
                             wrapMode: Text.WordWrap
                         }
+                        QQC2.Label {
+                            visible: !powerPage.hasBatteryHardware
+                            text: powerPage.controller.batteryStateAvailable
+                                  ? (powerPage.controller.onAcPower ? "AC power · No battery" : "No battery")
+                                  : "No battery detected"
+                            color: Kirigami.Theme.disabledTextColor
+                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                        }
                     }
 
                     Kirigami.Heading {
+                        visible: powerPage.hasBatteryHardware
                         level: 3
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
@@ -341,6 +367,7 @@ Kirigami.ScrollablePage {
                     }
 
                     Rectangle {
+                        visible: powerPage.hasBatteryHardware
                         Layout.fillWidth: true
                         Layout.preferredHeight: 8
                         radius: 4
@@ -355,6 +382,7 @@ Kirigami.ScrollablePage {
                     }
 
                     QQC2.Label {
+                        visible: powerPage.hasBatteryHardware
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                         font.bold: true
@@ -367,6 +395,7 @@ Kirigami.ScrollablePage {
                     }
 
                     QQC2.Label {
+                        visible: powerPage.hasBatteryHardware
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                         color: Kirigami.Theme.disabledTextColor
@@ -402,9 +431,9 @@ Kirigami.ScrollablePage {
 
                 ColumnLayout {
                     id: coolCol
-                objectName: "section_cooling"
-                activeFocusOnTab: true
-                Accessible.name: "cooling section"
+                    objectName: "section_cooling"
+                    focus: true
+                    Accessible.name: "cooling section"
                     anchors.fill: parent
                     anchors.margins: Kirigami.Units.largeSpacing
                     spacing: Kirigami.Units.smallSpacing
@@ -461,7 +490,7 @@ Kirigami.ScrollablePage {
                         wrapMode: Text.WordWrap
                         font.bold: true
                         text: "NVMe temperature: " + (powerPage.controller.nvmeTempAvailable
-                              ? Math.round(powerPage.controller.nvmeTempCelsius) + " °C" : "Unavailable")
+                              ? powerPage.formatTemp(powerPage.controller.nvmeTempCelsius) : "Unavailable")
                     }
 
                     QQC2.Label {
@@ -470,7 +499,7 @@ Kirigami.ScrollablePage {
                         color: Kirigami.Theme.disabledTextColor
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                         text: "Wireless temperature: " + (powerPage.controller.wifiTempAvailable
-                              ? Math.round(powerPage.controller.wifiTempCelsius) + " °C" : "Unavailable")
+                              ? powerPage.formatTemp(powerPage.controller.wifiTempCelsius) : "Unavailable")
                     }
                 }
             }
@@ -488,7 +517,7 @@ Kirigami.ScrollablePage {
             ColumnLayout {
                 id: profCol
                 objectName: "section_profile"
-                activeFocusOnTab: true
+                focus: true
                 Accessible.name: "profile section"
                 anchors.fill: parent
                 anchors.margins: Kirigami.Units.largeSpacing
@@ -587,7 +616,7 @@ Kirigami.ScrollablePage {
                             Layout.fillWidth: true
                             text: modelData.name + " · "
                                   + (modelData.busyAvailable ? Number(modelData.busyPercent).toFixed(0) + "% activity" : "Activity unavailable")
-                                  + " · " + (modelData.temperatureAvailable ? Number(modelData.tempCelsius).toFixed(1) + " °C" : "Temperature unavailable")
+                                  + " · " + (modelData.temperatureAvailable ? powerPage.formatTemp(modelData.tempCelsius) : "Temperature unavailable")
                                   + (modelData.available ? "" : " · Disconnected or unsupported")
                             checked: powerPage.controller.selectedGpuId === modelData.id
                             onClicked: powerPage.controller.selectedGpuId = modelData.id
@@ -700,7 +729,7 @@ Kirigami.ScrollablePage {
                 level: 2
                 id: coresHeading
                 objectName: "section_cores"
-                activeFocusOnTab: true
+                focus: true
                 text: "CPU cores and sensors"
                 wrapMode: Text.WordWrap
             }
@@ -757,7 +786,7 @@ Kirigami.ScrollablePage {
                                 QQC2.Label {
                                     id: coreTempLbl
                                     anchors.centerIn: parent
-                                    text: Math.round(coreCard.modelData.tempCelsius) + " °C"
+                                    text: powerPage.formatTemp(coreCard.modelData.tempCelsius)
                                     color: theme.tempAccent
                                     font.bold: true
                                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
@@ -815,7 +844,7 @@ Kirigami.ScrollablePage {
             ColumnLayout {
                 id: sensorsCol
                 objectName: "section_sensors"
-                activeFocusOnTab: true
+                focus: true
                 Accessible.name: "sensors section"
                 anchors.fill: parent
                 anchors.margins: Kirigami.Units.largeSpacing
@@ -861,12 +890,12 @@ Kirigami.ScrollablePage {
                                         wrapMode: Text.WordWrap
                                         font.bold: true
                                         text: sensorTile.modelData.domainName + " · " + sensorTile.modelData.label + ": "
-                                              + (sensorTile.modelData.available ? Number(sensorTile.modelData.currentCelsius).toFixed(1) + " °C" : "Unavailable")
+                                              + (sensorTile.modelData.available ? powerPage.formatTemp(sensorTile.modelData.currentCelsius) : "Unavailable")
                                         Accessible.name: text
                                     }
                                     QQC2.Label {
                                         visible: sensorTile.modelData.limitsAvailable
-                                        text: "Margin " + Math.round(Number(sensorTile.modelData.headroomCelsius)) + "°C"
+                                        text: "Margin " + powerPage.formatTemp(Number(sensorTile.modelData.headroomCelsius))
                                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                                         color: Kirigami.Theme.disabledTextColor
                                     }

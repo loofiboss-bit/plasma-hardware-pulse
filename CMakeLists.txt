@@ -24,7 +24,7 @@ include(KDEInstallDirs)
 include(KDECMakeSettings)
 include(KDECompilerSettings NO_POLICY_SCOPE)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 DBus Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 DBus Widgets Sql)
 qt_policy(SET QTP0001 NEW)
 
 find_package(Plasma REQUIRED)
@@ -32,6 +32,8 @@ find_package(KF6Kirigami REQUIRED)
 find_package(KF6CoreAddons REQUIRED)
 find_package(KF6Notifications REQUIRED)
 find_package(KF6I18n REQUIRED)
+find_package(KF6Crash REQUIRED)
+find_package(KF6WindowSystem REQUIRED)
 
 configure_file(packaging/plasma_applet_com.github.loofi.hardwarepulse.notifyrc
     ${CMAKE_BINARY_DIR}/share/knotifications6/plasma_applet_com.github.loofi.hardwarepulse.notifyrc COPYONLY)
@@ -65,3 +67,7 @@ install(FILES packaging/com.github.loofi.hardwarepulse.desktop
         DESTINATION ${KDE_INSTALL_APPDIR})
 install(FILES packaging/com.github.loofi.hardwarepulse.metainfo.xml
         DESTINATION ${KDE_INSTALL_METAINFODIR})
+
+# Install internationalization PO catalogs
+ki18n_install(po)
+

@@ -86,7 +86,7 @@ Kirigami.ScrollablePage {
             RowLayout {
                 id: expRow
                 objectName: "section_overview"
-                activeFocusOnTab: true
+                focus: true
                 Accessible.name: "overview section"
                 anchors.fill: parent
                 anchors.margins: Kirigami.Units.largeSpacing
@@ -268,9 +268,9 @@ Kirigami.ScrollablePage {
 
                 ColumnLayout {
                     id: cpuPressureColumn
-                objectName: "section_cpu"
-                activeFocusOnTab: true
-                Accessible.name: "cpu section"
+                    objectName: "section_cpu"
+                    focus: true
+                    Accessible.name: "cpu section"
                     anchors.fill: parent
                     anchors.margins: Kirigami.Units.largeSpacing
                     spacing: 8
@@ -346,9 +346,9 @@ Kirigami.ScrollablePage {
 
                 ColumnLayout {
                     id: memoryPressureColumn
-                objectName: "section_memory"
-                activeFocusOnTab: true
-                Accessible.name: "memory section"
+                    objectName: "section_memory"
+                    focus: true
+                    Accessible.name: "memory section"
                     anchors.fill: parent
                     anchors.margins: Kirigami.Units.largeSpacing
                     spacing: 8
@@ -443,9 +443,9 @@ Kirigami.ScrollablePage {
 
                 ColumnLayout {
                     id: ioPressureColumn
-                objectName: "section_storage"
-                activeFocusOnTab: true
-                Accessible.name: "storage section"
+                    objectName: "section_storage"
+                    focus: true
+                    Accessible.name: "storage section"
                     anchors.fill: parent
                     anchors.margins: Kirigami.Units.largeSpacing
                     spacing: 8
@@ -514,8 +514,8 @@ Kirigami.ScrollablePage {
 
                     QQC2.Label {
                         id: networkReadout
-                objectName: "section_network"
-                        activeFocusOnTab: true
+                        objectName: "section_network"
+                        focus: true
                         text: psiPage.controller.netThroughputAvailable
                               ? "Network throughput: ↓" + psiPage.controller.netRxMibPerSec.toFixed(2) + " MiB/s · ↑"
                                 + psiPage.controller.netTxMibPerSec.toFixed(2) + " MiB/s"
@@ -558,7 +558,7 @@ Kirigami.ScrollablePage {
             ColumnLayout {
                 id: zramCol
                 objectName: "section_allocation"
-                activeFocusOnTab: true
+                focus: true
                 Accessible.name: "allocation section"
                 anchors.fill: parent
                 anchors.margins: Kirigami.Units.largeSpacing
@@ -706,7 +706,7 @@ Kirigami.ScrollablePage {
                 level: 3
                 id: processesHeading
                 objectName: "section_processes"
-                activeFocusOnTab: true
+                focus: true
                 text: "Concurrent resource use"
             }
 

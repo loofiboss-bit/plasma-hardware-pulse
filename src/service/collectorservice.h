@@ -5,6 +5,7 @@
 #include <QThread>
 #include <QTimer>
 #include <functional>
+#include "historystore.h"
 #include "pulsetelemetrycontroller.h"
 
 namespace LoofiPulse {
@@ -27,10 +28,17 @@ public Q_SLOTS:
     QByteArray SetStartAtLogin(bool enabled);
     QByteArray Snooze();
     QByteArray StopMonitoring();
+    QByteArray GetPreferences();
+    QByteArray SetPreferences(const QByteArray &json);
+    QByteArray Trends(qint64 fromMs, qint64 toMs, int maxPoints, const QStringList &metricIds);
+    QByteArray PersistedIncidents(qint64 fromMs, qint64 toMs, int limit);
+    QByteArray ClearPersistedHistory();
 Q_SIGNALS:
     void FrameReady(const QByteArray &packet);
+    void PreferencesChanged(const QByteArray &packet);
 private Q_SLOTS:
     void ownerChanged(const QString &name, const QString &previous, const QString &owner);
+    void onPrepareForSleep(bool goingToSleep);
 private:
     struct Client { QString owner; int interval = 1000; int retention = 300; bool notifications = true; };
     QByteArray dispatch(std::function<QByteArray(PulseTelemetryController *)> operation);
@@ -38,6 +46,7 @@ private:
     void publish(const QByteArray &packet);
     void notify(const QVariantMap &packet);
     bool backgroundActive() const;
+    void ensureHistoryStoreOpen();
     bool m_loginMonitoring = false;
     QThread m_thread;
     QObject *m_anchor = nullptr;
@@ -49,5 +58,8 @@ private:
     QByteArray m_latest;
     QHash<QString, int> m_notified;
     qint64 m_snoozeUntil = 0;
+    qint64 m_sleepStartMs = 0;
+    HistoryStore m_historyStore;
+    QTimer m_historyFlushTimer;
 };
 }

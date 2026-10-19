@@ -90,7 +90,7 @@ target_link_libraries(test_controller_actions PRIVATE
     loofipulsecore Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::DBus Qt6::Widgets Qt6::Test
     KF6::Notifications KF6::I18n
 )
-foreach(test_name IN ITEMS testNavigationValidationAndPrivacyDefaults testNetworkSelectionAndHistoryMetadata testMissingSystemMonitorReportsFailure testUnsupportedProfileNeverStartsChange testUnwritableReportLocationReportsFailure testHistoryRetentionAndClearHistory)
+foreach(test_name IN ITEMS testNavigationValidationAndPrivacyDefaults testNetworkSelectionAndHistoryMetadata testMissingSystemMonitorReportsFailure testUnsupportedProfileNeverStartsChange testUnwritableReportLocationReportsFailure testHistoryRetentionAndClearHistory testCollectorConnectedAndReconnect testSystemResumeResetsBaselinesAndSetsGap testTemperatureUnitPreference testCollectorPreferencesUpdate testTrendsPropertiesAndRanges testProcessTerminationSafetyAndExecution testProcessIoStats)
     add_test(NAME controller_${test_name} COMMAND test_controller_actions ${test_name})
     set_tests_properties(controller_${test_name} PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;${PULSE_TEST_XDG_ENV}")
 endforeach()
@@ -101,6 +101,14 @@ if(DBUS_RUN_SESSION)
     set_tests_properties(controller_async_profile_failure PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;${PULSE_TEST_XDG_ENV}" TIMEOUT 15)
 endif()
 
+qt_add_executable(test_single_instance
+    test_single_instance.cpp
+    ${PROJECT_SOURCE_DIR}/src/app/appinstance.cpp
+)
+target_include_directories(test_single_instance PRIVATE ${PROJECT_SOURCE_DIR}/src/app)
+target_link_libraries(test_single_instance PRIVATE Qt6::Core Qt6::DBus Qt6::Test)
+pulse_add_dbus_test(app_single_instance test_single_instance 15)
+
 qt_add_executable(test_qml_ui test_qml_ui.cpp)
 target_compile_definitions(test_qml_ui PRIVATE
     PULSE_BUILD_BIN="${CMAKE_BINARY_DIR}/bin"
@@ -109,7 +117,7 @@ target_compile_definitions(test_qml_ui PRIVATE
 )
 target_link_libraries(test_qml_ui PRIVATE Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::Test)
 add_dependencies(test_qml_ui hardwarepulseplugin)
-foreach(test_name IN ITEMS testAppNavigationKeyboardAndResponsiveRendering testWidgetComponentsLoad testPanelPresetsPreserveCustomMetrics testProcessInspectionIdentityAndFiltering testSessionDialogsAndUnsavedClose)
+foreach(test_name IN ITEMS testAppNavigationKeyboardAndResponsiveRendering testWidgetComponentsLoad testPanelPresetsPreserveCustomMetrics testProcessInspectionIdentityAndFiltering testSessionDialogsAndUnsavedClose testAccessibilityAndFocusAudit)
     pulse_add_dbus_test(qml_${test_name} test_qml_ui 25 ${test_name})
     set_tests_properties(qml_${test_name} PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QML_IMPORT_PATH=${CMAKE_BINARY_DIR}/bin;XDG_DATA_DIRS=${CMAKE_BINARY_DIR}/share:/usr/local/share:/usr/share;PULSE_TEST_ARTIFACT_DIR=${CMAKE_BINARY_DIR}/test-artifacts;${PULSE_TEST_XDG_ENV}"
@@ -145,3 +153,25 @@ target_link_libraries(test_notifications_v09 PRIVATE Qt6::Core Qt6::DBus Qt6::Te
 add_dependencies(test_notifications_v09 loofi-pulse-service)
 pulse_add_dbus_test(notifications_v09 test_notifications_v09 80)
 set_tests_properties(notifications_v09 PROPERTIES TIMEOUT 90 ENVIRONMENT "QT_QPA_PLATFORM=offscreen;XDG_DATA_DIRS=${CMAKE_BINARY_DIR}/share:/usr/share;XDG_CONFIG_HOME=${CMAKE_BINARY_DIR}/test-state/notifications/config;XDG_DATA_HOME=${CMAKE_BINARY_DIR}/test-state/notifications/data;XDG_CACHE_HOME=${CMAKE_BINARY_DIR}/test-state/notifications/cache")
+
+qt_add_executable(test_historystore test_historystore.cpp)
+target_link_libraries(test_historystore PRIVATE loofipulsecore Qt6::Core Qt6::Sql Qt6::Test)
+add_test(NAME historystore COMMAND test_historystore)
+set_tests_properties(historystore PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;${PULSE_TEST_XDG_ENV}")
+
+qt_add_executable(test_i18n test_i18n.cpp)
+target_compile_definitions(test_i18n PRIVATE
+    PULSE_BUILD_LOCALE_DIR="${CMAKE_BINARY_DIR}/locale"
+)
+target_link_libraries(test_i18n PRIVATE Qt6::Core Qt6::Test KF6::I18n)
+add_dependencies(test_i18n pofiles)
+add_test(NAME i18n COMMAND test_i18n)
+set_tests_properties(i18n PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;LANGUAGE=sv:sv_SE;LC_ALL=sv_SE.UTF-8;${PULSE_TEST_XDG_ENV}")
+
+find_program(MSGFMT_EXECUTABLE msgfmt)
+if(MSGFMT_EXECUTABLE)
+    add_test(NAME i18n_catalogs_valid COMMAND ${MSGFMT_EXECUTABLE} --check -o /dev/null "${PROJECT_SOURCE_DIR}/po/sv/loofi-pulse.po")
+    add_test(NAME i18n_applet_catalogs_valid COMMAND ${MSGFMT_EXECUTABLE} --check -o /dev/null "${PROJECT_SOURCE_DIR}/po/sv/plasma_applet_com.github.loofi.hardwarepulse.po")
+endif()
+
+

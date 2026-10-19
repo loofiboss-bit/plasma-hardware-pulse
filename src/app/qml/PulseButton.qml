@@ -11,7 +11,14 @@ QQC2.Button {
     property bool isPrimary: false
     property color accentColor: Kirigami.Theme.highlightColor
 
-    PulseTheme { id: theme }
+    PulseTheme {
+        id: theme
+        bgColor: control.Kirigami.Theme.backgroundColor
+        disabledColor: control.Kirigami.Theme.disabledTextColor
+        negativeColor: control.Kirigami.Theme.negativeTextColor
+        neutralColor: control.Kirigami.Theme.neutralTextColor
+        positiveColor: control.Kirigami.Theme.positiveTextColor
+    }
 
     implicitHeight: Math.max(30, contentLayout.implicitHeight + 8)
     implicitWidth: contentLayout.implicitWidth + 20
@@ -26,7 +33,7 @@ QQC2.Button {
             Layout.preferredWidth: Kirigami.Units.iconSizes.small
             Layout.preferredHeight: Kirigami.Units.iconSizes.small
             color: !control.enabled ? Kirigami.Theme.disabledTextColor
-                   : control.isPrimary ? "#ffffff"
+                   : control.isPrimary ? Kirigami.Theme.highlightedTextColor
                    : (control.checked ? control.accentColor : Kirigami.Theme.textColor)
         }
         QQC2.Label {
@@ -35,7 +42,7 @@ QQC2.Button {
             font.bold: control.isPrimary || control.checked
             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
             color: !control.enabled ? Kirigami.Theme.disabledTextColor
-                   : control.isPrimary ? "#ffffff"
+                   : control.isPrimary ? Kirigami.Theme.highlightedTextColor
                    : (control.checked ? control.accentColor : Kirigami.Theme.textColor)
             elide: Text.ElideRight
         }

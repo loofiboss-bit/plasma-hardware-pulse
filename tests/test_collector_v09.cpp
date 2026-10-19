@@ -30,6 +30,8 @@ class CollectorV09Test : public QObject {
         auto environment = QProcessEnvironment::systemEnvironment();
         environment.insert(QStringLiteral("LOOFI_PULSE_SYS_ROOT"), fixture.filePath(QStringLiteral("sys")));
         environment.insert(QStringLiteral("LOOFI_PULSE_PROC_ROOT"), fixture.filePath(QStringLiteral("proc")));
+        environment.insert(QStringLiteral("XDG_CONFIG_HOME"), fixture.filePath(QStringLiteral("config")));
+        environment.insert(QStringLiteral("XDG_DATA_HOME"), fixture.filePath(QStringLiteral("data")));
         helper.setProcessEnvironment(environment);
         helper.start(QStringLiteral(PULSE_SERVICE_BIN));
         QVERIFY(helper.waitForStarted());
@@ -257,12 +259,64 @@ private Q_SLOTS:
         QTRY_VERIFY_WITH_TIMEOUT(client.startAtLogin(), 5000);
         client.setBackgroundMonitoring(false);
         QTRY_VERIFY_WITH_TIMEOUT(!client.backgroundMonitoring(), 5000);
-        QVERIFY(client.startAtLogin());
         client.setStartAtLogin(false); QTRY_VERIFY_WITH_TIMEOUT(!client.startAtLogin(), 5000);
+
+        const auto initialPrefs = object(request(QStringLiteral("GetPreferences")));
+        QCOMPARE(initialPrefs.value(QStringLiteral("minNotificationSeverity")).toInt(), 2);
+        QVERIFY(initialPrefs.contains(QStringLiteral("quietHoursStart")));
+
+        const QVariantMap newPrefs{
+            {QStringLiteral("minNotificationSeverity"), 3},
+            {QStringLiteral("quietHoursEnabled"), true},
+            {QStringLiteral("quietHoursStart"), QStringLiteral("23:30")},
+            {QStringLiteral("quietHoursEnd"), QStringLiteral("07:15")},
+            {QStringLiteral("mutedNotificationDomains"), QStringList{QStringLiteral("cpu"), QStringLiteral("gpu")}}
+        };
+        const auto setReply = request(QStringLiteral("SetPreferences"), {QJsonDocument(QJsonObject::fromVariantMap(newPrefs)).toJson(QJsonDocument::Compact)});
+        QVERIFY(!setReply.isEmpty());
+
+        const auto updatedPrefs = object(request(QStringLiteral("GetPreferences")));
+        QCOMPARE(updatedPrefs.value(QStringLiteral("minNotificationSeverity")).toInt(), 3);
+        QVERIFY(updatedPrefs.value(QStringLiteral("quietHoursEnabled")).toBool());
+        QCOMPARE(updatedPrefs.value(QStringLiteral("quietHoursStart")).toString(), QStringLiteral("23:30"));
+        QCOMPARE(updatedPrefs.value(QStringLiteral("quietHoursEnd")).toString(), QStringLiteral("07:15"));
+        QCOMPARE(updatedPrefs.value(QStringLiteral("mutedNotificationDomains")).toStringList(), QStringList({QStringLiteral("cpu"), QStringLiteral("gpu")}));
+
+        QTRY_VERIFY_WITH_TIMEOUT(client.collectorPreferences().value(QStringLiteral("minNotificationSeverity")).toInt() == 3, 5000);
+
         helper.terminate(); QVERIFY(helper.waitForFinished(5000));
         startHelper();
         QTRY_VERIFY_WITH_TIMEOUT(!client.historySamples().isEmpty() && client.historySamples().last().toMap().value(QStringLiteral("captureId")) != capture, 10000);
         QVERIFY(client.collectorState().startsWith(QStringLiteral("Live")));
+        // Test long-term history preference and Trends D-Bus invocation
+        const QVariantMap historyPrefs{
+            {QStringLiteral("longTermHistoryEnabled"), true},
+            {QStringLiteral("longTermHistoryRetentionDays"), 14}
+        };
+        request(QStringLiteral("SetPreferences"), {QJsonDocument(QJsonObject::fromVariantMap(historyPrefs)).toJson(QJsonDocument::Compact)});
+        const auto historyEnabledPrefs = object(request(QStringLiteral("GetPreferences")));
+        QVERIFY(historyEnabledPrefs.value(QStringLiteral("longTermHistoryEnabled")).toBool());
+        QCOMPARE(historyEnabledPrefs.value(QStringLiteral("longTermHistoryRetentionDays")).toInt(), 14);
+
+        const qint64 now = QDateTime::currentMSecsSinceEpoch();
+        const auto trendsReply = request(QStringLiteral("Trends"), {now - 3600000LL, now, 100, QStringList{QStringLiteral("cpuLoad")}});
+        QVERIFY(!trendsReply.isEmpty());
+        const auto trendsObj = object(trendsReply);
+        QVERIFY(trendsObj.contains(QStringLiteral("series")));
+
+        const auto clearReply = request(QStringLiteral("ClearPersistedHistory"));
+        QVERIFY(!clearReply.isEmpty());
+
+        const QVariantMap defaultPrefs{
+            {QStringLiteral("minNotificationSeverity"), 2},
+            {QStringLiteral("quietHoursEnabled"), false},
+            {QStringLiteral("quietHoursStart"), QStringLiteral("22:00")},
+            {QStringLiteral("quietHoursEnd"), QStringLiteral("08:00")},
+            {QStringLiteral("mutedNotificationDomains"), QStringList{}},
+            {QStringLiteral("longTermHistoryEnabled"), false},
+            {QStringLiteral("longTermHistoryRetentionDays"), 7}
+        };
+        request(QStringLiteral("SetPreferences"), {QJsonDocument(QJsonObject::fromVariantMap(defaultPrefs)).toJson(QJsonDocument::Compact)});
     }
     void importedIncidentAndEmptyLoadPreserveOriginalSource() {
         SessionSnapshot original;

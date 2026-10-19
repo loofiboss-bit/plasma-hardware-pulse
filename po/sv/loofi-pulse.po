@@ -1,0 +1,222 @@
+# Swedish translation for loofi-pulse.
+# Copyright (C) 2026 Loofi
+# This file is distributed under the same license as the loofi-pulse package.
+# Loofi <loofi@github.com>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: loofi-pulse 0.11.0\n"
+"Report-Msgid-Bugs-To: https://github.com/loofiboss-bit/plasma-hardware-pulse\n"
+"POT-Creation-Date: 2026-10-19 01:00+0200\n"
+"PO-Revision-Date: 2026-10-19 01:00+0200\n"
+"Last-Translator: Loofi <loofi@github.com>\n"
+"Language-Team: Swedish <kde-i18n-doc@kde.org>\n"
+"Language: sv\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Loofi Pulse"
+msgstr "Loofi Pulse"
+
+msgid "KDE Plasma 6 hardware health and pressure monitor"
+msgstr "KDE Plasma 6 hårdvaruhälso- och tryckövervakare"
+
+msgid "Overview"
+msgstr "Översikt"
+
+msgid "Flight Recorder"
+msgstr "Haverikommission"
+
+msgid "Pressure & Memory"
+msgstr "Tryck & Minne"
+
+msgid "Power & Cooling"
+msgstr "Effekt & Kylning"
+
+msgid "Processes"
+msgstr "Processer"
+
+msgid "Storage & Network"
+msgstr "Lagring & Nätverk"
+
+msgid "Settings"
+msgstr "Inställningar"
+
+msgid "Trends"
+msgstr "Trender"
+
+msgid "Live (RAM)"
+msgstr "Realtid (RAM)"
+
+msgid "Mark Problem Now"
+msgstr "Markera problem nu"
+
+msgid "Mark problem now"
+msgstr "Markera problem nu"
+
+msgid "Save Pulse session"
+msgstr "Spara Pulse-session"
+
+msgid "Open Pulse session"
+msgstr "Öppna Pulse-session"
+
+msgid "Save session…"
+msgstr "Spara session…"
+
+msgid "Save this investigation?"
+msgstr "Vill du spara den här utredningen?"
+
+msgid "Discard investigation and close"
+msgstr "Kasta utredning och stäng"
+
+msgid "System Monitor"
+msgstr "Systemövervakare"
+
+msgid "End process…"
+msgstr "Avsluta process…"
+
+msgid "End process"
+msgstr "Avsluta process"
+
+msgid "End process?"
+msgstr "Avsluta process?"
+
+msgid "Force kill process"
+msgstr "Tvinga avslut"
+
+msgid "Force terminate immediately (SIGKILL)"
+msgstr "Tvinga omedelbar avslutning (SIGKILL)"
+
+msgid "Cancel"
+msgstr "Avbryt"
+
+msgid "Show Loofi Pulse"
+msgstr "Visa Loofi Pulse"
+
+msgid "Hide Loofi Pulse"
+msgstr "Dölj Loofi Pulse"
+
+msgid "Pause Recording"
+msgstr "Pausa inspelning"
+
+msgid "Resume Recording"
+msgstr "Återuppta inspelning"
+
+msgid "Quit Loofi Pulse"
+msgstr "Avsluta Loofi Pulse"
+
+msgid "Snooze Notifications (15 min)"
+msgstr "Snooza aviseringar (15 min)"
+
+msgid "Nominal"
+msgstr "Nominell"
+
+msgid "Elevated"
+msgstr "Förhöjd"
+
+msgid "Bottleneck"
+msgstr "Flaskhals"
+
+msgid "Critical Throttle"
+msgstr "Kritisk strypning"
+
+msgid "Observing"
+msgstr "Observerar"
+
+msgid "Hardware Health Monitor"
+msgstr "Hårdvaruövervakare"
+
+msgid "Background & Startup"
+msgstr "Bakgrund & Uppstart"
+
+msgid "Service execution:"
+msgstr "Tjänstekörning:"
+
+msgid "Continue monitoring when all windows close"
+msgstr "Fortsätt övervakning i bakgrunden när alla fönster stängs"
+
+msgid "Start monitoring automatically at login"
+msgstr "Starta övervakning automatiskt vid inloggning"
+
+msgid "System Tray:"
+msgstr "Systemfält:"
+
+msgid "Show system tray icon with live status"
+msgstr "Visa ikon i systemfältet med realtidsstatus"
+
+msgid "Minimize to system tray when closing window"
+msgstr "Minimera till systemfältet när fönstret stängs"
+
+msgid "Alert Notifications"
+msgstr "Varningsaviseringar"
+
+msgid "Minimum alert severity:"
+msgstr "Lägsta allvarlighetsgrad för avisering:"
+
+msgid "Quiet Hours"
+msgstr "Tysta timmar"
+
+msgid "Temperature Unit"
+msgstr "Temperaturskala"
+
+msgid "Long-Term Trends & Incident History"
+msgstr "Långtidstrender och incidenthistorik"
+
+msgid "Keep detailed historical metrics up to:"
+msgstr "Spara detaljerade historiska mått i upp till:"
+
+msgid "Clear Recorded History"
+msgstr "Rensa inspelad historik"
+
+msgid "About Loofi Pulse"
+msgstr "Om Loofi Pulse"
+
+msgid "Keyboard Shortcuts"
+msgstr "Kortkommandon"
+
+msgid "Filter processes by name, PID or owner…"
+msgstr "Filtrera processer på namn, PID eller ägare…"
+
+msgid "Sort:"
+msgstr "Sortera:"
+
+msgid "CPU use"
+msgstr "CPU-användning"
+
+msgid "Memory use"
+msgstr "Minnesanvändning"
+
+msgid "Name"
+msgstr "Namn"
+
+msgid "PROCESS"
+msgstr "PROCESS"
+
+msgid "PID"
+msgstr "PID"
+
+msgid "USER"
+msgstr "ANVÄNDARE"
+
+msgid "CPU %"
+msgstr "CPU %"
+
+msgid "RESIDENT RAM"
+msgstr "RESIDENT RAM"
+
+msgid "STATE"
+msgstr "STATUS"
+
+msgid "Disk I/O:"
+msgstr "Disk-I/O:"
+
+msgid "Unavailable"
+msgstr "Otillgänglig"
+
+msgid "Active observation"
+msgstr "Aktiv observation"
+
+msgid "Terminated / No longer observed"
+msgstr "Avslutad / observeras ej längre"

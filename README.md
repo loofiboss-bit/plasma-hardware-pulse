@@ -2,6 +2,18 @@
 
 Loofi Pulse is a local Linux hardware monitor and incident investigation tool for KDE Plasma 6. The C++20/Qt 6 application and Plasma widget share one user-session collector. Fedora KDE is the primary target.
 
+## Version 0.11.0 (Daily-Driver & Resilience)
+
+- **Single-Instance & D-Bus Lifecycle**: Enforces single-instance application execution via `KDBusService`, seamlessly bringing existing windows to the front when launched again with optional page/section command line arguments.
+- **Collector Reconnection & Backoff**: Resilient client-side reconnect loop with exponential backoff (1s to 30s) and jitter; collector crashes or daemon restarts automatically re-establish telemetry streaming without application restarts.
+- **Systemd-Logind Sleep/Resume Recovery**: Subscribes to `org.freedesktop.login1.Manager.PrepareForSleep` signals, resetting rate counters on wakeup and inserting explicit visual recording gaps to prevent false spikes from hibernation/sleep intervals.
+- **Dedicated Settings & Preferences Hub**: Accessible `SettingsPage.qml` supporting telemetry intervals, memory retention, background monitoring, start at login, alert severity thresholds, quiet hours scheduling, per-domain alert muting, temperature units (°C/°F), and persistent history preferences.
+- **Persistent Long-Term History & Trends**: Opt-in local SQLite WAL database recording 1-minute numerical aggregates (min, avg, max) over 1h to 30-day timeframes with a zero-identity privacy guarantee (zero process names, command lines, or user PIDs stored).
+- **System Tray Integration**: Status-adaptive system tray icon (Nominal / Warning / Critical Throttling) with rich live telemetry tooltips, minimize-to-tray on window close, quick incident marking, and 15-minute notification snoozing.
+- **Safe Process Termination**: Defense-in-depth process termination gating with UID verification (`getuid()`), session/desktop component blacklists (`systemd`, `kwin`, `plasmashell`, `pipewire`), and `/proc/<pid>/stat` start-time checks to prevent PID recycling race attacks.
+- **Internationalization (ki18n)**: Fully translated Swedish locale (`po/sv/*.po`) across application and applet domains, localized desktop files, AppStream metadata, and KDE translation catalog tooling.
+- **Accessibility & Polish**: Clean Tab focus traversal, responsive `FontMetrics`-driven column sizing in the process table, collapsible cards for hardware not present (battery/GPU), and automated accessibility audit verification.
+
 ## Version 0.10.0 (UI/UX Refinement)
 
 - **Segmented Navigation & Window Frame**: Non-wrapping responsive navigation tabs with active indicator line and adaptive short labels below 980px. Polished header with status pill and theme tokens.

@@ -8,11 +8,13 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QProcess>
 #include <QSaveFile>
 #include <QStandardPaths>
+#include <QTime>
 
 namespace LoofiPulse {
 namespace {
@@ -39,16 +41,55 @@ CollectorService::CollectorService(QObject *parent) : QObject(parent)
     QDBusConnection::sessionBus().connect(QStringLiteral("org.freedesktop.DBus"), QStringLiteral("/org/freedesktop/DBus"),
         QStringLiteral("org.freedesktop.DBus"), QStringLiteral("NameOwnerChanged"), this,
         SLOT(ownerChanged(QString,QString,QString)));
+    QDBusConnection::systemBus().connect(QStringLiteral("org.freedesktop.login1"), QStringLiteral("/org/freedesktop/login1"),
+        QStringLiteral("org.freedesktop.login1.Manager"), QStringLiteral("PrepareForSleep"), this,
+        SLOT(onPrepareForSleep(bool)));
     m_busHealth.setInterval(500);
     connect(&m_busHealth, &QTimer::timeout, this, [] {
         if (!QDBusConnection::sessionBus().isConnected()) QCoreApplication::quit();
     });
     m_busHealth.start();
+
+    if (m_settings.value(QStringLiteral("longTermHistoryEnabled"), false).toBool()) {
+        ensureHistoryStoreOpen();
+    }
+    m_historyFlushTimer.setInterval(60000);
+    connect(&m_historyFlushTimer, &QTimer::timeout, this, [this] {
+        if (m_historyStore.isOpen()) {
+            m_historyStore.flush();
+        }
+    });
+    m_historyFlushTimer.start();
+
     m_thread.start();
     updateRequests();
 }
 bool CollectorService::backgroundActive() const { return m_loginMonitoring || m_settings.value(QStringLiteral("backgroundMonitoring"), false).toBool(); }
-CollectorService::~CollectorService() { m_thread.quit(); m_thread.wait(); }
+CollectorService::~CollectorService()
+{
+    if (m_historyStore.isOpen()) {
+        m_historyStore.flush(true);
+        m_historyStore.close();
+    }
+    m_thread.quit();
+    m_thread.wait();
+}
+
+void CollectorService::ensureHistoryStoreOpen()
+{
+    const QString dir = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + QStringLiteral("/loofi-pulse");
+    QDir().mkpath(dir);
+    const QString dbPath = dir + QStringLiteral("/history.sqlite");
+    const int days = std::clamp(m_settings.value(QStringLiteral("longTermHistoryRetentionDays"), 7).toInt(), 1, 31);
+    const qint64 retentionMs = qint64(days) * 86400000LL;
+    if (m_historyStore.open(dbPath, retentionMs)) {
+        const qint64 lastMs = m_historyStore.newestMs();
+        const qint64 now = QDateTime::currentMSecsSinceEpoch();
+        if (lastMs > 0 && (now - lastMs) > 120000LL) {
+            m_historyStore.recordGap(lastMs, now, QStringLiteral("collector_offline"));
+        }
+    }
+}
 
 QByteArray CollectorService::dispatch(std::function<QByteArray(PulseTelemetryController *)> operation)
 {
@@ -101,13 +142,47 @@ QByteArray CollectorService::History(qulonglong afterId, int limit) { return dis
 QByteArray CollectorService::Incident(const QString &id) { return dispatch([id](auto *e) { return e->collectorIncident(id); }); }
 QByteArray CollectorService::MarkProblem() { return dispatch([](auto *e) { return e->collectorMarkProblem(); }); }
 
+void CollectorService::onPrepareForSleep(bool goingToSleep)
+{
+    if (goingToSleep) {
+        m_sleepStartMs = QDateTime::currentMSecsSinceEpoch();
+        if (m_historyStore.isOpen()) {
+            m_historyStore.flush(true);
+        }
+        QMetaObject::invokeMethod(m_anchor, [this] {
+            if (m_engine) m_engine->setRecordingPaused(true);
+        }, Qt::QueuedConnection);
+    } else {
+        const qint64 now = QDateTime::currentMSecsSinceEpoch();
+        if (m_sleepStartMs > 0 && m_historyStore.isOpen()) {
+            m_historyStore.recordGap(m_sleepStartMs, now, QStringLiteral("suspend"));
+        }
+        m_sleepStartMs = 0;
+        QMetaObject::invokeMethod(m_anchor, [this] {
+            if (m_engine) {
+                m_engine->handleSystemResume();
+                m_engine->setRecordingPaused(false);
+            }
+        }, Qt::QueuedConnection);
+    }
+}
+
 QByteArray CollectorService::OpenApplication(const QString &page, const QString &section)
 {
-    const QString executable = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("loofi-pulse"));
     const QString target = PulseTelemetryController::normalizedPageName(page);
     QStringList arguments{QStringLiteral("--page"), target};
     const QString validSection = PulseTelemetryController::validatedSectionName(target, section);
     if (!validSection.isEmpty()) arguments << QStringLiteral("--section") << validSection;
+
+    auto bus = QDBusConnection::sessionBus();
+    auto call = QDBusMessage::createMethodCall(QStringLiteral("com.github.loofi.hardwarepulse.App"),
+        QStringLiteral("/com/github/loofi/hardwarepulse/App"),
+        QStringLiteral("com.github.loofi.hardwarepulse.App1"), QStringLiteral("Activate"));
+    call << arguments << QDir::currentPath() << QString();
+    auto reply = bus.call(call, QDBus::Block, 1000);
+    if (reply.type() == QDBusMessage::ReplyMessage) return success();
+
+    const QString executable = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("loofi-pulse"));
     if (!QFileInfo(executable).isExecutable() || !QProcess::startDetached(executable, arguments)) {
         sendErrorReply(QStringLiteral("com.github.loofi.hardwarepulse.LaunchFailed"), QStringLiteral("The application matching this collector could not be opened.")); return {};
     }
@@ -115,9 +190,21 @@ QByteArray CollectorService::OpenApplication(const QString &page, const QString 
 }
 QByteArray CollectorService::OpenIncident(const QString &id)
 {
+    if (id.isEmpty() || id.size() > 200) {
+        sendErrorReply(QStringLiteral("com.github.loofi.hardwarepulse.LaunchFailed"), QStringLiteral("The recorded incident could not be opened in the matching application.")); return {};
+    }
+    const QStringList arguments{QStringLiteral("--incident"), id};
+    auto bus = QDBusConnection::sessionBus();
+    auto call = QDBusMessage::createMethodCall(QStringLiteral("com.github.loofi.hardwarepulse.App"),
+        QStringLiteral("/com/github/loofi/hardwarepulse/App"),
+        QStringLiteral("com.github.loofi.hardwarepulse.App1"), QStringLiteral("Activate"));
+    call << arguments << QDir::currentPath() << QString();
+    auto reply = bus.call(call, QDBus::Block, 1000);
+    if (reply.type() == QDBusMessage::ReplyMessage) return success();
+
     const QString executable = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("loofi-pulse"));
-    if (id.isEmpty() || id.size() > 200 || !QFileInfo(executable).isExecutable()
-        || !QProcess::startDetached(executable, {QStringLiteral("--incident"), id})) {
+    if (!QFileInfo(executable).isExecutable()
+        || !QProcess::startDetached(executable, arguments)) {
         sendErrorReply(QStringLiteral("com.github.loofi.hardwarepulse.LaunchFailed"), QStringLiteral("The recorded incident could not be opened in the matching application.")); return {};
     }
     return success();
@@ -159,25 +246,155 @@ QByteArray CollectorService::StopMonitoring()
     // Existing widget clients continue to receive telemetry; closing the last client starts idle shutdown.
     updateRequests(); if (!m_latest.isEmpty()) publish(m_latest); return success();
 }
+QByteArray CollectorService::GetPreferences()
+{
+    QVariantMap prefs;
+    prefs[QStringLiteral("minNotificationSeverity")] = m_settings.value(QStringLiteral("minNotificationSeverity"), 2).toInt();
+    prefs[QStringLiteral("mutedNotificationDomains")] = m_settings.value(QStringLiteral("mutedNotificationDomains"), QStringList()).toStringList();
+    prefs[QStringLiteral("quietHoursEnabled")] = m_settings.value(QStringLiteral("quietHoursEnabled"), false).toBool();
+    prefs[QStringLiteral("quietHoursStart")] = m_settings.value(QStringLiteral("quietHoursStart"), QStringLiteral("22:00")).toString();
+    prefs[QStringLiteral("quietHoursEnd")] = m_settings.value(QStringLiteral("quietHoursEnd"), QStringLiteral("08:00")).toString();
+    prefs[QStringLiteral("longTermHistoryEnabled")] = m_settings.value(QStringLiteral("longTermHistoryEnabled"), false).toBool();
+    prefs[QStringLiteral("longTermHistoryRetentionDays")] = m_settings.value(QStringLiteral("longTermHistoryRetentionDays"), 7).toInt();
+    prefs[QStringLiteral("backgroundMonitoring")] = backgroundActive();
+    prefs[QStringLiteral("startAtLogin")] = m_settings.value(QStringLiteral("startAtLogin"), false).toBool();
+    prefs[QStringLiteral("historyStoreBytes")] = m_historyStore.isOpen() ? m_historyStore.sizeBytes() : 0;
+    prefs[QStringLiteral("historyStoreOldestMs")] = m_historyStore.isOpen() ? m_historyStore.oldestMs() : 0;
+    prefs[QStringLiteral("historyStoreNewestMs")] = m_historyStore.isOpen() ? m_historyStore.newestMs() : 0;
+    prefs[QStringLiteral("historyStoreRecoveryNotice")] = m_historyStore.recoveryNotice();
+    return QJsonDocument(QJsonObject::fromVariantMap(prefs)).toJson(QJsonDocument::Compact);
+}
+
+QByteArray CollectorService::SetPreferences(const QByteArray &json)
+{
+    const auto doc = QJsonDocument::fromJson(json);
+    if (!doc.isObject()) {
+        sendErrorReply(QStringLiteral("com.github.loofi.hardwarepulse.InvalidArguments"), QStringLiteral("Expected JSON object for preferences."));
+        return {};
+    }
+    const auto map = doc.object().toVariantMap();
+    if (map.contains(QStringLiteral("minNotificationSeverity")))
+        m_settings.setValue(QStringLiteral("minNotificationSeverity"), map.value(QStringLiteral("minNotificationSeverity")).toInt());
+    if (map.contains(QStringLiteral("mutedNotificationDomains")))
+        m_settings.setValue(QStringLiteral("mutedNotificationDomains"), map.value(QStringLiteral("mutedNotificationDomains")).toStringList());
+    if (map.contains(QStringLiteral("quietHoursEnabled")))
+        m_settings.setValue(QStringLiteral("quietHoursEnabled"), map.value(QStringLiteral("quietHoursEnabled")).toBool());
+    if (map.contains(QStringLiteral("quietHoursStart")))
+        m_settings.setValue(QStringLiteral("quietHoursStart"), map.value(QStringLiteral("quietHoursStart")).toString());
+    if (map.contains(QStringLiteral("quietHoursEnd")))
+        m_settings.setValue(QStringLiteral("quietHoursEnd"), map.value(QStringLiteral("quietHoursEnd")).toString());
+    if (map.contains(QStringLiteral("longTermHistoryEnabled"))) {
+        const bool enabled = map.value(QStringLiteral("longTermHistoryEnabled")).toBool();
+        m_settings.setValue(QStringLiteral("longTermHistoryEnabled"), enabled);
+        if (enabled && !m_historyStore.isOpen()) {
+            ensureHistoryStoreOpen();
+        } else if (!enabled && m_historyStore.isOpen()) {
+            m_historyStore.flush(true);
+            m_historyStore.close();
+        }
+    }
+    if (map.contains(QStringLiteral("longTermHistoryRetentionDays"))) {
+        const int days = std::clamp(map.value(QStringLiteral("longTermHistoryRetentionDays")).toInt(), 1, 31);
+        m_settings.setValue(QStringLiteral("longTermHistoryRetentionDays"), days);
+        if (m_historyStore.isOpen()) {
+            m_historyStore.setRetentionMs(qint64(days) * 86400000LL);
+        }
+    }
+    if (map.contains(QStringLiteral("backgroundMonitoring")))
+        SetBackground(map.value(QStringLiteral("backgroundMonitoring")).toBool());
+    if (map.contains(QStringLiteral("startAtLogin")))
+        SetStartAtLogin(map.value(QStringLiteral("startAtLogin")).toBool());
+    m_settings.sync();
+    const QByteArray current = GetPreferences();
+    Q_EMIT PreferencesChanged(current);
+    if (!m_latest.isEmpty()) publish(m_latest);
+    return success();
+}
+
+QByteArray CollectorService::Trends(qint64 fromMs, qint64 toMs, int maxPoints, const QStringList &metricIds)
+{
+    if (!m_historyStore.isOpen()) return QByteArrayLiteral("{}");
+    const auto result = m_historyStore.trends(fromMs, toMs, maxPoints, metricIds);
+    return QJsonDocument(QJsonObject::fromVariantMap(result)).toJson(QJsonDocument::Compact);
+}
+
+QByteArray CollectorService::PersistedIncidents(qint64 fromMs, qint64 toMs, int limit)
+{
+    if (!m_historyStore.isOpen()) return QByteArrayLiteral("[]");
+    const auto list = m_historyStore.incidents(fromMs, toMs, limit);
+    return QJsonDocument(QJsonArray::fromVariantList(list)).toJson(QJsonDocument::Compact);
+}
+
+QByteArray CollectorService::ClearPersistedHistory()
+{
+    if (m_historyStore.isOpen()) {
+        m_historyStore.clear();
+    }
+    return success();
+}
+
 void CollectorService::publish(const QByteArray &bytes)
 {
     auto packet = QJsonDocument::fromJson(bytes).object().toVariantMap();
     auto live = packet.value(QStringLiteral("live")).toMap();
     live[QStringLiteral("backgroundMonitoring")] = backgroundActive();
     live[QStringLiteral("startAtLogin")] = m_settings.value(QStringLiteral("startAtLogin"), false);
+    live[QStringLiteral("preferences")] = QJsonDocument::fromJson(GetPreferences()).object().toVariantMap();
     packet[QStringLiteral("live")] = live;
+
+    if (m_historyStore.isOpen()) {
+        const qint64 ts = packet.value(QStringLiteral("sample")).toMap().value(QStringLiteral("timestampMs")).toLongLong();
+        const qint64 timestampMs = (ts > 0) ? ts : QDateTime::currentMSecsSinceEpoch();
+        m_historyStore.addSample(timestampMs, live);
+        const auto incidents = packet.value(QStringLiteral("incidents")).toList();
+        for (const auto &entry : incidents) {
+            m_historyStore.recordIncident(entry.toMap());
+        }
+    }
+
     m_latest = QJsonDocument(QJsonObject::fromVariantMap(packet)).toJson(QJsonDocument::Compact);
     notify(packet); Q_EMIT FrameReady(m_latest);
 }
+
 void CollectorService::notify(const QVariantMap &packet)
 {
     bool enabled = m_clients.isEmpty() && backgroundActive()
         && m_settings.value(QStringLiteral("backgroundNotificationsEnabled"), true).toBool();
     for (const auto &client : std::as_const(m_clients)) enabled = enabled || client.notifications;
     if (!enabled || QDateTime::currentMSecsSinceEpoch() < m_snoozeUntil) return;
+
     const auto live = packet.value(QStringLiteral("live")).toMap();
     const int severity = live.value(QStringLiteral("verdictSeverity")).toInt();
-    if (severity != 2 && severity != 3) return;
+    const int minSeverity = m_settings.value(QStringLiteral("minNotificationSeverity"), 2).toInt();
+    if (minSeverity > 3 || severity < minSeverity) return;
+
+    if (m_settings.value(QStringLiteral("quietHoursEnabled"), false).toBool()) {
+        const QTime now = QTime::currentTime();
+        const QTime start = QTime::fromString(m_settings.value(QStringLiteral("quietHoursStart"), QStringLiteral("22:00")).toString(), QStringLiteral("HH:mm"));
+        const QTime end = QTime::fromString(m_settings.value(QStringLiteral("quietHoursEnd"), QStringLiteral("08:00")).toString(), QStringLiteral("HH:mm"));
+        if (start.isValid() && end.isValid()) {
+            bool inQuietHours = false;
+            if (start <= end) {
+                inQuietHours = (now >= start && now < end);
+            } else {
+                inQuietHours = (now >= start || now < end);
+            }
+            if (inQuietHours) return;
+        }
+    }
+
+    const QStringList mutedDomains = m_settings.value(QStringLiteral("mutedNotificationDomains")).toStringList();
+    if (!mutedDomains.isEmpty()) {
+        const QString domain = live.value(QStringLiteral("primaryBottleneckDomain")).toString().toLower();
+        const QString ruleId = live.value(QStringLiteral("verdictRuleId")).toString().toLower();
+        for (const QString &muted : mutedDomains) {
+            const QString m = muted.trimmed().toLower();
+            if (!m.isEmpty() && (domain.contains(m) || ruleId.contains(m))) {
+                return;
+            }
+        }
+    }
+
     const auto incidents = packet.value(QStringLiteral("incidents")).toList();
     QString id;
     for (const auto &entry : incidents) { const auto episode = entry.toMap(); if (episode.value(QStringLiteral("active")).toBool()) { id = episode.value(QStringLiteral("incidentId")).toString(); break; } }
@@ -192,10 +409,20 @@ void CollectorService::notify(const QVariantMap &packet)
     auto *open = notification->addAction(QStringLiteral("Open incident"));
     auto *snooze = notification->addAction(QStringLiteral("Snooze 15 minutes"));
     connect(open, &KNotificationAction::activated, this, [id] {
+        const QStringList arguments{QStringLiteral("--incident"), id};
+        auto bus = QDBusConnection::sessionBus();
+        auto call = QDBusMessage::createMethodCall(QStringLiteral("com.github.loofi.hardwarepulse.App"),
+            QStringLiteral("/com/github/loofi/hardwarepulse/App"),
+            QStringLiteral("com.github.loofi.hardwarepulse.App1"), QStringLiteral("Activate"));
+        call << arguments << QDir::currentPath() << QString();
+        auto reply = bus.call(call, QDBus::Block, 1000);
+        if (reply.type() == QDBusMessage::ReplyMessage) return;
+
         const QString executable = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("loofi-pulse"));
-        QProcess::startDetached(executable, {QStringLiteral("--incident"), id});
+        QProcess::startDetached(executable, arguments);
     });
     connect(snooze, &KNotificationAction::activated, this, [this] { m_snoozeUntil = QDateTime::currentMSecsSinceEpoch() + 900000; });
     notification->sendEvent();
 }
 }
+

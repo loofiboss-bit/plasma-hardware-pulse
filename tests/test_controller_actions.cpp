@@ -5,6 +5,7 @@
 #include <QFile>
 #include <QTemporaryDir>
 #include <QtTest>
+#include <unistd.h>
 
 using namespace LoofiPulse;
 
@@ -161,6 +162,127 @@ private Q_SLOTS:
         QCOMPARE(controller.incidentHistory().size(), 0);
         QVERIFY(controller.lastActionSucceeded());
         QVERIFY(controller.lastActionStatus().contains(QStringLiteral("Cleared")));
+    }
+
+    void testCollectorConnectedAndReconnect()
+    {
+        PulseTelemetryController localController(QDBusConnection::systemBus());
+        QVERIFY(localController.collectorConnected());
+
+        PulseTelemetryController remoteController;
+        // In local unit test without collector daemon running, remote defaults to disconnected/connecting
+        QVERIFY(!remoteController.collectorConnected());
+        remoteController.reconnectCollector();
+        QCOMPARE(remoteController.collectorState(), QStringLiteral("Connecting"));
+    }
+
+    void testSystemResumeResetsBaselinesAndSetsGap()
+    {
+        PulseTelemetryController controller(QDBusConnection::systemBus());
+        controller.refreshNow();
+        controller.handleSystemResume();
+        controller.refreshNow();
+        QVERIFY(controller.historySamples().last().toMap().value(QStringLiteral("gapBefore")).toBool());
+    }
+
+    void testTemperatureUnitPreference()
+    {
+        PulseTelemetryController controller(QDBusConnection::systemBus());
+        QCOMPARE(controller.temperatureUnit(), QStringLiteral("C"));
+        QSignalSpy spy(&controller, &PulseTelemetryController::temperatureUnitChanged);
+        controller.setTemperatureUnit(QStringLiteral("f"));
+        QCOMPARE(controller.temperatureUnit(), QStringLiteral("F"));
+        QCOMPARE(spy.count(), 1);
+        controller.setTemperatureUnit(QStringLiteral("F"));
+        QCOMPARE(spy.count(), 1);
+        controller.setTemperatureUnit(QStringLiteral("Celsius"));
+        QCOMPARE(controller.temperatureUnit(), QStringLiteral("C"));
+        QCOMPARE(spy.count(), 2);
+    }
+
+    void testCollectorPreferencesUpdate()
+    {
+        PulseTelemetryController controller(QDBusConnection::systemBus());
+        QVERIFY(controller.collectorPreferences().isEmpty());
+        QSignalSpy spy(&controller, &PulseTelemetryController::collectorPreferencesChanged);
+        QVariantMap prefs{{QStringLiteral("minNotificationSeverity"), 3}, {QStringLiteral("quietHoursEnabled"), true}};
+        controller.updateCollectorPreferences(prefs);
+        QCOMPARE(controller.collectorPreferences(), prefs);
+        QCOMPARE(spy.count(), 1);
+    }
+
+    void testTrendsPropertiesAndRanges()
+    {
+        PulseTelemetryController controller(QDBusConnection::systemBus());
+        QCOMPARE(controller.trendsRange(), QStringLiteral("1h"));
+        QVERIFY(!controller.trendsLoading());
+        QVERIFY(controller.trendsData().isEmpty());
+        QVERIFY(controller.persistedIncidents().isEmpty());
+
+        QSignalSpy rangeSpy(&controller, &PulseTelemetryController::trendsRangeChanged);
+        controller.setTrendsRange(QStringLiteral("24h"));
+        QCOMPARE(controller.trendsRange(), QStringLiteral("24h"));
+        QCOMPARE(rangeSpy.count(), 1);
+    }
+
+    void testProcessTerminationSafetyAndExecution()
+    {
+        PulseTelemetryController controller(QDBusConnection::systemBus());
+
+        // 1. PID <= 1 must be refused
+        QVERIFY(!controller.canTerminateProcess(0));
+        QVERIFY(!controller.canTerminateProcess(1));
+        QVERIFY(!controller.canTerminateProcess(-42));
+        QVERIFY(!controller.terminateProcess(1));
+        QVERIFY(controller.lastActionStatus().contains(QStringLiteral("initialization process")));
+
+        // 2. Self (current PID) must be refused
+        QVERIFY(!controller.canTerminateProcess(static_cast<int>(::getpid())));
+        QVERIFY(!controller.terminateProcess(static_cast<int>(::getpid())));
+        QVERIFY(controller.lastActionStatus().contains(QStringLiteral("Loofi Pulse itself")));
+
+        // 3. Start a real child process
+        QProcess child;
+        child.start(QStringLiteral("sleep"), {QStringLiteral("60")});
+        QVERIFY(child.waitForStarted(3000));
+        const int childPid = static_cast<int>(child.processId());
+        QVERIFY(childPid > 1);
+
+        // 4. canTerminateProcess on child should succeed
+        QVERIFY(controller.canTerminateProcess(childPid));
+
+        // 5. Wrong startTime should fail verification
+        QVERIFY(!controller.canTerminateProcess(childPid, 999999999ULL));
+        QVERIFY(!controller.terminateProcess(childPid, 999999999ULL));
+        QVERIFY(controller.lastActionStatus().contains(QStringLiteral("start time does not match")));
+
+        // 6. Legitimate termination with SIGTERM
+        QVERIFY(controller.terminateProcess(childPid, 0, false));
+        QVERIFY(child.waitForFinished(3000));
+        QCOMPARE(child.exitStatus(), QProcess::CrashExit);
+        QVERIFY(controller.lastActionStatus().contains(QStringLiteral("SIGTERM")));
+
+        // 7. Process is now dead - terminateProcess should report no longer running
+        QVERIFY(!controller.canTerminateProcess(childPid));
+        QVERIFY(!controller.terminateProcess(childPid));
+        QVERIFY(controller.lastActionStatus().contains(QStringLiteral("no longer running")));
+    }
+
+    void testProcessIoStats()
+    {
+        PulseTelemetryController controller(QDBusConnection::systemBus());
+
+        // Invalid PID
+        const auto invalidStats = controller.processIoStats(-1);
+        QVERIFY(!invalidStats.value(QStringLiteral("available")).toBool());
+
+        // Current process
+        const auto myStats = controller.processIoStats(static_cast<int>(::getpid()));
+        QVERIFY(myStats.value(QStringLiteral("available")).toBool());
+        QVERIFY(myStats.contains(QStringLiteral("readBytes")));
+        QVERIFY(myStats.contains(QStringLiteral("writeBytes")));
+        QVERIFY(myStats.contains(QStringLiteral("readMib")));
+        QVERIFY(myStats.contains(QStringLiteral("writeMib")));
     }
 };
 

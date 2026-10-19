@@ -111,6 +111,15 @@ PsiMetric PsiMemorySampler::parsePsiContent(const QString &content, quint64 prev
     return metric;
 }
 
+void PsiMemorySampler::resetBaselines()
+{
+    m_prevCpuSomeUs = 0;
+    m_prevMemSomeUs = 0;
+    m_prevIoSomeUs = 0;
+    m_diskCounters.clear();
+    m_netCounters.clear();
+}
+
 PsiAndMemorySnapshot PsiMemorySampler::sample(qint64 elapsedMs)
 {
     PsiAndMemorySnapshot snap;
@@ -129,11 +138,7 @@ PsiAndMemorySnapshot PsiMemorySampler::sample(qint64 elapsedMs)
     const QString ioPsiText = readWholeText(procDir.filePath(QStringLiteral("pressure/io")));
 
     if (elapsedMs > 30000) {
-        m_prevCpuSomeUs = 0;
-        m_prevMemSomeUs = 0;
-        m_prevIoSomeUs = 0;
-        m_diskCounters.clear();
-        m_netCounters.clear();
+        resetBaselines();
     }
 
     snap.cpuPsi = parsePsiContent(cpuPsiText, m_prevCpuSomeUs, elapsedMs);

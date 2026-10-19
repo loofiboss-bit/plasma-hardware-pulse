@@ -152,6 +152,13 @@ void PulseTelemetryController::receiveCollectorFrame(const QByteArray &data)
     }
     const auto values = packet.value(QStringLiteral("live")).toMap();
     for (auto it = values.cbegin(); it != values.cend(); ++it) m_remoteValues[it.key()] = it.value();
+    if (values.contains(QStringLiteral("preferences"))) {
+        const auto prefs = values.value(QStringLiteral("preferences")).toMap();
+        if (prefs != m_collectorPreferences) {
+            m_collectorPreferences = prefs;
+            Q_EMIT collectorPreferencesChanged();
+        }
+    }
     m_receivedAt.restart();
     m_connectionState = m_recordingPaused ? QStringLiteral("Paused") : QStringLiteral("Live");
     const auto sample = packet.value(QStringLiteral("sample")).toMap();
@@ -322,10 +329,49 @@ QString PulseTelemetryController::collectorState() const
     if (m_receivedAt.isValid() && m_receivedAt.elapsed() > std::max(5000, m_timer.interval() * 3)) return QStringLiteral("Stale — last sample is old");
     return m_connectionState;
 }
+
+bool PulseTelemetryController::collectorConnected() const
+{
+    if (!m_remoteClient) return true;
+    if (m_connectionState.startsWith(QStringLiteral("Disconnected")) || m_connectionState.startsWith(QStringLiteral("Connecting"))) {
+        return false;
+    }
+    return !m_receivedAt.isValid() || m_receivedAt.elapsed() <= std::max(5000, m_timer.interval() * 3);
+}
+
+void PulseTelemetryController::reconnectCollector()
+{
+    if (!m_remoteClient) return;
+    m_lastLaunchAttempt.invalidate();
+    ++m_connectionGeneration;
+    m_connecting = false;
+    m_syncing = false;
+    m_connectionState = QStringLiteral("Connecting");
+    subscribeCollector();
+    Q_EMIT telemetryUpdated();
+}
+
 void PulseTelemetryController::setBackgroundMonitoring(bool value) { callCollector(QStringLiteral("SetBackground"), {value}); }
 void PulseTelemetryController::setStartAtLogin(bool value) { callCollector(QStringLiteral("SetStartAtLogin"), {value}); }
 void PulseTelemetryController::snoozeNotifications() { callCollector(QStringLiteral("Snooze"), {}, [this](const QByteArray &) { setActionResult(true, QStringLiteral("Notifications snoozed for 15 minutes.")); }); }
 void PulseTelemetryController::quitMonitoring() { callCollector(QStringLiteral("StopMonitoring")); }
+
+void PulseTelemetryController::updateCollectorPreferences(const QVariantMap &prefs)
+{
+    m_collectorPreferences = prefs;
+    Q_EMIT collectorPreferencesChanged();
+    if (m_remoteClient) {
+        callCollector(QStringLiteral("SetPreferences"), {QJsonDocument(QJsonObject::fromVariantMap(prefs)).toJson(QJsonDocument::Compact)});
+    }
+}
+
+void PulseTelemetryController::setTemperatureUnit(const QString &unit)
+{
+    const QString u = (unit.toUpper() == QStringLiteral("F")) ? QStringLiteral("F") : QStringLiteral("C");
+    if (m_temperatureUnit == u) return;
+    m_temperatureUnit = u;
+    Q_EMIT temperatureUnitChanged();
+}
 
 void PulseTelemetryController::rebuildHistoryView()
 {
@@ -467,4 +513,70 @@ QString PulseTelemetryController::exportSelectedIncident()
     if (!m_sessionMode) { setActionResult(false, QStringLiteral("Select an incident or time range first.")); return {}; }
     return exportIncidentReportToFile();
 }
+
+void PulseTelemetryController::setTrendsRange(const QString &range)
+{
+    if (m_trendsRange != range) {
+        loadTrendsRange(range);
+    }
+}
+
+void PulseTelemetryController::requestTrends(qint64 fromMs, qint64 toMs, int maxPoints, const QStringList &metricIds)
+{
+    m_trendsLoading = true;
+    Q_EMIT trendsLoadingChanged();
+    const QStringList metrics = metricIds.isEmpty() ? QStringList{
+        QStringLiteral("cpuLoad"), QStringLiteral("cpuTemp"), QStringLiteral("cpuPower"),
+        QStringLiteral("gpuBusy"), QStringLiteral("gpuTemp"), QStringLiteral("gpuPower"),
+        QStringLiteral("ramUsed"), QStringLiteral("swapUsed"),
+        QStringLiteral("psiCpuSome"), QStringLiteral("psiMemSome"), QStringLiteral("psiIoSome"),
+        QStringLiteral("diskRead"), QStringLiteral("diskWrite"),
+        QStringLiteral("batteryWatts"), QStringLiteral("fanRpm")
+    } : metricIds;
+
+    callCollector(QStringLiteral("Trends"), {fromMs, toMs, maxPoints, metrics}, [this](const QByteArray &data) {
+        m_trendsLoading = false;
+        m_trendsData = object(data);
+        Q_EMIT trendsLoadingChanged();
+        Q_EMIT trendsDataChanged();
+    });
+}
+
+void PulseTelemetryController::loadTrendsRange(const QString &rangeKey)
+{
+    m_trendsRange = rangeKey;
+    Q_EMIT trendsRangeChanged();
+
+    qint64 durationMs = 3600000LL; // default 1h
+    if (rangeKey == QStringLiteral("6h")) durationMs = 6LL * 3600000LL;
+    else if (rangeKey == QStringLiteral("24h")) durationMs = 24LL * 3600000LL;
+    else if (rangeKey == QStringLiteral("7d")) durationMs = 7LL * 86400000LL;
+    else if (rangeKey == QStringLiteral("30d")) durationMs = 30LL * 86400000LL;
+
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    requestTrends(now - durationMs, now, 120, {});
+}
+
+void PulseTelemetryController::loadPersistedIncidents(qint64 fromMs, qint64 toMs, int limit)
+{
+    callCollector(QStringLiteral("PersistedIncidents"), {fromMs, toMs, limit}, [this](const QByteArray &data) {
+        const auto doc = QJsonDocument::fromJson(data);
+        if (doc.isArray()) {
+            m_persistedIncidents = doc.array().toVariantList();
+            Q_EMIT persistedIncidentsChanged();
+        }
+    });
+}
+
+void PulseTelemetryController::clearPersistedHistory()
+{
+    callCollector(QStringLiteral("ClearPersistedHistory"), {}, [this](const QByteArray &) {
+        m_trendsData.clear();
+        m_persistedIncidents.clear();
+        Q_EMIT trendsDataChanged();
+        Q_EMIT persistedIncidentsChanged();
+        setActionResult(true, QStringLiteral("Persistent long-term history cleared."));
+    });
+}
+
 }

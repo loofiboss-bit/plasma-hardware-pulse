@@ -49,6 +49,10 @@ Kirigami.ScrollablePage {
         return available ? value + suffix : "Unavailable"
     }
 
+    function temp(available, celsius) {
+        return available ? MeasurementLabels.formatTemperature(celsius, page.controller.temperatureUnit) : "Unavailable"
+    }
+
     function sectionForDomain(domain) {
         var d = String(domain || "").toLowerCase()
         if (d.indexOf("memory") >= 0) return "memory"
@@ -149,8 +153,8 @@ Kirigami.ScrollablePage {
 
                     Kirigami.Heading {
                         id: verdictHeading
-                objectName: "section_status"
-                        activeFocusOnTab: true
+                        objectName: "section_status"
+                        focus: true
                         text: page.controller.verdictHeadline
                         level: 2
                         Layout.fillWidth: true
@@ -485,9 +489,9 @@ Kirigami.ScrollablePage {
                         sampleAvailKey: "cpuTempAvailable",
                         sampleMin: 25.0,
                         sampleMax: 100.0,
-                        value: page.metric(page.controller.cpuTempAvailable, page.controller.cpuPackageTemp.toFixed(1), " °C"),
+                        value: page.temp(page.controller.cpuTempAvailable, page.controller.cpuPackageTemp),
                         subtitle: page.controller.thermalHeadroomAvailable
-                            ? page.controller.thermalHeadroom.toFixed(1) + " °C headroom"
+                            ? page.temp(true, page.controller.thermalHeadroom) + " headroom"
                             : "Thermal limit unavailable",
                         ratio: page.controller.cpuTempAvailable ? Math.min(1.0, Math.max(0.0, (page.controller.cpuPackageTemp - 25.0) / 75.0)) : 0.0,
                         barAvailable: page.controller.cpuTempAvailable,
@@ -504,7 +508,7 @@ Kirigami.ScrollablePage {
                         value: page.controller.gpuBusyAvailable
                             ? page.controller.gpuBusyPercent.toFixed(0) + "% load"
                             : (page.controller.gpuFrequencyAvailable ? page.controller.gpuCurrentFreqMhz + " MHz" : "Unavailable"),
-                        subtitle: (page.controller.gpuTempAvailable ? page.controller.gpuTempCelsius.toFixed(0) + " °C" : "Temp N/A")
+                        subtitle: (page.controller.gpuTempAvailable ? MeasurementLabels.formatTemperature(page.controller.gpuTempCelsius, page.controller.temperatureUnit) : "Temp N/A")
                             + (page.controller.gpuFrequencyAvailable ? " · " + page.controller.gpuCurrentFreqMhz + " MHz" : "")
                             + (page.controller.gpuVramAvailable ? " · " + Math.round(page.controller.gpuVramUsedMib) + " MiB VRAM" : ""),
                         ratio: page.controller.gpuBusyAvailable
@@ -548,7 +552,7 @@ Kirigami.ScrollablePage {
                             + (page.controller.netThroughputAvailable
                                ? "Net ↓" + page.controller.netRxMibPerSec.toFixed(1) + " ↑" + page.controller.netTxMibPerSec.toFixed(1) + " MiB/s · "
                                : "")
-                            + (page.controller.nvmeTempAvailable ? "NVMe " + page.controller.nvmeTempCelsius.toFixed(0) + " °C" : "NVMe temp N/A"),
+                            + (page.controller.nvmeTempAvailable ? "NVMe " + MeasurementLabels.formatTemperature(page.controller.nvmeTempCelsius, page.controller.temperatureUnit) : "NVMe temp N/A"),
                         ratio: page.controller.diskThroughputAvailable
                             ? Math.min(1.0, Math.max(0.0, (page.controller.diskReadMibPerSec + page.controller.diskWriteMibPerSec) / 500.0))
                             : (page.controller.psiIoFullAvailable ? Math.min(1.0, Math.max(0.0, page.controller.psiIoFull10 / 25.0)) : 0.0),
@@ -881,7 +885,7 @@ Kirigami.ScrollablePage {
             ColumnLayout {
                 id: detailsCol
                 objectName: "section_measurements"
-                activeFocusOnTab: true
+                focus: true
                 Accessible.name: "measurements section"
                 anchors.fill: parent
                 anchors.margins: Kirigami.Units.largeSpacing
@@ -900,11 +904,11 @@ Kirigami.ScrollablePage {
                     Repeater {
                         model: [
                             "GPU load: " + page.metric(page.controller.gpuBusyAvailable, page.controller.gpuBusyPercent.toFixed(0), "%"),
-                            "GPU temperature: " + page.metric(page.controller.gpuTempAvailable, page.controller.gpuTempCelsius.toFixed(0), " °C"),
+                            "GPU temperature: " + page.temp(page.controller.gpuTempAvailable, page.controller.gpuTempCelsius),
                             "GPU driver: " + (page.controller.gpuAvailable && page.controller.gpuDriverName ? page.controller.gpuDriverName : "Unavailable"),
                             "Network I/O: " + (page.controller.netThroughputAvailable ? ("↓" + page.controller.netRxMibPerSec.toFixed(2) + " / ↑" + page.controller.netTxMibPerSec.toFixed(2) + " MiB/s") : "Unavailable"),
                             "Fan: " + (page.controller.fanAvailable ? page.controller.primaryFanRpm + " RPM" : "Unavailable"),
-                            "Thermal headroom: " + page.metric(page.controller.thermalHeadroomAvailable, page.controller.thermalHeadroom.toFixed(1), " °C"),
+                            "Thermal headroom: " + page.temp(page.controller.thermalHeadroomAvailable, page.controller.thermalHeadroom),
                             "Active power profile: " + (page.controller.activePowerProfile || "Unavailable")
                         ]
                         delegate: Rectangle {
