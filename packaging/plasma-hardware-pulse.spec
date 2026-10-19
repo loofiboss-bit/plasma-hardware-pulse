@@ -55,12 +55,13 @@ monitoring and login startup are optional.
 
 %install
 %cmake_install
+%find_lang %{name} --all-name
 
 %check
 appstream-util validate-relax --nonet %{buildroot}%{_kf6_metainfodir}/com.github.loofi.hardwarepulse.metainfo.xml
 QT_QPA_PLATFORM=offscreen QML_IMPORT_PATH="%{_vpath_builddir}/bin" ctest --test-dir "%{_vpath_builddir}" --output-on-failure
 
-%files
+%files -f %{name}.lang
 %license LICENSE
 %doc README.md ROADMAP.md
 %{_bindir}/loofi-pulse
