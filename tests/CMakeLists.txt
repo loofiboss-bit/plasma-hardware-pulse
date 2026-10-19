@@ -166,7 +166,7 @@ target_compile_definitions(test_i18n PRIVATE
 target_link_libraries(test_i18n PRIVATE Qt6::Core Qt6::Test KF6::I18n)
 add_dependencies(test_i18n pofiles)
 add_test(NAME i18n COMMAND test_i18n)
-set_tests_properties(i18n PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;${PULSE_TEST_XDG_ENV}")
+set_tests_properties(i18n PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;LANGUAGE=sv:sv_SE;LC_ALL=sv_SE.UTF-8;${PULSE_TEST_XDG_ENV}")
 
 find_program(MSGFMT_EXECUTABLE msgfmt)
 if(MSGFMT_EXECUTABLE)

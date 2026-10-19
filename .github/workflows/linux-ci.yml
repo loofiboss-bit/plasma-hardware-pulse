@@ -48,6 +48,7 @@ jobs:
             qt6-qttools-devel \
             appstream \
             gettext \
+            glibc-langpack-sv \
             zip
 
       - uses: actions/checkout@v4
