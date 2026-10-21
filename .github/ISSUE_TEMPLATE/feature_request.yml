@@ -1,0 +1,22 @@
+name: Feature request
+description: Describe an investigation problem Pulse should help solve.
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and audience
+      description: What task is difficult today? Give a concrete workflow.
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Desired behavior
+      description: Explain the result and how you would verify it; mention existing workarounds.
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Hardware and compatibility considerations
+      description: Relevant interfaces, unavailable-data behavior, privacy, saved sessions, or widget constraints.

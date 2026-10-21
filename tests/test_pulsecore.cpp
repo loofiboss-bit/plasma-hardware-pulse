@@ -34,6 +34,81 @@ class TestPulseCore : public QObject
     Q_OBJECT
 
 private Q_SLOTS:
+    void testGpuTemperatureRiskAcrossDevices()
+    {
+        CpuSocSnapshot cpu;
+        cpu.loadAvailable = cpu.loadWarmedUp = cpu.temperatureAvailable = true;
+        PsiAndMemorySnapshot psi;
+        psi.responsivenessAvailable = true;
+        GpuSnapshot idle;
+        idle.identity = QStringLiteral("integrated");
+        idle.temperatureAvailable = idle.busyAvailable = true;
+        idle.tempCelsius = 45.0;
+        GpuSnapshot hot = idle;
+        hot.identity = QStringLiteral("discrete");
+        hot.temperatureSensorId = QStringLiteral("gpu/edge");
+        hot.temperatureSensorLabel = QStringLiteral("edge");
+        hot.tempCelsius = 95.0;
+        for (const double busy : {0.0, 20.0}) {
+            hot.busyPercent = busy;
+            const auto verdict = CausalDiagnosisEngine::evaluateDevices(cpu, {idle, hot}, psi, {}, {}, {});
+            QCOMPARE(verdict.ruleId, QStringLiteral("gpu.temperature"));
+            QCOMPARE(verdict.severity, VerdictSeverity::Elevated);
+            QVERIFY(verdict.causalChain.contains(hot.identity));
+            QVERIFY(verdict.causalChain.contains(hot.temperatureSensorId));
+        }
+        hot.busyPercent = 95.0;
+        const auto pressure = CausalDiagnosisEngine::evaluateDevices(cpu, {idle, hot}, psi, {}, {}, {});
+        QCOMPARE(pressure.ruleId, QStringLiteral("gpu.load-temperature"));
+        QCOMPARE(pressure.severity, VerdictSeverity::Bottleneck);
+        QCOMPARE(CausalDiagnosisEngine::evaluateDevices(cpu, {hot, idle}, psi, {}, {}, {}).causalChain, pressure.causalChain);
+        hot.busyAvailable = false;
+        QCOMPARE(CausalDiagnosisEngine::evaluateDevices(cpu, {idle, hot}, psi, {}, {}, {}).severity, VerdictSeverity::Elevated);
+        QCOMPARE(CausalDiagnosisEngine::evaluateDevices(cpu, {idle}, psi, {}, {}, {}).severity, VerdictSeverity::Nominal);
+        hot.temperatureAvailable = false;
+        hot.busyAvailable = true;
+        PowerFlowSnapshot power;
+        power.activePowerProfile = QStringLiteral("power-saver");
+        const auto saver = CausalDiagnosisEngine::evaluateDevices(cpu, {idle, hot}, psi, power, {}, {});
+        QCOMPARE(saver.ruleId, QStringLiteral("power.saver-workload"));
+        QVERIFY(saver.causalChain.contains(hot.identity));
+    }
+
+    void testRaplHighPackagePowerPreserved()
+    {
+        QTemporaryDir temp;
+        const QString rapl = temp.filePath(QStringLiteral("sys/class/powercap/intel-rapl:0"));
+        writeTextFile(rapl + QStringLiteral("/energy_uj"), QStringLiteral("100000000"));
+        writeTextFile(rapl + QStringLiteral("/constraint_0_power_limit_uw"), QStringLiteral("300000000"));
+        PowerFlowSampler sampler({temp.filePath(QStringLiteral("sys")), temp.filePath(QStringLiteral("proc"))});
+        QVERIFY(!sampler.sample(1000, -1, 0, 0).raplExactAvailable);
+        writeTextFile(rapl + QStringLiteral("/energy_uj"), QStringLiteral("400000000"));
+        const auto power = sampler.sample(1000, -1, 0, 0);
+        QVERIFY(power.raplExactAvailable);
+        QCOMPARE(power.packageWatts, 300.0);
+        CpuSocSnapshot cpu;
+        cpu.loadAvailable = cpu.loadWarmedUp = cpu.temperatureAvailable = true;
+        cpu.totalLoadPercent = 95;
+        QCOMPARE(CausalDiagnosisEngine::evaluate(cpu, {}, {}, power, {}, {}).ruleId, QStringLiteral("cpu.sustained-power-limit"));
+    }
+
+    void testPsiAvg60RequiredForAvailability()
+    {
+        for (const auto &avg60 : {QString(), QStringLiteral("avg60=nan "), QStringLiteral("avg60=broken "), QStringLiteral("avg60=101 ")}) {
+            const auto metric = PsiMemorySampler::parsePsiContent(
+                QStringLiteral("some avg10=0 %1total=200\nfull avg10=0 %1total=200\n").arg(avg60), 100, 1000);
+            QVERIFY(!metric.someAvailable);
+            QVERIFY(!metric.fullAvailable);
+            QVERIFY(!metric.available);
+            QCOMPARE(metric.deltaStallMsPerSec, 0.0);
+        }
+        const auto zero = PsiMemorySampler::parsePsiContent(
+            QStringLiteral("some avg10=0 avg60=0 total=200\nfull avg10=0 avg60=0 total=200\n"), 100, 1000);
+        QVERIFY(zero.someAvailable);
+        QVERIFY(zero.fullAvailable);
+        QCOMPARE(zero.someAvg60, 0.0);
+    }
+
     void testHwmonDiscoveryAndVelocity()
     {
         QTemporaryDir tempDir;

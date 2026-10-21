@@ -251,6 +251,7 @@ QByteArray CollectorService::GetPreferences()
     QVariantMap prefs;
     prefs[QStringLiteral("minNotificationSeverity")] = m_settings.value(QStringLiteral("minNotificationSeverity"), 2).toInt();
     prefs[QStringLiteral("mutedNotificationDomains")] = m_settings.value(QStringLiteral("mutedNotificationDomains"), QStringList()).toStringList();
+    prefs[QStringLiteral("temperatureUnit")] = m_settings.value(QStringLiteral("temperatureUnit"), QStringLiteral("C")).toString();
     prefs[QStringLiteral("quietHoursEnabled")] = m_settings.value(QStringLiteral("quietHoursEnabled"), false).toBool();
     prefs[QStringLiteral("quietHoursStart")] = m_settings.value(QStringLiteral("quietHoursStart"), QStringLiteral("22:00")).toString();
     prefs[QStringLiteral("quietHoursEnd")] = m_settings.value(QStringLiteral("quietHoursEnd"), QStringLiteral("08:00")).toString();
@@ -262,6 +263,8 @@ QByteArray CollectorService::GetPreferences()
     prefs[QStringLiteral("historyStoreOldestMs")] = m_historyStore.isOpen() ? m_historyStore.oldestMs() : 0;
     prefs[QStringLiteral("historyStoreNewestMs")] = m_historyStore.isOpen() ? m_historyStore.newestMs() : 0;
     prefs[QStringLiteral("historyStoreRecoveryNotice")] = m_historyStore.recoveryNotice();
+    prefs[QStringLiteral("historyStoreError")] = m_historyStore.lastError();
+    prefs[QStringLiteral("historyStoreLegacyIncidentCount")] = m_historyStore.legacyIncidentCount();
     return QJsonDocument(QJsonObject::fromVariantMap(prefs)).toJson(QJsonDocument::Compact);
 }
 
@@ -273,6 +276,27 @@ QByteArray CollectorService::SetPreferences(const QByteArray &json)
         return {};
     }
     const auto map = doc.object().toVariantMap();
+    if (map.contains(QStringLiteral("temperatureUnit"))) {
+        const auto value = map.value(QStringLiteral("temperatureUnit"));
+        if (value.metaType().id() != QMetaType::QString
+            || (value.toString() != QStringLiteral("C") && value.toString() != QStringLiteral("F"))) {
+            sendErrorReply(QStringLiteral("com.github.loofi.hardwarepulse.InvalidArguments"), QStringLiteral("Temperature unit must be C or F."));
+            return {};
+        }
+    }
+    // Validate the complete request before changing any preference.
+    for (const QString &key : {QStringLiteral("quietHoursStart"), QStringLiteral("quietHoursEnd")}) {
+        if (!map.contains(key)) continue;
+        const auto value = map.value(key);
+        const QString time = value.toString();
+        if (value.metaType().id() != QMetaType::QString || time.size() != 5
+            || QTime::fromString(time, QStringLiteral("HH:mm")).toString(QStringLiteral("HH:mm")) != time) {
+            sendErrorReply(QStringLiteral("com.github.loofi.hardwarepulse.InvalidArguments"), QStringLiteral("Quiet hours must use valid HH:mm times."));
+            return {};
+        }
+    }
+    if (map.contains(QStringLiteral("temperatureUnit")))
+        m_settings.setValue(QStringLiteral("temperatureUnit"), map.value(QStringLiteral("temperatureUnit")).toString());
     if (map.contains(QStringLiteral("minNotificationSeverity")))
         m_settings.setValue(QStringLiteral("minNotificationSeverity"), map.value(QStringLiteral("minNotificationSeverity")).toInt());
     if (map.contains(QStringLiteral("mutedNotificationDomains")))
@@ -308,28 +332,54 @@ QByteArray CollectorService::SetPreferences(const QByteArray &json)
     const QByteArray current = GetPreferences();
     Q_EMIT PreferencesChanged(current);
     if (!m_latest.isEmpty()) publish(m_latest);
-    return success();
+    return current;
 }
 
 QByteArray CollectorService::Trends(qint64 fromMs, qint64 toMs, int maxPoints, const QStringList &metricIds)
 {
-    if (!m_historyStore.isOpen()) return QByteArrayLiteral("{}");
-    const auto result = m_historyStore.trends(fromMs, toMs, maxPoints, metricIds);
+    QString error;
+    const auto result = m_historyStore.trends(fromMs, toMs, maxPoints, metricIds, &error);
+    if (!error.isEmpty()) {
+        sendErrorReply(QStringLiteral("com.github.loofi.hardwarepulse.StorageFailed"), error);
+        return {};
+    }
     return QJsonDocument(QJsonObject::fromVariantMap(result)).toJson(QJsonDocument::Compact);
 }
 
 QByteArray CollectorService::PersistedIncidents(qint64 fromMs, qint64 toMs, int limit)
 {
     if (!m_historyStore.isOpen()) return QByteArrayLiteral("[]");
-    const auto list = m_historyStore.incidents(fromMs, toMs, limit);
+    QString error;
+    const auto list = m_historyStore.incidents(fromMs, toMs, limit, &error);
+    if (!error.isEmpty()) {
+        sendErrorReply(QStringLiteral("com.github.loofi.hardwarepulse.StorageFailed"), error);
+        return {};
+    }
     return QJsonDocument(QJsonArray::fromVariantList(list)).toJson(QJsonDocument::Compact);
 }
 
 QByteArray CollectorService::ClearPersistedHistory()
 {
-    if (m_historyStore.isOpen()) {
-        m_historyStore.clear();
+    const auto suppressRetainedIncidents = [this] {
+        const auto packet = QJsonDocument::fromJson(m_latest).object();
+        for (const auto &entry : packet.value(QStringLiteral("incidents")).toArray()) {
+            const QString id = entry.toObject().value(QStringLiteral("incidentId")).toString();
+            if (!id.isEmpty()) m_clearedIncidentIds.insert(id);
+        }
+    };
+    const bool wasOpen = m_historyStore.isOpen();
+    if (!wasOpen) {
+        const QString path = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + QStringLiteral("/loofi-pulse/history.sqlite");
+        if (!QFileInfo::exists(path)) { suppressRetainedIncidents(); return success(); }
+        ensureHistoryStoreOpen();
     }
+    if (!m_historyStore.isOpen() || !m_historyStore.clear()) {
+        sendErrorReply(QStringLiteral("com.github.loofi.hardwarepulse.SaveFailed"), m_historyStore.lastError());
+        if (!wasOpen) m_historyStore.close();
+        return {};
+    }
+    if (!wasOpen) m_historyStore.close();
+    suppressRetainedIncidents();
     return success();
 }
 
@@ -342,15 +392,40 @@ void CollectorService::publish(const QByteArray &bytes)
     live[QStringLiteral("preferences")] = QJsonDocument::fromJson(GetPreferences()).object().toVariantMap();
     packet[QStringLiteral("live")] = live;
 
+    const auto sample = packet.value(QStringLiteral("sample")).toMap();
+    const QString capture = packet.value(QStringLiteral("captureId")).toString();
+    const qulonglong sampleId = sample.value(QStringLiteral("sampleId")).toULongLong();
+    const qint64 timestampMs = sample.value(QStringLiteral("timestampMs")).toLongLong();
+    if (capture != m_historyCaptureId) {
+        m_historyCaptureId = capture;
+        m_lastStoredSampleId = 0;
+        m_sampleWallTimes.clear();
+        m_clearedIncidentIds.clear();
+    }
+    if (sampleId > 0 && timestampMs > 0) {
+        m_sampleWallTimes.insert(sampleId, timestampMs);
+        while (m_sampleWallTimes.size() > 7201) m_sampleWallTimes.erase(m_sampleWallTimes.begin());
+    }
+    const auto incidents = packet.value(QStringLiteral("incidents")).toList();
+    QSet<QString> retainedIncidentIds;
+    for (const auto &entry : incidents) retainedIncidentIds.insert(entry.toMap().value(QStringLiteral("incidentId")).toString());
+    m_clearedIncidentIds.intersect(retainedIncidentIds);
     if (m_historyStore.isOpen()) {
-        const qint64 ts = packet.value(QStringLiteral("sample")).toMap().value(QStringLiteral("timestampMs")).toLongLong();
-        const qint64 timestampMs = (ts > 0) ? ts : QDateTime::currentMSecsSinceEpoch();
-        m_historyStore.addSample(timestampMs, live);
-        const auto incidents = packet.value(QStringLiteral("incidents")).toList();
+        if (sampleId > m_lastStoredSampleId && timestampMs > 0) {
+            m_historyStore.addSample(timestampMs, live);
+            m_lastStoredSampleId = sampleId;
+        }
         for (const auto &entry : incidents) {
-            m_historyStore.recordIncident(entry.toMap());
+            auto incident = entry.toMap();
+            if (m_clearedIncidentIds.contains(incident.value(QStringLiteral("incidentId")).toString())) continue;
+            // Manual markers already carry epoch time; incident ranges use the recorder's monotonic clock.
+            if (incident.value(QStringLiteral("manual")).toBool()) continue;
+            m_historyStore.recordIncident(incident, m_sampleWallTimes);
         }
     }
+    // Include errors produced by this frame, rather than waiting for the next publish.
+    live[QStringLiteral("preferences")] = QJsonDocument::fromJson(GetPreferences()).object().toVariantMap();
+    packet[QStringLiteral("live")] = live;
 
     m_latest = QJsonDocument(QJsonObject::fromVariantMap(packet)).toJson(QJsonDocument::Compact);
     notify(packet); Q_EMIT FrameReady(m_latest);

@@ -13,7 +13,7 @@ namespace LoofiPulse
 
 // Opt-in persistent long-term history: 1-minute aggregates of key metrics, incidents and
 // recording gaps in SQLite. Never stores process names, PIDs or owners.
-// Not thread-safe: use from a single thread (the collector worker thread).
+// Not thread-safe: use from a single owning thread.
 class HistoryStore
 {
 public:
@@ -36,17 +36,19 @@ public:
 
     void addSample(qint64 timestampMs, const QVariantMap &live);
     bool flush(bool includePartialMinute = false);
-    void recordGap(qint64 startMs, qint64 endMs, const QString &reason);
-    void recordIncident(const QVariantMap &incident);
+    bool recordGap(qint64 startMs, qint64 endMs, const QString &reason);
+    bool recordIncident(const QVariantMap &incident);
+    bool recordIncident(const QVariantMap &incident, const QMap<qulonglong, qint64> &sampleWallTimes);
 
-    QVariantMap trends(qint64 fromMs, qint64 toMs, int maxPoints, const QStringList &metricIds) const;
-    QVariantList incidents(qint64 fromMs, qint64 toMs, int limit) const;
+    QVariantMap trends(qint64 fromMs, qint64 toMs, int maxPoints, const QStringList &metricIds, QString *error = nullptr) const;
+    QVariantList incidents(qint64 fromMs, qint64 toMs, int limit, QString *error = nullptr) const;
     bool clear();
 
     qint64 sizeBytes() const;
     QString path() const;
     QString lastError() const;
     QString recoveryNotice() const;
+    qint64 legacyIncidentCount() const;
     qint64 oldestMs() const; // 0 when empty
     qint64 newestMs() const; // 0 when empty
     QString connectionName() const;
@@ -59,7 +61,7 @@ private:
     void closeConnection();
     bool setupSchema();
     bool enforceLimits();
-    void reclaimFreePages();
+    bool reclaimFreePages();
     qint64 pragmaInt(const QString &name) const;
     bool fail(const QString &message);
     void queueBucket(qint64 minute, const Bucket &bucket);
@@ -75,6 +77,7 @@ private:
     Bucket m_current;
     QList<std::pair<qint64, Bucket>> m_queued;
     bool m_open = false;
+    bool m_reclaimNeeded = false;
 };
 
 } // namespace LoofiPulse

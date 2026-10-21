@@ -61,5 +61,9 @@ private:
     qint64 m_sleepStartMs = 0;
     HistoryStore m_historyStore;
     QTimer m_historyFlushTimer;
+    QString m_historyCaptureId;
+    qulonglong m_lastStoredSampleId = 0;
+    QMap<qulonglong, qint64> m_sampleWallTimes;
+    QSet<QString> m_clearedIncidentIds;
 };
 }

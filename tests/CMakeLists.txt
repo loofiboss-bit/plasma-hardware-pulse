@@ -54,6 +54,9 @@ set(PULSECORE_PORTABLE_TESTS
     testVerdictStabilityAndImmediateUnknown
     testCpuHwmonPowerAndDiskStatsThroughput
     testNetworkThroughputAndProcessRadarDiskWait
+    testGpuTemperatureRiskAcrossDevices
+    testRaplHighPackagePowerPreserved
+    testPsiAvg60RequiredForAvailability
     testMultiDomainContributingSignalsAndStabilizerOscillation
 )
 foreach(test_name IN LISTS PULSECORE_PORTABLE_TESTS)
@@ -90,7 +93,7 @@ target_link_libraries(test_controller_actions PRIVATE
     loofipulsecore Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::DBus Qt6::Widgets Qt6::Test
     KF6::Notifications KF6::I18n
 )
-foreach(test_name IN ITEMS testNavigationValidationAndPrivacyDefaults testNetworkSelectionAndHistoryMetadata testMissingSystemMonitorReportsFailure testUnsupportedProfileNeverStartsChange testUnwritableReportLocationReportsFailure testHistoryRetentionAndClearHistory testCollectorConnectedAndReconnect testSystemResumeResetsBaselinesAndSetsGap testTemperatureUnitPreference testCollectorPreferencesUpdate testTrendsPropertiesAndRanges testProcessTerminationSafetyAndExecution testProcessIoStats)
+foreach(test_name IN ITEMS testNavigationValidationAndPrivacyDefaults testNetworkSelectionAndHistoryMetadata testMissingSystemMonitorReportsFailure testUnsupportedProfileNeverStartsChange testUnwritableReportLocationReportsFailure testHistoryRetentionAndClearHistory testCollectorConnectedAndReconnect testSystemResumeResetsBaselinesAndSetsGap testTemperatureUnitPreference testCollectorPreferencesUpdate testTrendsPropertiesAndRanges testProcessInspectionHasNoMutationApi testProcessIoStats)
     add_test(NAME controller_${test_name} COMMAND test_controller_actions ${test_name})
     set_tests_properties(controller_${test_name} PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;${PULSE_TEST_XDG_ENV}")
 endforeach()
@@ -100,6 +103,9 @@ if(DBUS_RUN_SESSION)
         COMMAND ${DBUS_RUN_SESSION} -- $<TARGET_FILE:test_controller_actions> testAsyncProfileSetFailure)
     set_tests_properties(controller_async_profile_failure PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;${PULSE_TEST_XDG_ENV}" TIMEOUT 15)
 endif()
+
+pulse_add_dbus_test(controller_trends_errors_ordering test_controller_actions 30 testTrendsErrorsOrderingAndIncidentIntegration)
+set_tests_properties(controller_trends_errors_ordering PROPERTIES TIMEOUT 40 ENVIRONMENT "QT_QPA_PLATFORM=offscreen;${PULSE_TEST_XDG_ENV}")
 
 qt_add_executable(test_single_instance
     test_single_instance.cpp
@@ -114,8 +120,10 @@ target_compile_definitions(test_qml_ui PRIVATE
     PULSE_BUILD_BIN="${CMAKE_BINARY_DIR}/bin"
     PULSE_APP_QML="${PROJECT_SOURCE_DIR}/src/app/qml"
     PULSE_WIDGET_QML="${PROJECT_SOURCE_DIR}/package/contents/ui"
+    PULSE_BUILD_LOCALE_DIR="${CMAKE_BINARY_DIR}/locale"
 )
-target_link_libraries(test_qml_ui PRIVATE Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::Test)
+add_dependencies(test_qml_ui pofiles)
+target_link_libraries(test_qml_ui PRIVATE KF6::I18nQml KF6::I18n Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::Test)
 add_dependencies(test_qml_ui hardwarepulseplugin)
 foreach(test_name IN ITEMS testAppNavigationKeyboardAndResponsiveRendering testWidgetComponentsLoad testPanelPresetsPreserveCustomMetrics testProcessInspectionIdentityAndFiltering testSessionDialogsAndUnsavedClose testAccessibilityAndFocusAudit)
     pulse_add_dbus_test(qml_${test_name} test_qml_ui 25 ${test_name})
@@ -138,7 +146,7 @@ qt_add_executable(test_collector_v09 test_collector_v09.cpp
     ${PROJECT_SOURCE_DIR}/src/plugin/reportexport.cpp)
 target_include_directories(test_collector_v09 PRIVATE ${PROJECT_SOURCE_DIR}/src/plugin)
 target_compile_definitions(test_collector_v09 PRIVATE LOOFI_PULSE_VERSION="${PROJECT_VERSION}" PULSE_SERVICE_BIN="$<TARGET_FILE:loofi-pulse-service>" PULSE_BUILD_BIN="${CMAKE_BINARY_DIR}/bin" PULSE_APP_QML="${PROJECT_SOURCE_DIR}/src/app/qml")
-target_link_libraries(test_collector_v09 PRIVATE loofipulsecore Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::DBus Qt6::Widgets Qt6::Test KF6::Notifications KF6::I18n)
+target_link_libraries(test_collector_v09 PRIVATE loofipulsecore Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::DBus Qt6::Widgets Qt6::Test KF6::Notifications KF6::I18n KF6::I18nQml)
 add_dependencies(test_collector_v09 loofi-pulse-service hardwarepulseplugin)
 pulse_add_dbus_test(collector_v09 test_collector_v09 80)
 set_tests_properties(collector_v09 PROPERTIES TIMEOUT 90 ENVIRONMENT "QT_QPA_PLATFORM=offscreen;XDG_CONFIG_HOME=${CMAKE_BINARY_DIR}/test-state/collector/config;XDG_DATA_HOME=${CMAKE_BINARY_DIR}/test-state/collector/data;XDG_CACHE_HOME=${CMAKE_BINARY_DIR}/test-state/collector/cache")

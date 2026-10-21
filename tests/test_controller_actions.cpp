@@ -1,4 +1,10 @@
 #include "pulsetelemetrycontroller.h"
+#include "collectorprotocol.h"
+#include "historystore.h"
+#include <QDBusContext>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 #include <QDBusConnection>
 #include <QDBusMessage>
@@ -20,6 +26,53 @@ public:
     explicit FakePowerProfiles(QObject *parent = nullptr) : QObject(parent) {}
     QString activeProfile() const { return QStringLiteral("balanced"); }
     QStringList profiles() const { return {QStringLiteral("balanced"), QStringLiteral("power-saver")}; }
+};
+
+class FakeTrendsCollector : public QObject, protected QDBusContext
+{
+    Q_OBJECT
+    Q_CLASSINFO("D-Bus Interface", "com.github.loofi.hardwarepulse.Collector1")
+public:
+    bool failNext = false;
+    bool dropNext = false;
+    QStringList requestedMetrics;
+    qint64 trendsFrom = 0, trendsTo = 0, incidentsFrom = 0, incidentsTo = 0;
+public Q_SLOTS:
+    QByteArray Trends(qint64 from, qint64 to, int, const QStringList &metrics)
+    {
+        requestedMetrics = metrics;
+        trendsFrom = from; trendsTo = to;
+        if (failNext) {
+            failNext = false;
+            sendErrorReply(QStringLiteral("com.github.loofi.hardwarepulse.TestFailure"), QStringLiteral("Storage unavailable"));
+            return {};
+        }
+        const auto request = message();
+        const auto replyBus = connection();
+        setDelayedReply(true);
+        if (dropNext) { dropNext = false; return {}; }
+        const auto response = QJsonDocument(QJsonObject{{QStringLiteral("fromMs"), from},
+            {QStringLiteral("toMs"), to}, {QStringLiteral("series"), QJsonObject()}}).toJson();
+        QTimer::singleShot(from == 100 ? 150 : 10, this, [request, response, replyBus] {
+            replyBus.send(request.createReply(QVariantList{response}));
+        });
+        return {};
+    }
+    QByteArray ClearPersistedHistory()
+    {
+        const auto request = message();
+        const auto replyBus = connection();
+        setDelayedReply(true);
+        QTimer::singleShot(120, this, [request, replyBus] {
+            replyBus.send(request.createReply(QVariantList{QByteArrayLiteral("{}")}));
+        });
+        return {};
+    }
+    QByteArray PersistedIncidents(qint64 from, qint64 to, int)
+    {
+        incidentsFrom = from; incidentsTo = to;
+        return QJsonDocument(QJsonArray{QJsonObject{{QStringLiteral("incidentId"), QStringLiteral("stored-incident")}}}).toJson();
+    }
 };
 
 class TestControllerActions : public QObject
@@ -225,47 +278,68 @@ private Q_SLOTS:
         QCOMPARE(rangeSpy.count(), 1);
     }
 
-    void testProcessTerminationSafetyAndExecution()
+    void testTrendsErrorsOrderingAndIncidentIntegration()
+    {
+        auto bus = QDBusConnection::connectToBus(QDBusConnection::SessionBus, QStringLiteral("pulse-trends-fixture"));
+        QVERIFY(bus.isConnected());
+        FakeTrendsCollector fake;
+        QVERIFY(bus.registerService(QString::fromLatin1(CollectorServiceName)));
+        QVERIFY(bus.registerObject(QString::fromLatin1(CollectorObjectPath), &fake, QDBusConnection::ExportAllSlots));
+        PulseTelemetryController controller(QDBusConnection::systemBus());
+        controller.requestTrends(100, 200, 120, {});
+        controller.requestTrends(300, 400, 120, {});
+        QTRY_VERIFY(!controller.trendsLoading());
+        QCOMPARE(controller.trendsData().value(QStringLiteral("fromMs")).toLongLong(), 300LL);
+        QTest::qWait(200);
+        QCOMPARE(controller.trendsData().value(QStringLiteral("fromMs")).toLongLong(), 300LL);
+        for (const auto &metric : HistoryStore::metrics()) QVERIFY(fake.requestedMetrics.contains(metric.id));
+
+        fake.failNext = true;
+        controller.requestTrends(500, 600, 120, {});
+        QTRY_VERIFY(!controller.trendsLoading());
+        QVERIFY(controller.trendsError().contains(QStringLiteral("Storage unavailable")));
+        QVERIFY(controller.trendsData().isEmpty());
+
+        controller.loadTrendsRange(QStringLiteral("24h"));
+        QTRY_VERIFY(!controller.trendsLoading() && !controller.persistedIncidentsLoading());
+        QVERIFY(controller.trendsError().isEmpty());
+        QVERIFY(controller.persistedIncidentsError().isEmpty());
+        QCOMPARE(controller.persistedIncidents().size(), 1);
+        QCOMPARE(fake.trendsFrom, fake.incidentsFrom);
+        QCOMPARE(fake.trendsTo, fake.incidentsTo);
+        QCOMPARE(fake.trendsTo - fake.trendsFrom, 24LL * 3600000LL);
+
+        controller.requestTrends(100, 200, 120, {});
+        controller.clearPersistedHistory();
+        controller.loadTrendsRange(QStringLiteral("6h"));
+        QTRY_VERIFY(!controller.trendsLoading() && !controller.persistedIncidentsLoading());
+        const auto postClearFrom = controller.trendsData().value(QStringLiteral("fromMs"));
+        QVERIFY(postClearFrom.toLongLong() > 1000);
+        QTest::qWait(220);
+        QCOMPARE(controller.trendsData().value(QStringLiteral("fromMs")), postClearFrom);
+        QCOMPARE(controller.persistedIncidents().size(), 1);
+
+        fake.dropNext = true;
+        controller.requestTrends(700, 800, 120, {});
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.trendsLoading(), 12000);
+        QVERIFY(!controller.trendsError().isEmpty());
+
+        bus.unregisterObject(QString::fromLatin1(CollectorObjectPath));
+        controller.requestTrends(900, 1000, 120, {});
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.trendsLoading(), 3000);
+        QVERIFY(!controller.trendsError().isEmpty());
+        bus.unregisterService(QString::fromLatin1(CollectorServiceName));
+    }
+
+    void testProcessInspectionHasNoMutationApi()
     {
         PulseTelemetryController controller(QDBusConnection::systemBus());
-
-        // 1. PID <= 1 must be refused
-        QVERIFY(!controller.canTerminateProcess(0));
-        QVERIFY(!controller.canTerminateProcess(1));
-        QVERIFY(!controller.canTerminateProcess(-42));
-        QVERIFY(!controller.terminateProcess(1));
-        QVERIFY(controller.lastActionStatus().contains(QStringLiteral("initialization process")));
-
-        // 2. Self (current PID) must be refused
-        QVERIFY(!controller.canTerminateProcess(static_cast<int>(::getpid())));
-        QVERIFY(!controller.terminateProcess(static_cast<int>(::getpid())));
-        QVERIFY(controller.lastActionStatus().contains(QStringLiteral("Loofi Pulse itself")));
-
-        // 3. Start a real child process
-        QProcess child;
-        child.start(QStringLiteral("sleep"), {QStringLiteral("60")});
-        QVERIFY(child.waitForStarted(3000));
-        const int childPid = static_cast<int>(child.processId());
-        QVERIFY(childPid > 1);
-
-        // 4. canTerminateProcess on child should succeed
-        QVERIFY(controller.canTerminateProcess(childPid));
-
-        // 5. Wrong startTime should fail verification
-        QVERIFY(!controller.canTerminateProcess(childPid, 999999999ULL));
-        QVERIFY(!controller.terminateProcess(childPid, 999999999ULL));
-        QVERIFY(controller.lastActionStatus().contains(QStringLiteral("start time does not match")));
-
-        // 6. Legitimate termination with SIGTERM
-        QVERIFY(controller.terminateProcess(childPid, 0, false));
-        QVERIFY(child.waitForFinished(3000));
-        QCOMPARE(child.exitStatus(), QProcess::CrashExit);
-        QVERIFY(controller.lastActionStatus().contains(QStringLiteral("SIGTERM")));
-
-        // 7. Process is now dead - terminateProcess should report no longer running
-        QVERIFY(!controller.canTerminateProcess(childPid));
-        QVERIFY(!controller.terminateProcess(childPid));
-        QVERIFY(controller.lastActionStatus().contains(QStringLiteral("no longer running")));
+        const auto *meta = controller.metaObject();
+        for (int i = 0; i < meta->methodCount(); ++i) {
+            const auto name = meta->method(i).name();
+            QVERIFY(name != "terminateProcess");
+            QVERIFY(name != "canTerminateProcess");
+        }
     }
 
     void testProcessIoStats()

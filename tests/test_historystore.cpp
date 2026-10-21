@@ -1,4 +1,5 @@
 #include "historystore.h"
+#include "flightrecorder.h"
 
 #include <QDir>
 #include <QFile>
@@ -120,6 +121,56 @@ private Q_SLOTS:
             QCOMPARE(list.size(), 1);
             QCOMPARE(list.first().toMap().value(QStringLiteral("avg")).toDouble(), 35.0);
         }
+    }
+
+    void testReopenResumesPartialMinuteWithoutDuplicateFlushes()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QString dbPath = dir.filePath(QStringLiteral("resume.sqlite"));
+        const qint64 baseMs = 1700000040000LL;
+        HistoryStore store;
+        QVERIFY(store.open(dbPath, 86400000LL));
+        store.addSample(baseMs + 1000, {{QStringLiteral("cpuLoadAvailable"), true},
+                                      {QStringLiteral("cpuLoadPercent"), 20.0}});
+        QVERIFY(store.flush(true));
+        QVERIFY(store.flush(true));
+        store.close();
+        QVERIFY(store.open(dbPath, 86400000LL));
+        store.addSample(baseMs + 2000, {{QStringLiteral("cpuLoadAvailable"), true},
+                                      {QStringLiteral("cpuLoadPercent"), 60.0}});
+        for (int i = 0; i < 3; ++i) {
+            QVERIFY(store.flush(true));
+            const auto points = store.trends(baseMs, baseMs + 59000, 100, {QStringLiteral("cpuLoad")})
+                                    .value(QStringLiteral("series")).toMap().value(QStringLiteral("cpuLoad")).toList();
+            QCOMPARE(points.size(), 1);
+            const auto point = points.first().toMap();
+            QCOMPARE(point.value(QStringLiteral("n")).toLongLong(), 2);
+            QCOMPARE(point.value(QStringLiteral("avg")).toDouble(), 40.0);
+            QCOMPARE(point.value(QStringLiteral("min")).toDouble(), 20.0);
+            QCOMPARE(point.value(QStringLiteral("max")).toDouble(), 60.0);
+        }
+    }
+
+    void testResumeReadErrorDoesNotAddSampleTwice()
+    {
+        QTemporaryDir dir;
+        HistoryStore store;
+        QVERIFY(store.open(dir.filePath(QStringLiteral("resume-error.sqlite")), 86400000LL));
+        QSqlQuery q(QSqlDatabase::database(store.connectionName()));
+        QVERIFY(q.exec(QStringLiteral("ALTER TABLE minute_agg RENAME TO saved_minute_agg;")));
+        const QVariantMap sample{{QStringLiteral("cpuLoadAvailable"), true},
+                                 {QStringLiteral("cpuLoadPercent"), 20.0}};
+        const qint64 baseMs = 1700000040000LL;
+        store.addSample(baseMs, sample);
+        QVERIFY(!store.lastError().isEmpty());
+        QVERIFY(q.exec(QStringLiteral("ALTER TABLE saved_minute_agg RENAME TO minute_agg;")));
+        store.addSample(baseMs, sample);
+        QVERIFY(store.flush(true));
+        const auto points = store.trends(baseMs, baseMs + 59000, 100, {QStringLiteral("cpuLoad")})
+                                .value(QStringLiteral("series")).toMap().value(QStringLiteral("cpuLoad")).toList();
+        QCOMPARE(points.size(), 1);
+        QCOMPARE(points.first().toMap().value(QStringLiteral("n")).toLongLong(), 1);
     }
 
     void testRetentionPrunes()
@@ -305,6 +356,138 @@ private Q_SLOTS:
             QVERIFY(!spec.id.contains(QStringLiteral("pid"), Qt::CaseInsensitive));
             QVERIFY(!spec.id.contains(QStringLiteral("process"), Qt::CaseInsensitive));
             QVERIFY(!spec.id.contains(QStringLiteral("cmd"), Qt::CaseInsensitive));
+        }
+    }
+
+    void testSizeCapPreservesRecentDataAndReclaimsFiles()
+    {
+        QTemporaryDir dir;
+        HistoryStore store;
+        QVERIFY(store.open(dir.filePath(QStringLiteral("bounded.sqlite")), 31LL * 86400000LL, 256 * 1024));
+        const qint64 base = 1700000040000LL;
+        QVariantMap live;
+        for (const auto &metric : HistoryStore::metrics()) {
+            live.insert(metric.valueKey, 42.0);
+            if (!metric.availableKey.isEmpty()) live.insert(metric.availableKey, true);
+        }
+        for (int minute = 0; minute < 1800; ++minute) {
+            store.addSample(base + minute * 60000LL, live);
+            if (minute % 60 == 59) QVERIFY2(store.flush(true), qPrintable(store.lastError()));
+        }
+        QVERIFY2(store.flush(true), qPrintable(store.lastError()));
+        QVERIFY(store.oldestMs() > base);
+        QCOMPARE(store.newestMs(), base + 1799 * 60000LL);
+        QVERIFY2(store.sizeBytes() <= store.maxBytes(), qPrintable(QString::number(store.sizeBytes())));
+        const auto data = store.trends(base, base + 1800 * 60000LL, 2000, {QStringLiteral("cpuLoad")});
+        QVERIFY(!data.value(QStringLiteral("series")).toMap().value(QStringLiteral("cpuLoad")).toList().isEmpty());
+        QVERIFY(store.flush(true));
+        QCOMPARE(store.newestMs(), base + 1799 * 60000LL);
+    }
+
+    void testLegacyMigrationMakesConsistentBackupAndKeepsUnknownTimes()
+    {
+        QTemporaryDir dir;
+        const QString path = dir.filePath(QStringLiteral("legacy.sqlite"));
+        const QString connection = QStringLiteral("legacy-fixture");
+        {
+            auto db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), connection);
+            db.setDatabaseName(path); QVERIFY(db.open());
+            QSqlQuery q(db);
+            QVERIFY(q.exec(QStringLiteral("PRAGMA journal_mode=WAL;")));
+            QVERIFY(q.exec(QStringLiteral("CREATE TABLE incidents(id TEXT PRIMARY KEY, start_ms INTEGER NOT NULL, end_ms INTEGER NOT NULL, severity INTEGER NOT NULL, rule_id TEXT, headline TEXT, domain TEXT);")));
+            QVERIFY(q.exec(QStringLiteral("INSERT INTO incidents VALUES('legacy', 1000, 2000, 2, 'cpu', 'Legacy incident', 'CPU');")));
+        }
+        // Keep the fixture connection open so committed incident data may still live in its WAL.
+        HistoryStore store;
+        QVERIFY2(store.open(path, 86400000LL), qPrintable(store.lastError()));
+        QSqlDatabase::removeDatabase(connection);
+        QCOMPARE(store.legacyIncidentCount(), 1);
+        QVERIFY(store.incidents(0, 3000, 10).isEmpty());
+        QVERIFY(!store.recoveryNotice().isEmpty());
+        QCOMPARE(QDir(dir.path()).entryList({QStringLiteral("*.pre-v1-backup-*.sqlite")}).size(), 1);
+        const QString backup = dir.filePath(QDir(dir.path()).entryList({QStringLiteral("*.pre-v1-backup-*.sqlite")}).first());
+        {
+            auto db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), connection);
+            db.setDatabaseName(backup); QVERIFY(db.open());
+            QSqlQuery q(db); QVERIFY(q.exec(QStringLiteral("SELECT id FROM incidents;"))); QVERIFY(q.next());
+            QCOMPARE(q.value(0).toString(), QStringLiteral("legacy"));
+            QVERIFY(q.exec(QStringLiteral("PRAGMA user_version;"))); QVERIFY(q.next()); QCOMPARE(q.value(0).toInt(), 0);
+        }
+        QSqlDatabase::removeDatabase(connection);
+        store.addSample(1700000040000LL, {{QStringLiteral("cpuLoadAvailable"), true}, {QStringLiteral("cpuLoadPercent"), 10.0}});
+        QVERIFY(store.flush(true));
+        QCOMPARE(store.legacyIncidentCount(), 1);
+        store.close(); QVERIFY(store.open(path, 86400000LL));
+        QCOMPARE(store.legacyIncidentCount(), 1);
+        QCOMPARE(QDir(dir.path()).entryList({QStringLiteral("*.pre-v1-backup-*.sqlite")}).size(), 1);
+    }
+
+    void testRecorderIncidentsUseSampleCalendarTimes()
+    {
+        QTemporaryDir dir;
+        HistoryStore store; QVERIFY(store.open(dir.filePath(QStringLiteral("epochs.sqlite")), 86400000LL));
+        FlightRecorder recorder;
+        QMap<qulonglong, qint64> times;
+        for (int i = 1; i <= 2; ++i) {
+            FlightSample sample; sample.sampleId = i; sample.monotonicMs = i * 1000;
+            sample.timestampMs = 1700000040000LL + i * 1000;
+            sample.severity = VerdictSeverity::Bottleneck;
+            recorder.appendSample(sample); times.insert(i, sample.timestampMs);
+        }
+        const auto incident = recorder.incidentEpisodes().first().toMap();
+        QVERIFY(store.recordIncident(incident, times));
+        const auto found = store.incidents(1700000040000LL, 1700000100000LL, 10);
+        QCOMPARE(found.size(), 1);
+        QCOMPARE(found.first().toMap().value(QStringLiteral("startMs")).toLongLong(), times.value(1));
+        QCOMPARE(found.first().toMap().value(QStringLiteral("endMs")).toLongLong(), times.value(2));
+        QVERIFY(store.recordIncident(incident, {})); // A trimmed lookup must not downgrade known calendar time.
+        QCOMPARE(store.incidents(1700000040000LL, 1700000100000LL, 10).size(), 1);
+        auto extended = incident;
+        extended[QStringLiteral("endSampleId")] = 3;
+        QVERIFY(store.recordIncident(extended, {{3, 1700000043000LL}}));
+        QCOMPARE(store.incidents(1700000040000LL, 1700000100000LL, 10).first().toMap().value(QStringLiteral("endMs")).toLongLong(), 1700000043000LL);
+        QCOMPARE(incident.value(QStringLiteral("startMs")).toLongLong(), 1000); // Session semantics stay monotonic.
+    }
+
+    void testWriteErrorsAreVisibleInTrends()
+    {
+        QTemporaryDir dir;
+        HistoryStore store; QVERIFY(store.open(dir.filePath(QStringLiteral("errors.sqlite")), 86400000LL));
+        QSqlQuery q(QSqlDatabase::database(store.connectionName()));
+        QVERIFY(q.exec(QStringLiteral("PRAGMA query_only=ON;")));
+        store.addSample(1700000040000LL, {{QStringLiteral("cpuLoadAvailable"), true}, {QStringLiteral("cpuLoadPercent"), 10.0}});
+        QVERIFY(!store.flush(true));
+        QVERIFY(!store.lastError().isEmpty());
+        QVERIFY(!store.trends(1700000000000LL, 1700000100000LL, 100, {}).value(QStringLiteral("storageError")).toString().isEmpty());
+        QVERIFY(!store.clear());
+        QVERIFY(q.exec(QStringLiteral("PRAGMA query_only=OFF;")));
+        QVERIFY(store.flush(true));
+        QVERIFY(store.lastError().isEmpty());
+        QVERIFY(store.trends(1700000000000LL, 1700000100000LL, 100, {}).value(QStringLiteral("storageError")).toString().isEmpty());
+    }
+
+    void testReadErrorsAndRecoveryAreExplicit()
+    {
+        QTemporaryDir dir;
+        HistoryStore store; QVERIFY(store.open(dir.filePath(QStringLiteral("read-errors.sqlite")), 86400000LL));
+        QSqlQuery q(QSqlDatabase::database(store.connectionName()));
+        QVERIFY(q.exec(QStringLiteral("ALTER TABLE incidents RENAME TO saved_incidents;")));
+        QString error;
+        QVERIFY(store.incidents(0, 1700000100000LL, 100, &error).isEmpty());
+        QVERIFY(!error.isEmpty());
+        QVERIFY(q.exec(QStringLiteral("ALTER TABLE saved_incidents RENAME TO incidents;")));
+        store.incidents(0, 1700000100000LL, 100, &error);
+        QVERIFY(error.isEmpty());
+        for (const QString &table : {QStringLiteral("minute_agg"), QStringLiteral("gaps")}) {
+            QVERIFY(q.exec(QStringLiteral("ALTER TABLE %1 RENAME TO saved_table;").arg(table)));
+            const auto failed = store.trends(1, 1700000100000LL, 100, {}, &error);
+            QVERIFY(!error.isEmpty());
+            QVERIFY(!failed.value(QStringLiteral("storageError")).toString().isEmpty());
+            QVERIFY(!failed.contains(QStringLiteral("series"))); // Never present partial data as complete.
+            QVERIFY(q.exec(QStringLiteral("ALTER TABLE saved_table RENAME TO %1;").arg(table)));
+            const auto recovered = store.trends(1, 1700000100000LL, 100, {}, &error);
+            QVERIFY(error.isEmpty());
+            QVERIFY(recovered.value(QStringLiteral("storageError")).toString().isEmpty());
         }
     }
 

@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import org.kde.ki18n
 
 QtObject {
     id: theme
@@ -86,11 +87,11 @@ QtObject {
     }
 
     function severityBadgeText(sev) {
-        if (sev === 4) return "WARMING UP"
-        if (sev === 3) return "THROTTLING"
-        if (sev === 2) return "BOTTLENECK"
-        if (sev === 1) return "ELEVATED"
-        return "NOMINAL"
+        if (sev === 4) return KI18n.i18n("WARMING UP")
+        if (sev === 3) return KI18n.i18n("THROTTLING")
+        if (sev === 2) return KI18n.i18n("BOTTLENECK")
+        if (sev === 1) return KI18n.i18n("ELEVATED")
+        return KI18n.i18n("NOMINAL")
     }
 
     function severityIcon(sev) {

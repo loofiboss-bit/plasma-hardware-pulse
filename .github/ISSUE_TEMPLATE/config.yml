@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability privately
+    url: https://github.com/loofiboss-bit/plasma-hardware-pulse/security/advisories/new
+    about: See SECURITY.md. Private reporting must be enabled by the repository owner before public launch.

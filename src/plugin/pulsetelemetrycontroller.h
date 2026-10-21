@@ -365,8 +365,6 @@ public:
     Q_INVOKABLE void loadTrendsRange(const QString &rangeKey);
     Q_INVOKABLE void loadPersistedIncidents(qint64 fromMs, qint64 toMs, int limit = 100);
     Q_INVOKABLE void clearPersistedHistory();
-    Q_INVOKABLE bool canTerminateProcess(int pid, qulonglong startTime = 0) const;
-    Q_INVOKABLE bool terminateProcess(int pid, qulonglong startTime = 0, bool force = false);
     Q_INVOKABLE QVariantMap processIoStats(int pid) const;
 
 Q_SIGNALS:
@@ -382,6 +380,9 @@ Q_SIGNALS:
     void collectorPreferencesChanged();
     void temperatureUnitChanged();
     void trendsDataChanged();
+    void trendsErrorChanged();
+    void persistedIncidentsLoadingChanged();
+    void persistedIncidentsErrorChanged();
     void trendsLoadingChanged();
     void trendsRangeChanged();
     void persistedIncidentsChanged();
@@ -399,6 +400,9 @@ public:
     Q_PROPERTY(QVariantMap collectorPreferences READ collectorPreferences NOTIFY collectorPreferencesChanged)
     Q_PROPERTY(QString temperatureUnit READ temperatureUnit WRITE setTemperatureUnit NOTIFY temperatureUnitChanged)
     Q_PROPERTY(QVariantMap trendsData READ trendsData NOTIFY trendsDataChanged)
+    Q_PROPERTY(QString trendsError READ trendsError NOTIFY trendsErrorChanged)
+    Q_PROPERTY(bool persistedIncidentsLoading READ persistedIncidentsLoading NOTIFY persistedIncidentsLoadingChanged)
+    Q_PROPERTY(QString persistedIncidentsError READ persistedIncidentsError NOTIFY persistedIncidentsErrorChanged)
     Q_PROPERTY(bool trendsLoading READ trendsLoading NOTIFY trendsLoadingChanged)
     Q_PROPERTY(QString trendsRange READ trendsRange WRITE setTrendsRange NOTIFY trendsRangeChanged)
     Q_PROPERTY(QVariantList persistedIncidents READ persistedIncidents NOTIFY persistedIncidentsChanged)
@@ -425,6 +429,9 @@ public:
     void setTemperatureUnit(const QString &unit);
     Q_INVOKABLE void updateCollectorPreferences(const QVariantMap &prefs);
     QVariantMap trendsData() const { return m_trendsData; }
+    QString trendsError() const { return m_trendsError; }
+    bool persistedIncidentsLoading() const { return m_persistedIncidentsLoading; }
+    QString persistedIncidentsError() const { return m_persistedIncidentsError; }
     bool trendsLoading() const { return m_trendsLoading; }
     QString trendsRange() const { return m_trendsRange; }
     void setTrendsRange(const QString &range);
@@ -465,7 +472,9 @@ private:
         return m_remoteClient ? remoteTelemetryValue(key).value<T>() : local;
     }
     void callCollector(const QString &method, const QVariantList &arguments = {},
-                       std::function<void(const QByteArray &)> completion = {});
+                       std::function<void(const QByteArray &)> completion = {},
+                       std::function<void(const QString &)> failure = {});
+    void applyCollectorPreferences(const QVariantMap &prefs);
     void subscribeCollector();
     void refreshProcesses();
     void fetchCollectorHistory(qulonglong afterId = 0);
@@ -502,6 +511,8 @@ private:
     QVariantMap m_investigationSummary;
     QVariantMap m_collectorPreferences;
     QString m_temperatureUnit = QStringLiteral("C");
+    quint64 m_preferencesRequestId = 0;
+    bool m_preferencesUpdating = false;
     bool m_openedSession = false;
     QHash<QString, SessionSnapshot> m_markedInvestigations;
     QStringList m_markedOrder;
@@ -579,6 +590,11 @@ private:
     double m_historyMaxDiskMibPerSec = 100.0;
     int m_selectedHistoryIndex = -1;
     QVariantMap m_trendsData;
+    QString m_trendsError;
+    QString m_persistedIncidentsError;
+    bool m_persistedIncidentsLoading = false;
+    quint64 m_trendsRequestId = 0;
+    quint64 m_incidentsRequestId = 0;
     bool m_trendsLoading = false;
     QString m_trendsRange = QStringLiteral("1h");
     QVariantList m_persistedIncidents;

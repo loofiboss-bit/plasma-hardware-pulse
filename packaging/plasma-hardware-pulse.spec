@@ -1,5 +1,5 @@
 Name:           plasma-hardware-pulse
-Version:        0.11.0
+Version:        0.12.0
 Release:        1%{?dist}
 Summary:        Hardware, temperature, memory pressure, and power monitor for KDE Plasma 6
 
@@ -18,11 +18,12 @@ BuildRequires:  kf6-rpm-macros
 BuildRequires:  kf6-kcmutils
 BuildRequires:  kf6-kcoreaddons-devel
 BuildRequires:  kf6-kcrash-devel
-BuildRequires:  kf6-ki18n-devel
+BuildRequires:  kf6-ki18n-devel >= 6.21
 BuildRequires:  kf6-kirigami-devel
 BuildRequires:  kf6-knotifications-devel
 BuildRequires:  kf6-kwindowsystem-devel
 BuildRequires:  gettext
+BuildRequires:  glibc-langpack-sv
 BuildRequires:  kf6-kpackage
 BuildRequires:  kf6-qqc2-desktop-style
 BuildRequires:  libplasma-devel
@@ -63,7 +64,7 @@ QT_QPA_PLATFORM=offscreen QML_IMPORT_PATH="%{_vpath_builddir}/bin" ctest --test-
 
 %files -f %{name}.lang
 %license LICENSE
-%doc README.md ROADMAP.md
+%doc README.md ROADMAP.md CHANGELOG.md CONTRIBUTING.md SECURITY.md RELEASE_NOTES.md
 %{_bindir}/loofi-pulse
 %{_bindir}/loofi-pulse-service
 %{_datadir}/dbus-1/services/com.github.loofi.hardwarepulse.Collector1.service
@@ -75,6 +76,10 @@ QT_QPA_PLATFORM=offscreen QML_IMPORT_PATH="%{_vpath_builddir}/bin" ctest --test-
 %{_kf6_metainfodir}/com.github.loofi.hardwarepulse.metainfo.xml
 
 %changelog
+* Wed Oct 21 2026 Loofi <loofi@github.com> - 0.12.0-1
+- Development stabilization: honest telemetry quality, multi-GPU diagnosis, collector lifecycle and bounded persistent history
+- Keep process inspection read-only and delegate process management to KDE System Monitor
+- Prepare public contribution, security, validation and least-privilege release workflows
 * Mon Oct 19 2026 Loofi <loofi@github.com> - 0.11.0-1
 - Major daily-driver release: robust single-instance D-Bus lifecycle, collector auto-reconnect with exponential backoff, logind sleep/resume recovery, dedicated Settings and Preferences Hub, persistent opt-in SQLite WAL telemetry history with trends visualization, system tray integration with live telemetry tooltip and quick actions, safe process termination with UID and PID recycling verification, native Swedish localization (ki18n), and comprehensive accessibility refinements
 * Sun Oct 18 2026 Loofi <loofi@github.com> - 0.10.0-1

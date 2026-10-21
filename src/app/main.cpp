@@ -4,7 +4,7 @@
 
 #include <KAboutData>
 #include <KCrash>
-#include <KLocalizedContext>
+#include <KLocalizedQmlContext>
 #include <KLocalizedString>
 #include <KWindowSystem>
 #include <QApplication>
@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
         QStringLiteral("loofi-pulse"),
         QStringLiteral("Loofi Pulse"),
         QStringLiteral(LOOFI_PULSE_VERSION),
-        QStringLiteral("KDE Plasma 6 hardware health and pressure monitor"),
+        i18n("KDE Plasma 6 hardware health and pressure monitor"),
         KAboutLicense::GPL_V3,
         QStringLiteral("© 2026 Loofi"));
     KAboutData::setApplicationData(aboutData);
@@ -138,7 +138,7 @@ int main(int argc, char *argv[])
     engine.addImportPath(appDir);
 QT_WARNING_PUSH
 QT_WARNING_DISABLE_DEPRECATED
-    engine.rootContext()->setContextObject(new KLocalizedContext(&engine));
+    KLocalization::setupLocalizedContext(&engine);
 QT_WARNING_POP
 
     LoofiPulse::TrayIcon trayIcon;

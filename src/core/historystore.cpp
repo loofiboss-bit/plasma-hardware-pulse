@@ -69,7 +69,7 @@ bool HistoryStore::open(const QString &path, qint64 retentionMs, qint64 maxBytes
             closeConnection();
             const QString timestamp = QDateTime::currentDateTimeUtc().toString(QStringLiteral("yyyyMMddHHmmss"));
             const QString corruptPath = QStringLiteral("%1.corrupt-%2.sqlite").arg(path, timestamp);
-            QFile::rename(path, corruptPath);
+            if (!QFile::rename(path, corruptPath)) return fail(QStringLiteral("Cannot preserve corrupted history database."));
             QFile::rename(path + QStringLiteral("-wal"), corruptPath + QStringLiteral("-wal"));
             QFile::rename(path + QStringLiteral("-shm"), corruptPath + QStringLiteral("-shm"));
 
@@ -93,11 +93,9 @@ bool HistoryStore::open(const QString &path, qint64 retentionMs, qint64 maxBytes
 
 void HistoryStore::close()
 {
-    if (m_open) {
-        flush(true);
-        closeConnection();
-        m_open = false;
-    }
+    if (m_open) flush(true);
+    closeConnection();
+    m_open = false;
     m_queued.clear();
     m_current.clear();
     m_currentMinute = -1;
@@ -132,16 +130,38 @@ qint64 HistoryStore::maxBytes() const
 void HistoryStore::addSample(qint64 timestampMs, const QVariantMap &live)
 {
     if (!m_open || timestampMs <= 0) return;
-    m_latestMs = std::max(m_latestMs, timestampMs);
-
     const qint64 minute = (timestampMs / 60000LL) * 60000LL;
     if (m_currentMinute != -1 && minute > m_currentMinute) {
         queueBucket(m_currentMinute, m_current);
         m_current.clear();
         m_currentMinute = minute;
     } else if (m_currentMinute == -1) {
+        // Resume a partial minute saved by an earlier collector lifecycle. Seed only
+        // once: subsequent partial flushes replace this complete aggregate.
+        QSqlQuery q(QSqlDatabase::database(m_connection));
+        q.prepare(QStringLiteral("SELECT metric, min, avg, max, n FROM minute_agg WHERE ts_min = ?;"));
+        q.addBindValue(minute);
+        if (!q.exec()) {
+            fail(QStringLiteral("Failed to resume history minute: %1").arg(q.lastError().text()));
+            return;
+        }
+        Bucket resumed;
+        while (q.next()) {
+            const qint64 n = q.value(4).toLongLong();
+            if (n > 0) {
+                resumed.insert(q.value(0).toString(),
+                               Agg{q.value(1).toDouble(), q.value(3).toDouble(),
+                                   q.value(2).toDouble() * static_cast<double>(n), n});
+            }
+        }
+        if (q.lastError().isValid()) {
+            fail(QStringLiteral("Failed to resume history minute: %1").arg(q.lastError().text()));
+            return;
+        }
+        m_current = std::move(resumed);
         m_currentMinute = minute;
     }
+    m_latestMs = std::max(m_latestMs, timestampMs);
 
     const auto &specs = metrics();
     for (const auto &spec : specs) {
@@ -243,15 +263,15 @@ bool HistoryStore::flush(bool includePartialMinute)
         QSqlQuery pruneQ(db);
         pruneQ.prepare(QStringLiteral("DELETE FROM minute_agg WHERE ts_min < ?;"));
         pruneQ.addBindValue(cutoff);
-        pruneQ.exec();
+        if (!pruneQ.exec()) { db.rollback(); return fail(pruneQ.lastError().text()); }
 
-        pruneQ.prepare(QStringLiteral("DELETE FROM incidents WHERE end_ms < ?;"));
+        pruneQ.prepare(QStringLiteral("DELETE FROM incidents WHERE calendar_time_known = 1 AND end_ms < ?;"));
         pruneQ.addBindValue(cutoff);
-        pruneQ.exec();
+        if (!pruneQ.exec()) { db.rollback(); return fail(pruneQ.lastError().text()); }
 
         pruneQ.prepare(QStringLiteral("DELETE FROM gaps WHERE end_ms < ?;"));
         pruneQ.addBindValue(cutoff);
-        pruneQ.exec();
+        if (!pruneQ.exec()) { db.rollback(); return fail(pruneQ.lastError().text()); }
     }
 
     if (!enforceLimits()) {
@@ -260,64 +280,98 @@ bool HistoryStore::flush(bool includePartialMinute)
     }
 
     if (!db.commit()) {
+        db.rollback();
         return fail(QStringLiteral("Failed to commit transaction: %1").arg(db.lastError().text()));
     }
 
     m_queued.clear();
+    if (!reclaimFreePages()) return false;
+    m_lastError.clear();
     return true;
 }
 
 bool HistoryStore::enforceLimits()
 {
     auto db = QSqlDatabase::database(m_connection);
-    const qint64 currentSize = sizeBytes();
-    if (currentSize <= m_maxBytes) return true;
-
-    // Remove oldest minutes until under limit
-    QSqlQuery q(db);
-    while (sizeBytes() > m_maxBytes) {
-        q.prepare(QStringLiteral("SELECT MIN(ts_min) FROM minute_agg;"));
-        if (!q.exec() || !q.next() || q.value(0).isNull()) break;
-        const qint64 oldest = q.value(0).toLongLong();
-        const qint64 chunk = oldest + 3600000LL; // Delete in 1-hour chunks
-
-        QSqlQuery del(db);
-        del.prepare(QStringLiteral("DELETE FROM minute_agg WHERE ts_min < ?;"));
-        del.addBindValue(chunk);
-        if (!del.exec() || del.numRowsAffected() <= 0) break;
-
-        del.prepare(QStringLiteral("DELETE FROM incidents WHERE end_ms < ?;"));
-        del.addBindValue(chunk);
-        del.exec();
-
-        del.prepare(QStringLiteral("DELETE FROM gaps WHERE end_ms < ?;"));
-        del.addBindValue(chunk);
-        del.exec();
+    // SQLite DELETE frees pages logically; physical size cannot shrink until after commit.
+    const qint64 pageSize = pragmaInt(QStringLiteral("page_size"));
+    qint64 used = (pragmaInt(QStringLiteral("page_count")) - pragmaInt(QStringLiteral("freelist_count"))) * pageSize;
+    for (int batch = 0; used > m_maxBytes && batch < 32; ++batch) {
+        QSqlQuery boundary(db);
+        if (!boundary.exec(QStringLiteral("SELECT ts_min FROM minute_agg GROUP BY ts_min ORDER BY ts_min LIMIT 1 OFFSET 59;")))
+            return fail(boundary.lastError().text());
+        if (!boundary.next()) break; // Always preserve the newest partial hour.
+        const qint64 cutoff = boundary.value(0).toLongLong();
+        boundary.finish();
+        QSqlQuery newest(db);
+        if (!newest.exec(QStringLiteral("SELECT MAX(ts_min) FROM minute_agg;")) || !newest.next())
+            return fail(newest.lastError().text());
+        if (cutoff >= newest.value(0).toLongLong()) break;
+        newest.finish();
+        for (const QString &sql : {QStringLiteral("DELETE FROM minute_agg WHERE ts_min <= ?;"),
+                                  QStringLiteral("DELETE FROM incidents WHERE calendar_time_known = 1 AND end_ms <= ?;"),
+                                  QStringLiteral("DELETE FROM gaps WHERE end_ms <= ?;")}) {
+            QSqlQuery del(db);
+            del.prepare(sql); del.addBindValue(cutoff);
+            if (!del.exec()) return fail(del.lastError().text());
+        }
+        m_reclaimNeeded = true;
+        used = (pragmaInt(QStringLiteral("page_count")) - pragmaInt(QStringLiteral("freelist_count"))) * pageSize;
     }
+    // Commit bounded progress even if an unusually large database needs another maintenance pass.
+    // reclaimFreePages reports an outstanding physical limit after preserving recent/legacy records.
     return true;
 }
 
-void HistoryStore::recordGap(qint64 startMs, qint64 endMs, const QString &reason)
+qint64 HistoryStore::pragmaInt(const QString &name) const
 {
-    if (!m_open || endMs <= startMs) return;
+    QSqlQuery q(QSqlDatabase::database(m_connection));
+    if (!q.exec(QStringLiteral("PRAGMA %1;").arg(name)) || !q.next()) return 0;
+    return q.value(0).toLongLong();
+}
+
+bool HistoryStore::reclaimFreePages()
+{
+    if (!m_reclaimNeeded && sizeBytes() <= m_maxBytes) return true;
+    QSqlQuery q(QSqlDatabase::database(m_connection));
+    if (!q.exec(QStringLiteral("PRAGMA wal_checkpoint(TRUNCATE);")) || !q.next() || q.value(0).toInt() != 0)
+        return fail(QStringLiteral("History checkpoint could not complete."));
+    q.finish();
+    if (!q.exec(QStringLiteral("VACUUM;"))) return fail(q.lastError().text());
+    if (!q.exec(QStringLiteral("PRAGMA wal_checkpoint(TRUNCATE);")) || !q.next() || q.value(0).toInt() != 0)
+        return fail(QStringLiteral("History checkpoint could not complete."));
+    m_reclaimNeeded = false;
+    if (sizeBytes() > m_maxBytes) return fail(QStringLiteral("History files exceed the configured storage limit."));
+    return true;
+}
+
+bool HistoryStore::recordGap(qint64 startMs, qint64 endMs, const QString &reason)
+{
+    if (!m_open || endMs <= startMs) return false;
     auto db = QSqlDatabase::database(m_connection);
     QSqlQuery q(db);
     q.prepare(QStringLiteral("INSERT OR REPLACE INTO gaps (start_ms, end_ms, reason) VALUES (?, ?, ?);"));
     q.addBindValue(startMs);
     q.addBindValue(endMs);
     q.addBindValue(reason.trimmed().isEmpty() ? QStringLiteral("collector-stopped") : reason.trimmed());
-    q.exec();
+    if (!q.exec()) return fail(q.lastError().text());
+    return true;
 }
 
-void HistoryStore::recordIncident(const QVariantMap &incident)
+bool HistoryStore::recordIncident(const QVariantMap &incident)
 {
-    if (!m_open) return;
+    if (!m_open) return false;
     const QString id = incident.value(QStringLiteral("incidentId")).toString();
-    if (id.isEmpty()) return;
+    if (id.isEmpty()) return false;
 
     auto db = QSqlDatabase::database(m_connection);
     QSqlQuery q(db);
-    q.prepare(QStringLiteral("INSERT OR REPLACE INTO incidents (id, start_ms, end_ms, severity, rule_id, headline, domain) VALUES (?, ?, ?, ?, ?, ?, ?);"));
+    q.prepare(QStringLiteral("INSERT INTO incidents (id, start_ms, end_ms, severity, rule_id, headline, domain, calendar_time_known) VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
+        "ON CONFLICT(id) DO UPDATE SET "
+        "start_ms=CASE WHEN excluded.calendar_time_known=1 OR incidents.calendar_time_known=0 THEN excluded.start_ms ELSE incidents.start_ms END, "
+        "end_ms=CASE WHEN excluded.calendar_time_known=1 OR incidents.calendar_time_known=0 THEN excluded.end_ms ELSE incidents.end_ms END, "
+        "calendar_time_known=MAX(incidents.calendar_time_known, excluded.calendar_time_known), "
+        "severity=excluded.severity, rule_id=excluded.rule_id, headline=excluded.headline, domain=excluded.domain;"));
     q.addBindValue(id);
     q.addBindValue(incident.value(QStringLiteral("startMs")).toLongLong());
     q.addBindValue(incident.value(QStringLiteral("endMs")).toLongLong());
@@ -325,13 +379,42 @@ void HistoryStore::recordIncident(const QVariantMap &incident)
     q.addBindValue(incident.value(QStringLiteral("ruleId")).toString());
     q.addBindValue(incident.value(QStringLiteral("headline")).toString());
     q.addBindValue(incident.value(QStringLiteral("domain")).toString());
-    q.exec();
+    q.addBindValue(incident.value(QStringLiteral("calendarTimeKnown"), true).toBool() ? 1 : 0);
+    if (!q.exec()) return fail(q.lastError().text());
+    return true;
 }
 
-QVariantMap HistoryStore::trends(qint64 fromMs, qint64 toMs, int maxPoints, const QStringList &metricIds) const
+bool HistoryStore::recordIncident(const QVariantMap &incident, const QMap<qulonglong, qint64> &sampleWallTimes)
 {
-    QVariantMap result;
+    auto persistent = incident;
+    const auto startId = incident.value(QStringLiteral("startSampleId")).toULongLong();
+    const auto endId = incident.value(QStringLiteral("endSampleId")).toULongLong();
+    qint64 startMs = sampleWallTimes.value(startId, 0);
+    if (!startMs && m_open) {
+        QSqlQuery existing(QSqlDatabase::database(m_connection));
+        existing.prepare(QStringLiteral("SELECT start_ms FROM incidents WHERE id = ? AND calendar_time_known = 1;"));
+        existing.addBindValue(incident.value(QStringLiteral("incidentId")));
+        if (existing.exec() && existing.next()) startMs = existing.value(0).toLongLong();
+    }
+    const bool known = startMs > 0 && sampleWallTimes.contains(endId);
+    persistent[QStringLiteral("calendarTimeKnown")] = known;
+    if (known) {
+        persistent[QStringLiteral("startMs")] = startMs;
+        persistent[QStringLiteral("endMs")] = sampleWallTimes.value(endId);
+    }
+    return recordIncident(persistent);
+}
+
+QVariantMap HistoryStore::trends(qint64 fromMs, qint64 toMs, int maxPoints, const QStringList &metricIds, QString *error) const
+{
+    if (error) error->clear();
+    QVariantMap result{{QStringLiteral("storageError"), m_lastError},
+                       {QStringLiteral("calendarTimeUnknownIncidents"), legacyIncidentCount()}};
     if (!m_open || toMs <= fromMs) return result;
+    const auto readFailure = [&](const QSqlError &sqlError) {
+        if (error) *error = sqlError.text();
+        return QVariantMap{{QStringLiteral("storageError"), sqlError.text()}};
+    };
 
     const int clampedPoints = std::clamp(maxPoints, 10, 2000);
     const qint64 span = toMs - fromMs;
@@ -386,6 +469,7 @@ QVariantMap HistoryStore::trends(qint64 fromMs, qint64 toMs, int maxPoints, cons
                 points.append(pt);
             }
         }
+        if (q.lastError().isValid()) return readFailure(q.lastError());
         series[metricId] = points;
     }
     result[QStringLiteral("series")] = series;
@@ -405,6 +489,7 @@ QVariantMap HistoryStore::trends(qint64 fromMs, qint64 toMs, int maxPoints, cons
             gaps.append(g);
         }
     }
+    if (gapQ.lastError().isValid()) return readFailure(gapQ.lastError());
     result[QStringLiteral("gaps")] = gaps;
 
     // Coverage calculation
@@ -416,20 +501,22 @@ QVariantMap HistoryStore::trends(qint64 fromMs, qint64 toMs, int maxPoints, cons
     if (covQ.exec() && covQ.next()) {
         coverageMinutes = covQ.value(0).toLongLong();
     }
+    if (covQ.lastError().isValid()) return readFailure(covQ.lastError());
     result[QStringLiteral("coverageMs")] = coverageMinutes * 60000LL;
 
     return result;
 }
 
-QVariantList HistoryStore::incidents(qint64 fromMs, qint64 toMs, int limit) const
+QVariantList HistoryStore::incidents(qint64 fromMs, qint64 toMs, int limit, QString *error) const
 {
+    if (error) error->clear();
     QVariantList list;
     if (!m_open) return list;
 
     const int clampedLimit = std::clamp(limit, 1, 500);
     auto db = QSqlDatabase::database(m_connection);
     QSqlQuery q(db);
-    q.prepare(QStringLiteral("SELECT id, start_ms, end_ms, severity, rule_id, headline, domain FROM incidents WHERE end_ms >= ? AND start_ms <= ? ORDER BY start_ms DESC LIMIT ?;"));
+    q.prepare(QStringLiteral("SELECT id, start_ms, end_ms, severity, rule_id, headline, domain FROM incidents WHERE calendar_time_known = 1 AND end_ms >= ? AND start_ms <= ? ORDER BY start_ms DESC LIMIT ?;"));
     q.addBindValue(fromMs);
     q.addBindValue(toMs);
     q.addBindValue(clampedLimit);
@@ -443,8 +530,13 @@ QVariantList HistoryStore::incidents(qint64 fromMs, qint64 toMs, int limit) cons
             inc[QStringLiteral("ruleId")] = q.value(4).toString();
             inc[QStringLiteral("headline")] = q.value(5).toString();
             inc[QStringLiteral("domain")] = q.value(6).toString();
+            inc[QStringLiteral("calendarTimeKnown")] = true;
             list.append(inc);
         }
+    }
+    if (q.lastError().isValid()) {
+        if (error) *error = q.lastError().text();
+        return {};
     }
     return list;
 }
@@ -464,6 +556,7 @@ bool HistoryStore::clear()
     m_current.clear();
     m_currentMinute = -1;
     m_latestMs = 0;
+    m_lastError.clear();
     return true;
 }
 
@@ -553,6 +646,18 @@ void HistoryStore::closeConnection()
 bool HistoryStore::setupSchema()
 {
     auto db = QSqlDatabase::database(m_connection);
+    const qint64 version = pragmaInt(QStringLiteral("user_version"));
+    if (version > 1) return fail(QStringLiteral("History database schema is newer than this application supports."));
+    const bool legacy = db.tables().contains(QStringLiteral("incidents")) && version == 0;
+    if (legacy) {
+        const QString backup = m_path + QStringLiteral(".pre-v1-backup-%1.sqlite").arg(QDateTime::currentDateTimeUtc().toString(QStringLiteral("yyyyMMddHHmmsszzz")));
+        QSqlQuery backupQuery(db);
+        backupQuery.prepare(QStringLiteral("VACUUM INTO ?;"));
+        backupQuery.addBindValue(backup);
+        if (!backupQuery.exec()) return fail(QStringLiteral("Cannot back up history before migration: %1").arg(backupQuery.lastError().text()));
+        m_recoveryNotice = QStringLiteral("History schema migrated; consistent backup saved to %1. Legacy incident calendar times remain unknown.").arg(backup);
+    }
+    if (!db.transaction()) return fail(db.lastError().text());
     QSqlQuery q(db);
     const QStringList statements = {
         QStringLiteral("CREATE TABLE IF NOT EXISTS minute_agg ("
@@ -570,7 +675,7 @@ bool HistoryStore::setupSchema()
                        "severity INTEGER NOT NULL, "
                        "rule_id TEXT, "
                        "headline TEXT, "
-                       "domain TEXT);"),
+                       "domain TEXT, calendar_time_known INTEGER NOT NULL DEFAULT 1);"),
         QStringLiteral("CREATE TABLE IF NOT EXISTS gaps ("
                        "start_ms INTEGER NOT NULL, "
                        "end_ms INTEGER NOT NULL, "
@@ -582,10 +687,25 @@ bool HistoryStore::setupSchema()
 
     for (const auto &stmt : statements) {
         if (!q.exec(stmt)) {
+            db.rollback();
             return fail(QStringLiteral("Failed to execute schema statement: %1 (%2)").arg(stmt, q.lastError().text()));
         }
     }
+    if (legacy && (!q.exec(QStringLiteral("ALTER TABLE incidents ADD COLUMN calendar_time_known INTEGER NOT NULL DEFAULT 0;")))) {
+        db.rollback(); return fail(q.lastError().text());
+    }
+    if (!q.exec(QStringLiteral("PRAGMA user_version=1;")) || !db.commit()) {
+        db.rollback(); return fail(QStringLiteral("History schema migration failed."));
+    }
     return true;
+}
+
+qint64 HistoryStore::legacyIncidentCount() const
+{
+    if (!m_open) return 0;
+    QSqlQuery q(QSqlDatabase::database(m_connection));
+    if (!q.exec(QStringLiteral("SELECT COUNT(*) FROM incidents WHERE calendar_time_known = 0;")) || !q.next()) return 0;
+    return q.value(0).toLongLong();
 }
 
 QString HistoryStore::connectionName() const

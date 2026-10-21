@@ -11,12 +11,18 @@
 #include <QDir>
 #include <QJsonArray>
 #include <QQmlApplicationEngine>
+#include <QQmlContext>
+#include <KLocalizedQmlContext>
+#include <KLocalizedString>
 #include <QQuickWindow>
 #include <QQuickItem>
 #include <QElapsedTimer>
 #include <QTimer>
 #include <QEventLoop>
 #include <QSignalBlocker>
+#include <QScopeGuard>
+#include <QSqlDatabase>
+#include <QSqlQuery>
 #include <algorithm>
 #include <cmath>
 #include <time.h>
@@ -318,6 +324,135 @@ private Q_SLOTS:
         };
         request(QStringLiteral("SetPreferences"), {QJsonDocument(QJsonObject::fromVariantMap(defaultPrefs)).toJson(QJsonDocument::Compact)});
     }
+    void temperaturePreferenceIsSharedAndValidated() {
+        request(QStringLiteral("SetPreferences"), {QJsonDocument(QJsonObject{{QStringLiteral("temperatureUnit"), QStringLiteral("F")}}).toJson(QJsonDocument::Compact)});
+        PulseTelemetryController app;
+        PulseTelemetryController widget;
+        QTRY_VERIFY_WITH_TIMEOUT(app.collectorConnected() && widget.collectorConnected(), 5000);
+        QTRY_COMPARE(app.temperatureUnit(), QStringLiteral("F"));
+        QTRY_COMPARE(widget.temperatureUnit(), QStringLiteral("F"));
+        QTRY_COMPARE(app.collectorPreferences().value(QStringLiteral("temperatureUnit")).toString(), QStringLiteral("F"));
+        app.setTemperatureUnit(QStringLiteral("C"));
+        QTRY_COMPARE(widget.temperatureUnit(), QStringLiteral("C"));
+        QTest::qWait(150);
+        QCOMPARE(app.collectorPreferences().value(QStringLiteral("temperatureUnit")).toString(), QStringLiteral("C"));
+        QVERIFY(app.collectorPreferences().contains(QStringLiteral("quietHoursStart")));
+        auto call = QDBusMessage::createMethodCall(QString::fromLatin1(CollectorServiceName), QString::fromLatin1(CollectorObjectPath), QString::fromLatin1(CollectorInterface), QStringLiteral("SetPreferences"));
+        call << QJsonDocument(QJsonObject{{QStringLiteral("temperatureUnit"), QStringLiteral("K")}, {QStringLiteral("quietHoursStart"), QStringLiteral("21:00")}}).toJson(QJsonDocument::Compact);
+        const auto before = object(request(QStringLiteral("GetPreferences")));
+        QCOMPARE(QDBusConnection::sessionBus().call(call, QDBus::Block, 5000).type(), QDBusMessage::ErrorMessage);
+        const auto after = object(request(QStringLiteral("GetPreferences")));
+        QCOMPARE(after.value(QStringLiteral("temperatureUnit")), before.value(QStringLiteral("temperatureUnit")));
+        QCOMPARE(after.value(QStringLiteral("quietHoursStart")), before.value(QStringLiteral("quietHoursStart")));
+    }
+    void quietHoursRejectInvalidRequestAtomically() {
+        const auto before = object(request(QStringLiteral("GetPreferences")));
+        auto call = QDBusMessage::createMethodCall(QString::fromLatin1(CollectorServiceName), QString::fromLatin1(CollectorObjectPath), QString::fromLatin1(CollectorInterface), QStringLiteral("SetPreferences"));
+        call << QJsonDocument(QJsonObject{{QStringLiteral("quietHoursStart"), QStringLiteral("25:99")},
+            {QStringLiteral("minNotificationSeverity"), 99}}).toJson(QJsonDocument::Compact);
+        const auto reply = QDBusConnection::sessionBus().call(call, QDBus::Block, 5000);
+        QCOMPARE(reply.type(), QDBusMessage::ErrorMessage);
+        const auto after = object(request(QStringLiteral("GetPreferences")));
+        QCOMPARE(after.value(QStringLiteral("quietHoursStart")), before.value(QStringLiteral("quietHoursStart")));
+        QCOMPARE(after.value(QStringLiteral("minNotificationSeverity")), before.value(QStringLiteral("minNotificationSeverity")));
+    }
+    void persistentSamplesIgnorePreferenceRepublishing() {
+        QFile meminfo(fixture.filePath(QStringLiteral("proc/meminfo")));
+        QVERIFY(meminfo.open(QIODevice::WriteOnly));
+        meminfo.write("MemTotal: 8000000 kB\nMemAvailable: 4000000 kB\nSwapTotal: 1000000 kB\nSwapFree: 1000000 kB\n"); meminfo.close();
+        const auto preference = [&](bool enabled) {
+            return request(QStringLiteral("SetPreferences"), {QJsonDocument(QJsonObject{{QStringLiteral("longTermHistoryEnabled"), enabled}}).toJson(QJsonDocument::Compact)});
+        };
+        request(QStringLiteral("Subscribe"), {QStringLiteral("probe"), 250, 300, false});
+        QTRY_VERIFY_WITH_TIMEOUT(object(request(QStringLiteral("Subscribe"), {QStringLiteral("probe"), 250, 300, false})).value(QStringLiteral("live")).toMap().value(QStringLiteral("memoryAvailable")).toBool(), 5000);
+        QVERIFY(!preference(true).isEmpty());
+        QTest::qWait(300);
+        request(QStringLiteral("Subscribe"), {QStringLiteral("probe"), 10000, 300, false});
+        QVERIFY(!preference(false).isEmpty());
+        const QString connection = QStringLiteral("collector-storage-readback");
+        auto db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), connection);
+        db.setDatabaseName(fixture.filePath(QStringLiteral("data/loofi-pulse/history.sqlite"))); QVERIFY(db.open());
+        const auto count = [&] {
+            QSqlQuery q(db); if (!q.exec(QStringLiteral("SELECT SUM(n) FROM minute_agg WHERE metric = 'ramUsed';")) || !q.next()) return qint64(-1);
+            return q.value(0).toLongLong();
+        };
+        const qint64 before = count(); QVERIFY(before > 0);
+        QVERIFY(!preference(true).isEmpty());
+        for (int i = 0; i < 20; ++i)
+            QVERIFY(!request(QStringLiteral("SetPreferences"), {QByteArrayLiteral("{\"minNotificationSeverity\":2}")}).isEmpty());
+        QVERIFY(!preference(false).isEmpty());
+        QCOMPARE(count(), before);
+        const auto prefs = object(request(QStringLiteral("GetPreferences")));
+        QVERIFY(prefs.contains(QStringLiteral("historyStoreError")));
+        QVERIFY(prefs.value(QStringLiteral("historyStoreError")).toString().isEmpty());
+        db.close(); db = {}; QSqlDatabase::removeDatabase(connection);
+    }
+    void persistentReadErrorsUseDbusErrorReplies() {
+        QVERIFY(!request(QStringLiteral("SetPreferences"), {QByteArrayLiteral("{\"longTermHistoryEnabled\":true}")}).isEmpty());
+        const QString connection = QStringLiteral("collector-read-failure-fixture");
+        auto db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), connection);
+        db.setDatabaseName(fixture.filePath(QStringLiteral("data/loofi-pulse/history.sqlite"))); QVERIFY(db.open());
+        const auto invoke = [&](const QString &method, const QVariantList &arguments) {
+            auto call = QDBusMessage::createMethodCall(QString::fromLatin1(CollectorServiceName), QString::fromLatin1(CollectorObjectPath), QString::fromLatin1(CollectorInterface), method);
+            call.setArguments(arguments);
+            return QDBusConnection::sessionBus().call(call, QDBus::Block, 5000);
+        };
+        QSqlQuery q(db);
+        QVERIFY(q.exec(QStringLiteral("ALTER TABLE incidents RENAME TO saved_incidents;")));
+        auto reply = invoke(QStringLiteral("PersistedIncidents"), {qint64(1), QDateTime::currentMSecsSinceEpoch(), 100});
+        QCOMPARE(reply.type(), QDBusMessage::ErrorMessage);
+        QCOMPARE(reply.errorName(), QStringLiteral("com.github.loofi.hardwarepulse.StorageFailed"));
+        QVERIFY(q.exec(QStringLiteral("ALTER TABLE saved_incidents RENAME TO incidents;")));
+        reply = invoke(QStringLiteral("PersistedIncidents"), {qint64(1), QDateTime::currentMSecsSinceEpoch(), 100});
+        QCOMPARE(reply.type(), QDBusMessage::ReplyMessage);
+        QVERIFY(q.exec(QStringLiteral("ALTER TABLE minute_agg RENAME TO saved_minutes;")));
+        reply = invoke(QStringLiteral("Trends"), {qint64(1), QDateTime::currentMSecsSinceEpoch(), 100, QStringList{QStringLiteral("cpuLoad")}});
+        QCOMPARE(reply.type(), QDBusMessage::ErrorMessage);
+        QCOMPARE(reply.errorName(), QStringLiteral("com.github.loofi.hardwarepulse.StorageFailed"));
+        QVERIFY(q.exec(QStringLiteral("ALTER TABLE saved_minutes RENAME TO minute_agg;")));
+        reply = invoke(QStringLiteral("Trends"), {qint64(1), QDateTime::currentMSecsSinceEpoch(), 100, QStringList{QStringLiteral("cpuLoad")}});
+        QCOMPARE(reply.type(), QDBusMessage::ReplyMessage);
+        q.finish(); db.close(); q = QSqlQuery(); db = {}; QSqlDatabase::removeDatabase(connection);
+        QVERIFY(!request(QStringLiteral("ClearPersistedHistory")).isEmpty());
+        QVERIFY(!request(QStringLiteral("SetPreferences"), {QByteArrayLiteral("{\"longTermHistoryEnabled\":false}")}).isEmpty());
+    }
+    void clearingPersistentHistorySuppressesRetainedEpisodes() {
+        const QString pressurePath = fixture.filePath(QStringLiteral("proc/pressure/memory"));
+        QDir().mkpath(QFileInfo(pressurePath).absolutePath());
+        const auto setPressure = [&] {
+            QFile pressure(pressurePath);
+            if (!pressure.open(QIODevice::WriteOnly)) return false;
+            return pressure.write("some avg10=10.00 avg60=5.00 avg300=1.00 total=10000\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0\n") > 0;
+        };
+        const auto reset = qScopeGuard([&] {
+            QFile::remove(pressurePath);
+            request(QStringLiteral("SetPreferences"), {QByteArrayLiteral("{\"longTermHistoryEnabled\":false}")});
+        });
+        request(QStringLiteral("Subscribe"), {QStringLiteral("probe"), 250, 300, false});
+        QVERIFY(!request(QStringLiteral("SetPreferences"), {QByteArrayLiteral("{\"longTermHistoryEnabled\":true}")}).isEmpty());
+        QVERIFY(!request(QStringLiteral("ClearPersistedHistory")).isEmpty());
+        QVERIFY(setPressure());
+        const auto persisted = [&] {
+            return QJsonDocument::fromJson(request(QStringLiteral("PersistedIncidents"), {QDateTime::currentMSecsSinceEpoch() - 60000, QDateTime::currentMSecsSinceEpoch(), 100})).array();
+        };
+        QTRY_VERIFY_WITH_TIMEOUT(!persisted().isEmpty(), 7000);
+        const QString originalId = persisted().last().toObject().value(QStringLiteral("incidentId")).toString();
+        QVERIFY(!originalId.isEmpty());
+        QVERIFY(!request(QStringLiteral("ClearPersistedHistory")).isEmpty());
+        QTest::qWait(800); // Several real telemetry frames must not reinsert the active pre-clear episode.
+        QVERIFY(persisted().isEmpty());
+        const auto packet = object(request(QStringLiteral("Subscribe"), {QStringLiteral("probe"), 250, 300, false}));
+        bool retained = false;
+        for (const auto &entry : packet.value(QStringLiteral("incidents")).toList())
+            retained = retained || entry.toMap().value(QStringLiteral("incidentId")).toString() == originalId;
+        QVERIFY(retained); // Flight recorder and its active investigation remain untouched.
+        QVERIFY(QFile::remove(pressurePath));
+        QTest::qWait(500); // Missing pressure makes the prior episode end immediately.
+        QVERIFY(setPressure());
+        QTRY_VERIFY_WITH_TIMEOUT(!persisted().isEmpty(), 7000);
+        for (const auto &entry : persisted())
+            QVERIFY(entry.toObject().value(QStringLiteral("incidentId")).toString() != originalId);
+    }
     void importedIncidentAndEmptyLoadPreserveOriginalSource() {
         SessionSnapshot original;
         original.recordingId = QStringLiteral("historical-recording");
@@ -365,7 +500,9 @@ private Q_SLOTS:
         QCOMPARE(selected.samples.size(), 2);
     }
     void actualQmlProcessPageResponsiveness() {
+        KLocalizedString::setApplicationDomain("loofi-pulse");
         QQmlApplicationEngine engine;
+        KLocalization::setupLocalizedContext(&engine);
         QStringList runtimeErrors;
         connect(&engine, &QQmlEngine::warnings, &engine, [&](const QList<QQmlError> &warnings) {
             for (const auto &warning : warnings) {

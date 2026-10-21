@@ -28,9 +28,6 @@
 #include <QDBusVariant>
 
 #include <algorithm>
-#include <cerrno>
-#include <csignal>
-#include <cstring>
 #include <ctime>
 #include <unistd.h>
 
@@ -459,7 +456,7 @@ QVariantMap PulseTelemetryController::metricMetadata() const
                                                        m_gpu.busyAvailable ? QString() : QStringLiteral("This GPU does not expose a supported busy counter.")));
     result.insert(QStringLiteral("gpuTemperature"), metric(m_gpu.temperatureAvailable ? QStringLiteral("available") : QStringLiteral("unavailable"),
                                                              QStringLiteral("GPU device hwmon temp*_input"),
-                                                             m_gpu.temperatureAvailable ? QString() : QStringLiteral("No temperature sensor was matched to the selected GPU.")));
+                                                             m_gpu.temperatureAvailable ? QStringLiteral("%1 (%2)").arg(m_gpu.temperatureSensorLabel, m_gpu.temperatureSensorId) : QStringLiteral("No temperature sensor was matched to the selected GPU.")));
     result.insert(QStringLiteral("cpuPressure"), metric(m_psiMem.cpuPsi.someAvailable ? QStringLiteral("available") : QStringLiteral("unavailable"),
                                                            QStringLiteral("/proc/pressure/cpu")));
     result.insert(QStringLiteral("memoryPressure"), metric(m_psiMem.memoryPsi.someAvailable ? QStringLiteral("available") : QStringLiteral("unavailable"),
@@ -533,9 +530,9 @@ void PulseTelemetryController::refreshNow()
     m_power.availablePowerProfiles = m_availablePowerProfiles;
     if (m_lastProcessScanBoottimeMs == 0) refreshProcesses();
 
-    const CausalVerdict candidateVerdict = CausalDiagnosisEngine::evaluate(
+    const CausalVerdict candidateVerdict = CausalDiagnosisEngine::evaluateDevices(
         m_cpu,
-        m_gpu,
+        m_gpus,
         m_psiMem,
         m_power,
         m_domains,
@@ -1057,173 +1054,6 @@ void PulseTelemetryController::handleSystemResume()
     if (m_remoteClient) {
         reconnectCollector();
     }
-}
-
-bool PulseTelemetryController::canTerminateProcess(int pid, qulonglong startTime) const
-{
-    if (pid <= 1) {
-        return false;
-    }
-    if (pid == static_cast<int>(::getpid())) {
-        return false;
-    }
-
-    const QString procPath = QStringLiteral("/proc/%1").arg(pid);
-    const QFileInfo procInfo(procPath);
-    if (!procInfo.exists() || !procInfo.isDir()) {
-        return false;
-    }
-
-    // Process must belong to the current user
-    if (procInfo.ownerId() != ::getuid()) {
-        return false;
-    }
-
-    // Block protected critical session and system processes
-    QFile commFile(procPath + QStringLiteral("/comm"));
-    if (commFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        const QString comm = QString::fromUtf8(commFile.readLine()).trimmed();
-        static const QStringList protectedProcesses = {
-            QStringLiteral("systemd"),
-            QStringLiteral("systemd-logind"),
-            QStringLiteral("systemd-journald"),
-            QStringLiteral("systemd-resolved"),
-            QStringLiteral("systemd-homed"),
-            QStringLiteral("kwin_wayland"),
-            QStringLiteral("kwin_x11"),
-            QStringLiteral("plasmashell"),
-            QStringLiteral("startplasma-wayland"),
-            QStringLiteral("dbus-broker"),
-            QStringLiteral("dbus-daemon"),
-            QStringLiteral("dbus-broker-launch"),
-            QStringLiteral("pipewire"),
-            QStringLiteral("wireplumber"),
-            QStringLiteral("loofi-pulse"),
-            QStringLiteral("loofi-pulse-service")
-        };
-        if (protectedProcesses.contains(comm)) {
-            return false;
-        }
-    }
-
-    // Verify startTime against field 22 in /proc/<pid>/stat if provided
-    if (startTime > 0) {
-        QFile statFile(procPath + QStringLiteral("/stat"));
-        if (!statFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            return false;
-        }
-        const QString statLine = QString::fromUtf8(statFile.readLine());
-        const int closeParen = statLine.lastIndexOf(QLatin1Char(')'));
-        if (closeParen < 0) {
-            return false;
-        }
-        const QStringList fields = statLine.mid(closeParen + 2).split(QLatin1Char(' '), Qt::SkipEmptyParts);
-        if (fields.size() <= 19) {
-            return false;
-        }
-        bool ok = false;
-        const quint64 actualStart = fields.at(19).toULongLong(&ok);
-        if (!ok || actualStart != startTime) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-bool PulseTelemetryController::terminateProcess(int pid, qulonglong startTime, bool force)
-{
-    if (pid <= 1) {
-        setActionResult(false, QStringLiteral("Cannot terminate system initialization process (PID %1).").arg(pid));
-        return false;
-    }
-    if (pid == static_cast<int>(::getpid())) {
-        setActionResult(false, QStringLiteral("Cannot terminate Loofi Pulse itself. Use Quit to exit."));
-        return false;
-    }
-
-    const QString procPath = QStringLiteral("/proc/%1").arg(pid);
-    const QFileInfo procInfo(procPath);
-    if (!procInfo.exists() || !procInfo.isDir()) {
-        setActionResult(false, QStringLiteral("Process %1 is no longer running.").arg(pid));
-        return false;
-    }
-
-    if (procInfo.ownerId() != ::getuid()) {
-        setActionResult(false, QStringLiteral("Permission denied: Process %1 is owned by UID %2 (not current user).")
-                                   .arg(pid)
-                                   .arg(procInfo.ownerId()));
-        return false;
-    }
-
-    QString commName;
-    QFile commFile(procPath + QStringLiteral("/comm"));
-    if (commFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        commName = QString::fromUtf8(commFile.readLine()).trimmed();
-    }
-    if (commName.isEmpty()) {
-        commName = QStringLiteral("PID %1").arg(pid);
-    }
-
-    static const QStringList protectedProcesses = {
-        QStringLiteral("systemd"),
-        QStringLiteral("systemd-logind"),
-        QStringLiteral("systemd-journald"),
-        QStringLiteral("systemd-resolved"),
-        QStringLiteral("systemd-homed"),
-        QStringLiteral("kwin_wayland"),
-        QStringLiteral("kwin_x11"),
-        QStringLiteral("plasmashell"),
-        QStringLiteral("startplasma-wayland"),
-        QStringLiteral("dbus-broker"),
-        QStringLiteral("dbus-daemon"),
-        QStringLiteral("dbus-broker-launch"),
-        QStringLiteral("pipewire"),
-        QStringLiteral("wireplumber"),
-        QStringLiteral("loofi-pulse"),
-        QStringLiteral("loofi-pulse-service")
-    };
-    if (protectedProcesses.contains(commName)) {
-        setActionResult(false, QStringLiteral("Cannot terminate protected system/desktop process '%1' (PID %2).").arg(commName).arg(pid));
-        return false;
-    }
-
-    if (startTime > 0) {
-        QFile statFile(procPath + QStringLiteral("/stat"));
-        if (!statFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            setActionResult(false, QStringLiteral("Process %1 could not be verified.").arg(pid));
-            return false;
-        }
-        const QString statLine = QString::fromUtf8(statFile.readLine());
-        const int closeParen = statLine.lastIndexOf(QLatin1Char(')'));
-        const QStringList fields = closeParen >= 0 ? statLine.mid(closeParen + 2).split(QLatin1Char(' '), Qt::SkipEmptyParts) : QStringList();
-        if (fields.size() <= 19) {
-            setActionResult(false, QStringLiteral("Process %1 state could not be parsed.").arg(pid));
-            return false;
-        }
-        bool ok = false;
-        const quint64 actualStart = fields.at(19).toULongLong(&ok);
-        if (!ok || actualStart != startTime) {
-            setActionResult(false, QStringLiteral("Process %1 start time does not match (PID was recycled or restarted).").arg(pid));
-            return false;
-        }
-    }
-
-    const int sig = force ? SIGKILL : SIGTERM;
-    if (::kill(pid, sig) == 0) {
-        const QString msg = force
-            ? QStringLiteral("Forcefully terminated process '%1' (PID %2) with SIGKILL.").arg(commName).arg(pid)
-            : QStringLiteral("Sent termination signal (SIGTERM) to process '%1' (PID %2).").arg(commName).arg(pid);
-        setActionResult(true, msg);
-        return true;
-    }
-
-    const int err = errno;
-    setActionResult(false, QStringLiteral("Failed to terminate process '%1' (PID %2): %3")
-                               .arg(commName)
-                               .arg(pid)
-                               .arg(QString::fromLocal8Bit(strerror(err))));
-    return false;
 }
 
 QVariantMap PulseTelemetryController::processIoStats(int pid) const

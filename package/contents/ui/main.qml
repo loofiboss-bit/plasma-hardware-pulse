@@ -1,6 +1,8 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import org.kde.ki18n
+import "TemperatureLabels.js" as TemperatureLabels
 import org.kde.plasma.core as PlasmaCore
 import org.kde.plasma.plasmoid
 import com.github.loofi.hardwarepulse 1.0
@@ -17,18 +19,18 @@ PlasmoidItem {
                               : true
     }
 
-    toolTipMainText: pulse.verdictHeadline
+    toolTipMainText: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", pulse.verdictHeadline)
     toolTipSubText: {
         let lines = [pulse.verdictCausalChain]
-        lines.push("CPU load: " + (pulse.cpuLoadAvailable ? Math.round(pulse.cpuLoadPercent) + "%" : "Unavailable"))
-        lines.push("CPU temperature: " + (pulse.cpuTempAvailable ? Math.round(pulse.cpuPackageTemp) + "°C" : "Unavailable"))
-        lines.push("GPU activity: " + (pulse.gpuBusyAvailable ? Math.round(pulse.gpuBusyPercent) + "%" : "Unavailable"))
-        lines.push("Memory use: " + (pulse.memoryAvailable ? Math.round(pulse.ramUsedPercent) + "%" : "Unavailable"))
-        lines.push("Responsiveness index: " + (pulse.psiAvailable ? Math.round(pulse.responsivenessScore) + "/100 (higher is better)" : "Unavailable"))
-        lines.push("CPU package power: " + (pulse.packagePowerAvailable ? pulse.packageWatts.toFixed(1) + " W" + (pulse.packagePowerEstimated ? " (estimated)" : "") : "Unavailable"))
-        lines.push("Battery discharge: " + (pulse.batteryPowerAvailable && pulse.batteryStatus === "Discharging" ? pulse.batteryWatts.toFixed(1) + " W" : "Unavailable or not discharging"))
-        lines.push("Disk: " + (pulse.diskThroughputAvailable ? (pulse.diskReadMibPerSec + pulse.diskWriteMibPerSec).toFixed(1) + " MiB/s" : "Unavailable"))
-        lines.push("Network: " + (pulse.netThroughputAvailable ? (pulse.netRxMibPerSec + pulse.netTxMibPerSec).toFixed(1) + " MiB/s" : "Unavailable"))
+        lines.push(KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "CPU load: ") + (pulse.cpuLoadAvailable ? Math.round(pulse.cpuLoadPercent) + "%" : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable")))
+        lines.push(KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "CPU temperature: ") + (pulse.cpuTempAvailable ? TemperatureLabels.formatTemperature(pulse.cpuPackageTemp, pulse.temperatureUnit) : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable")))
+        lines.push(KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "GPU activity: ") + (pulse.gpuBusyAvailable ? Math.round(pulse.gpuBusyPercent) + "%" : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable")))
+        lines.push(KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Memory use: ") + (pulse.memoryAvailable ? Math.round(pulse.ramUsedPercent) + "%" : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable")))
+        lines.push(KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Responsiveness index: ") + (pulse.psiAvailable ? Math.round(pulse.responsivenessScore) + "/100 (higher is better)" : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable")))
+        lines.push(KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "CPU package power: ") + (pulse.packagePowerAvailable ? pulse.packageWatts.toFixed(1) + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " W") + (pulse.packagePowerEstimated ? KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " (estimated)") : "") : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable")))
+        lines.push(KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Battery discharge: ") + (pulse.batteryPowerAvailable && pulse.batteryStatus === "Discharging" ? pulse.batteryWatts.toFixed(1) + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " W") : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable or not discharging")))
+        lines.push(KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Disk: ") + (pulse.diskThroughputAvailable ? (pulse.diskReadMibPerSec + pulse.diskWriteMibPerSec).toFixed(1) + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " MiB/s") : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable")))
+        lines.push(KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Network: ") + (pulse.netThroughputAvailable ? (pulse.netRxMibPerSec + pulse.netTxMibPerSec).toFixed(1) + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " MiB/s") : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable")))
         return lines.join("\n")
     }
 

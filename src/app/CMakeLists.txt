@@ -38,6 +38,7 @@ target_link_libraries(loofi-pulse
     KF6::CoreAddons
     KF6::Notifications
     KF6::I18n
+    KF6::I18nQml
     KF6::Crash
     KF6::WindowSystem
     Qt6::DBus

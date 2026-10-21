@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import org.kde.ki18n
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import "MeasurementLabels.js" as MeasurementLabels
@@ -10,7 +11,7 @@ ColumnLayout {
     property bool expanded: false
     Layout.fillWidth: true
     PulseButton {
-        text: details.expanded ? "Hide measurement details" : "Show measurement details"
+        text: details.expanded ? KI18n.i18n("Hide measurement details") : KI18n.i18n("Show measurement details")
         icon.name: details.expanded ? "collapse-all" : "expand-all"
         checkable: true
         checked: details.expanded
@@ -29,9 +30,9 @@ ColumnLayout {
                 QQC2.Label {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
-                    text: "Source: " + (entry.quality.source || "Unavailable") + " · Sampled: "
-                          + (Number(entry.quality.sampledAtMs) > 0 ? new Date(Number(entry.quality.sampledAtMs)).toLocaleTimeString() : "Not sampled")
-                          + " · Reason: " + (entry.quality.detail || "No additional detail")
+                    text: KI18n.i18n("Source: ") + (entry.quality.source || KI18n.i18n("Unavailable")) + KI18n.i18n(" · Sampled: ")
+                          + (Number(entry.quality.sampledAtMs) > 0 ? new Date(Number(entry.quality.sampledAtMs)).toLocaleTimeString() : KI18n.i18n("Not sampled"))
+                          + KI18n.i18n(" · Reason: ") + (entry.quality.detail || KI18n.i18n("No additional detail"))
                 }
             }
         }

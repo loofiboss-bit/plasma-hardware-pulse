@@ -350,15 +350,35 @@ QList<GpuSnapshot> CpuSocSampler::sampleGpus(const QList<DomainSensorReading> &d
         for (const QString &hwmon : hwmonDirs) {
             deviceHwmonPaths.insert(QFileInfo(hwmonDir.filePath(hwmon)).canonicalFilePath());
         }
+        // Prefer the primary GPU/edge sensor. Junction and memory temperatures
+        // describe different locations and must not overwrite it by iteration order.
+        const auto sensorPriority = [](const QString &label) {
+            const QString lower = label.trimmed().toLower();
+            if (lower == QStringLiteral("edge") || lower == QStringLiteral("gpu")
+                || lower == QStringLiteral("core") || lower == QStringLiteral("gpu core")) return 0;
+            if (lower.contains(QStringLiteral("junction")) || lower.contains(QStringLiteral("hotspot"))
+                || lower.contains(QStringLiteral("hot spot"))) return 1;
+            if (lower.contains(QStringLiteral("mem"))) return 2;
+            return 3;
+        };
+        const DomainSensorReading *temperatureSensor = nullptr;
         for (const DomainSensorReading &reading : domainReadings) {
-            if (reading.domain == PhysicalDomain::Graphics && !reading.sysfsPath.isEmpty()
+            if (reading.available && reading.domain == PhysicalDomain::Graphics && !reading.sysfsPath.isEmpty()
                 && deviceHwmonPaths.contains(reading.sysfsPath)) {
-                gpu.tempCelsius = reading.currentCelsius;
-                gpu.temperatureAvailable = reading.available;
-                gpu.available = true;
-                gpu.sysfsPath = devicePath;
-                if (gpu.driverName.isEmpty()) gpu.driverName = reading.chipName;
+                const int priority = sensorPriority(reading.label);
+                const int selectedPriority = temperatureSensor ? sensorPriority(temperatureSensor->label) : 4;
+                if (!temperatureSensor || priority < selectedPriority
+                    || (priority == selectedPriority && (reading.currentCelsius > temperatureSensor->currentCelsius
+                        || (reading.currentCelsius == temperatureSensor->currentCelsius && reading.id < temperatureSensor->id)))) {
+                    temperatureSensor = &reading;
+                }
             }
+        }
+        if (temperatureSensor) {
+            gpu.tempCelsius = temperatureSensor->currentCelsius;
+            gpu.temperatureAvailable = true;
+            gpu.temperatureSensorId = temperatureSensor->id;
+            gpu.temperatureSensorLabel = temperatureSensor->label;
         }
         gpu.available = gpu.frequencyAvailable || gpu.busyAvailable || gpu.temperatureAvailable || gpu.powerAvailable || gpu.vramAvailable;
         if (!gpu.available) gpu.unavailableReason = QStringLiteral("The driver exposes no readable DRM telemetry for this device.");

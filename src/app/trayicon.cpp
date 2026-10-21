@@ -1,6 +1,7 @@
 #include "trayicon.h"
 #include "pulsetelemetrycontroller.h"
 
+#include <KLocalizedString>
 #include <QAction>
 #include <QApplication>
 #include <QIcon>
@@ -63,23 +64,23 @@ void TrayIcon::init(PulseTelemetryController *controller, QWindow *mainWindow)
         m_tray = new QSystemTrayIcon(this);
         m_menu = new QMenu();
 
-        m_actionToggleWindow = m_menu->addAction(QStringLiteral("Show Loofi Pulse"), this, &TrayIcon::toggleWindowVisibility);
+        m_actionToggleWindow = m_menu->addAction(i18n("Show Loofi Pulse"), this, &TrayIcon::toggleWindowVisibility);
         m_menu->addSeparator();
 
-        m_actionMarkProblem = m_menu->addAction(QStringLiteral("Mark Problem Now"), [this]() {
+        m_actionMarkProblem = m_menu->addAction(i18n("Mark Problem Now"), [this]() {
             if (m_controller) m_controller->markProblemNow();
         });
 
-        m_actionPause = m_menu->addAction(QStringLiteral("Pause Recording"), [this]() {
+        m_actionPause = m_menu->addAction(i18n("Pause Recording"), [this]() {
             if (m_controller) m_controller->setRecordingPaused(!m_controller->recordingPaused());
         });
 
-        m_actionSnooze = m_menu->addAction(QStringLiteral("Snooze Notifications (15 min)"), [this]() {
+        m_actionSnooze = m_menu->addAction(i18n("Snooze Notifications (15 min)"), [this]() {
             if (m_controller) m_controller->snoozeNotifications();
         });
 
         m_menu->addSeparator();
-        m_actionQuit = m_menu->addAction(QStringLiteral("Quit Loofi Pulse"), qApp, &QCoreApplication::quit);
+        m_actionQuit = m_menu->addAction(i18n("Quit Loofi Pulse"), this, &TrayIcon::quitRequested);
 
         m_tray->setContextMenu(m_menu);
 
@@ -91,6 +92,7 @@ void TrayIcon::init(PulseTelemetryController *controller, QWindow *mainWindow)
     if (m_controller) {
         connect(m_controller, &PulseTelemetryController::telemetryUpdated, this, &TrayIcon::onTelemetryUpdated);
         connect(m_controller, &PulseTelemetryController::recordingPausedChanged, this, &TrayIcon::updateMenu);
+        connect(m_controller, &PulseTelemetryController::temperatureUnitChanged, this, &TrayIcon::updateTooltipAndIcon);
     }
 
     updateTooltipAndIcon();
@@ -114,44 +116,29 @@ void TrayIcon::updateTooltipAndIcon()
     const int severity = m_controller->verdictSeverity();
     QString headline = m_controller->verdictHeadline();
     if (headline.isEmpty()) {
-        headline = QStringLiteral("Hardware Health Monitor");
+        headline = i18n("Hardware Health Monitor");
     }
 
-    const int cpuPct = qRound(m_controller->cpuLoadPercent());
-    const double rawTemp = m_controller->cpuPackageTemp();
+    const bool connected = m_controller->collectorConnected();
+    const QString unavailable = i18n("Unavailable");
+    const QString cpu = connected && m_controller->cpuLoadAvailable()
+        ? QString::number(qRound(m_controller->cpuLoadPercent())) + QStringLiteral("%") : unavailable;
     const bool isF = m_controller->temperatureUnit() == QStringLiteral("F");
-    const double temp = isF ? (rawTemp * 9.0 / 5.0 + 32.0) : rawTemp;
-    const QString tempStr = QStringLiteral("%1°%2").arg(qRound(temp)).arg(isF ? QStringLiteral("F") : QStringLiteral("C"));
-
-    const double ramUsed = m_controller->ramUsedGib();
-    const double ramTotal = m_controller->ramTotalGib();
-    const int ramPct = ramTotal > 0.0 ? qRound((ramUsed / ramTotal) * 100.0) : 0;
-
-    QString statusText;
-    switch (severity) {
-    case 0: statusText = QStringLiteral("Nominal"); break;
-    case 1: statusText = QStringLiteral("Elevated"); break;
-    case 2: statusText = QStringLiteral("Bottleneck"); break;
-    case 3: statusText = QStringLiteral("Critical Throttle"); break;
-    default: statusText = QStringLiteral("Observing"); break;
-    }
-
-    const QString tooltip = QStringLiteral("Loofi Pulse — %1\nCPU: %2% (%3) · RAM: %4% (%5 / %6 GiB)\nStatus: %7")
-                                .arg(headline)
-                                .arg(cpuPct)
-                                .arg(tempStr)
-                                .arg(ramPct)
-                                .arg(QString::number(ramUsed, 'f', 1))
-                                .arg(QString::number(ramTotal, 'f', 1))
-                                .arg(statusText);
+    const double temp = isF ? m_controller->cpuPackageTemp() * 9.0 / 5.0 + 32.0 : m_controller->cpuPackageTemp();
+    const QString temperature = connected && m_controller->cpuTempAvailable()
+        ? QStringLiteral("%1°%2").arg(qRound(temp)).arg(isF ? QStringLiteral("F") : QStringLiteral("C")) : unavailable;
+    const QString memory = connected && m_controller->memoryAvailable()
+        ? QString::number(qRound(m_controller->ramUsedPercent())) + QStringLiteral("%") : unavailable;
+    if (!connected) headline = i18n("Collector disconnected");
+    const QString tooltip = i18n("Loofi Pulse — %1\nCPU: %2 · Temperature: %3 · Memory: %4", headline, cpu, temperature, memory);
 
     m_tray->setToolTip(tooltip);
 
     // Icon updates based on severity
-    if (severity >= 3) {
+    if (connected && severity == 3) {
         m_tray->setIcon(QIcon::fromTheme(QStringLiteral("dialog-error"),
                                          QIcon::fromTheme(QStringLiteral("utilities-system-monitor"))));
-    } else if (severity >= 1) {
+    } else if (connected && severity >= 1 && severity <= 2) {
         m_tray->setIcon(QIcon::fromTheme(QStringLiteral("dialog-warning"),
                                          QIcon::fromTheme(QStringLiteral("utilities-system-monitor"))));
     } else {
@@ -166,11 +153,11 @@ void TrayIcon::updateMenu()
 
     const bool winVisible = m_mainWindow && m_mainWindow->isVisible();
     if (m_actionToggleWindow) {
-        m_actionToggleWindow->setText(winVisible ? QStringLiteral("Hide Loofi Pulse") : QStringLiteral("Show Loofi Pulse"));
+        m_actionToggleWindow->setText(winVisible ? i18n("Hide Loofi Pulse") : i18n("Show Loofi Pulse"));
     }
 
     if (m_actionPause) {
-        m_actionPause->setText(m_controller->recordingPaused() ? QStringLiteral("Resume Recording") : QStringLiteral("Pause Recording"));
+        m_actionPause->setText(m_controller->recordingPaused() ? i18n("Resume Recording") : i18n("Pause Recording"));
     }
 }
 
