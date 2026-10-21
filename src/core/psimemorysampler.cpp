@@ -39,6 +39,8 @@ PsiMetric PsiMemorySampler::parsePsiContent(const QString &content, quint64 prev
     PsiMetric metric;
     bool someTotalValid = false;
     bool fullTotalValid = false;
+    bool someAvg60Valid = false;
+    bool fullAvg60Valid = false;
     const QStringList lines = content.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
 
     for (const QString &rawLine : lines) {
@@ -79,8 +81,10 @@ PsiMetric PsiMemorySampler::parsePsiContent(const QString &content, quint64 prev
                 }
                 if (isSome) {
                     metric.someAvg60 = value;
+                    someAvg60Valid = true;
                 } else {
                     metric.fullAvg60 = value;
+                    fullAvg60Valid = true;
                 }
             } else if (key == QStringLiteral("total")) {
                 const quint64 value = valStr.toULongLong(&ok);
@@ -98,11 +102,11 @@ PsiMetric PsiMemorySampler::parsePsiContent(const QString &content, quint64 prev
         }
     }
 
-    metric.someAvailable = metric.someAvailable && someTotalValid;
-    metric.fullAvailable = metric.fullAvailable && fullTotalValid;
+    metric.someAvailable = metric.someAvailable && someAvg60Valid && someTotalValid;
+    metric.fullAvailable = metric.fullAvailable && fullAvg60Valid && fullTotalValid;
     metric.available = metric.someAvailable || metric.fullAvailable;
 
-    if (prevTotalUs > 0 && metric.someTotalUs >= prevTotalUs && elapsedMs > 50) {
+    if (metric.someAvailable && prevTotalUs > 0 && metric.someTotalUs >= prevTotalUs && elapsedMs > 50) {
         const double deltaMs = static_cast<double>(metric.someTotalUs - prevTotalUs) / 1000.0;
         const double elapsedSec = static_cast<double>(elapsedMs) / 1000.0;
         metric.deltaStallMsPerSec = std::clamp(deltaMs / elapsedSec, 0.0, 1000.0);

@@ -19,6 +19,18 @@ private:
         s.cpuLoadPercent = double(id); return s;
     }
 private Q_SLOTS:
+    void newRecordingUsesCurrentEngineVersion() {
+        FlightRecorder recorder;
+        recorder.appendSample(sample(1, 1000));
+        QCOMPARE(recorder.freezeRange(1, 1).engineVersion, QStringLiteral(LOOFI_PULSE_VERSION));
+        auto imported = recorder.freezeRange(1, 1);
+        imported.engineVersion = QStringLiteral("original-historical-engine");
+        recorder.restoreSnapshot(imported);
+        QCOMPARE(recorder.freezeRange(1, 1).engineVersion, imported.engineVersion);
+        recorder.clear();
+        recorder.appendSample(sample(2, 2000));
+        QCOMPARE(recorder.freezeRange(2, 2).engineVersion, QStringLiteral(LOOFI_PULSE_VERSION));
+    }
     void codecRoundtrip() {
         auto s = sample(1, 1000);
         s.ramTotalBytes = std::numeric_limits<quint64>::max();

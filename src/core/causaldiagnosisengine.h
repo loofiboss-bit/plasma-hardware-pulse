@@ -16,6 +16,15 @@ public:
         const QList<DomainSensorReading> &domains,
         const CulpritProcess &culprit,
         const CulpritProcess &memoryCulprit = {});
+
+    static CausalVerdict evaluateDevices(
+        const CpuSocSnapshot &cpu,
+        const QList<GpuSnapshot> &gpus,
+        const PsiAndMemorySnapshot &psiMem,
+        const PowerFlowSnapshot &power,
+        const QList<DomainSensorReading> &domains,
+        const CulpritProcess &culprit,
+        const CulpritProcess &memoryCulprit = {});
 };
 
 class VerdictStabilizer

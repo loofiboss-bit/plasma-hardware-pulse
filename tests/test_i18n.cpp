@@ -29,7 +29,7 @@ private Q_SLOTS:
         const QString nominal = i18n("Nominal");
 
         QCOMPARE(overview, QStringLiteral("Översikt"));
-        QCOMPARE(flight, QStringLiteral("Haverikommission"));
+        QCOMPARE(flight, QStringLiteral("Färdskrivare"));
         QCOMPARE(settings, QStringLiteral("Inställningar"));
         QCOMPARE(sysmon, QStringLiteral("Systemövervakare"));
         QCOMPARE(throttle, QStringLiteral("Kritisk strypning"));

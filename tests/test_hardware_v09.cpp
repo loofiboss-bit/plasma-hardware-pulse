@@ -20,6 +20,40 @@ QString process(int pid, int rss, const QString &state = QStringLiteral("S")) {
 class TestHardwareV09 : public QObject {
     Q_OBJECT
 private Q_SLOTS:
+    void gpuTemperatureSensorSelectionIsStable() {
+        QTemporaryDir temp;
+        const auto sys = temp.filePath(QStringLiteral("sys"));
+        const auto hwmon = sys + QStringLiteral("/class/drm/card0/device/hwmon/hwmon0");
+        QDir().mkpath(hwmon);
+        auto reading = [&hwmon](const QString &id, const QString &label, double value) {
+            DomainSensorReading sensor;
+            sensor.id = id; sensor.label = label; sensor.currentCelsius = value;
+            sensor.sysfsPath = QFileInfo(hwmon).canonicalFilePath();
+            sensor.domain = PhysicalDomain::Graphics; sensor.available = true;
+            return sensor;
+        };
+        const auto edge = reading(QStringLiteral("edge-id"), QStringLiteral("edge"), 65.0);
+        const auto junction = reading(QStringLiteral("junction-id"), QStringLiteral("junction"), 100.0);
+        const auto memory = reading(QStringLiteral("memory-id"), QStringLiteral("mem"), 55.0);
+        CpuSocSampler sampler({sys, temp.filePath(QStringLiteral("proc"))});
+        for (const auto &sensors : {QList<DomainSensorReading>{junction, edge, memory}, QList<DomainSensorReading>{memory, edge, junction}}) {
+            const auto gpu = sampler.sampleGpu(sensors);
+            QCOMPARE(gpu.tempCelsius, 65.0);
+            QCOMPARE(gpu.temperatureSensorId, edge.id);
+            QCOMPARE(gpu.temperatureSensorLabel, edge.label);
+        }
+        const auto fallback = sampler.sampleGpu({memory, junction});
+        QCOMPARE(fallback.tempCelsius, 100.0);
+        QCOMPARE(fallback.temperatureSensorId, junction.id);
+        auto unknown = reading(QStringLiteral("unknown"), QStringLiteral("amdgpu (temp1)"), 70.0);
+        auto hotter = reading(QStringLiteral("hotter"), QStringLiteral("amdgpu (temp2)"), 80.0);
+        QCOMPARE(sampler.sampleGpu({hotter, unknown}).temperatureSensorId, hotter.id);
+        QCOMPARE(sampler.sampleGpu({unknown, hotter}).temperatureSensorId, hotter.id);
+        unknown.available = false;
+        QVERIFY(!sampler.sampleGpu({unknown}).temperatureAvailable);
+        QVERIFY(sampler.sampleGpu({}).temperatureSensorId.isEmpty());
+    }
+
     void processListIncludesSmallIdleAndInit() {
         QTemporaryDir temp;
         const auto proc = temp.filePath(QStringLiteral("proc"));

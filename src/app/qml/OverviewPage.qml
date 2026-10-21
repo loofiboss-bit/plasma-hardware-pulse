@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import org.kde.ki18n
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import "MeasurementLabels.js" as MeasurementLabels
@@ -8,7 +9,7 @@ import org.kde.kirigami as Kirigami
 Kirigami.ScrollablePage {
     id: page
     objectName: "overviewPage"
-    title: "Overview"
+    title: KI18n.i18n("Overview")
     titleDelegate: Item {
         width: parent ? parent.width : 0
         height: 0
@@ -46,11 +47,11 @@ Kirigami.ScrollablePage {
     }
 
     function metric(available, value, suffix) {
-        return available ? value + suffix : "Unavailable"
+        return available ? value + suffix : KI18n.i18n("Unavailable")
     }
 
     function temp(available, celsius) {
-        return available ? MeasurementLabels.formatTemperature(celsius, page.controller.temperatureUnit) : "Unavailable"
+        return available ? MeasurementLabels.formatTemperature(celsius, page.controller.temperatureUnit) : KI18n.i18n("Unavailable")
     }
 
     function sectionForDomain(domain) {
@@ -155,14 +156,14 @@ Kirigami.ScrollablePage {
                         id: verdictHeading
                         objectName: "section_status"
                         focus: true
-                        text: page.controller.verdictHeadline
+                        text: KI18n.i18n(page.controller.verdictHeadline)
                         level: 2
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                     }
 
                     QQC2.Label {
-                        text: page.controller.verdictCausalChain || "No contributing signal is currently available."
+                        text: KI18n.i18n("Original technical evidence (preserved language):") + "\n" + (page.controller.verdictCausalChain || KI18n.i18n("No contributing signal is currently available."))
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                         color: Kirigami.Theme.textColor
@@ -170,7 +171,7 @@ Kirigami.ScrollablePage {
 
                     PulseButton {
                         objectName: "whyStatusButton"
-                        text: page.whyExpanded ? "Hide status explanation" : "Why this status?"
+                        text: page.whyExpanded ? KI18n.i18n("Hide status explanation") : KI18n.i18n("Why this status?")
                         icon.name: page.whyExpanded ? "collapse-all" : "help-about"
                         checkable: true
                         checked: page.whyExpanded
@@ -206,7 +207,7 @@ Kirigami.ScrollablePage {
                                     QQC2.Label {
                                         id: ruleBadgeLbl
                                         anchors.centerIn: parent
-                                        text: "Rule: " + page.controller.verdictRuleId
+                                        text: KI18n.i18n("Rule: ") + page.controller.verdictRuleId
                                         font.bold: true
                                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                                         color: Kirigami.Theme.textColor
@@ -214,7 +215,7 @@ Kirigami.ScrollablePage {
                                 }
 
                                 QQC2.Label {
-                                    text: "Observed for " + page.controller.verdictDurationSeconds.toFixed(1) + " s"
+                                    text: KI18n.i18n("Observed for ") + page.controller.verdictDurationSeconds.toFixed(1) + KI18n.i18n(" s")
                                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                                     color: Kirigami.Theme.disabledTextColor
                                 }
@@ -258,7 +259,7 @@ Kirigami.ScrollablePage {
                                         wrapMode: Text.WordWrap
                                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                                         color: Kirigami.Theme.disabledTextColor
-                                        text: "Missing: " + parent.modelData
+                                        text: KI18n.i18n("Missing: ") + parent.modelData
                                     }
                                 }
                             }
@@ -276,7 +277,7 @@ Kirigami.ScrollablePage {
                                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                                     font.bold: true
                                     color: Kirigami.Theme.textColor
-                                    text: "Recommendation: " + page.controller.verdictRecommendation
+                                    text: KI18n.i18n("Recommendation: ") + KI18n.i18n(page.controller.verdictRecommendation)
                                 }
                             }
                         }
@@ -302,7 +303,7 @@ Kirigami.ScrollablePage {
                                 QQC2.Label {
                                     id: contribLbl
                                     anchors.centerIn: parent
-                                    text: "Also active: " + contribPill.modelData
+                                    text: KI18n.i18n("Also active: ") + contribPill.modelData
                                     color: Kirigami.Theme.neutralTextColor
                                     font.bold: true
                                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
@@ -323,7 +324,7 @@ Kirigami.ScrollablePage {
                             id: recLabel
                             anchors.fill: parent
                             anchors.margins: 7
-                            text: "Next step: " + (page.controller.verdictRecommendation || "Review the available measurements below.")
+                            text: KI18n.i18n("Next step: ") + (KI18n.i18n(page.controller.verdictRecommendation) || KI18n.i18n("Review the available measurements below."))
                             wrapMode: Text.WordWrap
                             color: Kirigami.Theme.textColor
                             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
@@ -337,21 +338,21 @@ Kirigami.ScrollablePage {
                         PulseButton {
                             icon.name: "go-next"
                             text: page.controller.verdictSeverity > 0 && page.controller.verdictSeverity < 4
-                                  ? "Inspect " + (page.controller.primaryBottleneckDomain || "details")
-                                  : "Power & Cooling"
+                                  ? KI18n.i18n("Inspect ") + (page.controller.primaryBottleneckDomain || "details")
+                                  : KI18n.i18n("Power & Cooling")
                             isPrimary: page.controller.verdictSeverity > 0 && page.controller.verdictSeverity < 4
                             onClicked: page.navigateRequested(page.targetPageForDomain(page.controller.primaryBottleneckDomain), page.sectionForDomain(page.controller.primaryBottleneckDomain))
                         }
 
                         PulseButton {
                             icon.name: "chronometer"
-                            text: "Open History"
+                            text: KI18n.i18n("Open History")
                             onClicked: page.navigateRequested("flight", "timeline")
                         }
 
                         PulseButton {
                             icon.name: "memory"
-                            text: "Memory & Pressure"
+                            text: KI18n.i18n("Memory & Pressure")
                             onClicked: page.navigateRequested("pressure", "overview")
                         }
 
@@ -361,7 +362,7 @@ Kirigami.ScrollablePage {
                                      && page.controller.verdictSeverity >= 1
                                      && page.controller.availablePowerProfiles.indexOf("balanced") >= 0
                             icon.name: "speedometer"
-                            text: "Switch to Balanced profile"
+                            text: KI18n.i18n("Switch to Balanced profile")
                             enabled: !page.controller.powerProfileChangePending
                             onClicked: page.controller.setPowerProfile("balanced")
                         }
@@ -438,7 +439,7 @@ Kirigami.ScrollablePage {
 
                         QQC2.Label {
                             Layout.alignment: Qt.AlignHCenter
-                            text: "RESPONSIVENESS"
+                            text: KI18n.i18n("RESPONSIVENESS")
                             font.bold: true
                             font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 2)
                             color: Kirigami.Theme.disabledTextColor
@@ -448,7 +449,7 @@ Kirigami.ScrollablePage {
                     QQC2.AbstractButton {
                         objectName: "responsivenessButton"
                         anchors.fill: parent
-                        Accessible.name: "Responsiveness index " + (page.controller.psiAvailable ? page.controller.responsivenessScore.toFixed(0) + " out of 100; higher is better" : "unavailable") + ". Open pressure details"
+                        Accessible.name: KI18n.i18n("Responsiveness index ") + (page.controller.psiAvailable ? page.controller.responsivenessScore.toFixed(0) + KI18n.i18n(" out of 100; higher is better") : "unavailable") + KI18n.i18n(". Open pressure details")
                         onClicked: page.navigateRequested("pressure", "overview")
                         background: Rectangle { color: "transparent"; border.width: parent.activeFocus ? 2 : 0; border.color: Kirigami.Theme.focusColor }
                     }
@@ -466,7 +467,7 @@ Kirigami.ScrollablePage {
             Repeater {
                 model: [
                     {
-                        title: "CPU load",
+                        title: KI18n.i18n("CPU load"),
                         icon: "cpu",
                         accentKey: "cpu",
                         sampleKey: "cpuLoad",
@@ -475,14 +476,14 @@ Kirigami.ScrollablePage {
                         sampleMax: 100.0,
                         value: page.metric(page.controller.cpuLoadAvailable, page.controller.cpuLoadPercent.toFixed(1), "%"),
                         subtitle: page.controller.cpuAvgFreqMhz > 0
-                            ? page.controller.cpuAvgFreqMhz + " MHz avg · " + page.controller.cpuPeakFreqMhz + " MHz peak"
-                            : "Frequency unavailable",
+                            ? page.controller.cpuAvgFreqMhz + KI18n.i18n(" MHz avg · ") + page.controller.cpuPeakFreqMhz + KI18n.i18n(" MHz peak")
+                            : KI18n.i18n("Frequency unavailable"),
                         ratio: page.controller.cpuLoadAvailable ? Math.min(1.0, Math.max(0.0, page.controller.cpuLoadPercent / 100.0)) : 0.0,
                         barAvailable: page.controller.cpuLoadAvailable,
                         targetPage: "power", section: "cpu"
                     },
                     {
-                        title: "CPU temperature",
+                        title: KI18n.i18n("CPU temperature"),
                         icon: "temperature-normal",
                         accentKey: "temp",
                         sampleKey: "cpuTemp",
@@ -491,14 +492,14 @@ Kirigami.ScrollablePage {
                         sampleMax: 100.0,
                         value: page.temp(page.controller.cpuTempAvailable, page.controller.cpuPackageTemp),
                         subtitle: page.controller.thermalHeadroomAvailable
-                            ? page.temp(true, page.controller.thermalHeadroom) + " headroom"
-                            : "Thermal limit unavailable",
+                            ? MeasurementLabels.formatTemperatureDelta(page.controller.thermalHeadroom, page.controller.temperatureUnit) + KI18n.i18n(" headroom")
+                            : KI18n.i18n("Thermal limit unavailable"),
                         ratio: page.controller.cpuTempAvailable ? Math.min(1.0, Math.max(0.0, (page.controller.cpuPackageTemp - 25.0) / 75.0)) : 0.0,
                         barAvailable: page.controller.cpuTempAvailable,
                         targetPage: "power", section: "cpu"
                     },
                     {
-                        title: "Graphics (GPU)",
+                        title: KI18n.i18n("Graphics (GPU)"),
                         icon: "video-display",
                         accentKey: "gpu",
                         sampleKey: "gpuBusy",
@@ -506,11 +507,11 @@ Kirigami.ScrollablePage {
                         sampleMin: 0.0,
                         sampleMax: 100.0,
                         value: page.controller.gpuBusyAvailable
-                            ? page.controller.gpuBusyPercent.toFixed(0) + "% load"
-                            : (page.controller.gpuFrequencyAvailable ? page.controller.gpuCurrentFreqMhz + " MHz" : "Unavailable"),
-                        subtitle: (page.controller.gpuTempAvailable ? MeasurementLabels.formatTemperature(page.controller.gpuTempCelsius, page.controller.temperatureUnit) : "Temp N/A")
-                            + (page.controller.gpuFrequencyAvailable ? " · " + page.controller.gpuCurrentFreqMhz + " MHz" : "")
-                            + (page.controller.gpuVramAvailable ? " · " + Math.round(page.controller.gpuVramUsedMib) + " MiB VRAM" : ""),
+                            ? page.controller.gpuBusyPercent.toFixed(0) + KI18n.i18n("% load")
+                            : (page.controller.gpuFrequencyAvailable ? page.controller.gpuCurrentFreqMhz + KI18n.i18n(" MHz") : KI18n.i18n("Unavailable")),
+                        subtitle: (page.controller.gpuTempAvailable ? MeasurementLabels.formatTemperature(page.controller.gpuTempCelsius, page.controller.temperatureUnit) : KI18n.i18n("Temp N/A"))
+                            + (page.controller.gpuFrequencyAvailable ? " · " + page.controller.gpuCurrentFreqMhz + KI18n.i18n(" MHz") : "")
+                            + (page.controller.gpuVramAvailable ? " · " + Math.round(page.controller.gpuVramUsedMib) + KI18n.i18n(" MiB VRAM") : ""),
                         ratio: page.controller.gpuBusyAvailable
                             ? Math.min(1.0, Math.max(0.0, page.controller.gpuBusyPercent / 100.0))
                             : (page.controller.gpuFrequencyAvailable && page.controller.gpuBoostFreqMhz > 0
@@ -519,24 +520,24 @@ Kirigami.ScrollablePage {
                         targetPage: "power", section: "gpu"
                     },
                     {
-                        title: "Memory pressure",
+                        title: KI18n.i18n("Memory pressure"),
                         icon: "memory",
                         accentKey: "psi",
                         sampleKey: "psiMemSome10",
                         sampleAvailKey: "psiMemorySomeAvailable",
                         sampleMin: 0.0,
                         sampleMax: 25.0,
-                        value: page.metric(page.controller.psiMemoryAvailable, page.controller.psiMemSome10.toFixed(1), "% time waiting"),
+                        value: page.metric(page.controller.psiMemoryAvailable, page.controller.psiMemSome10.toFixed(1), KI18n.i18n("% time waiting")),
                         subtitle: page.controller.memoryAvailable
-                            ? "RAM: " + page.controller.ramUsedGib.toFixed(1) + " / " + page.controller.ramTotalGib.toFixed(1) + " GiB"
-                              + (page.controller.zramCompressionAvailable ? " · ZRAM " + page.controller.zramCompressionRatio.toFixed(1) + "×" : "")
-                            : "RAM reading unavailable",
+                            ? KI18n.i18n("RAM: ") + page.controller.ramUsedGib.toFixed(1) + " / " + page.controller.ramTotalGib.toFixed(1) + KI18n.i18n(" GiB")
+                              + (page.controller.zramCompressionAvailable ? KI18n.i18n(" · ZRAM ") + page.controller.zramCompressionRatio.toFixed(1) + "×" : "")
+                            : KI18n.i18n("RAM reading unavailable"),
                         ratio: page.controller.psiMemoryAvailable ? Math.min(1.0, Math.max(0.0, page.controller.psiMemSome10 / 25.0)) : 0.0,
                         barAvailable: page.controller.psiMemoryAvailable,
                         targetPage: "pressure", section: "memory"
                     },
                     {
-                        title: "Storage & I/O",
+                        title: KI18n.i18n("Storage & I/O"),
                         icon: "drive-harddisk",
                         accentKey: "storage",
                         sampleKey: "diskReadMibPerSec",
@@ -544,15 +545,15 @@ Kirigami.ScrollablePage {
                         sampleMin: 0.0,
                         sampleMax: 250.0,
                         value: page.controller.diskThroughputAvailable
-                            ? Number(page.controller.diskReadMibPerSec + page.controller.diskWriteMibPerSec).toFixed(1) + " MiB/s"
-                            : page.metric(page.controller.psiIoFullAvailable, page.controller.psiIoFull10.toFixed(1), "% I/O wait"),
+                            ? Number(page.controller.diskReadMibPerSec + page.controller.diskWriteMibPerSec).toFixed(1) + KI18n.i18n(" MiB/s")
+                            : page.metric(page.controller.psiIoFullAvailable, page.controller.psiIoFull10.toFixed(1), KI18n.i18n("% I/O wait")),
                         subtitle: (page.controller.diskThroughputAvailable
-                            ? "R " + page.controller.diskReadMibPerSec.toFixed(1) + " · W " + page.controller.diskWriteMibPerSec.toFixed(1) + " MiB/s · "
+                            ? KI18n.i18n("R ") + page.controller.diskReadMibPerSec.toFixed(1) + KI18n.i18n(" · W ") + page.controller.diskWriteMibPerSec.toFixed(1) + KI18n.i18n(" MiB/s · ")
                             : "")
                             + (page.controller.netThroughputAvailable
-                               ? "Net ↓" + page.controller.netRxMibPerSec.toFixed(1) + " ↑" + page.controller.netTxMibPerSec.toFixed(1) + " MiB/s · "
+                               ? KI18n.i18n("Net ↓") + page.controller.netRxMibPerSec.toFixed(1) + " ↑" + page.controller.netTxMibPerSec.toFixed(1) + KI18n.i18n(" MiB/s · ")
                                : "")
-                            + (page.controller.nvmeTempAvailable ? "NVMe " + MeasurementLabels.formatTemperature(page.controller.nvmeTempCelsius, page.controller.temperatureUnit) : "NVMe temp N/A"),
+                            + (page.controller.nvmeTempAvailable ? KI18n.i18n("NVMe ") + MeasurementLabels.formatTemperature(page.controller.nvmeTempCelsius, page.controller.temperatureUnit) : KI18n.i18n("NVMe temp N/A")),
                         ratio: page.controller.diskThroughputAvailable
                             ? Math.min(1.0, Math.max(0.0, (page.controller.diskReadMibPerSec + page.controller.diskWriteMibPerSec) / 500.0))
                             : (page.controller.psiIoFullAvailable ? Math.min(1.0, Math.max(0.0, page.controller.psiIoFull10 / 25.0)) : 0.0),
@@ -560,7 +561,7 @@ Kirigami.ScrollablePage {
                         targetPage: "pressure", section: "storage"
                     },
                     {
-                        title: "Package power",
+                        title: KI18n.i18n("Package power"),
                         icon: "battery-profile-performance",
                         accentKey: "power",
                         sampleKey: "packageWatts",
@@ -568,10 +569,10 @@ Kirigami.ScrollablePage {
                         sampleMin: 0.0,
                         sampleMax: Math.max(45.0, page.controller.historyMaxWatts),
                         value: page.controller.packagePowerAvailable
-                            ? page.controller.packageWatts.toFixed(1) + " W · " + (page.controller.packagePowerEstimated ? "Estimated" : "Measured")
-                            : "Unavailable",
-                        subtitle: "Profile: " + (page.controller.activePowerProfile || "Unavailable")
-                            + (page.controller.fanAvailable ? " · " + page.controller.primaryFanRpm + " RPM" : ""),
+                            ? page.controller.packageWatts.toFixed(1) + KI18n.i18n(" W · ") + (page.controller.packagePowerEstimated ? "Estimated" : "Measured")
+                            : KI18n.i18n("Unavailable"),
+                        subtitle: KI18n.i18n("Profile: ") + (page.controller.activePowerProfile || KI18n.i18n("Unavailable"))
+                            + (page.controller.fanAvailable ? " · " + page.controller.primaryFanRpm + KI18n.i18n(" RPM") : ""),
                         ratio: page.controller.packagePowerAvailable
                             ? Math.min(1.0, Math.max(0.0, page.controller.packageWatts / Math.max(25.0, page.controller.pl1LimitWatts > 0 ? page.controller.pl1LimitWatts : 45.0)))
                             : 0.0,
@@ -702,7 +703,7 @@ Kirigami.ScrollablePage {
                             QQC2.ToolButton {
                                 icon.name: "go-next"
                                 display: QQC2.AbstractButton.IconOnly
-                                Accessible.name: "Open " + metricCard.modelData.title + " details"
+                                Accessible.name: KI18n.i18n("Open ") + metricCard.modelData.title + KI18n.i18n(" details")
                                 onClicked: page.navigateRequested(metricCard.modelData.targetPage, metricCard.modelData.section)
                             }
                         }
@@ -745,7 +746,7 @@ Kirigami.ScrollablePage {
         Kirigami.InlineMessage {
             Layout.fillWidth: true
             type: Kirigami.MessageType.Information
-            text: "Responsiveness index: " + page.controller.responsivenessScore.toFixed(1)
+            text: KI18n.i18n("Responsiveness index: ") + page.controller.responsivenessScore.toFixed(1)
                   + "/100. Higher is better: 100 means little observed pressure; lower values mean more stalled work. This calculated index is not a measured response time."
             visible: page.controller.psiAvailable
         }
@@ -784,7 +785,7 @@ Kirigami.ScrollablePage {
                     }
 
                     QQC2.Label {
-                        text: "Top process (concurrent CPU load):"
+                        text: KI18n.i18n("Top process (concurrent CPU load):")
                         color: Kirigami.Theme.disabledTextColor
                         font.bold: true
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
@@ -792,7 +793,7 @@ Kirigami.ScrollablePage {
 
                     QQC2.Label {
                         Layout.fillWidth: true
-                        text: page.controller.culpritName ? page.controller.culpritName : "None / Unavailable"
+                        text: page.controller.culpritName ? page.controller.culpritName : KI18n.i18n("None / Unavailable")
                         color: Kirigami.Theme.textColor
                         font.bold: true
                         elide: Text.ElideRight
@@ -809,7 +810,7 @@ Kirigami.ScrollablePage {
                         QQC2.Label {
                             id: cCpuLbl
                             anchors.centerIn: parent
-                            text: page.controller.culpritCpuPercent.toFixed(1) + "% CPU"
+                            text: page.controller.culpritCpuPercent.toFixed(1) + KI18n.i18n("% CPU")
                             font.bold: true
                             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                             color: theme.cpuAccent
@@ -827,7 +828,7 @@ Kirigami.ScrollablePage {
                         QQC2.Label {
                             id: cRssLbl
                             anchors.centerIn: parent
-                            text: Math.round(page.controller.culpritRssMb) + " MiB RSS"
+                            text: Math.round(page.controller.culpritRssMb) + KI18n.i18n(" MiB RSS")
                             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                             color: Kirigami.Theme.disabledTextColor
                         }
@@ -839,30 +840,30 @@ Kirigami.ScrollablePage {
                     spacing: Kirigami.Units.smallSpacing
 
                     PulseButton {
-                        text: "Open System Monitor"
+                        text: KI18n.i18n("Open System Monitor")
                         icon.name: "utilities-system-monitor"
                         onClicked: page.controller.openSystemMonitor()
                     }
                     PulseButton {
-                        text: "Copy report"
+                        text: KI18n.i18n("Copy report")
                         icon.name: "edit-copy"
                         onClicked: page.controller.copyIncidentReportToClipboard()
                     }
                     PulseButton {
-                        text: "Save report + JSON"
+                        text: KI18n.i18n("Save report + JSON")
                         icon.name: "document-save"
                         onClicked: page.controller.exportIncidentReportToFile()
                     }
                     PulseButton {
                         visible: page.controller.lastActionPath.length > 0
-                        text: "Open reports folder"
+                        text: KI18n.i18n("Open reports folder")
                         icon.name: "folder-open"
                         onClicked: page.controller.openReportsFolder()
                     }
                     PulseButton {
                         objectName: "measurementDetailsButton"
                         icon.name: page.detailsExpanded ? "collapse-all" : "expand-all"
-                        text: page.detailsExpanded ? "Hide measurement details" : "Show measurement details"
+                        text: page.detailsExpanded ? KI18n.i18n("Hide measurement details") : KI18n.i18n("Show measurement details")
                         checkable: true
                         checked: page.detailsExpanded
                         Accessible.name: text
@@ -886,13 +887,13 @@ Kirigami.ScrollablePage {
                 id: detailsCol
                 objectName: "section_measurements"
                 focus: true
-                Accessible.name: "measurements section"
+                Accessible.name: KI18n.i18n("measurements section")
                 anchors.fill: parent
                 anchors.margins: Kirigami.Units.largeSpacing
                 spacing: Kirigami.Units.mediumSpacing
 
                 Kirigami.Heading {
-                    text: "Measurement details"
+                    text: KI18n.i18n("Measurement details")
                     level: 3
                     Layout.fillWidth: true
                 }
@@ -903,13 +904,13 @@ Kirigami.ScrollablePage {
 
                     Repeater {
                         model: [
-                            "GPU load: " + page.metric(page.controller.gpuBusyAvailable, page.controller.gpuBusyPercent.toFixed(0), "%"),
-                            "GPU temperature: " + page.temp(page.controller.gpuTempAvailable, page.controller.gpuTempCelsius),
-                            "GPU driver: " + (page.controller.gpuAvailable && page.controller.gpuDriverName ? page.controller.gpuDriverName : "Unavailable"),
-                            "Network I/O: " + (page.controller.netThroughputAvailable ? ("↓" + page.controller.netRxMibPerSec.toFixed(2) + " / ↑" + page.controller.netTxMibPerSec.toFixed(2) + " MiB/s") : "Unavailable"),
-                            "Fan: " + (page.controller.fanAvailable ? page.controller.primaryFanRpm + " RPM" : "Unavailable"),
-                            "Thermal headroom: " + page.temp(page.controller.thermalHeadroomAvailable, page.controller.thermalHeadroom),
-                            "Active power profile: " + (page.controller.activePowerProfile || "Unavailable")
+                            KI18n.i18n("GPU load: ") + page.metric(page.controller.gpuBusyAvailable, page.controller.gpuBusyPercent.toFixed(0), "%"),
+                            KI18n.i18n("GPU temperature: ") + page.temp(page.controller.gpuTempAvailable, page.controller.gpuTempCelsius),
+                            KI18n.i18n("GPU driver: ") + (page.controller.gpuAvailable && page.controller.gpuDriverName ? page.controller.gpuDriverName : KI18n.i18n("Unavailable")),
+                            KI18n.i18n("Network I/O: ") + (page.controller.netThroughputAvailable ? ("↓" + page.controller.netRxMibPerSec.toFixed(2) + " / ↑" + page.controller.netTxMibPerSec.toFixed(2) + KI18n.i18n(" MiB/s")) : KI18n.i18n("Unavailable")),
+                            KI18n.i18n("Fan: ") + (page.controller.fanAvailable ? page.controller.primaryFanRpm + KI18n.i18n(" RPM") : KI18n.i18n("Unavailable")),
+                            KI18n.i18n("Thermal headroom: ") + (page.controller.thermalHeadroomAvailable ? MeasurementLabels.formatTemperatureDelta(page.controller.thermalHeadroom, page.controller.temperatureUnit) : KI18n.i18n("Unavailable")),
+                            KI18n.i18n("Active power profile: ") + (page.controller.activePowerProfile || KI18n.i18n("Unavailable"))
                         ]
                         delegate: Rectangle {
                             id: detailChip
@@ -932,7 +933,7 @@ Kirigami.ScrollablePage {
                 }
 
                 Kirigami.Heading {
-                    text: "Data quality and sources"
+                    text: KI18n.i18n("Data quality and sources")
                     level: 4
                     Layout.fillWidth: true
                 }
@@ -988,9 +989,9 @@ Kirigami.ScrollablePage {
                                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                                     text: qCard.quality
                                           ? qCard.quality.source + " · "
-                                            + (qCard.quality.sampledAtMs > 0 ? new Date(qCard.quality.sampledAtMs).toLocaleTimeString() : "Not sampled")
-                                            + " · Reason: " + (qCard.quality.detail || "No additional detail")
-                                          : "Unavailable"
+                                            + (qCard.quality.sampledAtMs > 0 ? new Date(qCard.quality.sampledAtMs).toLocaleTimeString() : KI18n.i18n("Not sampled"))
+                                            + KI18n.i18n(" · Reason: ") + (qCard.quality.detail || KI18n.i18n("No additional detail"))
+                                          : KI18n.i18n("Unavailable")
                                 }
                             }
                         }

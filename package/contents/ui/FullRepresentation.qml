@@ -1,6 +1,8 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import org.kde.ki18n
+import "TemperatureLabels.js" as TemperatureLabels
 import QtQuick.Layouts
 import org.kde.plasma.components as PlasmaComponents3
 import org.kde.kirigami as Kirigami
@@ -53,17 +55,17 @@ Item {
 
     function sparkChannelDescription() {
         const mins = Math.round((fullRoot.controller.historyRetentionSeconds || 300) / 60)
-        if (sparkChannel === "cpu") return "CPU load · last " + mins + "m · 0–100%"
-        if (sparkChannel === "psi") return "Responsiveness index · last " + mins + "m · 0–100 (higher is better)"
-        if (sparkChannel === "power") return "CPU package power · last " + mins + "m · W"
-        if (sparkChannel === "battery") return "Battery discharge · last " + mins + "m · W"
-        return "CPU temperature · last " + mins + "m · 30–100°C"
+        if (sparkChannel === "cpu") return KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "CPU load · last ") + mins + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "m · 0–100%")
+        if (sparkChannel === "psi") return KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Responsiveness index · last ") + mins + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "m · 0–100 (higher is better)")
+        if (sparkChannel === "power") return KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "CPU package power · last ") + mins + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "m · W")
+        if (sparkChannel === "battery") return KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Battery discharge · last ") + mins + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "m · W")
+        return KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "CPU temperature · last ") + mins + "m · " + TemperatureLabels.formatTemperature(30, fullRoot.controller.temperatureUnit) + "–" + TemperatureLabels.formatTemperature(100, fullRoot.controller.temperatureUnit)
     }
 
     function sparkChannelNowText() {
         if (sparkChannel === "cpu") {
             return fullRoot.controller.cpuLoadAvailable
-                   ? Math.round(fullRoot.controller.cpuLoadPercent) + "% now" : ""
+                   ? Math.round(fullRoot.controller.cpuLoadPercent) + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "% now") : ""
         }
         if (sparkChannel === "psi") {
             return fullRoot.controller.psiAvailable
@@ -71,14 +73,14 @@ Item {
         }
         if (sparkChannel === "battery") {
             return fullRoot.controller.batteryPowerAvailable && fullRoot.controller.batteryStatus === "Discharging"
-                   ? fullRoot.controller.batteryWatts.toFixed(1) + " W now" : "Unavailable or not discharging"
+                   ? fullRoot.controller.batteryWatts.toFixed(1) + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " W now") : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable or not discharging")
         }
         if (sparkChannel === "power") {
             return fullRoot.controller.packagePowerAvailable
-                   ? fullRoot.controller.packageWatts.toFixed(1) + "W now" : ""
+                   ? fullRoot.controller.packageWatts.toFixed(1) + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "W now") : ""
         }
         return fullRoot.controller.cpuTempAvailable
-               ? Math.round(fullRoot.controller.cpuPackageTemp) + "°C now" : ""
+               ? TemperatureLabels.formatTemperature(fullRoot.controller.cpuPackageTemp, fullRoot.controller.temperatureUnit) + " " + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "now") : ""
     }
 
     function severityColor(sev) {
@@ -95,28 +97,28 @@ Item {
     }
 
     function severityBadgeText(sev) {
-        if (sev === 4) return "WARMING UP"
-        if (sev === 3) return "THROTTLING"
-        if (sev === 2) return "BOTTLENECK"
-        if (sev === 1) return "ELEVATED"
-        return "NOMINAL"
+        if (sev === 4) return KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "WARMING UP")
+        if (sev === 3) return KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "THROTTLING")
+        if (sev === 2) return KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "BOTTLENECK")
+        if (sev === 1) return KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "ELEVATED")
+        return KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "NOMINAL")
     }
 
     function qualityText(key, label) {
         const metadata = controller.metricMetadata || {}
         const item = metadata[key]
-        if (!item) return label + ": Unavailable — awaiting a sample."
-        const state = item.state === "available" ? "Measured"
-                    : item.state === "calculated" ? "Calculated"
-                    : item.state === "estimated" ? "Estimated"
-                    : item.state === "warming-up" ? "Warming up"
-                    : "Unavailable"
-        const explanation = item.detail || (state === "Unavailable" ? "No valid reading from this source." : "")
+        if (!item) return label + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", ": Unavailable — awaiting a sample.")
+        const state = item.state === "available" ? KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Measured")
+                    : item.state === "calculated" ? KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Calculated")
+                    : item.state === "estimated" ? KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Estimated")
+                    : item.state === "warming-up" ? KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Warming up")
+                    : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable")
+        const explanation = item.detail || (item.state === "unavailable" ? KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "No valid reading from this source.") : "")
         const sampledAt = item.sampledAtMs > 0
                         ? Qt.formatTime(new Date(item.sampledAtMs), "HH:mm:ss")
-                        : "Awaiting first sample"
+                        : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Awaiting first sample")
         return label + ": " + state + (explanation ? " — " + explanation : "")
-               + " · Source: " + (item.source || "Unknown") + " · Sample: " + sampledAt
+               + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " · Source: ") + (item.source || "Unknown") + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " · Sample: ") + sampledAt
     }
 
     Flickable {
@@ -150,7 +152,7 @@ Item {
 
                     Kirigami.Heading {
                         level: 3
-                        text: "Loofi Pulse"
+                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Loofi Pulse")
                         Layout.fillWidth: true
                     }
 
@@ -206,29 +208,29 @@ Item {
                     PlasmaComponents3.Button {
                         Layout.fillWidth: true
                         icon.name: "window-new"
-                        text: "Open App"
-                        Accessible.name: "Open Loofi Pulse app"
+                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Open App")
+                        Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Open Loofi Pulse app")
                         onClicked: fullRoot.controller.launchStudioApp("overview")
                     }
 
                     PlasmaComponents3.Button {
                         icon.name: "view-process-all"
-                        text: "Processes"
-                        Accessible.name: "Open Loofi Pulse Processes view"
+                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Processes")
+                        Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Open Loofi Pulse Processes view")
                         onClicked: fullRoot.controller.launchStudioApp("processes")
                     }
 
                     PlasmaComponents3.Button {
                         icon.name: "chronometer"
-                        text: "History"
-                        Accessible.name: "Open Loofi Pulse History view"
+                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "History")
+                        Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Open Loofi Pulse History view")
                         onClicked: fullRoot.controller.launchStudioApp("flight")
                     }
 
                     PlasmaComponents3.Button {
                         icon.name: "utilities-system-monitor"
-                        text: "System Monitor"
-                        Accessible.name: "Open KDE System Monitor process view"
+                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "System Monitor")
+                        Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Open KDE System Monitor process view")
                         onClicked: fullRoot.controller.openSystemMonitor()
                     }
                 }
@@ -240,22 +242,22 @@ Item {
                     PlasmaComponents3.Button {
                         Layout.fillWidth: true
                         icon.name: "bookmark-new"
-                        text: "Mark problem now"
-                        Accessible.name: "Mark problem and open history"
+                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Mark problem now")
+                        Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Mark problem and open history")
                         onClicked: fullRoot.controller.markProblemAndLaunch()
                     }
 
                     PlasmaComponents3.Button {
                         icon.name: "notifications-disabled"
-                        text: "Snooze 15 min"
-                        Accessible.name: "Snooze notifications for 15 minutes"
+                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Snooze 15 min")
+                        Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Snooze notifications for 15 minutes")
                         onClicked: fullRoot.controller.snoozeNotifications()
                     }
 
                     PlasmaComponents3.Button {
                         icon.name: "edit-copy"
-                        text: "Copy report"
-                        Accessible.name: "Copy current incident report"
+                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Copy report")
+                        Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Copy current incident report")
                         onClicked: fullRoot.controller.copyIncidentReportToClipboard()
                     }
                 }
@@ -270,11 +272,11 @@ Item {
                     wrapMode: Text.WordWrap
                     color: fullRoot.controller.lastActionSucceeded
                            ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.negativeTextColor
-                    Accessible.name: "Action result: " + text
+                    Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Action result: ") + text
                 }
                 PlasmaComponents3.Button {
                     visible: fullRoot.controller.lastActionPath.length > 0
-                    text: "Open folder"
+                    text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Open folder")
                     icon.name: "folder-open"
                     onClicked: fullRoot.controller.openReportsFolder()
                 }
@@ -286,7 +288,7 @@ Item {
                     required property var modelData
                     Layout.fillWidth: true
                     text: modelData.timeString + " · " + modelData.headline
-                    Accessible.name: "Investigate incident: " + text
+                    Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Investigate incident: ") + text
                     onClicked: fullRoot.controller.launchIncident(modelData.incidentId)
                 }
             }
@@ -339,7 +341,7 @@ Item {
                         }
                         PlasmaComponents3.Label {
                             Layout.fillWidth: true
-                            text: fullRoot.controller.verdictHeadline
+                            text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", fullRoot.controller.verdictHeadline)
                             font.bold: true
                             wrapMode: Text.WordWrap
                         }
@@ -348,18 +350,18 @@ Item {
                     PlasmaComponents3.Button {
                         id: explanationToggle
                         objectName: "widgetStatusExplanationButton"
-                        text: "Why this status?"
+                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Why this status?")
                         checkable: true
-                        Accessible.description: "Expand observed signals, diagnosis duration, missing evidence, and next step."
+                        Accessible.description: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Expand observed signals, diagnosis duration, missing evidence, and next step.")
                     }
 
                     PlasmaComponents3.Label {
                         Layout.fillWidth: true
                         visible: explanationToggle.checked
-                        text: "Rule: " + fullRoot.controller.verdictRuleId + " · Observed for "
-                              + fullRoot.controller.verdictDurationSeconds.toFixed(1) + " s"
-                              + "\nSignals: " + (fullRoot.controller.verdictEvidence || []).join("; ")
-                              + "\nMissing evidence: " + ((fullRoot.controller.verdictMissingEvidence || []).join("; ") || "No missing signals reported")
+                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Rule: ") + fullRoot.controller.verdictRuleId + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " · Observed for ")
+                              + fullRoot.controller.verdictDurationSeconds.toFixed(1) + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " s")
+                              + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "\nSignals: ") + (fullRoot.controller.verdictEvidence || []).join("; ")
+                              + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "\nMissing evidence: ") + ((fullRoot.controller.verdictMissingEvidence || []).join("; ") || KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "No missing signals reported"))
                         wrapMode: Text.WordWrap
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                     }
@@ -367,7 +369,7 @@ Item {
                     PlasmaComponents3.Label {
                         Layout.fillWidth: true
                         visible: explanationToggle.checked
-                        text: fullRoot.controller.verdictCausalChain
+                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Original technical evidence (preserved language):") + "\n" + (fullRoot.controller.verdictCausalChain)
                         font.family: Kirigami.Theme.defaultFont.family
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                         opacity: 0.92
@@ -395,7 +397,7 @@ Item {
                                 PlasmaComponents3.Label {
                                     id: contribLbl
                                     anchors.centerIn: parent
-                                    text: "+ " + contribChip.modelData
+                                    text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "+ ") + contribChip.modelData
                                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                                     opacity: 0.85
                                 }
@@ -405,7 +407,7 @@ Item {
 
                     PlasmaComponents3.Label {
                         Layout.fillWidth: true
-                        text: "Next step: " + fullRoot.controller.verdictRecommendation
+                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Next step: ") + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", fullRoot.controller.verdictRecommendation)
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                         opacity: 0.78
                         wrapMode: Text.WordWrap
@@ -423,73 +425,73 @@ Item {
                 Repeater {
                     model: [
                         {
-                            title: "CPU & SoC",
+                            title: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "CPU & SoC"),
                             targetPage: "power",
                             targetSection: "cpu",
-                            accessibleName: "Open CPU and Power details",
+                            accessibleName: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Open CPU and Power details"),
                             accentKey: "cpu",
-                            headline: (fullRoot.controller.cpuTempAvailable ? Math.round(fullRoot.controller.cpuPackageTemp) + "°C" : "Temp unavailable")
-                                      + "  •  " + (fullRoot.controller.cpuLoadAvailable ? Math.round(fullRoot.controller.cpuLoadPercent) + "%" : "Load unavailable"),
-                            subtitle: "Thermal margin: "
-                                      + (fullRoot.controller.thermalHeadroomAvailable ? Math.round(fullRoot.controller.thermalHeadroom) + "°C" : "Unavailable")
-                                      + (fullRoot.controller.cpuAvgFreqMhz > 0 ? " · " + fullRoot.controller.cpuAvgFreqMhz + " MHz" : ""),
+                            headline: (fullRoot.controller.cpuTempAvailable ? TemperatureLabels.formatTemperature(fullRoot.controller.cpuPackageTemp, fullRoot.controller.temperatureUnit) : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Temp unavailable"))
+                                      + "  •  " + (fullRoot.controller.cpuLoadAvailable ? Math.round(fullRoot.controller.cpuLoadPercent) + "%" : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Load unavailable")),
+                            subtitle: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Thermal margin: ")
+                                      + (fullRoot.controller.thermalHeadroomAvailable ? TemperatureLabels.formatTemperatureDelta(fullRoot.controller.thermalHeadroom, fullRoot.controller.temperatureUnit) : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable"))
+                                      + (fullRoot.controller.cpuAvgFreqMhz > 0 ? " · " + fullRoot.controller.cpuAvgFreqMhz + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " MHz") : ""),
                             ratio: fullRoot.controller.cpuLoadAvailable
                                    ? Math.min(1.0, Math.max(0.0, fullRoot.controller.cpuLoadPercent / 100.0)) : 0.0,
                             barVisible: fullRoot.controller.cpuLoadAvailable
                         },
                         {
-                            title: "Memory & PSI",
+                            title: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Memory & PSI"),
                             targetPage: "pressure",
                             targetSection: "overview",
-                            accessibleName: "Open Memory and Pressure details",
+                            accessibleName: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Open Memory and Pressure details"),
                             accentKey: "psi",
-                            headline: "Responsiveness: " + (fullRoot.controller.psiAvailable ? fullRoot.controller.responsivenessScore.toFixed(1) + "/100" : "Unavailable")
-                                      + " · ZRAM: " + (fullRoot.controller.zramCompressionAvailable
+                            headline: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Responsiveness: ") + (fullRoot.controller.psiAvailable ? fullRoot.controller.responsivenessScore.toFixed(1) + "/100" : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable"))
+                                      + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " · ZRAM: ") + (fullRoot.controller.zramCompressionAvailable
                                       ? fullRoot.controller.zramCompressionRatio.toFixed(1) + "×"
-                                      : (fullRoot.controller.zramAvailable ? "Idle" : "Unavailable")),
-                            subtitle: "PSI wait · CPU " + (fullRoot.controller.psiCpuAvailable ? fullRoot.controller.psiCpuSome10.toFixed(1) + "%" : "N/A")
-                                      + " · Mem " + (fullRoot.controller.psiMemoryAvailable ? fullRoot.controller.psiMemSome10.toFixed(1) + "%" : "N/A")
+                                      : (fullRoot.controller.zramAvailable ? "Idle" : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable"))),
+                            subtitle: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "PSI wait · CPU ") + (fullRoot.controller.psiCpuAvailable ? fullRoot.controller.psiCpuSome10.toFixed(1) + "%" : "N/A")
+                                      + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " · Mem ") + (fullRoot.controller.psiMemoryAvailable ? fullRoot.controller.psiMemSome10.toFixed(1) + "%" : "N/A")
                                       + (fullRoot.controller.diskThroughputAvailable
-                                         ? " · Disk " + Number(fullRoot.controller.diskReadMibPerSec + fullRoot.controller.diskWriteMibPerSec).toFixed(1) + " MiB/s"
-                                         : " · I/O " + (fullRoot.controller.psiIoFullAvailable ? fullRoot.controller.psiIoFull10.toFixed(1) + "%" : "N/A"))
+                                         ? KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " · Disk ") + Number(fullRoot.controller.diskReadMibPerSec + fullRoot.controller.diskWriteMibPerSec).toFixed(1) + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " MiB/s")
+                                         : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " · I/O ") + (fullRoot.controller.psiIoFullAvailable ? fullRoot.controller.psiIoFull10.toFixed(1) + "%" : "N/A"))
                                       + (fullRoot.controller.netThroughputAvailable
-                                         ? " · Net " + Number(fullRoot.controller.netRxMibPerSec + fullRoot.controller.netTxMibPerSec).toFixed(1) + " MiB/s"
+                                         ? KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " · Net ") + Number(fullRoot.controller.netRxMibPerSec + fullRoot.controller.netTxMibPerSec).toFixed(1) + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " MiB/s")
                                          : ""),
                             ratio: fullRoot.controller.psiAvailable
                                    ? Math.min(1.0, Math.max(0.0, fullRoot.controller.responsivenessScore / 100.0)) : 0.0,
                             barVisible: fullRoot.controller.psiAvailable
                         },
                         {
-                            title: "GPU & Sensors",
+                            title: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "GPU & Sensors"),
                             targetPage: "power",
                             targetSection: "gpu",
-                            accessibleName: "Open GPU and sensor details",
+                            accessibleName: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Open GPU and sensor details"),
                             accentKey: "gpu",
-                            headline: "GPU " + (fullRoot.controller.gpuBusyAvailable ? Math.round(fullRoot.controller.gpuBusyPercent) + "%" : "N/A")
-                                      + (fullRoot.controller.gpuTempAvailable ? " (" + Math.round(fullRoot.controller.gpuTempCelsius) + "°C)" : "")
-                                      + (fullRoot.controller.gpuFrequencyAvailable ? " · " + fullRoot.controller.gpuCurrentFreqMhz + " MHz" : ""),
-                            subtitle: "NVMe " + (fullRoot.controller.nvmeTempAvailable ? Math.round(fullRoot.controller.nvmeTempCelsius) + "°C" : "Unavailable")
-                                      + " · Wi-Fi " + (fullRoot.controller.wifiTempAvailable ? Math.round(fullRoot.controller.wifiTempCelsius) + "°C" : "Unavailable"),
+                            headline: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "GPU ") + (fullRoot.controller.gpuBusyAvailable ? Math.round(fullRoot.controller.gpuBusyPercent) + "%" : "N/A")
+                                      + (fullRoot.controller.gpuTempAvailable ? " (" + TemperatureLabels.formatTemperature(fullRoot.controller.gpuTempCelsius, fullRoot.controller.temperatureUnit) + ")" : "")
+                                      + (fullRoot.controller.gpuFrequencyAvailable ? " · " + fullRoot.controller.gpuCurrentFreqMhz + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " MHz") : ""),
+                            subtitle: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "NVMe ") + (fullRoot.controller.nvmeTempAvailable ? TemperatureLabels.formatTemperature(fullRoot.controller.nvmeTempCelsius, fullRoot.controller.temperatureUnit) : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable"))
+                                      + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " · Wi-Fi ") + (fullRoot.controller.wifiTempAvailable ? TemperatureLabels.formatTemperature(fullRoot.controller.wifiTempCelsius, fullRoot.controller.temperatureUnit) : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable")),
                             ratio: fullRoot.controller.gpuBusyAvailable
                                    ? Math.min(1.0, Math.max(0.0, fullRoot.controller.gpuBusyPercent / 100.0)) : 0.0,
                             barVisible: fullRoot.controller.gpuBusyAvailable
                         },
                         {
-                            title: "Power & Battery",
+                            title: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Power & Battery"),
                             targetPage: "power",
                             targetSection: "battery",
-                            accessibleName: "Open Power and Cooling details",
+                            accessibleName: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Open Power and Cooling details"),
                             accentKey: "power",
-                            headline: "CPU: " + (fullRoot.controller.packagePowerAvailable
-                                       ? fullRoot.controller.packageWatts.toFixed(1) + " W" + (fullRoot.controller.packagePowerEstimated ? " · Est." : " · Measured")
+                            headline: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "CPU: ") + (fullRoot.controller.packagePowerAvailable
+                                       ? fullRoot.controller.packageWatts.toFixed(1) + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " W") + (fullRoot.controller.packagePowerEstimated ? KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " · Est.") : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " · Measured"))
                                        : "N/A") + "  •  "
-                                      + (fullRoot.controller.batteryStateAvailable ? fullRoot.controller.batteryTimeRemainingText : "Battery unavailable"),
-                            subtitle: "Discharge: " + (fullRoot.controller.batteryPowerAvailable && fullRoot.controller.batteryStatus === "Discharging"
-                                      ? fullRoot.controller.batteryWatts.toFixed(1) + " W" : "Unavailable or AC")
-                                      + " · Limits: " + (fullRoot.controller.powerLimitsAvailable
-                                      ? Math.round(fullRoot.controller.pl1LimitWatts) + "/" + Math.round(fullRoot.controller.pl2LimitWatts) + " W"
-                                      : "N/A") + " · Fan: "
-                                      + (fullRoot.controller.fanAvailable ? (fullRoot.controller.primaryFanRpm + " RPM") : "N/A"),
+                                      + (fullRoot.controller.batteryStateAvailable ? fullRoot.controller.batteryTimeRemainingText : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Battery unavailable")),
+                            subtitle: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Discharge: ") + (fullRoot.controller.batteryPowerAvailable && fullRoot.controller.batteryStatus === "Discharging"
+                                      ? fullRoot.controller.batteryWatts.toFixed(1) + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " W") : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable or AC"))
+                                      + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " · Limits: ") + (fullRoot.controller.powerLimitsAvailable
+                                      ? Math.round(fullRoot.controller.pl1LimitWatts) + "/" + Math.round(fullRoot.controller.pl2LimitWatts) + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " W")
+                                      : "N/A") + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " · Fan: ")
+                                      + (fullRoot.controller.fanAvailable ? (fullRoot.controller.primaryFanRpm + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " RPM")) : "N/A"),
                             ratio: fullRoot.controller.packagePowerAvailable
                                    ? Math.min(1.0, Math.max(0.0, fullRoot.controller.packageWatts / Math.max(25.0, fullRoot.controller.pl1LimitWatts > 0 ? fullRoot.controller.pl1LimitWatts : 45.0))) : 0.0,
                             barVisible: fullRoot.controller.packagePowerAvailable
@@ -639,11 +641,11 @@ Item {
                         spacing: 4
                         Repeater {
                             model: [
-                                { key: "temp", label: "Temp", objName: "sparkChannelTempButton" },
-                                { key: "cpu", label: "CPU", objName: "sparkChannelCpuButton" },
-                                { key: "psi", label: "Responsiveness", objName: "sparkChannelPsiButton" },
-                                { key: "power", label: "CPU package", objName: "sparkChannelPowerButton" },
-                                { key: "battery", label: "Battery", objName: "sparkChannelBatteryButton" }
+                                { key: "temp", label: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Temp"), objName: "sparkChannelTempButton" },
+                                { key: "cpu", label: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "CPU"), objName: "sparkChannelCpuButton" },
+                                { key: "psi", label: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Responsiveness"), objName: "sparkChannelPsiButton" },
+                                { key: "power", label: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "CPU package"), objName: "sparkChannelPowerButton" },
+                                { key: "battery", label: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Battery"), objName: "sparkChannelBatteryButton" }
                             ]
                             delegate: PlasmaComponents3.ToolButton {
                                 id: sparkBtn
@@ -653,7 +655,7 @@ Item {
                                 checkable: true
                                 checked: fullRoot.sparkChannel === sparkBtn.modelData.key
                                 font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                                Accessible.name: "Show " + sparkBtn.modelData.label + " sparkline"
+                                Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Show ") + sparkBtn.modelData.label + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " sparkline")
                                 onClicked: {
                                     fullRoot.sparkChannel = sparkBtn.modelData.key
                                     miniSparkCanvas.requestPaint()
@@ -668,7 +670,7 @@ Item {
                         Layout.preferredHeight: Kirigami.Units.gridUnit * 3.5
                         Accessible.role: Accessible.Graphic
                         Accessible.name: fullRoot.sparkChannelDescription()
-                        Accessible.description: fullRoot.sparkChannelNowText() + ". Missing readings and recording pauses appear as gaps."
+                        Accessible.description: fullRoot.sparkChannelNowText() + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", ". Missing readings and recording pauses appear as gaps.")
 
                         Connections {
                             target: fullRoot.controller
@@ -744,8 +746,8 @@ Item {
 
                 PlasmaComponents3.Label {
                     Layout.fillWidth: true
-                    text: "Power profile: " + (fullRoot.controller.powerProfileChangePending ? "Changing…"
-                          : (fullRoot.controller.activePowerProfile || "Unavailable"))
+                    text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Power profile: ") + (fullRoot.controller.powerProfileChangePending ? "Changing…"
+                          : (fullRoot.controller.activePowerProfile || KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable")))
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                     font.bold: true
                     opacity: 0.85
@@ -762,14 +764,14 @@ Item {
                             checked: fullRoot.controller.activePowerProfile === modelData
                             checkable: true
                             enabled: fullRoot.controller.powerProfileServiceAvailable && !fullRoot.controller.powerProfileChangePending
-                            Accessible.name: "Select " + modelData + " power profile"
+                            Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Select ") + modelData + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " power profile")
                             onClicked: fullRoot.controller.setPowerProfile(modelData)
                         }
                     }
                 }
                 PlasmaComponents3.Label {
                     visible: !fullRoot.controller.powerProfileServiceAvailable
-                    text: "Power profile service unavailable"
+                    text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Power profile service unavailable")
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                     opacity: 0.7
                 }
@@ -779,10 +781,10 @@ Item {
                 id: qualityToggle
                 Layout.fillWidth: true
                 icon.name: qualityToggle.checked ? "collapse-all" : "expand-all"
-                text: "Measurement details"
+                text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Measurement details")
                 checkable: true
-                Accessible.name: "Show measurement details, sources, and sample times"
-                Accessible.description: "Expand details for CPU load, CPU temperature, responsiveness index, and CPU package power"
+                Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Show measurement details, sources, and sample times")
+                Accessible.description: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Expand details for CPU load, CPU temperature, responsiveness index, and CPU package power")
             }
 
             ColumnLayout {
@@ -791,37 +793,37 @@ Item {
                 spacing: Kirigami.Units.smallSpacing
                 PlasmaComponents3.Label {
                     Layout.fillWidth: true
-                    text: fullRoot.qualityText("cpuLoad", "CPU load")
+                    text: fullRoot.qualityText("cpuLoad", KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "CPU load"))
                     wrapMode: Text.WordWrap
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                 }
                 PlasmaComponents3.Label {
                     Layout.fillWidth: true
-                    text: fullRoot.qualityText("cpuTemperature", "CPU temperature")
+                    text: fullRoot.qualityText("cpuTemperature", KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "CPU temperature"))
                     wrapMode: Text.WordWrap
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                 }
                 PlasmaComponents3.Label {
                     Layout.fillWidth: true
-                    text: fullRoot.qualityText("pressureIndex", "Responsiveness index")
+                    text: fullRoot.qualityText("pressureIndex", KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Responsiveness index"))
                     wrapMode: Text.WordWrap
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                 }
                 PlasmaComponents3.Label {
                     Layout.fillWidth: true
-                    text: fullRoot.qualityText("packagePower", "CPU package power")
+                    text: fullRoot.qualityText("packagePower", KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "CPU package power"))
                     wrapMode: Text.WordWrap
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                 }
                 PlasmaComponents3.Label {
                     Layout.fillWidth: true
-                    text: fullRoot.qualityText("batteryDischarge", "Battery discharge")
+                    text: fullRoot.qualityText("batteryDischarge", KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Battery discharge"))
                     wrapMode: Text.WordWrap
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                 }
                 PlasmaComponents3.Label {
                     Layout.fillWidth: true
-                    text: fullRoot.qualityText("netThroughput", "Network throughput")
+                    text: fullRoot.qualityText("netThroughput", KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Network throughput"))
                     wrapMode: Text.WordWrap
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                 }

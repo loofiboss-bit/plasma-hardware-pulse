@@ -34,6 +34,7 @@ public:
     Q_INVOKABLE void showInformation(const QString &title, const QString &message, int timeoutMs = 5000);
 
 Q_SIGNALS:
+    void quitRequested();
     void availableChanged();
     void visibleChanged();
     void minimizeToTrayOnCloseChanged();

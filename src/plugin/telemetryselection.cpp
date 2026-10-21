@@ -109,6 +109,12 @@ QVariant PulseTelemetryController::remoteTelemetryValue(const char *name) const
             const auto gpu = deviceWithId(m_remoteValues.value(QStringLiteral("gpuDevices")).toList(), m_selectedGpuId);
             updateMetadata(metadata, QStringLiteral("gpuLoad"), gpu.value(QStringLiteral("busyAvailable")).toBool(), m_selectedGpuId);
             updateMetadata(metadata, QStringLiteral("gpuTemperature"), gpu.value(QStringLiteral("temperatureAvailable")).toBool(), m_selectedGpuId);
+            auto temperature = metadata.value(QStringLiteral("gpuTemperature")).toMap();
+            temperature[QStringLiteral("sensorId")] = gpu.value(QStringLiteral("temperatureSensorId"));
+            temperature[QStringLiteral("sensorLabel")] = gpu.value(QStringLiteral("temperatureSensorLabel"));
+            if (gpu.value(QStringLiteral("temperatureAvailable")).toBool())
+                temperature[QStringLiteral("detail")] = gpu.value(QStringLiteral("temperatureSensorLabel"));
+            metadata[QStringLiteral("gpuTemperature")] = temperature;
         }
         if (!m_selectedStorageId.isEmpty()) updateMetadata(metadata, QStringLiteral("diskThroughput"),
             remoteTelemetryValue("diskThroughputAvailable").toBool(), m_selectedStorageId);

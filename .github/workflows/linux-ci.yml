@@ -5,137 +5,79 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: linux-ci-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
 jobs:
   build-and-test:
+    name: Fedora 44 validation
     runs-on: ubuntu-24.04
-    container: fedora:latest
+    container: fedora:44
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash --noprofile --norc -eo pipefail {0}
+    steps:
+      - name: Bootstrap checkout tools
+        run: dnf install --assumeyes git tar gzip
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify checkout identity
+        run: test "$(git -c safe.directory="$GITHUB_WORKSPACE" rev-parse HEAD)" = "$GITHUB_SHA"
+      - name: Install Fedora dependencies
+        run: bash scripts/install-ci-dependencies.sh
+      - name: Validate and build Fedora RPM/SRPM and source/widget packages
+        run: bash scripts/build-release.sh
+
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Scan history and working tree with checksum-verified Gitleaks
+        run: bash scripts/scan-secrets.sh
+
+  release:
+    name: Development prerelease
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build-and-test, secret-scan]
+    runs-on: ubuntu-24.04
+    container: fedora:44
+    timeout-minutes: 60
     permissions:
       contents: write
     defaults:
       run:
         shell: bash --noprofile --norc -eo pipefail {0}
     steps:
-      - name: Install build dependencies
-        run: |
-          dnf install --assumeyes \
-            cmake \
-            bash \
-            coreutils \
-            util-linux-core \
-            extra-cmake-modules \
-            gcc-c++ \
-            git \
-            gh \
-            tar \
-            gzip \
-            rpm-build \
-            redhat-rpm-config \
-            kf6-rpm-macros \
-            libappstream-glib \
-            dbus-daemon \
-            kf6-kcmutils \
-            kf6-kcoreaddons-devel \
-            kf6-kcrash-devel \
-            kf6-ki18n-devel \
-            kf6-kirigami-devel \
-            kf6-knotifications-devel \
-            kf6-kwindowsystem-devel \
-            kf6-kpackage \
-            kf6-qqc2-desktop-style \
-            libplasma-devel \
-            qt6-qtbase-devel \
-            qt6-qtdeclarative-devel \
-            qt6-qttools-devel \
-            appstream \
-            gettext \
-            glibc-langpack-sv \
-            zip
-
-      - uses: actions/checkout@v4
-
-      - name: Verify checkout identity
-        run: test "$(git -c safe.directory="$GITHUB_WORKSPACE" rev-parse HEAD)" = "$GITHUB_SHA"
-
-      - name: Verify release tag version
-        if: startsWith(github.ref, 'refs/tags/')
-        run: test "$GITHUB_REF_NAME" = "v$(cat VERSION)"
-
-      - name: Configure
-        run: >-
-          cmake -S . -B build
-          -DBUILD_TESTING=ON
-          -DBUILD_LIVE_HARDWARE_TESTS=OFF
-          -DCMAKE_BUILD_TYPE=RelWithDebInfo
-          -DCMAKE_INSTALL_PREFIX=/usr
-
-      - name: Build
-        run: cmake --build build --parallel 2
-
-      - name: Check QML syntax and types
-        run: |
-          QMLLINT_BIN="$(command -v qmllint || true)"
-          if [ -z "$QMLLINT_BIN" ]; then QMLLINT_BIN=/usr/lib64/qt6/bin/qmllint; fi
-          "$QMLLINT_BIN" --ignore-settings -i build/bin/com/github/loofi/hardwarepulse/qmldir -I build/bin \
-            src/app/qml/*.qml package/contents/ui/*.qml
-
-      - name: Run portable tests
-        env:
-          QT_QPA_PLATFORM: offscreen
-          QML_IMPORT_PATH: ${{ github.workspace }}/build/bin
-        run: ctest --test-dir build --output-on-failure
-
-      - name: Validate AppStream metadata
-        run: appstreamcli validate --no-net packaging/com.github.loofi.hardwarepulse.metainfo.xml
-
-      - name: Verify clean install and plasmoid bundle
-        run: |
-          INSTALL_ROOT="${RUNNER_TEMP:-/tmp}/loofi-pulse-install-root"
-          rm -rf "$INSTALL_ROOT"
-          DESTDIR="$INSTALL_ROOT" cmake --install build
-          test -x "$INSTALL_ROOT/usr/bin/loofi-pulse"
-          test -x "$INSTALL_ROOT/usr/bin/loofi-pulse-service"
-          SERVICE_FILE="$INSTALL_ROOT/usr/share/dbus-1/services/com.github.loofi.hardwarepulse.Collector1.service"
-          test -f "$SERVICE_FILE"
-          grep -Fx "Name=com.github.loofi.hardwarepulse.Collector1" "$SERVICE_FILE"
-          grep -Fx "Exec=/usr/bin/loofi-pulse-service" "$SERVICE_FILE"
-          test ! -e "$INSTALL_ROOT/etc/xdg/autostart/com.github.loofi.hardwarepulse.desktop"
-          test -f "$INSTALL_ROOT/usr/share/applications/com.github.loofi.hardwarepulse.desktop"
-          test -f "$INSTALL_ROOT/usr/share/metainfo/com.github.loofi.hardwarepulse.metainfo.xml"
-          test -f "$INSTALL_ROOT/usr/share/plasma/plasmoids/com.github.loofi.hardwarepulse/metadata.json"
-          mkdir -p build/dist
-          (cd package && zip -r "../build/dist/com.github.loofi.hardwarepulse.plasmoid" metadata.json contents/)
-          test -s build/dist/com.github.loofi.hardwarepulse.plasmoid
-
-
-      - name: Build Fedora RPM and SRPM
-        run: |
-          PULSE_VERSION="$(cat VERSION)"
-          PULSE_RPM_ROOT="${RUNNER_TEMP:-/tmp}/loofi-pulse-rpmbuild"
-          mkdir -p "$PULSE_RPM_ROOT/SOURCES"
-          git -c safe.directory="$GITHUB_WORKSPACE" archive --format=tar --prefix="plasma-hardware-pulse-$PULSE_VERSION/" HEAD | gzip -n > "$PULSE_RPM_ROOT/SOURCES/plasma-hardware-pulse-$PULSE_VERSION.tar.gz"
-          rpmbuild -ba packaging/plasma-hardware-pulse.spec \
-            --define "_topdir $PULSE_RPM_ROOT" \
-            --define "_smp_build_ncpus 2"
-          cp "$PULSE_RPM_ROOT/SOURCES/plasma-hardware-pulse-$PULSE_VERSION.tar.gz" build/dist/
-          find "$PULSE_RPM_ROOT/RPMS" "$PULSE_RPM_ROOT/SRPMS" -name '*.rpm' -exec cp {} build/dist/ \;
-
-      - name: Checksum release assets
-        run: |
-          cd build/dist
-          sha256sum -- *.tar.gz *.rpm *.plasmoid > SHA256SUMS
-          sha256sum --check SHA256SUMS
-
-      - name: Publish GitHub release
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Bootstrap checkout tools
+        run: dnf install --assumeyes git tar gzip
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify release lineage
+        run: bash scripts/check-release-tag.sh
+      - name: Install Fedora dependencies
+        run: bash scripts/install-ci-dependencies.sh
+      - name: Rebuild and validate release packages from the tagged commit
+        run: bash scripts/build-release.sh
+      - name: Publish development prerelease
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            --repo "$GITHUB_REPOSITORY" \
-            --verify-tag \
-            --title "Loofi Pulse $GITHUB_REF_NAME" \
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+            --verify-tag --prerelease --title "Loofi Pulse $GITHUB_REF_NAME (development)" \
             --notes-file RELEASE_NOTES.md \
-            build/dist/*.tar.gz \
-            build/dist/*.rpm \
-            build/dist/*.plasmoid \
-            build/dist/SHA256SUMS
+            build/validation/dist/*.tar.gz build/validation/dist/*.rpm \
+            build/validation/dist/*.plasmoid build/validation/dist/SHA256SUMS

@@ -1,3 +1,7 @@
+#include <clocale>
+#include <KLocalizedQmlContext>
+#include <KLocalizedString>
+#include <QQmlContext>
 #include <QDir>
 #include <QFont>
 #include <QGuiApplication>
@@ -9,6 +13,8 @@
 #include <QTest>
 #include <QSignalSpy>
 #include <QJSValue>
+#include <QTemporaryDir>
+#include <QFileInfo>
 
 class ProcessControllerFixture : public QObject
 {
@@ -21,6 +27,16 @@ Q_SIGNALS:
     void allProcessesChanged();
 private:
     QVariantList m_rows;
+};
+
+class TrayFixture : public QObject
+{
+    Q_OBJECT
+    Q_PROPERTY(bool available READ available CONSTANT)
+public:
+    bool available() const { return true; }
+Q_SIGNALS:
+    void quitRequested();
 };
 
 class TestQmlUi : public QObject
@@ -37,6 +53,8 @@ private:
 
     static void addImportPaths(QQmlEngine &engine)
     {
+        auto *localizedContext = KLocalization::setupLocalizedContext(&engine);
+        localizedContext->setTranslationDomain(QStringLiteral("loofi-pulse"));
         engine.addImportPath(QStringLiteral(PULSE_BUILD_BIN));
         engine.addImportPath(QStringLiteral(PULSE_APP_QML));
     }
@@ -71,12 +89,45 @@ private Q_SLOTS:
     void initTestCase()
     {
         QCoreApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
+        KLocalizedString::addDomainLocaleDir("loofi-pulse", QStringLiteral(PULSE_BUILD_LOCALE_DIR));
+        KLocalizedString::addDomainLocaleDir("plasma_applet_com.github.loofi.hardwarepulse", QStringLiteral(PULSE_BUILD_LOCALE_DIR));
+        KLocalizedString::setApplicationDomain("loofi-pulse");
+        KLocalizedString::setLanguages({QStringLiteral("en")});
         QCoreApplication::setOrganizationName(QStringLiteral("LoofiPulseTests"));
         QCoreApplication::setOrganizationDomain(QStringLiteral("tests.invalid"));
     }
 
     void testAppNavigationKeyboardAndResponsiveRendering()
     {
+        for (const QString &language : {QStringLiteral("sv"), QStringLiteral("en")}) {
+            qputenv("LANGUAGE", language.toUtf8());
+            std::setlocale(LC_ALL, language == QStringLiteral("sv") ? "sv_SE.UTF-8" : "en_US.UTF-8");
+            KLocalizedString::setLanguages({language});
+            QLocale::setDefault(QLocale(language));
+            QCOMPARE(i18n("Settings"), language == QStringLiteral("sv") ? QStringLiteral("Inställningar") : QStringLiteral("Settings"));
+            QQmlEngine localeEngine;
+            localeEngine.setUiLanguage(language);
+            addImportPaths(localeEngine);
+            QQmlComponent localized(&localeEngine);
+            localized.setData("import QtQuick\nimport org.kde.ki18n\nItem { property string label: KI18n.i18n(\"Settings\"); property string diagnosis: KI18n.i18n(\"No current system pressure detected\"); property string widget: KI18n.i18nd(\"plasma_applet_com.github.loofi.hardwarepulse\", \"Open Loofi Pulse\") }", QUrl());
+            QScopedPointer<QObject> object(localized.create());
+            QVERIFY2(object, qPrintable(localized.errorString()));
+            QCOMPARE(object->property("label").toString(), language == QStringLiteral("sv") ? QStringLiteral("Inställningar") : QStringLiteral("Settings"));
+            QCOMPARE(object->property("diagnosis").toString(), language == QStringLiteral("sv") ? QStringLiteral("Ingen aktuell systembelastning upptäckt") : QStringLiteral("No current system pressure detected"));
+            QCOMPARE(object->property("widget").toString(), language == QStringLiteral("sv") ? QStringLiteral("Öppna Loofi Pulse") : QStringLiteral("Open Loofi Pulse"));
+            QQmlApplicationEngine application;
+            addImportPaths(application);
+            application.load(QUrl::fromLocalFile(QStringLiteral(PULSE_APP_QML "/Main.qml")));
+            QVERIFY(!application.rootObjects().isEmpty());
+            auto *translatedWindow = qobject_cast<QQuickWindow *>(application.rootObjects().first());
+            QVERIFY(translatedWindow);
+            QVERIFY(QMetaObject::invokeMethod(translatedWindow, "switchToPage", Q_ARG(QVariant, QStringLiteral("settings")), Q_ARG(QVariant, QString())));
+            auto *settingsPage = currentPage(translatedWindow);
+            QVERIFY(settingsPage);
+            QCOMPARE(settingsPage->objectName(), QStringLiteral("settingsPage"));
+            QCOMPARE(settingsPage->property("title").toString(), language == QStringLiteral("sv") ? QStringLiteral("Inställningar") : QStringLiteral("Settings"));
+        }
+        KLocalizedString::setLanguages({QStringLiteral("en")});
         QQmlApplicationEngine engine;
         QStringList runtimeErrors;
         QObject::connect(&engine, &QQmlEngine::warnings, &engine, [&runtimeErrors](const QList<QQmlError> &warnings) {
@@ -104,6 +155,12 @@ private Q_SLOTS:
         QGuiApplication::setFont(largeFont);
         window->show();
         QTest::qWait(120);
+        auto *selector = findVisualChild(window->contentItem(), QStringLiteral("pageSelector"));
+        QVERIFY(selector);
+        QVERIFY(selector->isVisible());
+        QVERIFY(QMetaObject::invokeMethod(selector, "activated", Q_ARG(int, 6)));
+        QCoreApplication::processEvents();
+        QCOMPARE(currentPage(window)->objectName(), QStringLiteral("settingsPage"));
 
         const struct { const char *action; const char *page; } pages[] = {
             {"navigateOverview", "overviewPage"},
@@ -330,6 +387,67 @@ private Q_SLOTS:
         QVERIFY(window->isVisible());
         QVERIFY(QMetaObject::invokeMethod(unsavedDialog, "reject"));
         QVERIFY(window->isVisible());
+        QVERIFY(!window->property("explicitQuit").toBool());
+        QVERIFY(QMetaObject::invokeMethod(window, "requestQuit"));
+        QTRY_VERIFY(unsavedDialog->property("visible").toBool());
+        auto *saveBeforeQuit = findVisualChild(window->contentItem(), QStringLiteral("saveBeforeQuitButton"));
+        QVERIFY(saveBeforeQuit);
+        QVERIFY(QMetaObject::invokeMethod(saveBeforeQuit, "click"));
+        QTRY_VERIFY(saveDialog->property("visible").toBool());
+        for (int i = 0; i < 3; ++i) {
+            QVERIFY(QMetaObject::invokeMethod(controller, "telemetryUpdated"));
+            QCoreApplication::processEvents();
+        }
+        QVERIFY(window->property("saveForQuit").toBool());
+        QVERIFY(!window->property("quitAfterSave").toBool());
+        QVERIFY(QMetaObject::invokeMethod(saveDialog, "reject"));
+        QVERIFY(!window->property("saveForQuit").toBool());
+        QVERIFY(!window->property("explicitQuit").toBool());
+
+        // Qt.quit is observed without ending the test runner's application.
+        QObject::disconnect(&engine, &QQmlEngine::quit, nullptr, nullptr);
+        QSignalSpy quitRequested(&engine, &QQmlEngine::quit);
+        QTemporaryDir sessionDir;
+        QVERIFY(sessionDir.isValid());
+        TrayFixture tray;
+        QVERIFY(window->setProperty("tray", QVariant::fromValue(static_cast<QObject *>(&tray))));
+        window->hide();
+        QVERIFY(QMetaObject::invokeMethod(&tray, "quitRequested"));
+        QTRY_VERIFY(window->isVisible());
+        QTRY_VERIFY(unsavedDialog->property("visible").toBool());
+        QVERIFY(QMetaObject::invokeMethod(saveBeforeQuit, "click"));
+        QVERIFY(saveDialog->setProperty("selectedFile", QUrl::fromLocalFile(sessionDir.path() + QStringLiteral("/missing/session.pulse-session"))));
+        QVERIFY(QMetaObject::invokeMethod(saveDialog, "accepted"));
+        QTRY_VERIFY_WITH_TIMEOUT(!controller->property("actionPending").toBool(), 5000);
+        QVERIFY(!controller->property("lastActionSucceeded").toBool());
+        QVERIFY(controller->property("unsavedInvestigation").toBool());
+        QVERIFY(!window->property("explicitQuit").toBool());
+        QVERIFY(window->isVisible());
+        QCOMPARE(quitRequested.count(), 0);
+        QVERIFY(QMetaObject::invokeMethod(saveDialog, "close"));
+
+        QVERIFY(QMetaObject::invokeMethod(window, "requestQuit"));
+        QVERIFY(QMetaObject::invokeMethod(saveBeforeQuit, "click"));
+        const QString savedPath = sessionDir.path() + QStringLiteral("/saved.pulse-session");
+        QVERIFY(saveDialog->setProperty("selectedFile", QUrl::fromLocalFile(savedPath)));
+        QVERIFY(QMetaObject::invokeMethod(saveDialog, "accepted"));
+        QTRY_VERIFY_WITH_TIMEOUT(!controller->property("actionPending").toBool(), 5000);
+        QVERIFY(controller->property("lastActionSucceeded").toBool());
+        QVERIFY(QFileInfo::exists(savedPath));
+        QVERIFY(!controller->property("unsavedInvestigation").toBool());
+        QTRY_COMPARE(quitRequested.count(), 1);
+
+        window->show();
+        QVERIFY(QMetaObject::invokeMethod(controller, "returnToLive"));
+        QVERIFY(QMetaObject::invokeMethod(controller, "markProblemNow"));
+        QTRY_VERIFY(controller->property("unsavedInvestigation").toBool());
+        QVERIFY(QMetaObject::invokeMethod(window, "requestQuit"));
+        QTRY_VERIFY(unsavedDialog->property("visible").toBool());
+        auto *discard = findVisualChild(window->contentItem(), QStringLiteral("discardAndQuitButton"));
+        QVERIFY(discard);
+        QVERIFY(QMetaObject::invokeMethod(discard, "click"));
+        QTRY_COMPARE(quitRequested.count(), 2);
+        QVERIFY(window->property("allowDiscard").toBool());
     }
 
     void testPanelPresetsPreserveCustomMetrics()
@@ -380,6 +498,17 @@ private Q_SLOTS:
         QVERIFY(controller);
 
         const QString widgetDir = QStringLiteral(PULSE_WIDGET_QML);
+        for (const auto &helper : {QStringLiteral(PULSE_APP_QML "/MeasurementLabels.js"), widgetDir + QStringLiteral("/TemperatureLabels.js")}) {
+            QQmlComponent formatting(&engine);
+            const QByteArray source = QStringLiteral("import QtQuick\nimport \"%1\" as Labels\nItem { property string absolute: Labels.formatTemperature(10, \"F\"); property string margin: Labels.formatTemperatureDelta(10, \"F\"); property string celsius: Labels.formatTemperature(10, \"C\") }")
+                .arg(QUrl::fromLocalFile(helper).toString()).toUtf8();
+            formatting.setData(source, QUrl::fromLocalFile(widgetDir + QStringLiteral("/temperature-test.qml")));
+            QScopedPointer<QObject> formatted(formatting.create());
+            QVERIFY2(formatted, qPrintable(formatting.errorString()));
+            QCOMPARE(formatted->property("absolute").toString(), QStringLiteral("50°F"));
+            QCOMPARE(formatted->property("margin").toString(), QStringLiteral("18°F"));
+            QCOMPARE(formatted->property("celsius").toString(), QStringLiteral("10°C"));
+        }
         for (const QString &name : {QStringLiteral("FullRepresentation"), QStringLiteral("CompactRepresentation")}) {
             QQmlComponent component(&engine, QUrl::fromLocalFile(widgetDir + QLatin1Char('/') + name + QStringLiteral(".qml")));
             QVERIFY2(component.isReady(), qPrintable(component.errorString()));
@@ -439,8 +568,18 @@ private Q_SLOTS:
         QVERIFY2(runtimeErrors.isEmpty(), qPrintable(runtimeErrors.join(QLatin1Char('\n'))));
     }
 
+    void testAccessibilityAndFocusAudit_data()
+    {
+        QTest::addColumn<QString>("language");
+        QTest::newRow("English") << QStringLiteral("en");
+        QTest::newRow("Swedish") << QStringLiteral("sv");
+    }
+
     void testAccessibilityAndFocusAudit()
     {
+        QFETCH(QString, language);
+        KLocalizedString::setLanguages({language});
+        QLocale::setDefault(QLocale(language));
         QQmlApplicationEngine engine;
         addImportPaths(engine);
         engine.load(QUrl::fromLocalFile(QStringLiteral(PULSE_APP_QML "/Main.qml")));
@@ -455,10 +594,9 @@ private Q_SLOTS:
             QStringLiteral("power"),
             QStringLiteral("pressure"),
             QStringLiteral("processes"),
-            QStringLiteral("flightRecorder"),
-            QStringLiteral("storageNetwork"),
+            QStringLiteral("flight"),
+            QStringLiteral("storage"),
             QStringLiteral("settings"),
-            QStringLiteral("trends")
         };
 
         QStringList auditErrors;
@@ -524,7 +662,17 @@ private Q_SLOTS:
             QTest::qWait(80);
             auto *page = currentPage(window);
             QVERIFY2(page, qPrintable(QStringLiteral("Failed to load page: ") + pageName));
+            const QMap<QString, QString> expected{{"overview", "overviewPage"}, {"power", "powerPage"}, {"pressure", "pressurePage"}, {"processes", "processesPage"}, {"flight", "historyPage"}, {"storage", "storageNetworkPage"}, {"settings", "settingsPage"}};
+            QCOMPARE(page->objectName(), expected.value(pageName));
             auditItem(page);
+            if (pageName == QStringLiteral("flight")) {
+                QVERIFY(page->setProperty("activeViewMode", QStringLiteral("trends")));
+                QCoreApplication::processEvents();
+                auto *trends = findVisualChild(page, QStringLiteral("trendsView"));
+                QVERIFY(trends);
+                QVERIFY(trends->isVisible());
+                auditItem(trends);
+            }
         }
 
         QVERIFY2(auditErrors.isEmpty(), qPrintable(auditErrors.join(QLatin1Char('\n'))));

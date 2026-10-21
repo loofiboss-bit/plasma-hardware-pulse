@@ -31,7 +31,7 @@ find_package(Plasma REQUIRED)
 find_package(KF6Kirigami REQUIRED)
 find_package(KF6CoreAddons REQUIRED)
 find_package(KF6Notifications REQUIRED)
-find_package(KF6I18n REQUIRED)
+find_package(KF6I18n 6.21 REQUIRED)
 find_package(KF6Crash REQUIRED)
 find_package(KF6WindowSystem REQUIRED)
 

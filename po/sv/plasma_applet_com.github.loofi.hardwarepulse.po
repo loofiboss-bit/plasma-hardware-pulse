@@ -17,35 +17,621 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-msgid "Loofi Pulse"
-msgstr "Loofi Pulse"
 
-msgid "Open Loofi Pulse"
-msgstr "Öppna Loofi Pulse"
+msgid "\nMissing evidence: "
+msgstr "\nSaknat underlag: "
 
-msgid "Mark Problem Now"
-msgstr "Markera problem nu"
+msgid "\nSignals: "
+msgstr "\nSignaler: "
 
-msgid "Nominal"
-msgstr "Nominell"
+msgid " (est.)"
+msgstr " (uppsk.)"
 
-msgid "Elevated"
-msgstr "Förhöjd"
+msgid " (estimated)"
+msgstr " (uppskattad)"
+
+msgid " MHz"
+msgstr " MHz"
+
+msgid " MiB/s"
+msgstr " MiB/s"
+
+msgid " MiB/s disk"
+msgstr " MiB/s disk"
+
+msgid " MiB/s net"
+msgstr " MiB/s nätverk"
+
+msgid " RPM"
+msgstr " RPM"
+
+msgid " W"
+msgstr " W"
+
+msgid " W CPU package"
+msgstr " W CPU-paket"
+
+msgid " W now"
+msgstr " W nu"
+
+msgid " power profile"
+msgstr " energiprofil"
+
+msgid " s"
+msgstr " s"
+
+msgid " sparkline"
+msgstr " minidiagram"
+
+msgid " · Disk "
+msgstr " · Disk "
+
+msgid " · Est."
+msgstr " · Uppsk."
+
+msgid " · Fan: "
+msgstr " · Fläkt: "
+
+msgid " · I/O "
+msgstr " · I/O "
+
+msgid " · Limits: "
+msgstr " · Gränser: "
+
+msgid " · Measured"
+msgstr " · Uppmätt"
+
+msgid " · Mem "
+msgstr " · Minne "
+
+msgid " · Net "
+msgstr " · Nätverk "
+
+msgid " · Observed for "
+msgstr " · Observerat i "
+
+msgid " · Sample: "
+msgstr " · Mätpunkt: "
+
+msgid " · Source: "
+msgstr " · Källa: "
+
+msgid " · Wi-Fi "
+msgstr " · Wi-Fi "
+
+msgid " · ZRAM: "
+msgstr " · ZRAM: "
+
+msgid "% CPU"
+msgstr "% CPU"
+
+msgid "% GPU"
+msgstr "% GPU"
+
+msgid "% RAM"
+msgstr "% RAM"
+
+msgid "% now"
+msgstr "% nu"
+
+msgid "+ "
+msgstr "+ "
+
+msgid ". Missing readings and recording pauses appear as gaps."
+msgstr ". Saknade värden och inspelningspauser visas som luckor."
+
+msgid "250–500 ms provides high-resolution spike capture; 1000 ms is recommended for balanced desktop use."
+msgstr "250–500 ms fångar snabba toppar. 1000 ms rekommenderas för balanserad skrivbordsanvändning."
+
+msgid ": Unavailable — awaiting a sample."
+msgstr ": Otillgängligt – väntar på en mätpunkt."
+
+msgid "Action result: "
+msgstr "Åtgärdsresultat: "
+
+msgid "Activate to open hardware details. Higher responsiveness is better. Additional current readings are available in the tooltip."
+msgstr "Aktivera för att öppna hårdvarudetaljer. Högre responsivitet är bättre. Fler aktuella mätvärden finns i verktygstipset."
+
+msgid "Alerts:"
+msgstr "Aviseringar:"
+
+msgid "Always show status headline in panel (otherwise shown only on active alerts)"
+msgstr "Visa alltid statusrubrik i panelen (annars endast vid aktiva varningar)"
+
+msgid "Awaiting first sample"
+msgstr "Väntar på första mätpunkten"
+
+msgid "BOTTLENECK"
+msgstr "FLASKHALS"
+
+msgid "Battery"
+msgstr "Batteri"
+
+msgid "Battery discharge"
+msgstr "Batteriurladdning"
+
+msgid "Battery discharge · last "
+msgstr "Batteriurladdning · senaste "
+
+msgid "Battery discharge: "
+msgstr "Batteriurladdning: "
+
+msgid "Battery unavailable"
+msgstr "Batteri otillgängligt"
 
 msgid "Bottleneck"
 msgstr "Flaskhals"
 
-msgid "Critical Throttle"
-msgstr "Kritisk strypning"
+msgid "CPU"
+msgstr "CPU"
 
-msgid "General"
-msgstr "Allmänt"
+msgid "CPU & SoC"
+msgstr "CPU och SoC"
+
+msgid "CPU N/A"
+msgstr "CPU otillgänglig"
+
+msgid "CPU is close to its reported thermal limit"
+msgstr "CPU är nära sin rapporterade temperaturgräns"
+
+msgid "CPU is operating at its sustained power limit (PL1)"
+msgstr "CPU arbetar vid sin uthålliga effektgräns (PL1)"
+
+msgid "CPU load"
+msgstr "CPU-belastning"
+
+msgid "CPU load · last "
+msgstr "CPU-belastning · senaste "
+
+msgid "CPU load: "
+msgstr "CPU-belastning: "
+
+msgid "CPU package"
+msgstr "CPU-paket"
+
+msgid "CPU package W N/A"
+msgstr "CPU-paketeffekt otillgänglig"
+
+msgid "CPU package power"
+msgstr "CPU-paketeffekt"
+
+msgid "CPU package power · last "
+msgstr "CPU-paketeffekt · senaste "
+
+msgid "CPU package power: "
+msgstr "CPU-paketeffekt: "
+
+msgid "CPU pressure or thermal risk is elevated"
+msgstr "CPU-belastning eller temperaturrisk är förhöjd"
+
+msgid "CPU temperature"
+msgstr "CPU-temperatur"
+
+msgid "CPU temperature · last "
+msgstr "CPU-temperatur · senaste "
+
+msgid "CPU temperature: "
+msgstr "CPU-temperatur: "
+
+msgid "CPU thermal throttling observed"
+msgstr "CPU-temperaturstrypning observerad"
+
+msgid "CPU: "
+msgstr "CPU: "
+
+msgid "Check for background indexing, updates, or other heavy disk activity."
+msgstr "Kontrollera bakgrundsindexering, uppdateringar och annan tung diskaktivitet."
+
+msgid "Check whether the current workload is expected."
+msgstr "Kontrollera om den aktuella belastningen är förväntad."
+
+msgid "Collecting initial readings"
+msgstr "Samlar in inledande mätvärden"
 
 msgid "Compact"
 msgstr "Kompakt"
 
+msgid "Confirming system readings"
+msgstr "Bekräftar systemmätningar"
+
+msgid "Copy current incident report"
+msgstr "Kopiera aktuell incidentrapport"
+
+msgid "Copy report"
+msgstr "Kopiera rapport"
+
+msgid "Critical Throttle"
+msgstr "Kritisk strypning"
+
+msgid "Desktop Notifications"
+msgstr "Skrivbordsaviseringar"
+
 msgid "Detailed"
 msgstr "Detaljerad"
 
+msgid "Discharge: "
+msgstr "Urladdning: "
+
+msgid "Disk: "
+msgstr "Disk: "
+
+msgid "ELEVATED"
+msgstr "FÖRHÖJD"
+
+msgid "Elevated"
+msgstr "Förhöjd"
+
+msgid "Expand details for CPU load, CPU temperature, responsiveness index, and CPU package power"
+msgstr "Visa detaljer för CPU-belastning, CPU-temperatur, responsivitetsindex och CPU-paketeffekt"
+
+msgid "Expand observed signals, diagnosis duration, missing evidence, and next step."
+msgstr "Visa observerade signaler, diagnoslängd, saknat underlag och nästa steg."
+
+msgid "GPU "
+msgstr "GPU "
+
+msgid "GPU & Sensors"
+msgstr "GPU och sensorer"
+
+msgid "GPU N/A"
+msgstr "GPU otillgänglig"
+
+msgid "GPU activity: "
+msgstr "GPU-aktivitet: "
+
+msgid "GPU load and temperature are high"
+msgstr "GPU-belastning och temperatur är höga"
+
+msgid "GPU temperature is high"
+msgstr "GPU-temperaturen är hög"
+
+msgid "General"
+msgstr "Allmänt"
+
+msgid "High battery power draw"
+msgstr "Hög batteriförbrukning"
+
+msgid "High workload while power-saver profile is active"
+msgstr "Hög belastning med energisparprofil aktiverad"
+
+msgid "History"
+msgstr "Historik"
+
+msgid "History retention (seconds):"
+msgstr "Inspelningslängd (sekunder):"
+
+msgid "I/O N/A"
+msgstr "I/O otillgänglig"
+
+msgid "Investigate incident: "
+msgstr "Undersök incident: "
+
+msgid "Keep Loofi Pulse open while readings stabilize."
+msgstr "Låt Loofi Pulse vara öppet medan mätvärdena stabiliseras."
+
+msgid "Keep an eye on storage temperature during long transfers."
+msgstr "Följ lagringstemperaturen under långa överföringar."
+
+msgid "Load unavailable"
+msgstr "Belastning otillgänglig"
+
+msgid "Loofi Pulse"
+msgstr "Loofi Pulse"
+
+msgid "Mark Problem Now"
+msgstr "Markera problem nu"
+
+msgid "Mark problem and open history"
+msgstr "Markera problem och öppna historik"
+
+msgid "Mark problem now"
+msgstr "Markera problem nu"
+
+msgid "Measurement details"
+msgstr "Mätdetaljer"
+
+msgid "Memory & PSI"
+msgstr "Minne och PSI"
+
+msgid "Memory pressure is slowing the system"
+msgstr "Minnesbelastning saktar ned systemet"
+
+msgid "Memory use: "
+msgstr "Minnesanvändning: "
+
+msgid "Minimal shows temperature and alerts. Balanced adds responsiveness and CPU package power. Detailed adds activity metrics. Long content is shortened; the tooltip keeps all current readings."
+msgstr "Minimal visar temperatur och varningar. Balanserad lägger till responsivitet och CPU-paketeffekt. Detaljerad lägger till aktivitetsmått. Lång text förkortas; verktygstipset visar alla aktuella värden."
+
+msgid "More"
+msgstr "Mer"
+
 msgid "More settings in Loofi Pulse…"
 msgstr "Fler inställningar i Loofi Pulse…"
+
+msgid "NOMINAL"
+msgstr "NORMAL"
+
+msgid "NVMe "
+msgstr "NVMe "
+
+msgid "NVMe temperature is elevated"
+msgstr "NVMe-temperaturen är förhöjd"
+
+msgid "Network throughput"
+msgstr "Nätverkstrafik"
+
+msgid "Network: "
+msgstr "Nätverk: "
+
+msgid "Next step: "
+msgstr "Nästa steg: "
+
+msgid "No action is needed."
+msgstr "Ingen åtgärd behövs."
+
+msgid "No current system pressure detected"
+msgstr "Ingen aktuell systembelastning upptäckt"
+
+msgid "No missing signals reported"
+msgstr "Inga saknade signaler rapporterade"
+
+msgid "No sustained pressure or thermal risk was observed in the available readings."
+msgstr "Ingen ihållande belastning eller temperaturrisk observerades i de tillgängliga mätvärdena."
+
+msgid "No valid reading from this source."
+msgstr "Inget giltigt mätvärde från den här källan."
+
+msgid "Nominal"
+msgstr "Nominell"
+
+msgid "Open"
+msgstr "Öppna"
+
+msgid "Open App"
+msgstr "Öppna appen"
+
+msgid "Open CPU and Power details"
+msgstr "Öppna CPU- och effektdetaljer"
+
+msgid "Open GPU and sensor details"
+msgstr "Öppna GPU- och sensordetaljer"
+
+msgid "Open KDE System Monitor process view"
+msgstr "Öppna KDE Systemövervakarens processvy"
+
+msgid "Open Loofi Pulse"
+msgstr "Öppna Loofi Pulse"
+
+msgid "Open Loofi Pulse History view"
+msgstr "Öppna historikvyn i Loofi Pulse"
+
+msgid "Open Loofi Pulse Processes view"
+msgstr "Öppna processvyn i Loofi Pulse"
+
+msgid "Open Loofi Pulse app"
+msgstr "Öppna Loofi Pulse"
+
+msgid "Open Memory and Pressure details"
+msgstr "Öppna minnes- och belastningsdetaljer"
+
+msgid "Open Power and Cooling details"
+msgstr "Öppna effekt- och kylningsdetaljer"
+
+msgid "Open folder"
+msgstr "Öppna mapp"
+
+msgid "Original technical evidence (preserved language):"
+msgstr "Ursprungligt tekniskt underlag (bevarat språk):"
+
+msgid "PSI wait · CPU "
+msgstr "PSI-väntan · CPU "
+
+msgid "Panel preset:"
+msgstr "Panelförval:"
+
+msgid "Panel representation"
+msgstr "Panelvisning"
+
+msgid "Power & Battery"
+msgstr "Effekt och batteri"
+
+msgid "Power & Cooling"
+msgstr "Effekt & Kylning"
+
+msgid "Power profile service unavailable"
+msgstr "Energiprofiltjänsten är otillgänglig"
+
+msgid "Power profile: "
+msgstr "Energiprofil: "
+
+msgid "Processes"
+msgstr "Processer"
+
+msgid "RAM N/A"
+msgstr "RAM otillgängligt"
+
+msgid "Reduce graphics work or lower the frame-rate limit if display performance is affected."
+msgstr "Minska grafikbelastningen eller bildfrekvensgränsen om bildskärmens prestanda påverkas."
+
+msgid "Reduce sustained CPU load or choose a lower power profile."
+msgstr "Minska den långvariga CPU-belastningen eller välj en lägre energiprofil."
+
+msgid "Required measurements are available. Waiting for a consistent status before confirming the result."
+msgstr "Nödvändiga mätningar är tillgängliga. Väntar på en konsekvent status innan resultatet bekräftas."
+
+msgid "Responsiveness"
+msgstr "Responsivitet"
+
+msgid "Responsiveness "
+msgstr "Responsivitet "
+
+msgid "Responsiveness N/A"
+msgstr "Responsivitet otillgänglig"
+
+msgid "Responsiveness index"
+msgstr "Responsivitetsindex"
+
+msgid "Responsiveness index · last "
+msgstr "Responsivitetsindex · senaste "
+
+msgid "Responsiveness index: "
+msgstr "Responsivitetsindex: "
+
+msgid "Responsiveness: "
+msgstr "Responsivitet: "
+
+msgid "Review memory use in System Monitor and close work you no longer need."
+msgstr "Granska minnesanvändningen i Systemövervakaren och stäng arbete du inte längre behöver."
+
+msgid "Review the data quality details for missing sensors and interfaces."
+msgstr "Granska datakvaliteten för saknade sensorer och gränssnitt."
+
+msgid "Rule: "
+msgstr "Regel: "
+
+msgid "Sampling rate (ms):"
+msgstr "Mätintervall (ms):"
+
+msgid "Select "
+msgstr "Välj "
+
+msgid "Send KDE notification on active thermal throttling or critical PSI bottleneck"
+msgstr "Skicka KDE-avisering vid aktiv temperaturstrypning eller kritisk PSI-belastning"
+
+msgid "Show "
+msgstr "Visa "
+
+msgid "Show CPU load (%) in panel"
+msgstr "Visa CPU-belastning (%) i panelen"
+
+msgid "Show CPU package power draw (Watts) in panel"
+msgstr "Visa CPU-paketeffekt (watt) i panelen"
+
+msgid "Show Disk / Network throughput (MiB/s) in panel"
+msgstr "Visa disk-/nätverkstrafik (MiB/s) i panelen"
+
+msgid "Show GPU load / temperature in panel"
+msgstr "Visa GPU-belastning/-temperatur i panelen"
+
+msgid "Show RAM usage (%) in panel"
+msgstr "Visa RAM-användning (%) i panelen"
+
+msgid "Show measurement details, sources, and sample times"
+msgstr "Visa mätdetaljer, källor och mättider"
+
+msgid "Show responsiveness index (0–100, higher is better) in panel"
+msgstr "Visa responsivitetsindex (0–100, högre är bättre) i panelen"
+
+msgid "Snooze 15 min"
+msgstr "Tysta i 15 min"
+
+msgid "Snooze notifications for 15 minutes"
+msgstr "Tysta aviseringar i 15 minuter"
+
+msgid "Some system readings are unavailable"
+msgstr "Vissa systemmätningar är otillgängliga"
+
+msgid "Storage pressure is blocking work"
+msgstr "Lagringsbelastning blockerar arbete"
+
+msgid "Sustained performance is capped by the power envelope. Use 'performance' profile if higher limits are supported."
+msgstr "Uthållig prestanda begränsas av effektgränsen. Använd profilen 'performance' om högre gränser stöds."
+
+msgid "Switch to the 'balanced' or 'performance' power profile for higher responsiveness."
+msgstr "Välj energiprofilen 'balanced' eller 'performance' för högre responsivitet."
+
+msgid "Switch to the 'balanced' or 'power-saver' profile to extend battery runtime."
+msgstr "Välj profilen 'balanced' eller 'power-saver' för längre batteritid."
+
+msgid "System Monitor"
+msgstr "Systemövervakare"
+
+msgid "THROTTLING"
+msgstr "STRYPNING"
+
+msgid "Temp"
+msgstr "Temp"
+
+msgid "Temp N/A"
+msgstr "Temp otillgänglig"
+
+msgid "Temp unavailable"
+msgstr "Temp otillgänglig"
+
+msgid "Thermal margin: "
+msgstr "Temperaturmarginal: "
+
+msgid "Unavailable"
+msgstr "Otillgänglig"
+
+msgid "Unavailable or AC"
+msgstr "Otillgängligt eller nätström"
+
+msgid "Unavailable or not discharging"
+msgstr "Otillgängligt eller ingen urladdning"
+
+msgid "Visible metrics:"
+msgstr "Synliga mätvärden:"
+
+msgid "W now"
+msgstr "W nu"
+
+msgid "WARMING UP"
+msgstr "VÄRMER UPP"
+
+msgid "Waiting for stable measurements before confirming system status."
+msgstr "Väntar på stabila mätningar innan systemstatus bekräftas."
+
+msgid "Warming up"
+msgstr "Förbereder mätning"
+
+msgid "Watch GPU temperature during graphics-intensive workloads."
+msgstr "Följ GPU-temperaturen vid grafikintensivt arbete."
+
+msgid "Watch the temperature during sustained work. A lower power profile can reduce heat."
+msgstr "Följ temperaturen vid långvarigt arbete. En lägre energiprofil kan minska värmen."
+
+msgid "Why this status?"
+msgstr "Varför denna status?"
+
+msgid "m · 0–100 (higher is better)"
+msgstr "min · 0–100 (högre är bättre)"
+
+msgid "m · 0–100%"
+msgstr "min · 0–100 %"
+
+msgid "m · 30–100°C"
+msgstr "min · 30–100 °C"
+
+msgid "m · W"
+msgstr "min · W"
+
+msgid "to"
+msgstr "till"
+
+msgid "°C GPU"
+msgstr "°C GPU"
+
+msgid "°C now"
+msgstr "°C nu"
+
+msgid "Minimal"
+msgstr "Minimal"
+
+msgid "Balanced"
+msgstr "Balanserad"
+
+msgid "Custom"
+msgstr "Anpassad"
+
+msgid "Measured"
+msgstr "Uppmätt"
+
+msgid "Calculated"
+msgstr "Beräknat"
+
+msgid "Estimated"
+msgstr "Uppskattat"
+
+msgid "now"
+msgstr "nu"

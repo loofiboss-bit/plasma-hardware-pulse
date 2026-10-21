@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import org.kde.ki18n
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
@@ -7,7 +8,7 @@ import org.kde.kirigami as Kirigami
 Kirigami.Page {
     id: page
     objectName: "processesPage"
-    title: "Processes"
+    title: KI18n.i18n("Processes")
     titleDelegate: Item {
         width: parent ? parent.width : 0
         height: 0
@@ -60,7 +61,7 @@ Kirigami.Page {
 
     onSelectedProcessChanged: { if (selectedProcess) lastSelection = selectedProcess }
     function identity(row) { return String(row.pid) + ":" + String(row.startTimeTicks) }
-    function metric(value, suffix) { return isFinite(Number(value)) ? Number(value).toFixed(1) + suffix : "Unavailable" }
+    function metric(value, suffix) { return isFinite(Number(value)) ? Number(value).toFixed(1) + suffix : KI18n.i18n("Unavailable") }
 
     ColumnLayout {
         anchors.fill: parent
@@ -92,12 +93,12 @@ Kirigami.Page {
                     id: search
                     objectName: "processSearch"
                     Layout.fillWidth: true
-                    placeholderText: "Filter processes by name, PID or owner…"
-                    Accessible.name: "Search processes"
+                    placeholderText: KI18n.i18n("Filter processes by name, PID or owner…")
+                    Accessible.name: KI18n.i18n("Search processes")
                 }
 
                 QQC2.Label {
-                    text: "Sort:"
+                    text: KI18n.i18n("Sort:")
                     color: Kirigami.Theme.disabledTextColor
                     font.bold: true
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
@@ -106,8 +107,8 @@ Kirigami.Page {
                 QQC2.ComboBox {
                     id: sort
                     objectName: "processSort"
-                    model: ["CPU use", "Memory use", "Name"]
-                    Accessible.name: "Sort processes"
+                    model: [KI18n.i18n("CPU use"), KI18n.i18n("Memory use"), "Name"]
+                    Accessible.name: KI18n.i18n("Sort processes")
                 }
 
                 Rectangle {
@@ -121,7 +122,7 @@ Kirigami.Page {
                     QQC2.Label {
                         id: countLbl
                         anchors.centerIn: parent
-                        text: page.visibleProcesses.length + " processes"
+                        text: page.visibleProcesses.length + KI18n.i18n(" processes")
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                         font.bold: true
                         color: Kirigami.Theme.disabledTextColor
@@ -148,7 +149,7 @@ Kirigami.Page {
 
                 QQC2.Label {
                     Layout.fillWidth: true
-                    text: "PROCESS"
+                    text: KI18n.i18n("PROCESS")
                     font.bold: true
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                     color: Kirigami.Theme.disabledTextColor
@@ -156,7 +157,7 @@ Kirigami.Page {
                 QQC2.Label {
                     Layout.preferredWidth: page.colPidWidth
                     horizontalAlignment: Text.AlignRight
-                    text: "PID"
+                    text: KI18n.i18n("PID")
                     font.bold: true
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                     color: Kirigami.Theme.disabledTextColor
@@ -164,7 +165,7 @@ Kirigami.Page {
                 QQC2.Label {
                     visible: page.width >= 620
                     Layout.preferredWidth: page.colUserWidth
-                    text: "USER"
+                    text: KI18n.i18n("USER")
                     font.bold: true
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                     color: Kirigami.Theme.disabledTextColor
@@ -172,7 +173,7 @@ Kirigami.Page {
                 QQC2.Label {
                     Layout.preferredWidth: page.colCpuWidth
                     horizontalAlignment: Text.AlignRight
-                    text: "CPU %"
+                    text: KI18n.i18n("CPU %")
                     font.bold: true
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                     color: Kirigami.Theme.disabledTextColor
@@ -180,7 +181,7 @@ Kirigami.Page {
                 QQC2.Label {
                     Layout.preferredWidth: page.colRamWidth
                     horizontalAlignment: Text.AlignRight
-                    text: "RESIDENT RAM"
+                    text: KI18n.i18n("RESIDENT RAM")
                     font.bold: true
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                     color: Kirigami.Theme.disabledTextColor
@@ -189,7 +190,7 @@ Kirigami.Page {
                     visible: page.width >= 560
                     Layout.preferredWidth: page.colStateWidth
                     horizontalAlignment: Text.AlignHCenter
-                    text: "STATE"
+                    text: KI18n.i18n("STATE")
                     font.bold: true
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                     color: Kirigami.Theme.disabledTextColor
@@ -216,9 +217,9 @@ Kirigami.Page {
                 objectName: "processRow-" + page.identity(modelData)
                 width: processList.width
                 highlighted: page.selectedIdentity === page.identity(modelData)
-                text: modelData.name + " · PID " + modelData.pid
-                      + " · " + (modelData.cpuAvailable === false ? "CPU warming up" : page.metric(modelData.cpuPercent, "% CPU"))
-                      + " · " + page.metric(modelData.rssMegabytes, " MiB")
+                text: modelData.name + KI18n.i18n(" · PID ") + modelData.pid
+                      + " · " + (modelData.cpuAvailable === false ? KI18n.i18n("CPU warming up") : page.metric(modelData.cpuPercent, KI18n.i18n("% CPU")))
+                      + " · " + page.metric(modelData.rssMegabytes, KI18n.i18n(" MiB"))
                 Accessible.name: text
                 onClicked: { page.selectedIdentity = page.identity(modelData); page.lastSelection = modelData }
 
@@ -314,7 +315,7 @@ Kirigami.Page {
                     QQC2.Label {
                         Layout.preferredWidth: page.colRamWidth
                         horizontalAlignment: Text.AlignRight
-                        text: page.metric(processRow.modelData.rssMegabytes, " MiB")
+                        text: page.metric(processRow.modelData.rssMegabytes, KI18n.i18n(" MiB"))
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                         color: Kirigami.Theme.textColor
                     }
@@ -337,7 +338,7 @@ Kirigami.Page {
 
                         QQC2.Label {
                             anchors.centerIn: parent
-                            text: processRow.modelData.inDiskWait ? "D (wait)" : (processRow.modelData.state || "—")
+                            text: processRow.modelData.inDiskWait ? KI18n.i18n("D (wait)") : (processRow.modelData.state || "—")
                             font.bold: true
                             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                             color: processRow.modelData.inDiskWait
@@ -351,7 +352,7 @@ Kirigami.Page {
             QQC2.Label {
                 anchors.centerIn: parent
                 visible: processList.count === 0
-                text: search.text.length ? "No matching processes found" : "Waiting for readable process observations…"
+                text: search.text.length ? KI18n.i18n("No matching processes found") : KI18n.i18n("Waiting for readable process observations…")
                 color: Kirigami.Theme.disabledTextColor
                 font.bold: true
             }
@@ -395,28 +396,19 @@ Kirigami.Page {
 
                     Kirigami.Heading {
                         level: 4
-                        text: (selCardCol.row.name || "Process") + " (PID " + (selCardCol.row.pid || "") + ")"
+                        text: (selCardCol.row.name || "Process") + KI18n.i18n(" (PID ") + (selCardCol.row.pid || "") + ")"
                         color: Kirigami.Theme.textColor
                         Layout.fillWidth: true
                     }
 
                     PulseButton {
-                        text: "System Monitor"
+                        text: KI18n.i18n("System Monitor")
                         icon.name: "utilities-system-monitor"
                         onClicked: page.controller.openSystemMonitor()
                     }
 
-                    PulseButton {
-                        id: endProcessBtn
-                        objectName: "endProcessButton"
-                        text: "End process…"
-                        icon.name: "process-stop"
-                        enabled: page.selectedProcess !== null && page.controller.canTerminateProcess(Number(selCardCol.row.pid) || 0, selCardCol.row.startTimeTicks || 0)
-                        onClicked: endProcessDialog.openForProcess(selCardCol.row)
-                    }
-
                     QQC2.Label {
-                        text: page.selectedProcess ? "Active observation" : "Terminated / No longer observed"
+                        text: page.selectedProcess ? KI18n.i18n("Active observation") : KI18n.i18n("Terminated / No longer observed")
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                         font.bold: true
                         color: page.selectedProcess ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.neutralTextColor
@@ -434,7 +426,7 @@ Kirigami.Page {
                         border.color: theme.subtleBorderColor
                         implicitWidth: p1.implicitWidth + 12
                         implicitHeight: p1.implicitHeight + 4
-                        QQC2.Label { id: p1; anchors.centerIn: parent; text: "Owner: " + (selCardCol.row.owner || "Unavailable"); font.pixelSize: Kirigami.Theme.smallFont.pixelSize }
+                        QQC2.Label { id: p1; anchors.centerIn: parent; text: KI18n.i18n("Owner: ") + (selCardCol.row.owner || KI18n.i18n("Unavailable")); font.pixelSize: Kirigami.Theme.smallFont.pixelSize }
                     }
                     Rectangle {
                         radius: theme.pillRadius
@@ -443,7 +435,7 @@ Kirigami.Page {
                         border.color: theme.subtleBorderColor
                         implicitWidth: p2.implicitWidth + 12
                         implicitHeight: p2.implicitHeight + 4
-                        QQC2.Label { id: p2; anchors.centerIn: parent; text: "State: " + (selCardCol.row.state || "Unavailable"); font.pixelSize: Kirigami.Theme.smallFont.pixelSize }
+                        QQC2.Label { id: p2; anchors.centerIn: parent; text: KI18n.i18n("State: ") + (selCardCol.row.state || KI18n.i18n("Unavailable")); font.pixelSize: Kirigami.Theme.smallFont.pixelSize }
                     }
                     Rectangle {
                         radius: theme.pillRadius
@@ -455,7 +447,7 @@ Kirigami.Page {
                         QQC2.Label {
                             id: p3
                             anchors.centerIn: parent
-                            text: "CPU: " + (selCardCol.row.cpuAvailable === false ? "Warming up" : page.metric(selCardCol.row.cpuPercent, "%"))
+                            text: KI18n.i18n("CPU: ") + (selCardCol.row.cpuAvailable === false ? KI18n.i18n("Warming up") : page.metric(selCardCol.row.cpuPercent, "%"))
                             font.bold: true
                             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                         }
@@ -470,7 +462,7 @@ Kirigami.Page {
                         QQC2.Label {
                             id: p4
                             anchors.centerIn: parent
-                            text: "RSS: " + page.metric(selCardCol.row.rssMegabytes, " MiB")
+                            text: KI18n.i18n("RSS: ") + page.metric(selCardCol.row.rssMegabytes, KI18n.i18n(" MiB"))
                             font.bold: true
                             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                         }
@@ -485,7 +477,7 @@ Kirigami.Page {
                         QQC2.Label {
                             id: p5
                             anchors.centerIn: parent
-                            text: "Observed: " + (Number(selCardCol.row.observedAtMs) > 0 ? new Date(Number(selCardCol.row.observedAtMs)).toLocaleTimeString() : "—")
+                            text: KI18n.i18n("Observed: ") + (Number(selCardCol.row.observedAtMs) > 0 ? new Date(Number(selCardCol.row.observedAtMs)).toLocaleTimeString() : "—")
                             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                         }
                     }
@@ -499,9 +491,9 @@ Kirigami.Page {
                         QQC2.Label {
                             id: p6
                             anchors.centerIn: parent
-                            text: "Disk I/O: " + (selCardCol.ioStats && selCardCol.ioStats.available
-                                  ? "Read " + Number(selCardCol.ioStats.readMib).toFixed(1) + " MiB · Write " + Number(selCardCol.ioStats.writeMib).toFixed(1) + " MiB"
-                                  : "Unavailable")
+                            text: KI18n.i18n("Disk I/O: ") + (selCardCol.ioStats && selCardCol.ioStats.available
+                                  ? KI18n.i18n("Read ") + Number(selCardCol.ioStats.readMib).toFixed(1) + KI18n.i18n(" MiB · Write ") + Number(selCardCol.ioStats.writeMib).toFixed(1) + KI18n.i18n(" MiB")
+                                  : KI18n.i18n("Unavailable"))
                             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                         }
                     }
@@ -512,104 +504,10 @@ Kirigami.Page {
                     wrapMode: Text.WordWrap
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                     color: Kirigami.Theme.disabledTextColor
-                    text: "Observed CPU and resident memory describe resource use; a busy process alone does not establish causation."
+                    text: KI18n.i18n("Observed CPU and resident memory describe resource use; a busy process alone does not establish causation.")
                 }
             }
         }
     }
 
-    QQC2.Dialog {
-        id: endProcessDialog
-        objectName: "endProcessDialog"
-        title: "End process?"
-        modal: true
-        anchors.centerIn: parent
-        width: Math.min(page.width - 40, 460)
-        standardButtons: QQC2.Dialog.Cancel
-
-        property int targetPid: 0
-        property var targetStartTime: 0
-        property string targetName: ""
-        property double targetCpu: 0.0
-        property double targetRss: 0.0
-        property string targetOwner: ""
-
-        function openForProcess(row) {
-            if (!row) return
-            targetPid = Number(row.pid) || 0
-            targetStartTime = row.startTimeTicks || 0
-            targetName = String(row.name || "")
-            targetCpu = Number(row.cpuPercent) || 0.0
-            targetRss = Number(row.rssMegabytes) || 0.0
-            targetOwner = String(row.owner || "")
-            forceCheckBox.checked = false
-            endProcessDialog.open()
-        }
-
-        ColumnLayout {
-            width: parent.width
-            spacing: Kirigami.Units.smallSpacing
-
-            QQC2.Label {
-                Layout.fillWidth: true
-                wrapMode: Text.WordWrap
-                text: "Are you sure you want to terminate <b>" + endProcessDialog.targetName
-                      + "</b> (PID " + endProcessDialog.targetPid + ")?"
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                implicitHeight: procSummaryCol.implicitHeight + 12
-                radius: theme.innerRadius
-                color: theme.subtleSurfaceColor
-                border.width: 1
-                border.color: theme.subtleBorderColor
-
-                ColumnLayout {
-                    id: procSummaryCol
-                    anchors.fill: parent
-                    anchors.margins: 6
-                    spacing: 2
-                    QQC2.Label {
-                        text: "CPU: " + page.metric(endProcessDialog.targetCpu, "%")
-                              + " · Memory: " + page.metric(endProcessDialog.targetRss, " MiB")
-                        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                        color: Kirigami.Theme.disabledTextColor
-                    }
-                    QQC2.Label {
-                        text: "Owner: " + (endProcessDialog.targetOwner || "Unavailable")
-                        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                        color: Kirigami.Theme.disabledTextColor
-                    }
-                }
-            }
-
-            QQC2.CheckBox {
-                id: forceCheckBox
-                objectName: "forceTerminateCheckBox"
-                text: "Force terminate immediately (SIGKILL)"
-                Accessible.name: "Force terminate with SIGKILL"
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.topMargin: Kirigami.Units.smallSpacing
-                Item { Layout.fillWidth: true }
-                PulseButton {
-                    text: "Cancel"
-                    onClicked: endProcessDialog.close()
-                }
-                PulseButton {
-                    objectName: "confirmTerminateButton"
-                    text: forceCheckBox.checked ? "Force kill process" : "End process"
-                    icon.name: "process-stop"
-                    accentColor: Kirigami.Theme.negativeTextColor
-                    onClicked: {
-                        endProcessDialog.close()
-                        page.controller.terminateProcess(endProcessDialog.targetPid, endProcessDialog.targetStartTime, forceCheckBox.checked)
-                    }
-                }
-            }
-        }
-    }
 }

@@ -1,28 +1,28 @@
-# Security Policy
+# Security policy
 
-## Supported Versions
+## Supported versions
 
-Security fixes are provided for the latest published release. Development builds may receive fixes before the next release.
+This is development software. Security fixes target the current development branch and latest published development version. Older builds are not maintained unless explicitly stated in their release notes. There is no claim of stable-release support or a guaranteed response time.
 
-| Version | Supported |
-| --- | --- |
-| Latest release | Yes |
-| Older releases | No, unless stated in that release's notes |
+## Report vulnerabilities privately
 
-## Reporting a Vulnerability
+Do not put vulnerabilities, credentials or private telemetry in public issues. Use [GitHub private vulnerability reporting](https://github.com/loofiboss-bit/plasma-hardware-pulse/security/advisories/new) **when enabled**. Include the affected version/commit, repeatable steps, expected and actual behavior, and the impact. Use synthetic or redacted data where possible.
 
-Please do not report security vulnerabilities in public issues. Use [GitHub's private vulnerability reporting](https://github.com/loofiboss-bit/plasma-hardware-pulse/security/advisories/new) if it is enabled. If that option is unavailable, contact the [repository owner](https://github.com/loofiboss-bit) through a private contact method listed on their profile. Include a concise description, affected version or commit, steps to reproduce, and any relevant impact.
+Private reporting requires a repository-owner setting; committing this policy does not enable it. The owner must enable and verify the reporting entry point before public launch, as tracked in [the readiness checklist](docs/public-readiness.md). If the private form is unavailable, use a private contact method explicitly published by [the repository owner](https://github.com/loofiboss-bit). If none is available, do not post exploit details publicly; a working private route remains a launch blocker.
 
-The maintainer will acknowledge reports as soon as practical, assess the issue, and coordinate a fix and disclosure timeline with the reporter. Please allow time for a fix before sharing vulnerability details publicly. Avoid including real credentials or personal data in reports.
+The maintainer will assess reports and coordinate remediation and disclosure with the reporter. This volunteer project does not promise a service-level agreement.
 
-## Local telemetry and saved output
+## Trust boundaries and local data
 
-The application and widget communicate with `loofi-pulse-service` on the user's session D-Bus. The collector runs with the user's existing privileges; it is not a system service or a privilege boundary against other applications running as the same user. Readable local process information is used for live inspection. Background monitoring and login startup are separate opt-in settings.
+- The app/widget and collector communicate over the user's session D-Bus. They run with the same user's existing privileges. This is not a boundary against another application already running as that user.
+- Process inspection is read-only. Pulse does not send process termination signals; use KDE System Monitor for process management.
+- Rolling observations are held in memory. Background monitoring, login startup and persistent numerical history are separate opt-ins.
+- Persistent history stores numerical minute aggregates in a local SQLite database, excluding process identities and command lines. Explicit session/report exports are separate: process details are excluded by default but can be included by the user.
+- Device identities, timestamps and hardware measurements can identify a machine even after process redaction. Review any file before sharing it. Deleted history and retained corruption-recovery copies need separate handling if the user requires secure removal.
+- Imported `.pulse-session` files are untrusted. Format/version, ordering, references, size and point-count checks apply before activation. Limits are 64 MiB and 7,201 points. Atomic saves reduce partial-write risk, but do not make exported data anonymous.
 
-Ordinary rolling telemetry is held in memory. Persistent long-term history is an opt-in feature stored locally in SQLite (`~/.local/share/loofi-pulse/history.db`). In accordance with our zero-identity privacy guarantee, persistent history only stores 1-minute numerical performance aggregates (min, avg, max) for CPU, GPU, memory, disks, and thermals. Process identities, command lines, window titles, and user PIDs are NEVER persisted or stored to disk.
+## Supply chain and disclosure preparation
 
-Sessions and reports are written only through explicit save/export actions. Process names, PIDs, start-time identities and owners are excluded from saved output by default; enabling process details includes potentially identifying information. Device identities, timestamps and hardware measurements can also reveal information about the machine. Review files before sharing them.
+CI uses read-only repository contents permissions for validation and a separate tag-only release job with write permission. Checkout is pinned and does not persist credentials. Full Git history and a snapshot of tracked/non-ignored working-tree files are scanned with a pinned official Gitleaks release, checksum verification and redacted output. A clean scan is evidence from a particular revision, not proof that secrets can never exist. Never suppress a finding broadly; review the exact fingerprint and rotate a confirmed exposed credential before disclosure.
 
-Imported `.pulse-session` files are untrusted data. The loader validates the format version, ordering and references before displaying the recording and enforces a 64 MiB file limit and a 7,201-point telemetry limit. Opening a session must not replace the live recording on error. Saved files are written atomically. These protections do not make a shared session anonymous or establish protection against an application already running as the same user.
-
-Process termination requested via the UI or D-Bus is subject to strict defense-in-depth safety checks: PID <= 1 is blocked, terminating the monitor itself is refused, process UID must strictly match the current user (`getuid()`), critical session and system daemons (`systemd`, `kwin`, `plasmashell`, `pipewire`, `wireplumber`, `dbus`) are protected by a hardcoded blacklist, and process `startTimeTicks` from `/proc/<pid>/stat` is verified before sending signals to prevent PID recycling races.
+Repository visibility, vulnerability reporting, branch protection and optional GitHub security features are owner-managed remote settings. Their status is tracked separately from source changes and must be read back after an authorized change.

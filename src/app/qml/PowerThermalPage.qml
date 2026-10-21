@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import org.kde.ki18n
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
@@ -8,7 +9,7 @@ import "MeasurementLabels.js" as MeasurementLabels
 Kirigami.ScrollablePage {
     id: powerPage
     objectName: "powerPage"
-    title: "Power & Cooling"
+    title: KI18n.i18n("Power & Cooling")
     titleDelegate: Item {
         width: parent ? parent.width : 0
         height: 0
@@ -100,7 +101,7 @@ Kirigami.ScrollablePage {
                     id: pkgCol
                     objectName: "section_cpu"
                     focus: true
-                    Accessible.name: "cpu section"
+                    Accessible.name: KI18n.i18n("cpu section")
                     anchors.fill: parent
                     anchors.margins: Kirigami.Units.largeSpacing
                     spacing: Kirigami.Units.smallSpacing
@@ -122,7 +123,7 @@ Kirigami.ScrollablePage {
                             }
                         }
                         QQC2.Label {
-                            text: "CPU package & power limits"
+                            text: KI18n.i18n("CPU package & power limits")
                             color: Kirigami.Theme.disabledTextColor
                             font.bold: true
                             Layout.fillWidth: true
@@ -135,9 +136,9 @@ Kirigami.ScrollablePage {
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                         text: powerPage.controller.packagePowerAvailable
-                              ? powerPage.controller.packageWatts.toFixed(1) + " W · "
+                              ? powerPage.controller.packageWatts.toFixed(1) + KI18n.i18n(" W · ")
                                 + (powerPage.controller.packagePowerEstimated ? "Estimated" : "Measured")
-                              : "CPU package power: Unavailable"
+                              : KI18n.i18n("CPU package power: Unavailable")
                     }
 
                     Rectangle {
@@ -159,9 +160,9 @@ Kirigami.ScrollablePage {
                         wrapMode: Text.WordWrap
                         font.bold: true
                         text: powerPage.controller.powerLimitsAvailable
-                              ? "Power limits: PL1 " + Math.round(powerPage.controller.pl1LimitWatts) + " W · PL2 "
-                                + Math.round(powerPage.controller.pl2LimitWatts) + " W"
-                              : "Power limits: Unavailable"
+                              ? KI18n.i18n("Power limits: PL1 ") + Math.round(powerPage.controller.pl1LimitWatts) + KI18n.i18n(" W · PL2 ")
+                                + Math.round(powerPage.controller.pl2LimitWatts) + KI18n.i18n(" W")
+                              : KI18n.i18n("Power limits: Unavailable")
                     }
 
                     QQC2.Label {
@@ -172,9 +173,9 @@ Kirigami.ScrollablePage {
                                : Kirigami.Theme.disabledTextColor
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                         text: powerPage.controller.throttleCountersAvailable
-                              ? "Throttle events since boot: " + powerPage.controller.totalThrottleEvents
-                                + " · New this interval: " + powerPage.controller.deltaThrottleEvents
-                              : "Throttle event counters: Unavailable"
+                              ? KI18n.i18n("Throttle events since boot: ") + powerPage.controller.totalThrottleEvents
+                                + KI18n.i18n(" · New this interval: ") + powerPage.controller.deltaThrottleEvents
+                              : KI18n.i18n("Throttle event counters: Unavailable")
                     }
                 }
             }
@@ -204,7 +205,7 @@ Kirigami.ScrollablePage {
                     id: gpuCol
                     objectName: "section_gpu"
                     focus: true
-                    Accessible.name: "gpu section"
+                    Accessible.name: KI18n.i18n("gpu section")
                     anchors.fill: parent
                     anchors.margins: Kirigami.Units.largeSpacing
                     spacing: Kirigami.Units.smallSpacing
@@ -226,7 +227,7 @@ Kirigami.ScrollablePage {
                             }
                         }
                         QQC2.Label {
-                            text: "Graphics (GPU)"
+                            text: KI18n.i18n("Graphics (GPU)")
                             color: Kirigami.Theme.disabledTextColor
                             font.bold: true
                             Layout.fillWidth: true
@@ -234,7 +235,7 @@ Kirigami.ScrollablePage {
                         }
                         QQC2.Label {
                             visible: !powerPage.hasGpuHardware
-                            text: "No GPU detected"
+                            text: KI18n.i18n("No GPU detected")
                             color: Kirigami.Theme.disabledTextColor
                             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                         }
@@ -245,10 +246,10 @@ Kirigami.ScrollablePage {
                         level: 3
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
-                        text: "GPU load: " + (powerPage.controller.gpuBusyAvailable
-                              ? Math.round(powerPage.controller.gpuBusyPercent) + "%" : "Unavailable")
-                              + " · GPU temperature: " + (powerPage.controller.gpuTempAvailable
-                              ? powerPage.formatTemp(powerPage.controller.gpuTempCelsius) : "Unavailable")
+                        text: KI18n.i18n("GPU load: ") + (powerPage.controller.gpuBusyAvailable
+                              ? Math.round(powerPage.controller.gpuBusyPercent) + "%" : KI18n.i18n("Unavailable"))
+                              + KI18n.i18n(" · GPU temperature: ") + (powerPage.controller.gpuTempAvailable
+                              ? powerPage.formatTemp(powerPage.controller.gpuTempCelsius) : KI18n.i18n("Unavailable"))
                     }
 
                     Rectangle {
@@ -271,12 +272,12 @@ Kirigami.ScrollablePage {
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                         font.bold: true
-                        text: "Driver: " + (powerPage.controller.gpuAvailable && powerPage.controller.gpuDriverName
-                              ? powerPage.controller.gpuDriverName : "Unavailable")
-                              + " · Frequency: " + (powerPage.controller.gpuFrequencyAvailable
+                        text: KI18n.i18n("Driver: ") + (powerPage.controller.gpuAvailable && powerPage.controller.gpuDriverName
+                              ? powerPage.controller.gpuDriverName : KI18n.i18n("Unavailable"))
+                              + KI18n.i18n(" · Frequency: ") + (powerPage.controller.gpuFrequencyAvailable
                               ? powerPage.controller.gpuCurrentFreqMhz
-                                + (powerPage.controller.gpuBoostFreqMhz > 0 ? " / " + powerPage.controller.gpuBoostFreqMhz : "") + " MHz"
-                              : "Unavailable")
+                                + (powerPage.controller.gpuBoostFreqMhz > 0 ? " / " + powerPage.controller.gpuBoostFreqMhz : "") + KI18n.i18n(" MHz")
+                              : KI18n.i18n("Unavailable"))
                     }
 
                     QQC2.Label {
@@ -285,11 +286,11 @@ Kirigami.ScrollablePage {
                         wrapMode: Text.WordWrap
                         color: Kirigami.Theme.disabledTextColor
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                        text: "VRAM: " + (powerPage.controller.gpuVramAvailable
-                              ? Math.round(powerPage.controller.gpuVramUsedMib) + " / " + Math.round(powerPage.controller.gpuVramTotalMib) + " MiB"
-                              : "Unavailable")
-                              + " · GPU power: " + (powerPage.controller.gpuPowerAvailable
-                              ? powerPage.controller.gpuPowerWatts.toFixed(1) + " W" : "Unavailable")
+                        text: KI18n.i18n("VRAM: ") + (powerPage.controller.gpuVramAvailable
+                              ? Math.round(powerPage.controller.gpuVramUsedMib) + " / " + Math.round(powerPage.controller.gpuVramTotalMib) + KI18n.i18n(" MiB")
+                              : KI18n.i18n("Unavailable"))
+                              + KI18n.i18n(" · GPU power: ") + (powerPage.controller.gpuPowerAvailable
+                              ? powerPage.controller.gpuPowerWatts.toFixed(1) + KI18n.i18n(" W") : KI18n.i18n("Unavailable"))
                     }
                 }
             }
@@ -319,7 +320,7 @@ Kirigami.ScrollablePage {
                     id: batCol
                     objectName: "section_battery"
                     focus: true
-                    Accessible.name: "battery section"
+                    Accessible.name: KI18n.i18n("battery section")
                     anchors.fill: parent
                     anchors.margins: Kirigami.Units.largeSpacing
                     spacing: Kirigami.Units.smallSpacing
@@ -341,7 +342,7 @@ Kirigami.ScrollablePage {
                             }
                         }
                         QQC2.Label {
-                            text: "Battery & power source"
+                            text: KI18n.i18n("Battery & power source")
                             color: Kirigami.Theme.disabledTextColor
                             font.bold: true
                             Layout.fillWidth: true
@@ -350,8 +351,8 @@ Kirigami.ScrollablePage {
                         QQC2.Label {
                             visible: !powerPage.hasBatteryHardware
                             text: powerPage.controller.batteryStateAvailable
-                                  ? (powerPage.controller.onAcPower ? "AC power · No battery" : "No battery")
-                                  : "No battery detected"
+                                  ? (powerPage.controller.onAcPower ? KI18n.i18n("AC power · No battery") : KI18n.i18n("No battery"))
+                                  : KI18n.i18n("No battery detected")
                             color: Kirigami.Theme.disabledTextColor
                             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                         }
@@ -362,8 +363,8 @@ Kirigami.ScrollablePage {
                         level: 3
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
-                        text: "Power source: " + (powerPage.controller.batteryStateAvailable
-                              ? (powerPage.controller.onAcPower ? "AC power" : "Battery") : "Unavailable")
+                        text: KI18n.i18n("Power source: ") + (powerPage.controller.batteryStateAvailable
+                              ? (powerPage.controller.onAcPower ? KI18n.i18n("AC power") : KI18n.i18n("Battery")) : KI18n.i18n("Unavailable"))
                     }
 
                     Rectangle {
@@ -386,12 +387,12 @@ Kirigami.ScrollablePage {
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                         font.bold: true
-                        text: !powerPage.controller.batteryStateAvailable ? "Battery: Unavailable"
-                              : (!powerPage.controller.batteryPresent ? "Battery: Not present · " + powerPage.controller.batteryTimeRemainingText
-                                 : "Battery: " + (powerPage.controller.batteryLevelAvailable
-                                   ? Math.round(powerPage.controller.batteryPercent) + "%" : "Level unavailable")
+                        text: !powerPage.controller.batteryStateAvailable ? KI18n.i18n("Battery: Unavailable")
+                              : (!powerPage.controller.batteryPresent ? KI18n.i18n("Battery: Not present · ") + powerPage.controller.batteryTimeRemainingText
+                                 : KI18n.i18n("Battery: ") + (powerPage.controller.batteryLevelAvailable
+                                   ? Math.round(powerPage.controller.batteryPercent) + "%" : KI18n.i18n("Level unavailable"))
                                    + " · " + powerPage.controller.batteryTimeRemainingText
-                                   + (powerPage.controller.batteryPowerAvailable ? " · " + powerPage.controller.batteryWatts.toFixed(1) + " W" : ""))
+                                   + (powerPage.controller.batteryPowerAvailable ? " · " + powerPage.controller.batteryWatts.toFixed(1) + KI18n.i18n(" W") : ""))
                     }
 
                     QQC2.Label {
@@ -401,9 +402,9 @@ Kirigami.ScrollablePage {
                         color: Kirigami.Theme.disabledTextColor
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                         text: powerPage.controller.batteryPresent
-                              ? "Battery health: " + (powerPage.controller.batteryHealthAvailable
-                                ? Math.round(powerPage.controller.batteryHealthPercent) + "%" : "Unavailable")
-                              : "Battery health: Unavailable"
+                              ? KI18n.i18n("Battery health: ") + (powerPage.controller.batteryHealthAvailable
+                                ? Math.round(powerPage.controller.batteryHealthPercent) + "%" : KI18n.i18n("Unavailable"))
+                              : KI18n.i18n("Battery health: Unavailable")
                     }
                 }
             }
@@ -433,7 +434,7 @@ Kirigami.ScrollablePage {
                     id: coolCol
                     objectName: "section_cooling"
                     focus: true
-                    Accessible.name: "cooling section"
+                    Accessible.name: KI18n.i18n("cooling section")
                     anchors.fill: parent
                     anchors.margins: Kirigami.Units.largeSpacing
                     spacing: Kirigami.Units.smallSpacing
@@ -455,7 +456,7 @@ Kirigami.ScrollablePage {
                             }
                         }
                         QQC2.Label {
-                            text: "Cooling & device thermal"
+                            text: KI18n.i18n("Cooling & device thermal")
                             color: Kirigami.Theme.disabledTextColor
                             font.bold: true
                             Layout.fillWidth: true
@@ -467,8 +468,8 @@ Kirigami.ScrollablePage {
                         level: 3
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
-                        text: "Fan speed: " + (powerPage.controller.fanAvailable
-                              ? powerPage.controller.primaryFanRpm + " RPM" : "Unavailable")
+                        text: KI18n.i18n("Fan speed: ") + (powerPage.controller.fanAvailable
+                              ? powerPage.controller.primaryFanRpm + KI18n.i18n(" RPM") : KI18n.i18n("Unavailable"))
                     }
 
                     Rectangle {
@@ -489,8 +490,8 @@ Kirigami.ScrollablePage {
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                         font.bold: true
-                        text: "NVMe temperature: " + (powerPage.controller.nvmeTempAvailable
-                              ? powerPage.formatTemp(powerPage.controller.nvmeTempCelsius) : "Unavailable")
+                        text: KI18n.i18n("NVMe temperature: ") + (powerPage.controller.nvmeTempAvailable
+                              ? powerPage.formatTemp(powerPage.controller.nvmeTempCelsius) : KI18n.i18n("Unavailable"))
                     }
 
                     QQC2.Label {
@@ -498,8 +499,8 @@ Kirigami.ScrollablePage {
                         wrapMode: Text.WordWrap
                         color: Kirigami.Theme.disabledTextColor
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                        text: "Wireless temperature: " + (powerPage.controller.wifiTempAvailable
-                              ? powerPage.formatTemp(powerPage.controller.wifiTempCelsius) : "Unavailable")
+                        text: KI18n.i18n("Wireless temperature: ") + (powerPage.controller.wifiTempAvailable
+                              ? powerPage.formatTemp(powerPage.controller.wifiTempCelsius) : KI18n.i18n("Unavailable"))
                     }
                 }
             }
@@ -518,7 +519,7 @@ Kirigami.ScrollablePage {
                 id: profCol
                 objectName: "section_profile"
                 focus: true
-                Accessible.name: "profile section"
+                Accessible.name: KI18n.i18n("profile section")
                 anchors.fill: parent
                 anchors.margins: Kirigami.Units.largeSpacing
                 spacing: Kirigami.Units.smallSpacing
@@ -527,13 +528,13 @@ Kirigami.ScrollablePage {
                     Layout.fillWidth: true
                     Kirigami.Heading {
                         level: 3
-                        text: "Power profile"
+                        text: KI18n.i18n("Power profile")
                         Layout.fillWidth: true
                     }
                     QQC2.Label {
                         text: !powerPage.controller.powerProfileServiceAvailable
-                              ? "Power profile service unavailable"
-                              : "Active profile: " + (powerPage.controller.activePowerProfile || "Unavailable")
+                              ? KI18n.i18n("Power profile service unavailable")
+                              : KI18n.i18n("Active profile: ") + (powerPage.controller.activePowerProfile || KI18n.i18n("Unavailable"))
                         color: powerPage.controller.powerProfileServiceAvailable
                                ? Kirigami.Theme.highlightColor
                                : Kirigami.Theme.disabledTextColor
@@ -556,7 +557,7 @@ Kirigami.ScrollablePage {
                             checked: powerPage.controller.activePowerProfile === profBtn.modelData
                             enabled: powerPage.controller.powerProfileServiceAvailable
                                      && !powerPage.controller.powerProfileChangePending
-                            Accessible.name: profBtn.modelData + (checked ? ", active profile" : ", change power profile")
+                            Accessible.name: profBtn.modelData + (checked ? KI18n.i18n(", active profile") : KI18n.i18n(", change power profile"))
                             onClicked: powerPage.controller.setPowerProfile(profBtn.modelData)
                         }
                     }
@@ -597,14 +598,14 @@ Kirigami.ScrollablePage {
                         }
                         Kirigami.Heading {
                             level: 3
-                            text: "Graphics devices"
+                            text: KI18n.i18n("Graphics devices")
                             Layout.fillWidth: true
                         }
                     }
 
                     QQC2.Label {
                         visible: powerPage.controller.gpuDevices.length === 0
-                        text: "No supported GPU telemetry interface found"
+                        text: KI18n.i18n("No supported GPU telemetry interface found")
                         color: Kirigami.Theme.disabledTextColor
                     }
 
@@ -615,9 +616,9 @@ Kirigami.ScrollablePage {
                             required property var modelData
                             Layout.fillWidth: true
                             text: modelData.name + " · "
-                                  + (modelData.busyAvailable ? Number(modelData.busyPercent).toFixed(0) + "% activity" : "Activity unavailable")
-                                  + " · " + (modelData.temperatureAvailable ? powerPage.formatTemp(modelData.tempCelsius) : "Temperature unavailable")
-                                  + (modelData.available ? "" : " · Disconnected or unsupported")
+                                  + (modelData.busyAvailable ? Number(modelData.busyPercent).toFixed(0) + KI18n.i18n("% activity") : KI18n.i18n("Activity unavailable"))
+                                  + " · " + (modelData.temperatureAvailable ? powerPage.formatTemp(modelData.tempCelsius) : KI18n.i18n("Temperature unavailable"))
+                                  + (modelData.available ? "" : KI18n.i18n(" · Disconnected or unsupported"))
                             checked: powerPage.controller.selectedGpuId === modelData.id
                             onClicked: powerPage.controller.selectedGpuId = modelData.id
                             contentItem: QQC2.Label { text: gpuChoice.text; wrapMode: Text.WordWrap; leftPadding: gpuChoice.indicator.width + 8 }
@@ -629,7 +630,7 @@ Kirigami.ScrollablePage {
                         wrapMode: Text.WordWrap
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                         color: Kirigami.Theme.disabledTextColor
-                        text: "Select a GPU for the live summary and recorded history. Availability depends on the driver."
+                        text: KI18n.i18n("Select a GPU for the live summary and recorded history. Availability depends on the driver.")
                     }
                 }
             }
@@ -660,14 +661,14 @@ Kirigami.ScrollablePage {
                         }
                         Kirigami.Heading {
                             level: 3
-                            text: "Individual batteries"
+                            text: KI18n.i18n("Individual batteries")
                             Layout.fillWidth: true
                         }
                     }
 
                     QQC2.Label {
                         visible: powerPage.controller.batteries.length === 0
-                        text: "No readable batteries present"
+                        text: KI18n.i18n("No readable batteries present")
                         color: Kirigami.Theme.disabledTextColor
                     }
 
@@ -703,8 +704,8 @@ Kirigami.ScrollablePage {
                                     Layout.fillWidth: true
                                     wrapMode: Text.WordWrap
                                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                                    text: (batRow.modelData.available ? Number(batRow.modelData.percent).toFixed(0) + "% charge" : "Charge unavailable")
-                                          + " · " + (batRow.modelData.powerAvailable ? Number(batRow.modelData.watts).toFixed(1) + " W" : "Power unavailable")
+                                    text: (batRow.modelData.available ? Number(batRow.modelData.percent).toFixed(0) + KI18n.i18n("% charge") : KI18n.i18n("Charge unavailable"))
+                                          + " · " + (batRow.modelData.powerAvailable ? Number(batRow.modelData.watts).toFixed(1) + KI18n.i18n(" W") : KI18n.i18n("Power unavailable"))
                                 }
                             }
                         }
@@ -715,7 +716,7 @@ Kirigami.ScrollablePage {
                         wrapMode: Text.WordWrap
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                         color: Kirigami.Theme.disabledTextColor
-                        text: "Battery totals combine compatible energy readings only. Power-source status and battery charging are independent, including USB-C supplies."
+                        text: KI18n.i18n("Battery totals combine compatible energy readings only. Power-source status and battery charging are independent, including USB-C supplies.")
                     }
                 }
             }
@@ -730,11 +731,11 @@ Kirigami.ScrollablePage {
                 id: coresHeading
                 objectName: "section_cores"
                 focus: true
-                text: "CPU cores and sensors"
+                text: KI18n.i18n("CPU cores and sensors")
                 wrapMode: Text.WordWrap
             }
             PulseButton {
-                text: powerPage.sortCoresByLoad ? "Sorted by load" : "Sort by load"
+                text: powerPage.sortCoresByLoad ? KI18n.i18n("Sorted by load") : KI18n.i18n("Sort by load")
                 icon.name: "view-sort-descending"
                 checkable: true
                 checked: powerPage.sortCoresByLoad
@@ -772,7 +773,7 @@ Kirigami.ScrollablePage {
                         RowLayout {
                             Layout.fillWidth: true
                             QQC2.Label {
-                                text: "CPU " + coreCard.modelData.coreId
+                                text: KI18n.i18n("CPU ") + coreCard.modelData.coreId
                                 font.bold: true
                                 color: Kirigami.Theme.textColor
                                 Layout.fillWidth: true
@@ -813,10 +814,10 @@ Kirigami.ScrollablePage {
                             wrapMode: Text.WordWrap
                             font.bold: true
                             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                            text: "Load: " + (coreCard.modelData.loadAvailable
-                                  ? Math.round(coreCard.modelData.loadPercent) + "%" : "Unavailable")
+                            text: KI18n.i18n("Load: ") + (coreCard.modelData.loadAvailable
+                                  ? Math.round(coreCard.modelData.loadPercent) + "%" : KI18n.i18n("Unavailable"))
                                   + " · " + (coreCard.modelData.currentFreqMhz > 0
-                                  ? coreCard.modelData.currentFreqMhz + " MHz" : "Unavailable")
+                                  ? coreCard.modelData.currentFreqMhz + KI18n.i18n(" MHz") : KI18n.i18n("Unavailable"))
                         }
 
                         QQC2.Label {
@@ -824,8 +825,8 @@ Kirigami.ScrollablePage {
                             wrapMode: Text.WordWrap
                             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                             color: Kirigami.Theme.disabledTextColor
-                            text: "Throttle count: " + (coreCard.modelData.throttleCountersAvailable
-                                  ? coreCard.modelData.throttleCount : "Unavailable")
+                            text: KI18n.i18n("Throttle count: ") + (coreCard.modelData.throttleCountersAvailable
+                                  ? coreCard.modelData.throttleCount : KI18n.i18n("Unavailable"))
                         }
                     }
                 }
@@ -845,14 +846,14 @@ Kirigami.ScrollablePage {
                 id: sensorsCol
                 objectName: "section_sensors"
                 focus: true
-                Accessible.name: "sensors section"
+                Accessible.name: KI18n.i18n("sensors section")
                 anchors.fill: parent
                 anchors.margins: Kirigami.Units.largeSpacing
                 spacing: Kirigami.Units.mediumSpacing
 
                 Kirigami.Heading {
                     level: 3
-                    text: "Detected sensors"
+                    text: KI18n.i18n("Detected sensors")
                     Layout.fillWidth: true
                 }
 
@@ -890,12 +891,12 @@ Kirigami.ScrollablePage {
                                         wrapMode: Text.WordWrap
                                         font.bold: true
                                         text: sensorTile.modelData.domainName + " · " + sensorTile.modelData.label + ": "
-                                              + (sensorTile.modelData.available ? powerPage.formatTemp(sensorTile.modelData.currentCelsius) : "Unavailable")
+                                              + (sensorTile.modelData.available ? powerPage.formatTemp(sensorTile.modelData.currentCelsius) : KI18n.i18n("Unavailable"))
                                         Accessible.name: text
                                     }
                                     QQC2.Label {
                                         visible: sensorTile.modelData.limitsAvailable
-                                        text: "Margin " + powerPage.formatTemp(Number(sensorTile.modelData.headroomCelsius))
+                                        text: KI18n.i18n("Margin ") + MeasurementLabels.formatTemperatureDelta(Number(sensorTile.modelData.headroomCelsius), powerPage.controller.temperatureUnit)
                                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                                         color: Kirigami.Theme.disabledTextColor
                                     }
@@ -925,7 +926,7 @@ Kirigami.ScrollablePage {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
                     color: Kirigami.Theme.disabledTextColor
-                    text: "No supported temperature sensors were found."
+                    text: KI18n.i18n("No supported temperature sensors were found.")
                 }
             }
         }

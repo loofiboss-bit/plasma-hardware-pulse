@@ -87,6 +87,8 @@ struct GpuSnapshot
 {
     QString identity;
     QString name;
+    QString temperatureSensorId;
+    QString temperatureSensorLabel;
     QString unavailableReason;
     bool available = false;
     bool frequencyAvailable = false;

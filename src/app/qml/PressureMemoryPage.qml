@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import org.kde.ki18n
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
@@ -7,7 +8,7 @@ import org.kde.kirigami as Kirigami
 Kirigami.ScrollablePage {
     id: psiPage
     objectName: "pressurePage"
-    title: "Memory & Pressure"
+    title: KI18n.i18n("Memory & Pressure")
     titleDelegate: Item {
         width: parent ? parent.width : 0
         height: 0
@@ -87,7 +88,7 @@ Kirigami.ScrollablePage {
                 id: expRow
                 objectName: "section_overview"
                 focus: true
-                Accessible.name: "overview section"
+                Accessible.name: KI18n.i18n("overview section")
                 anchors.fill: parent
                 anchors.margins: Kirigami.Units.largeSpacing
                 spacing: Kirigami.Units.largeSpacing
@@ -116,7 +117,7 @@ Kirigami.ScrollablePage {
 
                         Kirigami.Heading {
                             level: 2
-                            text: "Memory & system pressure (PSI)"
+                            text: KI18n.i18n("Memory & system pressure (PSI)")
                             color: Kirigami.Theme.textColor
                             Layout.fillWidth: true
                             wrapMode: Text.WordWrap
@@ -125,7 +126,7 @@ Kirigami.ScrollablePage {
 
                     QQC2.Label {
                         Layout.fillWidth: true
-                        text: "Linux Pressure Stall Information (PSI) measures time tasks spend waiting for CPU, memory, or storage. High RAM use alone does not mean the system is under pressure. The Responsiveness index runs from 0 to 100; higher is better, with 100 meaning little observed pressure. Raw PSI wait percentages increase with stalled work."
+                        text: KI18n.i18n("Linux Pressure Stall Information (PSI) measures time tasks spend waiting for CPU, memory, or storage. High RAM use alone does not mean the system is under pressure. The Responsiveness index runs from 0 to 100; higher is better, with 100 meaning little observed pressure. Raw PSI wait percentages increase with stalled work.")
                         color: Kirigami.Theme.textColor
                         wrapMode: Text.WordWrap
                     }
@@ -145,8 +146,8 @@ Kirigami.ScrollablePage {
                             QQC2.Label {
                                 id: scorePillLbl
                                 anchors.centerIn: parent
-                                text: "Responsiveness index: " + (psiPage.controller.psiAvailable
-                                      ? psiPage.controller.responsivenessScore.toFixed(1) + "/100" : "Unavailable")
+                                text: KI18n.i18n("Responsiveness index: ") + (psiPage.controller.psiAvailable
+                                      ? psiPage.controller.responsivenessScore.toFixed(1) + "/100" : KI18n.i18n("Unavailable"))
                                 font.bold: true
                                 font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                                 color: Kirigami.Theme.textColor
@@ -164,7 +165,7 @@ Kirigami.ScrollablePage {
                             QQC2.Label {
                                 id: stallPillLbl
                                 anchors.centerIn: parent
-                                text: "Total stall rate: " + Math.round(psiPage.controller.psiCpuStallMs + psiPage.controller.psiMemStallMs + psiPage.controller.psiIoStallMs) + " ms/s"
+                                text: KI18n.i18n("Total stall rate: ") + Math.round(psiPage.controller.psiCpuStallMs + psiPage.controller.psiMemStallMs + psiPage.controller.psiIoStallMs) + KI18n.i18n(" ms/s")
                                 font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                                 color: Kirigami.Theme.disabledTextColor
                             }
@@ -238,7 +239,7 @@ Kirigami.ScrollablePage {
                         }
                         QQC2.Label {
                             Layout.alignment: Qt.AlignHCenter
-                            text: "RESPONSIVENESS"
+                            text: KI18n.i18n("RESPONSIVENESS")
                             font.bold: true
                             font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 2)
                             color: Kirigami.Theme.disabledTextColor
@@ -270,7 +271,7 @@ Kirigami.ScrollablePage {
                     id: cpuPressureColumn
                     objectName: "section_cpu"
                     focus: true
-                    Accessible.name: "cpu section"
+                    Accessible.name: KI18n.i18n("cpu section")
                     anchors.fill: parent
                     anchors.margins: Kirigami.Units.largeSpacing
                     spacing: 8
@@ -278,7 +279,7 @@ Kirigami.ScrollablePage {
                     RowLayout {
                         Layout.fillWidth: true
                         QQC2.Label {
-                            text: "CPU PSI wait"
+                            text: KI18n.i18n("CPU PSI wait")
                             color: theme.cpuAccent
                             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                             font.bold: true
@@ -292,7 +293,7 @@ Kirigami.ScrollablePage {
                             QQC2.Label {
                                 id: cpuStallBadge
                                 anchors.centerIn: parent
-                                text: psiPage.controller.psiCpuAvailable ? Math.round(psiPage.controller.psiCpuStallMs) + " ms/s" : "N/A"
+                                text: psiPage.controller.psiCpuAvailable ? Math.round(psiPage.controller.psiCpuStallMs) + KI18n.i18n(" ms/s") : "N/A"
                                 font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                                 font.bold: true
                                 color: Kirigami.Theme.disabledTextColor
@@ -302,9 +303,9 @@ Kirigami.ScrollablePage {
 
                     QQC2.Label {
                         text: psiPage.controller.psiCpuAvailable
-                              ? ("PSI wait some: " + psiPage.controller.psiCpuSome10.toFixed(2) + "%  ("
-                                 + Math.round(psiPage.controller.psiCpuStallMs) + " ms/s)")
-                              : "Unavailable"
+                              ? (KI18n.i18n("PSI wait some: ") + psiPage.controller.psiCpuSome10.toFixed(2) + "%  ("
+                                 + Math.round(psiPage.controller.psiCpuStallMs) + KI18n.i18n(" ms/s)"))
+                              : KI18n.i18n("Unavailable")
                         color: Kirigami.Theme.textColor
                         font.bold: true
                         Layout.fillWidth: true
@@ -326,7 +327,7 @@ Kirigami.ScrollablePage {
                     }
 
                     QQC2.Label {
-                        text: "Percentage of time at least one runnable thread is delayed waiting for CPU time."
+                        text: KI18n.i18n("Percentage of time at least one runnable thread is delayed waiting for CPU time.")
                         color: Kirigami.Theme.disabledTextColor
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                         wrapMode: Text.WordWrap
@@ -348,7 +349,7 @@ Kirigami.ScrollablePage {
                     id: memoryPressureColumn
                     objectName: "section_memory"
                     focus: true
-                    Accessible.name: "memory section"
+                    Accessible.name: KI18n.i18n("memory section")
                     anchors.fill: parent
                     anchors.margins: Kirigami.Units.largeSpacing
                     spacing: 8
@@ -356,7 +357,7 @@ Kirigami.ScrollablePage {
                     RowLayout {
                         Layout.fillWidth: true
                         QQC2.Label {
-                            text: "Memory PSI wait"
+                            text: KI18n.i18n("Memory PSI wait")
                             color: theme.psiAccent
                             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                             font.bold: true
@@ -370,7 +371,7 @@ Kirigami.ScrollablePage {
                             QQC2.Label {
                                 id: memStallBadge
                                 anchors.centerIn: parent
-                                text: psiPage.controller.psiMemoryAvailable ? Math.round(psiPage.controller.psiMemStallMs) + " ms/s" : "N/A"
+                                text: psiPage.controller.psiMemoryAvailable ? Math.round(psiPage.controller.psiMemStallMs) + KI18n.i18n(" ms/s") : "N/A"
                                 font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                                 font.bold: true
                                 color: Kirigami.Theme.disabledTextColor
@@ -380,10 +381,10 @@ Kirigami.ScrollablePage {
 
                     QQC2.Label {
                         text: psiPage.controller.psiMemoryAvailable
-                              ? ("PSI wait some: " + psiPage.controller.psiMemSome10.toFixed(2) + "% | full wait: "
-                                 + (psiPage.controller.psiMemoryFullAvailable ? psiPage.controller.psiMemFull10.toFixed(2) + "%" : "Unavailable")
-                                 + " (" + Math.round(psiPage.controller.psiMemStallMs) + " ms/s)")
-                              : "Unavailable"
+                              ? (KI18n.i18n("PSI wait some: ") + psiPage.controller.psiMemSome10.toFixed(2) + KI18n.i18n("% | full wait: ")
+                                 + (psiPage.controller.psiMemoryFullAvailable ? psiPage.controller.psiMemFull10.toFixed(2) + "%" : KI18n.i18n("Unavailable"))
+                                 + " (" + Math.round(psiPage.controller.psiMemStallMs) + KI18n.i18n(" ms/s)"))
+                              : KI18n.i18n("Unavailable")
                         color: Kirigami.Theme.textColor
                         font.bold: true
                         Layout.fillWidth: true
@@ -423,7 +424,7 @@ Kirigami.ScrollablePage {
                     }
 
                     QQC2.Label {
-                        text: "Measures actual thread stall time spent on ZRAM compression, page reclaim, and allocation."
+                        text: KI18n.i18n("Measures actual thread stall time spent on ZRAM compression, page reclaim, and allocation.")
                         color: Kirigami.Theme.disabledTextColor
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                         wrapMode: Text.WordWrap
@@ -445,7 +446,7 @@ Kirigami.ScrollablePage {
                     id: ioPressureColumn
                     objectName: "section_storage"
                     focus: true
-                    Accessible.name: "storage section"
+                    Accessible.name: KI18n.i18n("storage section")
                     anchors.fill: parent
                     anchors.margins: Kirigami.Units.largeSpacing
                     spacing: 8
@@ -453,7 +454,7 @@ Kirigami.ScrollablePage {
                     RowLayout {
                         Layout.fillWidth: true
                         QQC2.Label {
-                            text: "Storage and I/O PSI wait"
+                            text: KI18n.i18n("Storage and I/O PSI wait")
                             color: theme.storageAccent
                             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                             font.bold: true
@@ -467,7 +468,7 @@ Kirigami.ScrollablePage {
                             QQC2.Label {
                                 id: ioStallBadge
                                 anchors.centerIn: parent
-                                text: psiPage.controller.psiIoAvailable ? Math.round(psiPage.controller.psiIoStallMs) + " ms/s" : "N/A"
+                                text: psiPage.controller.psiIoAvailable ? Math.round(psiPage.controller.psiIoStallMs) + KI18n.i18n(" ms/s") : "N/A"
                                 font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                                 font.bold: true
                                 color: Kirigami.Theme.disabledTextColor
@@ -477,10 +478,10 @@ Kirigami.ScrollablePage {
 
                     QQC2.Label {
                         text: psiPage.controller.psiIoAvailable
-                              ? ("PSI wait some: " + psiPage.controller.psiIoSome10.toFixed(2) + "% | full wait: "
-                                 + (psiPage.controller.psiIoFullAvailable ? psiPage.controller.psiIoFull10.toFixed(2) + "%" : "Unavailable")
-                                 + " (" + Math.round(psiPage.controller.psiIoStallMs) + " ms/s)")
-                              : "Unavailable"
+                              ? (KI18n.i18n("PSI wait some: ") + psiPage.controller.psiIoSome10.toFixed(2) + KI18n.i18n("% | full wait: ")
+                                 + (psiPage.controller.psiIoFullAvailable ? psiPage.controller.psiIoFull10.toFixed(2) + "%" : KI18n.i18n("Unavailable"))
+                                 + " (" + Math.round(psiPage.controller.psiIoStallMs) + KI18n.i18n(" ms/s)"))
+                              : KI18n.i18n("Unavailable")
                         color: Kirigami.Theme.textColor
                         font.bold: true
                         Layout.fillWidth: true
@@ -503,8 +504,8 @@ Kirigami.ScrollablePage {
 
                     QQC2.Label {
                         visible: psiPage.controller.diskThroughputAvailable
-                        text: "Disk throughput: " + psiPage.controller.diskReadMibPerSec.toFixed(1) + " MiB/s read · "
-                              + psiPage.controller.diskWriteMibPerSec.toFixed(1) + " MiB/s write"
+                        text: KI18n.i18n("Disk throughput: ") + psiPage.controller.diskReadMibPerSec.toFixed(1) + KI18n.i18n(" MiB/s read · ")
+                              + psiPage.controller.diskWriteMibPerSec.toFixed(1) + KI18n.i18n(" MiB/s write")
                         color: theme.storageAccent
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                         font.bold: true
@@ -517,9 +518,9 @@ Kirigami.ScrollablePage {
                         objectName: "section_network"
                         focus: true
                         text: psiPage.controller.netThroughputAvailable
-                              ? "Network throughput: ↓" + psiPage.controller.netRxMibPerSec.toFixed(2) + " MiB/s · ↑"
-                                + psiPage.controller.netTxMibPerSec.toFixed(2) + " MiB/s"
-                              : "Network throughput: Unavailable"
+                              ? KI18n.i18n("Network throughput: ↓") + psiPage.controller.netRxMibPerSec.toFixed(2) + KI18n.i18n(" MiB/s · ↑")
+                                + psiPage.controller.netTxMibPerSec.toFixed(2) + KI18n.i18n(" MiB/s")
+                              : KI18n.i18n("Network throughput: Unavailable")
                         color: theme.psiAccent
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                         font.bold: true
@@ -529,8 +530,8 @@ Kirigami.ScrollablePage {
 
                     QQC2.Label {
                         text: psiPage.controller.diskWaitProcessCount > 0
-                              ? (psiPage.controller.diskWaitProcessCount + " process(es) currently in uninterruptible disk wait (state D).")
-                              : "Indicates when threads are blocked waiting for synchronous NVMe/disk transactions."
+                              ? (psiPage.controller.diskWaitProcessCount + KI18n.i18n(" process(es) currently in uninterruptible disk wait (state D)."))
+                              : KI18n.i18n("Indicates when threads are blocked waiting for synchronous NVMe/disk transactions.")
                         color: psiPage.controller.diskWaitProcessCount > 0 ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.disabledTextColor
                         font.bold: psiPage.controller.diskWaitProcessCount > 0
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
@@ -544,7 +545,7 @@ Kirigami.ScrollablePage {
         // 3. Visual Memory, ZRAM Compression & Swap Pipeline
         Kirigami.Heading {
             level: 3
-            text: "Memory use, compression and swap"
+            text: KI18n.i18n("Memory use, compression and swap")
         }
 
         Rectangle {
@@ -559,7 +560,7 @@ Kirigami.ScrollablePage {
                 id: zramCol
                 objectName: "section_allocation"
                 focus: true
-                Accessible.name: "allocation section"
+                Accessible.name: KI18n.i18n("allocation section")
                 anchors.fill: parent
                 anchors.margins: Kirigami.Units.largeSpacing
                 spacing: Kirigami.Units.mediumSpacing
@@ -583,17 +584,17 @@ Kirigami.ScrollablePage {
                             anchors.margins: 8
                             spacing: 2
                             QQC2.Label {
-                                text: "Physical RAM"
+                                text: KI18n.i18n("Physical RAM")
                                 color: theme.cpuAccent
                                 font.bold: true
                                 font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                             }
                             QQC2.Label {
                                 text: psiPage.controller.memoryAvailable
-                                      ? (psiPage.controller.ramUsedGib.toFixed(2) + " GiB / "
-                                         + psiPage.controller.ramTotalGib.toFixed(2) + " GiB ("
+                                      ? (psiPage.controller.ramUsedGib.toFixed(2) + KI18n.i18n(" GiB / ")
+                                         + psiPage.controller.ramTotalGib.toFixed(2) + KI18n.i18n(" GiB (")
                                          + psiPage.controller.ramUsedPercent.toFixed(1) + "%)")
-                                      : "Unavailable"
+                                      : KI18n.i18n("Unavailable")
                                 font.bold: true
                                 wrapMode: Text.WordWrap
                                 Layout.fillWidth: true
@@ -614,16 +615,16 @@ Kirigami.ScrollablePage {
                             anchors.margins: 8
                             spacing: 2
                             QQC2.Label {
-                                text: "ZRAM Compression"
+                                text: KI18n.i18n("ZRAM Compression")
                                 color: theme.psiAccent
                                 font.bold: true
                                 font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                             }
                             QQC2.Label {
-                                text: !psiPage.controller.zramAvailable ? "ZRAM: Unavailable"
+                                text: !psiPage.controller.zramAvailable ? KI18n.i18n("ZRAM: Unavailable")
                                       : (psiPage.controller.zramCompressionAvailable
-                                         ? ("ZRAM: " + psiPage.controller.zramCompressionRatio.toFixed(2) + "× compression")
-                                         : "ZRAM: No compressed pages in use")
+                                         ? (KI18n.i18n("ZRAM: ") + psiPage.controller.zramCompressionRatio.toFixed(2) + KI18n.i18n("× compression"))
+                                         : KI18n.i18n("ZRAM: No compressed pages in use"))
                                 font.bold: true
                                 wrapMode: Text.WordWrap
                                 Layout.fillWidth: true
@@ -644,16 +645,16 @@ Kirigami.ScrollablePage {
                             anchors.margins: 8
                             spacing: 2
                             QQC2.Label {
-                                text: "Swap Allocation"
+                                text: KI18n.i18n("Swap Allocation")
                                 color: theme.powerAccent
                                 font.bold: true
                                 font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                             }
                             QQC2.Label {
                                 text: psiPage.controller.swapAvailable
-                                      ? "Swap used: " + psiPage.controller.swapUsedGib.toFixed(2) + " / "
-                                        + psiPage.controller.swapTotalGib.toFixed(2) + " GiB"
-                                      : "Swap: Unavailable"
+                                      ? KI18n.i18n("Swap used: ") + psiPage.controller.swapUsedGib.toFixed(2) + " / "
+                                        + psiPage.controller.swapTotalGib.toFixed(2) + KI18n.i18n(" GiB")
+                                      : KI18n.i18n("Swap: Unavailable")
                                 font.bold: true
                                 wrapMode: Text.WordWrap
                                 Layout.fillWidth: true
@@ -685,10 +686,10 @@ Kirigami.ScrollablePage {
 
                     QQC2.Label {
                         Layout.fillWidth: true
-                        text: !psiPage.controller.zramAvailable ? "ZRAM details: Unavailable"
-                              : ("ZRAM data: " + Math.round(psiPage.controller.zramOrigMib) + " MiB before compression, "
-                                 + Math.round(psiPage.controller.zramComprMib) + " MiB compressed payload and "
-                                 + Math.round(psiPage.controller.zramMemUsedMib) + " MiB allocator memory.")
+                        text: !psiPage.controller.zramAvailable ? KI18n.i18n("ZRAM details: Unavailable")
+                              : (KI18n.i18n("ZRAM data: ") + Math.round(psiPage.controller.zramOrigMib) + KI18n.i18n(" MiB before compression, ")
+                                 + Math.round(psiPage.controller.zramComprMib) + KI18n.i18n(" MiB compressed payload and ")
+                                 + Math.round(psiPage.controller.zramMemUsedMib) + KI18n.i18n(" MiB allocator memory."))
                         color: Kirigami.Theme.disabledTextColor
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                         wrapMode: Text.WordWrap
@@ -707,15 +708,15 @@ Kirigami.ScrollablePage {
                 id: processesHeading
                 objectName: "section_processes"
                 focus: true
-                text: "Concurrent resource use"
+                text: KI18n.i18n("Concurrent resource use")
             }
 
             Repeater {
                 model: [
-                    { key: "combined", label: "Sort: Combined" },
-                    { key: "cpu", label: "Sort: CPU %" },
-                    { key: "rss", label: "Sort: Memory RSS" },
-                    { key: "disk", label: "Sort: Disk Wait" }
+                    { key: "combined", label: KI18n.i18n("Sort: Combined") },
+                    { key: "cpu", label: KI18n.i18n("Sort: CPU %") },
+                    { key: "rss", label: KI18n.i18n("Sort: Memory RSS") },
+                    { key: "disk", label: KI18n.i18n("Sort: Disk Wait") }
                 ]
                 delegate: PulseButton {
                     id: sortBtn
@@ -729,7 +730,7 @@ Kirigami.ScrollablePage {
 
             PulseButton {
                 icon.name: "utilities-system-monitor"
-                text: "Open System Monitor"
+                text: KI18n.i18n("Open System Monitor")
                 onClicked: psiPage.controller.openSystemMonitor()
             }
         }
@@ -759,11 +760,11 @@ Kirigami.ScrollablePage {
                         objectName: "processRow"
                         icon.name: processCard.expanded ? "arrow-down" : "arrow-right"
                         text: processCard.modelData.name + " · " + Number(processCard.modelData.cpuPercent).toFixed(1)
-                              + "% CPU · " + Math.round(Number(processCard.modelData.rssMegabytes)) + " MiB"
-                              + (processCard.modelData.inDiskWait ? " · DISK WAIT (D)" : "")
+                              + KI18n.i18n("% CPU · ") + Math.round(Number(processCard.modelData.rssMegabytes)) + KI18n.i18n(" MiB")
+                              + (processCard.modelData.inDiskWait ? KI18n.i18n(" · DISK WAIT (D)") : "")
                         checkable: true
                         checked: processCard.expanded
-                        Accessible.name: text + (checked ? ". Collapse process details" : ". Expand process details")
+                        Accessible.name: text + (checked ? KI18n.i18n(". Collapse process details") : KI18n.i18n(". Expand process details"))
                         onClicked: psiPage.expandedProcessIdentity = processCard.expanded ? "" : processCard.identity
 
                         contentItem: RowLayout {
@@ -789,7 +790,7 @@ Kirigami.ScrollablePage {
                                 border.color: Kirigami.Theme.negativeTextColor
                                 implicitWidth: dwLbl.implicitWidth + 8
                                 implicitHeight: dwLbl.implicitHeight + 4
-                                QQC2.Label { id: dwLbl; anchors.centerIn: parent; text: "DISK WAIT (D)"; font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 2); font.bold: true; color: Kirigami.Theme.negativeTextColor }
+                                QQC2.Label { id: dwLbl; anchors.centerIn: parent; text: KI18n.i18n("DISK WAIT (D)"); font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 2); font.bold: true; color: Kirigami.Theme.negativeTextColor }
                             }
                             Rectangle {
                                 radius: theme.pillRadius
@@ -798,7 +799,7 @@ Kirigami.ScrollablePage {
                                 border.color: theme.cpuAccent
                                 implicitWidth: cpuPillLbl.implicitWidth + 8
                                 implicitHeight: cpuPillLbl.implicitHeight + 4
-                                QQC2.Label { id: cpuPillLbl; anchors.centerIn: parent; text: Number(processCard.modelData.cpuPercent).toFixed(1) + "% CPU"; font.pixelSize: Kirigami.Theme.smallFont.pixelSize; font.bold: true; color: theme.cpuAccent }
+                                QQC2.Label { id: cpuPillLbl; anchors.centerIn: parent; text: Number(processCard.modelData.cpuPercent).toFixed(1) + KI18n.i18n("% CPU"); font.pixelSize: Kirigami.Theme.smallFont.pixelSize; font.bold: true; color: theme.cpuAccent }
                             }
                             Rectangle {
                                 radius: theme.pillRadius
@@ -807,7 +808,7 @@ Kirigami.ScrollablePage {
                                 border.color: theme.subtleBorderColor
                                 implicitWidth: rssPillLbl.implicitWidth + 8
                                 implicitHeight: rssPillLbl.implicitHeight + 4
-                                QQC2.Label { id: rssPillLbl; anchors.centerIn: parent; text: Math.round(Number(processCard.modelData.rssMegabytes)) + " MiB"; font.pixelSize: Kirigami.Theme.smallFont.pixelSize; color: Kirigami.Theme.disabledTextColor }
+                                QQC2.Label { id: rssPillLbl; anchors.centerIn: parent; text: Math.round(Number(processCard.modelData.rssMegabytes)) + KI18n.i18n(" MiB"); font.pixelSize: Kirigami.Theme.smallFont.pixelSize; color: Kirigami.Theme.disabledTextColor }
                             }
                         }
                     }
@@ -828,10 +829,10 @@ Kirigami.ScrollablePage {
                                 Layout.fillWidth: true
                                 wrapMode: Text.WordWrap
                                 font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                                text: "PID " + processCard.modelData.pid + " · start ticks " + processCard.modelData.startTimeTicks
-                                      + " · observed " + (Number(processCard.modelData.observedAtMs) > 0
-                                          ? new Date(Number(processCard.modelData.observedAtMs)).toLocaleTimeString() : "Unavailable")
-                                      + ". Concurrent resource use does not establish causation."
+                                text: KI18n.i18n("PID ") + processCard.modelData.pid + KI18n.i18n(" · start ticks ") + processCard.modelData.startTimeTicks
+                                      + KI18n.i18n(" · observed ") + (Number(processCard.modelData.observedAtMs) > 0
+                                          ? new Date(Number(processCard.modelData.observedAtMs)).toLocaleTimeString() : KI18n.i18n("Unavailable"))
+                                      + KI18n.i18n(". Concurrent resource use does not establish causation.")
                             }
                         }
                     }

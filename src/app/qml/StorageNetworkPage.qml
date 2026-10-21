@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import org.kde.ki18n
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
@@ -7,7 +8,7 @@ import org.kde.kirigami as Kirigami
 Kirigami.ScrollablePage {
     id: page
     objectName: "storageNetworkPage"
-    title: "Storage & Network"
+    title: KI18n.i18n("Storage & Network")
     titleDelegate: Item {
         width: parent ? parent.width : 0
         height: 0
@@ -25,7 +26,7 @@ Kirigami.ScrollablePage {
     }
 
     function metric(value, suffix) {
-        return value !== undefined && isFinite(Number(value)) ? Number(value).toFixed(2) + suffix : "Unavailable"
+        return value !== undefined && isFinite(Number(value)) ? Number(value).toFixed(2) + suffix : KI18n.i18n("Unavailable")
     }
 
     ColumnLayout {
@@ -60,7 +61,7 @@ Kirigami.ScrollablePage {
 
                     Kirigami.Heading {
                         level: 3
-                        text: "Devices & network interfaces"
+                        text: KI18n.i18n("Devices & network interfaces")
                         Layout.fillWidth: true
                     }
                 }
@@ -70,7 +71,7 @@ Kirigami.ScrollablePage {
                     wrapMode: Text.WordWrap
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                     color: Kirigami.Theme.disabledTextColor
-                    text: "Live device readings. Physical and virtual devices are monitored individually. Aggregated totals use physical interfaces by default to avoid double-counting virtual tunnel or container traffic."
+                    text: KI18n.i18n("Live device readings. Physical and virtual devices are monitored individually. Aggregated totals use physical interfaces by default to avoid double-counting virtual tunnel or container traffic.")
                 }
             }
         }
@@ -79,22 +80,22 @@ Kirigami.ScrollablePage {
         RowLayout {
             Layout.fillWidth: true
             Kirigami.Heading {
-                text: "Storage devices"
+                text: KI18n.i18n("Storage devices")
                 level: 2
                 Layout.fillWidth: true
             }
 
             QQC2.RadioButton {
-                text: "Auto physical totals"
+                text: KI18n.i18n("Auto physical totals")
                 checked: page.controller.selectedStorageId.length === 0
                 onClicked: page.controller.selectedStorageId = ""
-                Accessible.name: "Use automatic physical device totals for storage history"
+                Accessible.name: KI18n.i18n("Use automatic physical device totals for storage history")
             }
         }
 
         QQC2.Label {
             visible: page.controller.storageDevices.length === 0
-            text: "No readable storage devices found"
+            text: KI18n.i18n("No readable storage devices found")
             color: Kirigami.Theme.disabledTextColor
         }
 
@@ -150,7 +151,7 @@ Kirigami.ScrollablePage {
                                 QQC2.Label {
                                     id: typeBadgeLbl
                                     anchors.centerIn: parent
-                                    text: diskCard.modelData.partition ? "Partition" : (diskCard.modelData.physical ? "Physical Drive" : "Virtual")
+                                    text: diskCard.modelData.partition ? "Partition" : (diskCard.modelData.physical ? KI18n.i18n("Physical Drive") : "Virtual")
                                     font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 2)
                                     font.bold: true
                                     color: Kirigami.Theme.disabledTextColor
@@ -174,9 +175,9 @@ Kirigami.ScrollablePage {
                                     id: r1
                                     anchors.fill: parent
                                     anchors.margins: 6
-                                    QQC2.Label { text: "Read:"; font.pixelSize: Kirigami.Theme.smallFont.pixelSize; color: Kirigami.Theme.disabledTextColor }
+                                    QQC2.Label { text: KI18n.i18n("Read:"); font.pixelSize: Kirigami.Theme.smallFont.pixelSize; color: Kirigami.Theme.disabledTextColor }
                                     QQC2.Label {
-                                        text: diskCard.modelData.available ? page.metric(diskCard.modelData.readMibPerSec, " MiB/s") : "—"
+                                        text: diskCard.modelData.available ? page.metric(diskCard.modelData.readMibPerSec, KI18n.i18n(" MiB/s")) : "—"
                                         font.bold: true
                                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                                         color: theme.storageAccent
@@ -193,9 +194,9 @@ Kirigami.ScrollablePage {
                                     id: r2
                                     anchors.fill: parent
                                     anchors.margins: 6
-                                    QQC2.Label { text: "Write:"; font.pixelSize: Kirigami.Theme.smallFont.pixelSize; color: Kirigami.Theme.disabledTextColor }
+                                    QQC2.Label { text: KI18n.i18n("Write:"); font.pixelSize: Kirigami.Theme.smallFont.pixelSize; color: Kirigami.Theme.disabledTextColor }
                                     QQC2.Label {
-                                        text: diskCard.modelData.available ? page.metric(diskCard.modelData.writeMibPerSec, " MiB/s") : "—"
+                                        text: diskCard.modelData.available ? page.metric(diskCard.modelData.writeMibPerSec, KI18n.i18n(" MiB/s")) : "—"
                                         font.bold: true
                                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                                         color: theme.cpuAccent
@@ -212,7 +213,7 @@ Kirigami.ScrollablePage {
                                     id: r3
                                     anchors.fill: parent
                                     anchors.margins: 6
-                                    QQC2.Label { text: "IOPS:"; font.pixelSize: Kirigami.Theme.smallFont.pixelSize; color: Kirigami.Theme.disabledTextColor }
+                                    QQC2.Label { text: KI18n.i18n("IOPS:"); font.pixelSize: Kirigami.Theme.smallFont.pixelSize; color: Kirigami.Theme.disabledTextColor }
                                     QQC2.Label {
                                         text: diskCard.modelData.available ? page.metric(diskCard.modelData.iops, "") : "—"
                                         font.bold: true
@@ -230,9 +231,9 @@ Kirigami.ScrollablePage {
                                     id: r4
                                     anchors.fill: parent
                                     anchors.margins: 6
-                                    QQC2.Label { text: "Avg Latency:"; font.pixelSize: Kirigami.Theme.smallFont.pixelSize; color: Kirigami.Theme.disabledTextColor }
+                                    QQC2.Label { text: KI18n.i18n("Avg Latency:"); font.pixelSize: Kirigami.Theme.smallFont.pixelSize; color: Kirigami.Theme.disabledTextColor }
                                     QQC2.Label {
-                                        text: diskCard.modelData.requestTimeAvailable ? page.metric(diskCard.modelData.requestMs, " ms") : "—"
+                                        text: diskCard.modelData.requestTimeAvailable ? page.metric(diskCard.modelData.requestMs, KI18n.i18n(" ms")) : "—"
                                         font.bold: true
                                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                                     }
@@ -243,7 +244,7 @@ Kirigami.ScrollablePage {
                         // Radio Selector in card footer
                         QQC2.RadioButton {
                             Layout.fillWidth: true
-                            text: "Use this device for storage history"
+                            text: KI18n.i18n("Use this device for storage history")
                             checked: page.controller.selectedStorageId === diskCard.modelData.id
                             onClicked: page.controller.selectedStorageId = diskCard.modelData.id
                         }
@@ -254,7 +255,7 @@ Kirigami.ScrollablePage {
 
         // Section: Network Interfaces
         Kirigami.Heading {
-            text: "Network interfaces"
+            text: KI18n.i18n("Network interfaces")
             level: 2
         }
 
@@ -263,7 +264,7 @@ Kirigami.ScrollablePage {
             wrapMode: Text.WordWrap
             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
             color: Kirigami.Theme.disabledTextColor
-            text: "Automatic totals use physical interfaces. You can change selected interfaces in Settings. Cumulative packet statistics track drops and error rates."
+            text: KI18n.i18n("Automatic totals use physical interfaces. You can change selected interfaces in Settings. Cumulative packet statistics track drops and error rates.")
         }
 
         GridLayout {
@@ -342,9 +343,9 @@ Kirigami.ScrollablePage {
                                     id: rxRow
                                     anchors.fill: parent
                                     anchors.margins: 6
-                                    QQC2.Label { text: "↓ Receive:"; font.pixelSize: Kirigami.Theme.smallFont.pixelSize; color: Kirigami.Theme.disabledTextColor }
+                                    QQC2.Label { text: KI18n.i18n("↓ Receive:"); font.pixelSize: Kirigami.Theme.smallFont.pixelSize; color: Kirigami.Theme.disabledTextColor }
                                     QQC2.Label {
-                                        text: netCard.modelData.available ? page.metric(netCard.modelData.rxMibPerSec, " MiB/s") : "—"
+                                        text: netCard.modelData.available ? page.metric(netCard.modelData.rxMibPerSec, KI18n.i18n(" MiB/s")) : "—"
                                         font.bold: true
                                         color: theme.psiAccent
                                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
@@ -361,9 +362,9 @@ Kirigami.ScrollablePage {
                                     id: txRow
                                     anchors.fill: parent
                                     anchors.margins: 6
-                                    QQC2.Label { text: "↑ Send:"; font.pixelSize: Kirigami.Theme.smallFont.pixelSize; color: Kirigami.Theme.disabledTextColor }
+                                    QQC2.Label { text: KI18n.i18n("↑ Send:"); font.pixelSize: Kirigami.Theme.smallFont.pixelSize; color: Kirigami.Theme.disabledTextColor }
                                     QQC2.Label {
-                                        text: netCard.modelData.available ? page.metric(netCard.modelData.txMibPerSec, " MiB/s") : "—"
+                                        text: netCard.modelData.available ? page.metric(netCard.modelData.txMibPerSec, KI18n.i18n(" MiB/s")) : "—"
                                         font.bold: true
                                         color: theme.cpuAccent
                                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
@@ -379,9 +380,9 @@ Kirigami.ScrollablePage {
                             font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 1)
                             color: Kirigami.Theme.disabledTextColor
                             text: netCard.modelData.countersAvailable
-                                  ? "Errors: ↓ " + page.metric(netCard.modelData.rxErrors, "") + " · ↑ " + page.metric(netCard.modelData.txErrors, "")
-                                    + "   |   Drops: ↓ " + page.metric(netCard.modelData.rxDropped, "") + " · ↑ " + page.metric(netCard.modelData.txDropped, "")
-                                  : "Error and drop counters unavailable for this interface."
+                                  ? KI18n.i18n("Errors: ↓ ") + page.metric(netCard.modelData.rxErrors, "") + " · ↑ " + page.metric(netCard.modelData.txErrors, "")
+                                    + KI18n.i18n("   |   Drops: ↓ ") + page.metric(netCard.modelData.rxDropped, "") + " · ↑ " + page.metric(netCard.modelData.txDropped, "")
+                                  : KI18n.i18n("Error and drop counters unavailable for this interface.")
                         }
                     }
                 }
@@ -390,7 +391,7 @@ Kirigami.ScrollablePage {
 
         // Section: Measurement Capabilities
         Kirigami.Heading {
-            text: "Measurement capabilities"
+            text: KI18n.i18n("Measurement capabilities")
             level: 2
         }
 
@@ -447,7 +448,7 @@ Kirigami.ScrollablePage {
                                 QQC2.Label {
                                     id: capStatusLbl
                                     anchors.centerIn: parent
-                                    text: capCard.modelData.available ? "Available" : "Unavailable"
+                                    text: capCard.modelData.available ? KI18n.i18n("Available") : KI18n.i18n("Unavailable")
                                     font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 2)
                                     font.bold: true
                                     color: capCard.modelData.available ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.disabledTextColor

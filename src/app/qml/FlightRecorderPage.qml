@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import org.kde.ki18n
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import "MeasurementLabels.js" as MeasurementLabels
@@ -9,7 +10,7 @@ import QtCore as QtCore
 Kirigami.ScrollablePage {
     id: flightPage
     objectName: "historyPage"
-    title: "History"
+    title: KI18n.i18n("History")
     titleDelegate: Item {
         width: parent ? parent.width : 0
         height: 0
@@ -31,12 +32,12 @@ Kirigami.ScrollablePage {
     onRangeCaptureIdChanged: { rangeStartId = 0; rangeEndId = 0; rangeStartTimeMs = 0; rangeEndTimeMs = 0 }
 
     function comparisonText(window) {
-        if (!window || !window.available) return "No observations available"
-        return window.sampleCount + " observations · " + (Number(window.coverageMs) / 1000).toFixed(1) + " s coverage"
-             + (window.complete ? " · Complete" : " · Partial coverage")
-             + " · " + (window.gapCount || 0) + " gaps"
-             + "\nCPU average: " + (window.cpuLoadAvailable ? Number(window.cpuLoadPercent).toFixed(1) + "%" : "Unavailable")
-             + " · Responsiveness: " + (window.responsivenessAvailable ? Number(window.responsivenessScore).toFixed(1) + "/100" : "Unavailable")
+        if (!window || !window.available) return KI18n.i18n("No observations available")
+        return window.sampleCount + KI18n.i18n(" observations · ") + (Number(window.coverageMs) / 1000).toFixed(1) + KI18n.i18n(" s coverage")
+             + (window.complete ? KI18n.i18n(" · Complete") : KI18n.i18n(" · Partial coverage"))
+             + " · " + (window.gapCount || 0) + KI18n.i18n(" gaps")
+             + KI18n.i18n("\nCPU average: ") + (window.cpuLoadAvailable ? Number(window.cpuLoadPercent).toFixed(1) + "%" : KI18n.i18n("Unavailable"))
+             + KI18n.i18n(" · Responsiveness: ") + (window.responsivenessAvailable ? Number(window.responsivenessScore).toFixed(1) + "/100" : KI18n.i18n("Unavailable"))
     }
 
 
@@ -108,7 +109,7 @@ Kirigami.ScrollablePage {
             parts.push(Math.round(fraction * 100) + "%")
         }
         if (flightPage.showTempTrace && (fraction === 0 || fraction === 0.5 || fraction === 1.0)) {
-            parts.push(Math.round(25 + fraction * 75) + "°")
+            parts.push(MeasurementLabels.formatTemperature(25 + fraction * 75, flightPage.controller.temperatureUnit))
         }
         if ((flightPage.showWattsTrace || flightPage.showBatteryTrace) && (fraction === 0.5 || fraction === 1.0)) {
             parts.push(Math.round(fraction * Math.max(65, flightPage.controller.historyMaxWatts)) + "W")
@@ -122,14 +123,14 @@ Kirigami.ScrollablePage {
     function hoveredSampleText() {
         if (flightPage.hoveredSampleIndex < 0 || flightPage.hoveredSampleIndex >= flightPage.historyInfo.count) return ""
         var s = flightPage.controller.historySampleAt(flightPage.hoveredSampleIndex)
-        var parts = ["Hover @ " + (s.timeString || "--:--:--")]
-        if (s.cpuTempAvailable) parts.push("CPU " + Number(s.cpuTemp).toFixed(1) + " °C")
-        if (s.cpuLoadAvailable) parts.push("Load " + Number(s.cpuLoad).toFixed(0) + "%")
-        if (s.psiAvailable) parts.push("Responsiveness index " + Number(s.responsivenessScore).toFixed(1) + "/100")
-        if (s.packagePowerAvailable) parts.push("Package " + Number(s.packageWatts).toFixed(1) + " W")
-        if (s.batteryDischargeAvailable) parts.push("Battery discharge " + Number(s.batteryWatts).toFixed(1) + " W")
-        if (s.diskThroughputAvailable) parts.push("Disk " + Number(s.diskReadMibPerSec + s.diskWriteMibPerSec).toFixed(1) + " MiB/s")
-        parts.push("Click to freeze moment")
+        var parts = [KI18n.i18n("Hover @ ") + (s.timeString || "--:--:--")]
+        if (s.cpuTempAvailable) parts.push(KI18n.i18n("CPU ") + MeasurementLabels.formatTemperature(Number(s.cpuTemp), flightPage.controller.temperatureUnit))
+        if (s.cpuLoadAvailable) parts.push(KI18n.i18n("Load ") + Number(s.cpuLoad).toFixed(0) + "%")
+        if (s.psiAvailable) parts.push(KI18n.i18n("Responsiveness index ") + Number(s.responsivenessScore).toFixed(1) + "/100")
+        if (s.packagePowerAvailable) parts.push(KI18n.i18n("Package ") + Number(s.packageWatts).toFixed(1) + KI18n.i18n(" W"))
+        if (s.batteryDischargeAvailable) parts.push(KI18n.i18n("Battery discharge ") + Number(s.batteryWatts).toFixed(1) + KI18n.i18n(" W"))
+        if (s.diskThroughputAvailable) parts.push(KI18n.i18n("Disk ") + Number(s.diskReadMibPerSec + s.diskWriteMibPerSec).toFixed(1) + KI18n.i18n(" MiB/s"))
+        parts.push(KI18n.i18n("Click to freeze moment"))
         return parts.join("  ·  ")
     }
 
@@ -143,7 +144,7 @@ Kirigami.ScrollablePage {
             spacing: Kirigami.Units.smallSpacing
 
             PulseButton {
-                text: "Live Flight Recorder"
+                text: KI18n.i18n("Live Flight Recorder")
                 icon.name: "media-record"
                 checkable: true
                 checked: flightPage.activeViewMode === "flight"
@@ -151,7 +152,7 @@ Kirigami.ScrollablePage {
             }
 
             PulseButton {
-                text: "Long-Term Trends (1h – 30d)"
+                text: KI18n.i18n("Long-Term Trends (1h – 30d)")
                 icon.name: "view-history"
                 checkable: true
                 checked: flightPage.activeViewMode === "trends"
@@ -204,14 +205,14 @@ Kirigami.ScrollablePage {
                         spacing: 4
                         PulseButton {
                             icon.name: "media-playback-start"
-                            text: "Follow Live"
+                            text: KI18n.i18n("Follow Live")
                             enabled: flightPage.controller.sessionMode || flightPage.controller.selectedHistorySampleId !== 0
                             onClicked: flightPage.controller.returnToLive()
                         }
 
                         PulseButton {
                             icon.name: flightPage.controller.recordingPaused ? "media-playback-start" : "media-playback-pause"
-                            text: flightPage.controller.recordingPaused ? "Resume" : "Pause"
+                            text: flightPage.controller.recordingPaused ? KI18n.i18n("Resume") : KI18n.i18n("Pause")
                             checkable: true
                             checked: flightPage.controller.recordingPaused
                             onClicked: flightPage.controller.recordingPaused = !flightPage.controller.recordingPaused
@@ -223,7 +224,7 @@ Kirigami.ScrollablePage {
                         spacing: 4
                         PulseButton {
                             objectName: "markProblemNowButton"
-                            text: "Mark problem now"
+                            text: KI18n.i18n("Mark problem now")
                             icon.name: "bookmark-new"
                             isPrimary: true
                             accentColor: theme.negativeColor
@@ -236,46 +237,46 @@ Kirigami.ScrollablePage {
                     RowLayout {
                         spacing: 4
                         PulseButton {
-                            text: "Save session…"
+                            text: KI18n.i18n("Save session…")
                             icon.name: "document-save-as"
                             onClicked: flightPage.saveSessionRequested()
                         }
                         PulseButton {
-                            text: "Open session…"
+                            text: KI18n.i18n("Open session…")
                             icon.name: "document-open"
                             onClicked: flightPage.openSessionRequested()
                         }
                         PulseButton {
                             icon.name: "document-save"
-                            text: flightPage.controller.sessionMode ? "Export incident" : "Export recording"
+                            text: flightPage.controller.sessionMode ? KI18n.i18n("Export incident") : KI18n.i18n("Export recording")
                             onClicked: {
                                 if (flightPage.controller.sessionMode) flightPage.controller.exportSelectedIncident()
                                 else flightPage.controller.exportEntireRecording()
                             }
                         }
                         PulseButton {
-                            text: "More"
+                            text: KI18n.i18n("More")
                             icon.name: "overflow-menu"
                             onClicked: historyMenu.popup()
                             QQC2.Menu {
                                 id: historyMenu
                                 QQC2.MenuItem {
-                                    text: "Peak thermal spike"
+                                    text: KI18n.i18n("Peak thermal spike")
                                     icon.name: "temperature-normal"
                                     onTriggered: flightPage.controller.jumpToPeakThermalSpike()
                                 }
                                 QQC2.MenuItem {
-                                    text: "Worst PSI wait"
+                                    text: KI18n.i18n("Worst PSI wait")
                                     icon.name: "memory"
                                     onTriggered: flightPage.controller.jumpToWorstStallSpike()
                                 }
                                 QQC2.MenuItem {
-                                    text: "Copy incident report"
+                                    text: KI18n.i18n("Copy incident report")
                                     icon.name: "edit-copy"
                                     onTriggered: flightPage.controller.copyIncidentReportToClipboard()
                                 }
                                 QQC2.MenuItem {
-                                    text: "Open reports folder"
+                                    text: KI18n.i18n("Open reports folder")
                                     icon.name: "folder-open"
                                     enabled: flightPage.controller.lastActionPath.length > 0
                                     onTriggered: flightPage.controller.openReportsFolder()
@@ -283,7 +284,7 @@ Kirigami.ScrollablePage {
                                 QQC2.MenuSeparator {}
                                 QQC2.MenuItem {
                                     objectName: "clearHistoryButton"
-                                    text: "Clear recorded history"
+                                    text: KI18n.i18n("Clear recorded history")
                                     icon.name: "edit-clear-all"
                                     enabled: flightPage.historyInfo.count > 0
                                     onTriggered: clearHistoryDialog.open()
@@ -294,11 +295,11 @@ Kirigami.ScrollablePage {
 
                     QQC2.Dialog {
                         id: clearHistoryDialog
-                        title: "Clear recorded history?"
+                        title: KI18n.i18n("Clear recorded history?")
                         modal: true
                         standardButtons: QQC2.Dialog.Cancel | QQC2.Dialog.Ok
                         onAccepted: flightPage.controller.clearHistory()
-                        QQC2.Label { text: "This clears the current in-memory recording and incidents."; wrapMode: Text.WordWrap }
+                        QQC2.Label { text: KI18n.i18n("This clears the current in-memory recording and incidents."); wrapMode: Text.WordWrap }
                     }
 
                     // Recording Info Pill
@@ -313,9 +314,9 @@ Kirigami.ScrollablePage {
                         QQC2.Label {
                             id: sampleCountLbl
                             anchors.centerIn: parent
-                            text: flightPage.historyInfo.count + " samples · "
-                                  + flightPage.controller.actualHistorySeconds.toFixed(0) + " s / "
-                                  + Math.round(flightPage.controller.historyRetentionSeconds / 60) + " min"
+                            text: flightPage.historyInfo.count + KI18n.i18n(" samples · ")
+                                  + flightPage.controller.actualHistorySeconds.toFixed(0) + KI18n.i18n(" s / ")
+                                  + Math.round(flightPage.controller.historyRetentionSeconds / 60) + KI18n.i18n(" min")
                             color: Kirigami.Theme.disabledTextColor
                             font.bold: true
                             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
@@ -332,43 +333,43 @@ Kirigami.ScrollablePage {
                         model: [
                             {
                                 key: "temp",
-                                label: "CPU temp (25–100 °C)",
+                                label: flightPage.controller.temperatureUnit === "F" ? KI18n.i18n("CPU temp (77–212 °F)") : KI18n.i18n("CPU temp (25–100 °C)"),
                                 accentKey: "temp",
                                 active: flightPage.showTempTrace
                             },
                             {
                                 key: "load",
-                                label: "CPU load (0–100%)",
+                                label: KI18n.i18n("CPU load (0–100%)"),
                                 accentKey: "cpu",
                                 active: flightPage.showLoadTrace
                             },
                             {
                                 key: "psi",
-                                label: "Responsiveness (0–100)",
+                                label: KI18n.i18n("Responsiveness (0–100)"),
                                 accentKey: "psi",
                                 active: flightPage.showPsiTrace
                             },
                             {
                                 key: "watts",
-                                label: "Power (0–" + Math.round(flightPage.controller.historyMaxWatts) + " W)",
+                                label: KI18n.i18n("Power (0–") + Math.round(flightPage.controller.historyMaxWatts) + KI18n.i18n(" W)"),
                                 accentKey: "power",
                                 active: flightPage.showWattsTrace
                             },
                             {
                                 key: "battery",
-                                label: "Battery (0–" + Math.round(flightPage.controller.historyMaxWatts) + " W)",
+                                label: KI18n.i18n("Battery (0–") + Math.round(flightPage.controller.historyMaxWatts) + KI18n.i18n(" W)"),
                                 accentKey: "battery",
                                 active: flightPage.showBatteryTrace
                             },
                             {
                                 key: "gpu",
-                                label: "GPU load (0–100%)",
+                                label: KI18n.i18n("GPU load (0–100%)"),
                                 accentKey: "gpu",
                                 active: flightPage.showGpuTrace
                             },
                             {
                                 key: "disk",
-                                label: "Disk I/O (0–" + Math.round(flightPage.controller.historyMaxDiskMibPerSec) + " MiB/s)",
+                                label: KI18n.i18n("Disk I/O (0–") + Math.round(flightPage.controller.historyMaxDiskMibPerSec) + KI18n.i18n(" MiB/s)"),
                                 accentKey: "storage",
                                 active: flightPage.showDiskTrace
                             }
@@ -452,7 +453,7 @@ Kirigami.ScrollablePage {
 
                     Kirigami.Heading {
                         level: 3
-                        text: flightPage.controller.sessionMode ? "Frozen investigation session" : "Investigation range"
+                        text: flightPage.controller.sessionMode ? KI18n.i18n("Frozen investigation session") : KI18n.i18n("Investigation range")
                         Layout.fillWidth: true
                     }
 
@@ -467,7 +468,7 @@ Kirigami.ScrollablePage {
                         QQC2.Label {
                             id: sPillLbl
                             anchors.centerIn: parent
-                            text: flightPage.controller.sessionPath ? "Saved session" : "In-memory investigation"
+                            text: flightPage.controller.sessionPath ? KI18n.i18n("Saved session") : KI18n.i18n("In-memory investigation")
                             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                             font.bold: true
                             color: theme.neutralColor
@@ -481,8 +482,8 @@ Kirigami.ScrollablePage {
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                     color: Kirigami.Theme.disabledTextColor
                     text: flightPage.controller.sessionMode
-                        ? "Original observations are frozen. Live monitoring continues separately. " + (flightPage.controller.sessionPath || "")
-                        : "Select a sample in the timeline, set the beginning and end, then freeze the range. Comparisons use up to 30 seconds on either side."
+                        ? KI18n.i18n("Original observations are frozen. Live monitoring continues separately. ") + (flightPage.controller.sessionPath || "")
+                        : KI18n.i18n("Select a sample in the timeline, set the beginning and end, then freeze the range. Comparisons use up to 30 seconds on either side.")
                 }
 
                 // Range Selection Actions Bar
@@ -492,20 +493,20 @@ Kirigami.ScrollablePage {
                     spacing: Kirigami.Units.smallSpacing
 
                     PulseButton {
-                        text: "Set beginning"
+                        text: KI18n.i18n("Set beginning")
                         icon.name: "go-first"
                         enabled: flightPage.controller.selectedHistorySampleId !== 0
                         onClicked: { flightPage.rangeStartId = flightPage.controller.selectedHistorySampleId; flightPage.rangeStartTimeMs = Number(flightPage.inspectedDetail.timestampMs) }
                     }
                     PulseButton {
-                        text: "Set end"
+                        text: KI18n.i18n("Set end")
                         icon.name: "go-last"
                         enabled: flightPage.controller.selectedHistorySampleId !== 0
                         onClicked: { flightPage.rangeEndId = flightPage.controller.selectedHistorySampleId; flightPage.rangeEndTimeMs = Number(flightPage.inspectedDetail.timestampMs) }
                     }
                     PulseButton {
                         objectName: "freezeHistoryRangeButton"
-                        text: "Freeze selected range"
+                        text: KI18n.i18n("Freeze selected range")
                         icon.name: "media-playback-pause"
                         isPrimary: flightPage.rangeStartId > 0 && flightPage.rangeEndId >= flightPage.rangeStartId
                         enabled: flightPage.rangeStartId > 0 && flightPage.rangeEndId >= flightPage.rangeStartId
@@ -523,8 +524,8 @@ Kirigami.ScrollablePage {
                         QQC2.Label {
                             id: periodLbl
                             anchors.centerIn: parent
-                            text: "Range: " + (flightPage.rangeStartTimeMs ? new Date(flightPage.rangeStartTimeMs).toLocaleTimeString() : "Start unset")
-                                  + " → " + (flightPage.rangeEndTimeMs ? new Date(flightPage.rangeEndTimeMs).toLocaleTimeString() : "End unset")
+                            text: KI18n.i18n("Range: ") + (flightPage.rangeStartTimeMs ? new Date(flightPage.rangeStartTimeMs).toLocaleTimeString() : KI18n.i18n("Start unset"))
+                                  + " → " + (flightPage.rangeEndTimeMs ? new Date(flightPage.rangeEndTimeMs).toLocaleTimeString() : KI18n.i18n("End unset"))
                             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                             color: Kirigami.Theme.textColor
                             font.bold: flightPage.rangeStartId > 0
@@ -578,7 +579,7 @@ Kirigami.ScrollablePage {
                                         QQC2.Label {
                                             id: countBadgeLbl
                                             anchors.centerIn: parent
-                                            text: (compTile.windowData ? compTile.windowData.sampleCount : 0) + " samples"
+                                            text: (compTile.windowData ? compTile.windowData.sampleCount : 0) + KI18n.i18n(" samples")
                                             font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 2)
                                             color: Kirigami.Theme.disabledTextColor
                                         }
@@ -590,10 +591,10 @@ Kirigami.ScrollablePage {
                                     wrapMode: Text.WordWrap
                                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                                     text: compTile.windowData
-                                          ? "CPU avg: " + (compTile.windowData.cpuLoadAvailable ? Number(compTile.windowData.cpuLoadPercent).toFixed(1) + "%" : "—")
-                                            + " · Responsiveness: " + (compTile.windowData.responsivenessAvailable ? Number(compTile.windowData.responsivenessScore).toFixed(1) + "/100" : "—")
-                                            + "\nCoverage: " + (Number(compTile.windowData.coverageMs || 0) / 1000).toFixed(1) + " s · " + (compTile.windowData.gapCount || 0) + " gaps"
-                                          : "No observations available"
+                                          ? KI18n.i18n("CPU avg: ") + (compTile.windowData.cpuLoadAvailable ? Number(compTile.windowData.cpuLoadPercent).toFixed(1) + "%" : "—")
+                                            + KI18n.i18n(" · Responsiveness: ") + (compTile.windowData.responsivenessAvailable ? Number(compTile.windowData.responsivenessScore).toFixed(1) + "/100" : "—")
+                                            + KI18n.i18n("\nCoverage: ") + (Number(compTile.windowData.coverageMs || 0) / 1000).toFixed(1) + KI18n.i18n(" s · ") + (compTile.windowData.gapCount || 0) + KI18n.i18n(" gaps")
+                                          : KI18n.i18n("No observations available")
                                 }
                             }
                         }
@@ -682,7 +683,7 @@ Kirigami.ScrollablePage {
                 Item { Layout.fillWidth: true }
                 QQC2.Label {
                     text: flightPage.historyInfo.count > 0
-                          ? (flightPage.historyInfo.lastLabel || "") + " (Latest)"
+                          ? (flightPage.historyInfo.lastLabel || "") + KI18n.i18n(" (Latest)")
                           : ""
                     font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 1)
                     color: Kirigami.Theme.disabledTextColor
@@ -710,10 +711,10 @@ Kirigami.ScrollablePage {
                 onWidthChanged: refreshPlot()
                 onVisibleChanged: { if (visible) refreshPlot() }
                 Accessible.role: Accessible.Graphic
-                Accessible.name: "Hardware history timeline. Select a sample with left and right arrow keys."
-                Accessible.description: "Inspected sample " + (flightPage.inspectedDetail.timeString || "unavailable")
-                    + ". Responsiveness index " + (flightPage.inspectedDetail.psiAvailable
-                      ? Number(flightPage.inspectedDetail.responsivenessScore).toFixed(1) + " out of 100; higher is better" : "unavailable")
+                Accessible.name: KI18n.i18n("Hardware history timeline. Select a sample with left and right arrow keys.")
+                Accessible.description: KI18n.i18n("Inspected sample ") + (flightPage.inspectedDetail.timeString || "unavailable")
+                    + KI18n.i18n(". Responsiveness index ") + (flightPage.inspectedDetail.psiAvailable
+                      ? Number(flightPage.inspectedDetail.responsivenessScore).toFixed(1) + KI18n.i18n(" out of 100; higher is better") : "unavailable")
                 Keys.onPressed: (event) => {
                     if (event.key === Qt.Key_Home && flightPage.historyInfo.count) {
                         flightPage.controller.selectedHistorySampleId = flightPage.historyInfo.firstId
@@ -926,7 +927,7 @@ Kirigami.ScrollablePage {
             QQC2.Label {
                 anchors.centerIn: parent
                 visible: flightPage.historyInfo.count === 0
-                text: "No history has been recorded yet"
+                text: KI18n.i18n("No history has been recorded yet")
                 color: Kirigami.Theme.disabledTextColor
             }
         }
@@ -950,10 +951,10 @@ Kirigami.ScrollablePage {
                 text: flightPage.hoveredSampleIndex >= 0
                       ? flightPage.hoveredSampleText()
                       : (flightPage.historyInfo.count
-                         ? "Recorded window: " + new Date(flightPage.historyInfo.firstTime).toLocaleTimeString()
+                         ? KI18n.i18n("Recorded window: ") + new Date(flightPage.historyInfo.firstTime).toLocaleTimeString()
                            + " — " + new Date(flightPage.historyInfo.lastTime).toLocaleTimeString()
-                           + "  ·  Click or drag on the timeline (or press Left/Right arrow keys) to inspect any sample."
-                         : "No history yet. Measurements appear here after the next sample.")
+                           + KI18n.i18n("  ·  Click or drag on the timeline (or press Left/Right arrow keys) to inspect any sample.")
+                         : KI18n.i18n("No history yet. Measurements appear here after the next sample."))
                 color: flightPage.hoveredSampleIndex >= 0 ? Kirigami.Theme.textColor : Kirigami.Theme.disabledTextColor
                 font.bold: flightPage.hoveredSampleIndex >= 0
                 font.pixelSize: Kirigami.Theme.smallFont.pixelSize
@@ -974,14 +975,14 @@ Kirigami.ScrollablePage {
                 id: incCol
                 objectName: "section_incidents"
                 focus: true
-                Accessible.name: "incidents section"
+                Accessible.name: KI18n.i18n("incidents section")
                 anchors.fill: parent
                 anchors.margins: Kirigami.Units.largeSpacing
                 spacing: Kirigami.Units.smallSpacing
 
                 QQC2.Label {
                     Layout.fillWidth: true
-                    text: "Recorded incidents (open original evidence and comparison):"
+                    text: KI18n.i18n("Recorded incidents (open original evidence and comparison):")
                     font.bold: true
                     color: Kirigami.Theme.disabledTextColor
                     wrapMode: Text.WordWrap
@@ -1023,7 +1024,7 @@ Kirigami.ScrollablePage {
                 id: inspectorCol
                 objectName: "section_inspector"
                 focus: true
-                Accessible.name: "inspector section"
+                Accessible.name: KI18n.i18n("inspector section")
                 anchors.fill: parent
                 anchors.margins: Kirigami.Units.largeSpacing
                 spacing: Kirigami.Units.mediumSpacing
@@ -1034,11 +1035,11 @@ Kirigami.ScrollablePage {
 
                     Rectangle {
                         radius: theme.pillRadius
-                        color: flightPage.controller.selectedHistorySampleId === 0
+                        color: !flightPage.controller.sessionMode && flightPage.controller.collectorConnected && !flightPage.controller.recordingPaused && flightPage.controller.selectedHistorySampleId === 0
                                ? theme.accentTint(Kirigami.Theme.positiveTextColor, 0.16)
                                : theme.accentTint(Kirigami.Theme.highlightColor, 0.18)
                         border.width: 1
-                        border.color: flightPage.controller.selectedHistorySampleId === 0
+                        border.color: !flightPage.controller.sessionMode && flightPage.controller.collectorConnected && !flightPage.controller.recordingPaused && flightPage.controller.selectedHistorySampleId === 0
                                       ? Kirigami.Theme.positiveTextColor
                                       : Kirigami.Theme.highlightColor
                         implicitWidth: modePillLbl.implicitWidth + 14
@@ -1047,12 +1048,14 @@ Kirigami.ScrollablePage {
                         QQC2.Label {
                             id: modePillLbl
                             anchors.centerIn: parent
-                            text: flightPage.controller.selectedHistorySampleId === 0
-                                  ? "LIVE STREAM"
-                                  : (flightPage.controller.selectedHistoryExpired ? "FROZEN (EXPIRED)" : "FROZEN SAMPLE")
+                            text: flightPage.controller.sessionMode ? KI18n.i18n("HISTORICAL SESSION")
+                                  : !flightPage.controller.collectorConnected ? KI18n.i18n("DISCONNECTED")
+                                  : flightPage.controller.recordingPaused ? KI18n.i18n("RECORDING PAUSED")
+                                  : flightPage.controller.selectedHistorySampleId === 0 ? KI18n.i18n("LIVE STREAM")
+                                  : (flightPage.controller.selectedHistoryExpired ? KI18n.i18n("FROZEN (EXPIRED)") : KI18n.i18n("FROZEN SAMPLE"))
                             font.bold: true
                             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                            color: flightPage.controller.selectedHistorySampleId === 0
+                            color: !flightPage.controller.sessionMode && flightPage.controller.collectorConnected && !flightPage.controller.recordingPaused && flightPage.controller.selectedHistorySampleId === 0
                                    ? Kirigami.Theme.positiveTextColor
                                    : Kirigami.Theme.highlightColor
                         }
@@ -1060,14 +1063,14 @@ Kirigami.ScrollablePage {
 
                     Kirigami.Heading {
                         level: 3
-                        text: "Inspected moment: " + (flightPage.inspectedDetail.timeString || "--:--:--")
+                        text: KI18n.i18n("Inspected moment: ") + (flightPage.inspectedDetail.timeString || "--:--:--")
                         color: Kirigami.Theme.textColor
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                     }
 
                     PulseButton {
-                        text: "Open System Monitor"
+                        text: KI18n.i18n("Open System Monitor")
                         icon.name: "utilities-system-monitor"
                         onClicked: flightPage.controller.openSystemMonitor()
                     }
@@ -1085,7 +1088,7 @@ Kirigami.ScrollablePage {
                         id: statusAtTimeLbl
                         anchors.fill: parent
                         anchors.margins: 7
-                        text: "Status at this time: " + (flightPage.inspectedDetail.verdictHeadline || "No recorded sample")
+                        text: KI18n.i18n("Status at this time: ") + (flightPage.inspectedDetail.verdictHeadline || KI18n.i18n("No recorded sample"))
                         color: Kirigami.Theme.highlightColor
                         font.bold: true
                         wrapMode: Text.WordWrap
@@ -1102,70 +1105,70 @@ Kirigami.ScrollablePage {
                     Repeater {
                         model: [
                             {
-                                label: "CPU load & frequency",
+                                label: KI18n.i18n("CPU load & frequency"),
                                 accentKey: "cpu",
                                 value: flightPage.inspectedDetail.cpuLoadAvailable
                                     ? Number(flightPage.inspectedDetail.cpuLoad).toFixed(1) + "%"
                                       + (flightPage.inspectedDetail.cpuFrequencyAvailable
-                                         ? " · " + flightPage.inspectedDetail.cpuFreqMhz + " MHz" : "")
-                                    : "Unavailable",
-                                sub: "New throttle events: " + (!flightPage.inspectedDetail.throttleCountersAvailable
-                                    ? "Unavailable" : (flightPage.inspectedDetail.throttled ? "Observed" : "None observed"))
+                                         ? " · " + flightPage.inspectedDetail.cpuFreqMhz + KI18n.i18n(" MHz") : "")
+                                    : KI18n.i18n("Unavailable"),
+                                sub: KI18n.i18n("New throttle events: ") + (!flightPage.inspectedDetail.throttleCountersAvailable
+                                    ? KI18n.i18n("Unavailable") : (flightPage.inspectedDetail.throttled ? KI18n.i18n("Observed") : KI18n.i18n("None observed")))
                             },
                             {
-                                label: "CPU & NVMe thermals",
+                                label: KI18n.i18n("CPU & NVMe thermals"),
                                 accentKey: "temp",
-                                value: "CPU " + (flightPage.inspectedDetail.cpuTempAvailable
-                                    ? Number(flightPage.inspectedDetail.cpuTemp).toFixed(1) + " °C" : "Unavailable"),
-                                sub: "NVMe: " + (flightPage.inspectedDetail.nvmeTempAvailable
-                                    ? Number(flightPage.inspectedDetail.nvmeTemp).toFixed(1) + " °C" : "Unavailable")
+                                value: KI18n.i18n("CPU ") + (flightPage.inspectedDetail.cpuTempAvailable
+                                    ? MeasurementLabels.formatTemperature(Number(flightPage.inspectedDetail.cpuTemp), flightPage.controller.temperatureUnit) : KI18n.i18n("Unavailable")),
+                                sub: KI18n.i18n("NVMe: ") + (flightPage.inspectedDetail.nvmeTempAvailable
+                                    ? MeasurementLabels.formatTemperature(Number(flightPage.inspectedDetail.nvmeTemp), flightPage.controller.temperatureUnit) : KI18n.i18n("Unavailable"))
                             },
                             {
-                                label: "Package power",
+                                label: KI18n.i18n("Package power"),
                                 accentKey: "power",
                                 value: flightPage.inspectedDetail.packagePowerAvailable
-                                    ? Number(flightPage.inspectedDetail.packageWatts).toFixed(1) + " W"
-                                    : "Unavailable",
+                                    ? Number(flightPage.inspectedDetail.packageWatts).toFixed(1) + KI18n.i18n(" W")
+                                    : KI18n.i18n("Unavailable"),
                                 sub: flightPage.inspectedDetail.packagePowerAvailable
-                                    ? (flightPage.inspectedDetail.packagePowerEstimated ? "Estimated power" : "Measured hardware power")
-                                    : "No power channel"
+                                    ? (flightPage.inspectedDetail.packagePowerEstimated ? KI18n.i18n("Estimated power") : KI18n.i18n("Measured hardware power"))
+                                    : KI18n.i18n("No power channel")
                             },
                             {
-                                label: "Battery discharge",
+                                label: KI18n.i18n("Battery discharge"),
                                 accentKey: "battery",
                                 value: flightPage.inspectedDetail.batteryDischargeAvailable
-                                    ? Number(flightPage.inspectedDetail.batteryWatts).toFixed(1) + " W" : "Unavailable",
-                                sub: "Battery discharge channel; separate from CPU package power"
+                                    ? Number(flightPage.inspectedDetail.batteryWatts).toFixed(1) + KI18n.i18n(" W") : KI18n.i18n("Unavailable"),
+                                sub: KI18n.i18n("Battery discharge channel; separate from CPU package power")
                             },
                             {
-                                label: "Graphics (GPU)",
+                                label: KI18n.i18n("Graphics (GPU)"),
                                 accentKey: "gpu",
                                 value: (flightPage.inspectedDetail.gpuBusyAvailable
-                                    ? Number(flightPage.inspectedDetail.gpuBusy).toFixed(0) + "% load" : "Load N/A")
+                                    ? Number(flightPage.inspectedDetail.gpuBusy).toFixed(0) + KI18n.i18n("% load") : KI18n.i18n("Load N/A"))
                                     + " · " + (flightPage.inspectedDetail.gpuTempAvailable
-                                    ? Number(flightPage.inspectedDetail.gpuTemp).toFixed(0) + " °C" : "Temp N/A"),
-                                sub: "GPU telemetry at sample"
+                                    ? MeasurementLabels.formatTemperature(Number(flightPage.inspectedDetail.gpuTemp), flightPage.controller.temperatureUnit) : KI18n.i18n("Temp N/A")),
+                                sub: KI18n.i18n("GPU telemetry at sample")
                             },
                             {
-                                label: "Pressure & Disk I/O",
+                                label: KI18n.i18n("Pressure & Disk I/O"),
                                 accentKey: "psi",
-                                value: "Responsiveness index: " + (flightPage.inspectedDetail.psiAvailable
-                                    ? Number(flightPage.inspectedDetail.responsivenessScore).toFixed(1) + "/100" : "Unavailable"),
+                                value: KI18n.i18n("Responsiveness index: ") + (flightPage.inspectedDetail.psiAvailable
+                                    ? Number(flightPage.inspectedDetail.responsivenessScore).toFixed(1) + "/100" : KI18n.i18n("Unavailable")),
                                 sub: flightPage.inspectedDetail.diskThroughputAvailable
-                                    ? "Disk R " + Number(flightPage.inspectedDetail.diskReadMibPerSec).toFixed(1)
-                                      + " · W " + Number(flightPage.inspectedDetail.diskWriteMibPerSec).toFixed(1) + " MiB/s"
-                                    : "Disk I/O throughput: Unavailable"
+                                    ? KI18n.i18n("Disk R ") + Number(flightPage.inspectedDetail.diskReadMibPerSec).toFixed(1)
+                                      + KI18n.i18n(" · W ") + Number(flightPage.inspectedDetail.diskWriteMibPerSec).toFixed(1) + KI18n.i18n(" MiB/s")
+                                    : KI18n.i18n("Disk I/O throughput: Unavailable")
                             },
                             {
-                                label: "Concurrent process",
+                                label: KI18n.i18n("Concurrent process"),
                                 accentKey: "storage",
-                                value: (flightPage.inspectedDetail.culpritName || "Unavailable")
+                                value: (flightPage.inspectedDetail.culpritName || KI18n.i18n("Unavailable"))
                                     + (flightPage.inspectedDetail.culpritName
-                                       ? " (PID " + flightPage.inspectedDetail.culpritPid + ")" : ""),
+                                       ? KI18n.i18n(" (PID ") + flightPage.inspectedDetail.culpritPid + ")" : ""),
                                 sub: flightPage.inspectedDetail.culpritName
                                     ? Number(flightPage.inspectedDetail.culpritCpuPercent).toFixed(1)
-                                      + "% CPU · " + Math.round(Number(flightPage.inspectedDetail.culpritRssMb)) + " MiB RSS"
-                                    : "Observed process use: Unavailable"
+                                      + KI18n.i18n("% CPU · ") + Math.round(Number(flightPage.inspectedDetail.culpritRssMb)) + KI18n.i18n(" MiB RSS")
+                                    : KI18n.i18n("Observed process use: Unavailable")
                             }
                         ]
 
@@ -1216,26 +1219,26 @@ Kirigami.ScrollablePage {
 
                 QQC2.GroupBox {
                     Layout.fillWidth: true
-                    title: "Recorded process observations"
+                    title: KI18n.i18n("Recorded process observations")
                     ColumnLayout {
                         width: parent.width
                         QQC2.Label {
                             Layout.fillWidth: true; wrapMode: Text.WordWrap
-                            text: "Observed every 2 seconds: the union of the top 8 CPU, memory and disk-wait processes. This is a bounded sample, not a complete historical process list. Process identities are excluded from saved files unless enabled in Settings."
+                            text: KI18n.i18n("Observed every 2 seconds: the union of the top 8 CPU, memory and disk-wait processes. This is a bounded sample, not a complete historical process list. Process identities are excluded from saved files unless enabled in Settings.")
                         }
                         QQC2.Label {
                             visible: !(flightPage.inspectedDetail.processObservations || []).length
-                            text: "No process identities recorded at this moment"
+                            text: KI18n.i18n("No process identities recorded at this moment")
                         }
                         Repeater {
                             model: flightPage.inspectedDetail.processObservations || []
                             delegate: QQC2.Label {
                                 required property var modelData
                                 Layout.fillWidth: true; wrapMode: Text.WordWrap
-                                text: (modelData.name || "Identity omitted") + (modelData.pid ? " · PID " + modelData.pid : "")
-                                      + " · " + (modelData.cpuAvailable === false ? "CPU warming up" : Number(modelData.cpuPercent || 0).toFixed(1) + "% CPU")
-                                      + " · " + Number(modelData.rssMegabytes || 0).toFixed(1) + " MiB"
-                                      + " · Observed " + new Date(Number(modelData.observedAtMs)).toLocaleTimeString()
+                                text: (modelData.name || KI18n.i18n("Identity omitted")) + (modelData.pid ? KI18n.i18n(" · PID ") + modelData.pid : "")
+                                      + " · " + (modelData.cpuAvailable === false ? KI18n.i18n("CPU warming up") : Number(modelData.cpuPercent || 0).toFixed(1) + KI18n.i18n("% CPU"))
+                                      + " · " + Number(modelData.rssMegabytes || 0).toFixed(1) + KI18n.i18n(" MiB")
+                                      + KI18n.i18n(" · Observed ") + new Date(Number(modelData.observedAtMs)).toLocaleTimeString()
                             }
                         }
                     }
@@ -1243,7 +1246,7 @@ Kirigami.ScrollablePage {
 
                 QQC2.GroupBox {
                     Layout.fillWidth: true
-                    title: "Recorded data quality"
+                    title: KI18n.i18n("Recorded data quality")
                     ColumnLayout {
                         anchors.left: parent.left
                         anchors.right: parent.right
@@ -1259,7 +1262,7 @@ Kirigami.ScrollablePage {
                                 font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                                 color: Kirigami.Theme.disabledTextColor
                                 text: MeasurementLabels.metricLabel(modelData) + ": " + (quality ? MeasurementLabels.qualityLabel(quality.state) + " · " + quality.source
-                                      + " · " + new Date(quality.sampledAtMs).toLocaleTimeString() : "Unavailable")
+                                      + " · " + new Date(quality.sampledAtMs).toLocaleTimeString() : KI18n.i18n("Unavailable"))
                             }
                         }
                     }

@@ -1,11 +1,25 @@
 #include "causaldiagnosisengine.h"
 
+#include <algorithm>
+
 namespace LoofiPulse
 {
 
 CausalVerdict CausalDiagnosisEngine::evaluate(
     const CpuSocSnapshot &cpu,
     const GpuSnapshot &gpu,
+    const PsiAndMemorySnapshot &psiMem,
+    const PowerFlowSnapshot &power,
+    const QList<DomainSensorReading> &domains,
+    const CulpritProcess &cpuProcess,
+    const CulpritProcess &memoryProcess)
+{
+    return evaluateDevices(cpu, {gpu}, psiMem, power, domains, cpuProcess, memoryProcess);
+}
+
+CausalVerdict CausalDiagnosisEngine::evaluateDevices(
+    const CpuSocSnapshot &cpu,
+    const QList<GpuSnapshot> &gpus,
     const PsiAndMemorySnapshot &psiMem,
     const PowerFlowSnapshot &power,
     const QList<DomainSensorReading> &domains,
@@ -87,22 +101,39 @@ CausalVerdict CausalDiagnosisEngine::evaluate(
                      QStringLiteral("Check for background indexing, updates, or other heavy disk activity."));
     }
 
-    if (gpu.busyAvailable && gpu.temperatureAvailable
-        && (gpu.tempCelsius >= 88.0 || (gpu.busyPercent >= 92.0 && gpu.tempCelsius >= 75.0))) {
-        addCandidate(QStringLiteral("gpu.load-temperature"), VerdictSeverity::Bottleneck,
-                     QStringLiteral("Graphics"),
-                     QStringLiteral("GPU load and temperature are high"),
-                     QStringLiteral("Measured GPU load: %1%; measured GPU temperature: %2°C (%3)")
-                         .arg(gpu.busyPercent, 0, 'f', 0).arg(gpu.tempCelsius, 0, 'f', 1).arg(gpu.driverName),
-                     QStringLiteral("Reduce graphics work or lower the frame-rate limit if display performance is affected."));
-    } else if (!gpu.busyAvailable && gpu.temperatureAvailable && gpu.tempCelsius >= 88.0) {
-        addCandidate(QStringLiteral("gpu.temperature"), VerdictSeverity::Elevated,
-                     QStringLiteral("Graphics"),
-                     QStringLiteral("GPU temperature is high"),
-                     QStringLiteral("Measured GPU temperature: %1°C (%2). GPU busy counter is unavailable.")
-                         .arg(gpu.tempCelsius, 0, 'f', 1).arg(gpu.driverName.isEmpty() ? QStringLiteral("DRM") : gpu.driverName),
-                     QStringLiteral("Watch GPU temperature during graphics-intensive workloads."));
+    // Stable device ordering keeps equal-priority diagnoses independent of DRM enumeration.
+    auto orderedGpus = gpus;
+    std::sort(orderedGpus.begin(), orderedGpus.end(), [](const auto &a, const auto &b) { return a.identity < b.identity; });
+    const auto gpuMatchesBegin = matches.size();
+    const GpuSnapshot *busyGpu = nullptr;
+    for (const auto &gpu : orderedGpus) {
+        if (gpu.busyAvailable && (!busyGpu || gpu.busyPercent > busyGpu->busyPercent)) busyGpu = &gpu;
+        const QString source = QStringLiteral("device %1; sensor %2 [%3]")
+            .arg(gpu.identity.isEmpty() ? gpu.driverName : gpu.identity,
+                 gpu.temperatureSensorLabel.isEmpty() ? QStringLiteral("unspecified") : gpu.temperatureSensorLabel,
+                 gpu.temperatureSensorId.isEmpty() ? QStringLiteral("unspecified") : gpu.temperatureSensorId);
+        if (gpu.busyAvailable && gpu.temperatureAvailable
+            && gpu.busyPercent >= 92.0 && gpu.tempCelsius >= 75.0) {
+            addCandidate(QStringLiteral("gpu.load-temperature"), VerdictSeverity::Bottleneck,
+                         QStringLiteral("Graphics"),
+                         QStringLiteral("GPU load and temperature are high"),
+                         QStringLiteral("Measured GPU load: %1%; measured GPU temperature: %2°C (%3)")
+                             .arg(gpu.busyPercent, 0, 'f', 0).arg(gpu.tempCelsius, 0, 'f', 1).arg(source),
+                         QStringLiteral("Reduce graphics work or lower the frame-rate limit if display performance is affected."));
+        } else if (gpu.temperatureAvailable && gpu.tempCelsius >= 88.0) {
+            addCandidate(QStringLiteral("gpu.temperature"), VerdictSeverity::Elevated,
+                         QStringLiteral("Graphics"),
+                         QStringLiteral("GPU temperature is high"),
+                         QStringLiteral("Measured GPU temperature: %1°C (%2). %3 Temperature alone does not establish a bottleneck.")
+                             .arg(gpu.tempCelsius, 0, 'f', 1).arg(source)
+                             .arg(gpu.busyAvailable ? QStringLiteral("Measured GPU load: %1%.").arg(gpu.busyPercent, 0, 'f', 0)
+                                                    : QStringLiteral("GPU busy counter is unavailable.")),
+                         QStringLiteral("Watch GPU temperature during graphics-intensive workloads."));
+        }
     }
+    std::stable_sort(matches.begin() + gpuMatchesBegin, matches.end(), [](const auto &a, const auto &b) {
+        return static_cast<int>(a.severity) > static_cast<int>(b.severity);
+    });
 
     if (cpu.temperatureAvailable && cpu.thermalLimitAvailable && cpu.thermalHeadroomCelsius <= 6.0) {
         addCandidate(QStringLiteral("cpu.thermal-headroom"), VerdictSeverity::Elevated,
@@ -131,14 +162,14 @@ CausalVerdict CausalDiagnosisEngine::evaluate(
 
     if (power.activePowerProfile == QStringLiteral("power-saver")
         && ((cpuLoadValid && cpu.totalLoadPercent >= 65.0)
-            || (gpu.busyAvailable && gpu.busyPercent >= 75.0)
+            || (busyGpu && busyGpu->busyPercent >= 75.0)
             || (psiMem.cpuPsi.someAvailable && psiMem.cpuPsi.someAvg10 >= 10.0))) {
         QString details = QStringLiteral("Active power profile is 'power-saver'");
         if (cpuLoadValid) {
             details += QStringLiteral("; measured CPU load is %1%").arg(cpu.totalLoadPercent, 0, 'f', 0);
         }
-        if (gpu.busyAvailable && gpu.busyPercent >= 75.0) {
-            details += QStringLiteral("; measured GPU load is %1%").arg(gpu.busyPercent, 0, 'f', 0);
+        if (busyGpu && busyGpu->busyPercent >= 75.0) {
+            details += QStringLiteral("; measured GPU load is %1% (%2)").arg(busyGpu->busyPercent, 0, 'f', 0).arg(busyGpu->identity);
         }
         addCandidate(QStringLiteral("power.saver-workload"), VerdictSeverity::Elevated,
                      QStringLiteral("Power & Cooling"),

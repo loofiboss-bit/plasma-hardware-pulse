@@ -30,3 +30,9 @@ function formatTemperature(celsius, unit) {
     }
     return Math.round(celsius) + "°C"
 }
+
+// Temperature differences do not include the Fahrenheit zero-point offset.
+function formatTemperatureDelta(celsius, unit) {
+    if (typeof celsius !== "number" || !isFinite(celsius)) return "N/A"
+    return Math.round(unit === "F" ? celsius * 9 / 5 : celsius) + (unit === "F" ? "°F" : "°C")
+}

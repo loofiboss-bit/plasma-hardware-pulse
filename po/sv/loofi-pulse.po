@@ -17,65 +17,732 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-msgid "Loofi Pulse"
-msgstr "Loofi Pulse"
 
-msgid "KDE Plasma 6 hardware health and pressure monitor"
-msgstr "KDE Plasma 6 hårdvaruhälso- och tryckövervakare"
+msgid "\nCPU average: "
+msgstr "\nCPU-medel: "
 
-msgid "Overview"
-msgstr "Översikt"
+msgid "\nCollector: "
+msgstr "\nInsamlare: "
 
-msgid "Flight Recorder"
-msgstr "Haverikommission"
+msgid "\nCoverage: "
+msgstr "\nTäckning: "
 
-msgid "Pressure & Memory"
-msgstr "Tryck & Minne"
+msgid "   |   Drops: ↓ "
+msgstr "   |   Bortfall: ↓ "
 
-msgid "Power & Cooling"
-msgstr "Effekt & Kylning"
+msgid "  ·  Click or drag on the timeline (or press Left/Right arrow keys) to inspect any sample."
+msgstr "  ·  Klicka eller dra på tidslinjen (eller tryck vänster/höger piltangent) för att granska en mätpunkt."
 
-msgid "Processes"
-msgstr "Processer"
+msgid " (Latest)"
+msgstr " (senaste)"
 
-msgid "Storage & Network"
-msgstr "Lagring & Nätverk"
+msgid " (PID "
+msgstr " (PID "
 
-msgid "Settings"
-msgstr "Inställningar"
+msgid " (est.)"
+msgstr " (uppsk.)"
 
-msgid "Trends"
-msgstr "Trender"
+msgid " (physical)"
+msgstr " (fysiskt)"
 
-msgid "Live (RAM)"
-msgstr "Realtid (RAM)"
+msgid " (virtual)"
+msgstr " (virtuellt)"
 
-msgid "Mark Problem Now"
-msgstr "Markera problem nu"
+msgid " B"
+msgstr " B"
 
-msgid "Mark problem now"
-msgstr "Markera problem nu"
+msgid " GiB"
+msgstr " GiB"
 
-msgid "Save Pulse session"
-msgstr "Spara Pulse-session"
+msgid " GiB ("
+msgstr " GiB ("
 
-msgid "Open Pulse session"
-msgstr "Öppna Pulse-session"
+msgid " GiB / "
+msgstr " GiB / "
 
-msgid "Save session…"
-msgstr "Spara session…"
+msgid " KiB"
+msgstr " KiB"
 
-msgid "Save this investigation?"
-msgstr "Vill du spara den här utredningen?"
+msgid " MHz"
+msgstr " MHz"
+
+msgid " MHz avg · "
+msgstr " MHz medel · "
+
+msgid " MHz peak"
+msgstr " MHz topp"
+
+msgid " MiB"
+msgstr " MiB"
+
+msgid " MiB RSS"
+msgstr " MiB RSS"
+
+msgid " MiB VRAM"
+msgstr " MiB VRAM"
+
+msgid " MiB allocator memory."
+msgstr " MiB allokeringsminne."
+
+msgid " MiB before compression, "
+msgstr " MiB före komprimering, "
+
+msgid " MiB compressed payload and "
+msgstr " MiB komprimerade data och "
+
+msgid " MiB · Write "
+msgstr " MiB · Skrivning "
+
+msgid " MiB/s"
+msgstr " MiB/s"
+
+msgid " MiB/s read · "
+msgstr " MiB/s läsning · "
+
+msgid " MiB/s write"
+msgstr " MiB/s skrivning"
+
+msgid " MiB/s · "
+msgstr " MiB/s · "
+
+msgid " MiB/s · ↑"
+msgstr " MiB/s · ↑"
+
+msgid " MiB/s)"
+msgstr " MiB/s)"
+
+msgid " RPM"
+msgstr " RPM"
+
+msgid " W"
+msgstr " W"
+
+msgid " W · "
+msgstr " W · "
+
+msgid " W · PL2 "
+msgstr " W · PL2 "
+
+msgid " W)"
+msgstr " W)"
+
+msgid " buckets"
+msgstr " intervall"
+
+msgid " details"
+msgstr " detaljer"
+
+msgid " gaps"
+msgstr " luckor"
+
+msgid " h recorded"
+msgstr " timmar inspelade"
+
+msgid " headroom"
+msgstr " marginal"
+
+msgid " incidents recorded"
+msgstr " incidenter registrerade"
+
+msgid " min"
+msgstr " min"
+
+msgid " ms"
+msgstr " ms"
+
+msgid " ms/s"
+msgstr " ms/s"
+
+msgid " ms/s)"
+msgstr " ms/s)"
+
+msgid " observations · "
+msgstr " observationer · "
+
+msgid " out of 100; higher is better"
+msgstr " av 100; högre är bättre"
+
+msgid " process(es) currently in uninterruptible disk wait (state D)."
+msgstr " processer i oavbrytbar diskväntan (tillstånd D)."
+
+msgid " processes"
+msgstr " processer"
+
+msgid " s"
+msgstr " s"
+
+msgid " s / "
+msgstr " s / "
+
+msgid " s coverage"
+msgstr " s täckning"
+
+msgid " s · "
+msgstr " s · "
+
+msgid " samples"
+msgstr " mätpunkter"
+
+msgid " samples · "
+msgstr " mätpunkter · "
+
+msgid " tab"
+msgstr " flik"
+
+msgid " · Complete"
+msgstr " · Fullständigt"
+
+msgid " · DISK WAIT (D)"
+msgstr " · DISKVÄNTAN (D)"
+
+msgid " · Disconnected or unsupported"
+msgstr " · Frånkopplad eller saknar stöd"
+
+msgid " · Frequency: "
+msgstr " · Frekvens: "
+
+msgid " · GPU power: "
+msgstr " · GPU-effekt: "
+
+msgid " · GPU temperature: "
+msgstr " · GPU-temperatur: "
+
+msgid " · HISTORICAL investigation (live monitoring continues separately)"
+msgstr " · HISTORISK undersökning (realtidsövervakning fortsätter separat)"
+
+msgid " · KDE Plasma 6"
+msgstr " · KDE Plasma 6"
+
+msgid " · Live recording"
+msgstr " · Realtidsinspelning"
+
+msgid " · New this interval: "
+msgstr " · Nya detta intervall: "
+
+msgid " · Observed "
+msgstr " · Observerat "
+
+msgid " · PID "
+msgstr " · PID "
+
+msgid " · Partial coverage"
+msgstr " · Ofullständig täckning"
+
+msgid " · Reason: "
+msgstr " · Orsak: "
+
+msgid " · Recording paused in this window"
+msgstr " · Inspelning pausad i det här fönstret"
+
+msgid " · Responsiveness: "
+msgstr " · Responsivitet: "
+
+msgid " · Rule: "
+msgstr " · Regel: "
+
+msgid " · Sampled: "
+msgstr " · Insamlat: "
+
+msgid " · Unsaved"
+msgstr " · Osparad"
+
+msgid " · W "
+msgstr " · W "
+
+msgid " · ZRAM "
+msgstr " · ZRAM "
+
+msgid " · observed "
+msgstr " · observerat "
+
+msgid " · start ticks "
+msgstr " · starttick "
+
+msgid " · unavailable"
+msgstr " · otillgängligt"
+
+msgid "% CPU"
+msgstr "% CPU"
+
+msgid "% CPU · "
+msgstr "% CPU · "
+
+msgid "% I/O wait"
+msgstr "% I/O-väntan"
+
+msgid "% activity"
+msgstr "% aktivitet"
+
+msgid "% charge"
+msgstr "% laddning"
+
+msgid "% load"
+msgstr "% belastning"
+
+msgid "% time waiting"
+msgstr "% väntetid"
+
+msgid "% | full wait: "
+msgstr "% | full väntan: "
+
+msgid "). Real-time telemetry is paused."
+msgstr "). Realtidsmätningen är pausad."
+
+msgid ", active profile"
+msgstr ", aktiv profil"
+
+msgid ", change power profile"
+msgstr ", ändra energiprofil"
+
+msgid ". Collapse process details"
+msgstr ". Dölj processdetaljer"
+
+msgid ". Concurrent resource use does not establish causation."
+msgstr ". Samtidig resursanvändning bevisar inte orsakssamband."
+
+msgid ". Expand process details"
+msgstr ". Visa processdetaljer"
+
+msgid ". Open pressure details"
+msgstr ". Öppna belastningsdetaljer"
+
+msgid ". Open status explanation"
+msgstr ". Öppna statusförklaring"
+
+msgid ". Responsiveness index "
+msgstr ". Responsivitetsindex "
+
+msgid "08:00"
+msgstr "08:00"
+
+msgid "1 Day"
+msgstr "1 dag"
+
+msgid "1000 ms (Standard balanced)"
+msgstr "1000 ms (balanserad standard)"
+
+msgid "14 Days"
+msgstr "14 dagar"
+
+msgid "15 minutes"
+msgstr "15 minuter"
+
+msgid "15 minutes (Extended)"
+msgstr "15 minuter (utökad)"
+
+msgid "1h"
+msgstr "1h"
+
+msgid "2000 ms (Low overhead)"
+msgstr "2000 ms (låg belastning)"
+
+msgid "20–100 °C"
+msgstr "20–100 °C"
+
+msgid "22:00"
+msgstr "22:00"
+
+msgid "24h"
+msgstr "24h"
+
+msgid "250 ms (High responsiveness)"
+msgstr "250 ms (hög tidsupplösning)"
+
+msgid "30 Days"
+msgstr "30 dagar"
+
+msgid "30 minutes"
+msgstr "30 minuter"
+
+msgid "30 minutes (Deep investigation)"
+msgstr "30 minuter (djupgående undersökning)"
+
+msgid "30d"
+msgstr "30d"
+
+msgid "5 minutes"
+msgstr "5 minuter"
+
+msgid "5 minutes (Default)"
+msgstr "5 minuter (standard)"
+
+msgid "500 ms (Fast)"
+msgstr "500 ms (snabb)"
+
+msgid "5000 ms (Minimal CPU)"
+msgstr "5000 ms (minimal CPU-belastning)"
+
+msgid "68–212 °F"
+msgstr "68–212 °F"
+
+msgid "6h"
+msgstr "6h"
+
+msgid "7 Days (Recommended)"
+msgstr "7 dagar (rekommenderas)"
+
+msgid "7d"
+msgstr "7d"
+
+msgid "AC power"
+msgstr "Nätström"
+
+msgid "AC power · No battery"
+msgstr "Nätström · Inget batteri"
+
+msgid "About & Documentation"
+msgstr "Om och dokumentation"
+
+msgid "About Loofi Pulse"
+msgstr "Om Loofi Pulse"
+
+msgid "Active observation"
+msgstr "Aktiv observation"
+
+msgid "Active power profile: "
+msgstr "Aktiv energiprofil: "
+
+msgid "Active profile: "
+msgstr "Aktiv profil: "
+
+msgid "Activity unavailable"
+msgstr "Aktivitet otillgänglig"
+
+msgid "Alert Notifications"
+msgstr "Varningsaviseringar"
+
+msgid "All alerts (Including informational)"
+msgstr "Alla aviseringar (även information)"
+
+msgid "Also active: "
+msgstr "Även aktivt: "
+
+msgid "An empty selection uses physical interfaces automatically. Reports include process details only when explicitly enabled."
+msgstr "Ett tomt urval använder fysiska gränssnitt automatiskt. Rapporter innehåller processuppgifter endast om detta aktiveras uttryckligen."
+
+msgid "Author: Loofi Boss"
+msgstr "Författare: Loofi Boss"
+
+msgid "Auto physical totals"
+msgstr "Automatiska fysiska totalvärden"
+
+msgid "Automatic totals use physical interfaces. You can change selected interfaces in Settings. Cumulative packet statistics track drops and error rates."
+msgstr "Automatiska totalvärden använder fysiska gränssnitt. Ändra urvalet i inställningarna. Kumulativ paketstatistik visar bortfall och fel."
+
+msgid "Automatically use physical interfaces"
+msgstr "Använd fysiska gränssnitt automatiskt"
+
+msgid "Automatically use physical network interfaces"
+msgstr "Använd fysiska nätverksgränssnitt automatiskt"
+
+msgid "Available"
+msgstr "Tillgänglig"
+
+msgid "Avg Latency:"
+msgstr "Genomsnittlig fördröjning:"
+
+msgid "BOTTLENECK"
+msgstr "FLASKHALS"
+
+msgid "Background & Startup"
+msgstr "Bakgrund och uppstart"
+
+msgid "Background monitoring and login startup are separate opt-ins. Recordings stay in memory until you save a session. The process-detail privacy setting also applies to sessions."
+msgstr "Bakgrundsövervakning och start vid inloggning väljs separat. Inspelningar finns i minnet tills en session sparas. Integritetsinställningen för processuppgifter gäller även sessioner."
+
+msgid "Background monitoring toggle"
+msgstr "Bakgrundsövervakning"
+
+msgid "Battery"
+msgstr "Batteri"
+
+msgid "Battery & Power (High discharge)"
+msgstr "Batteri och effekt (hög urladdning)"
+
+msgid "Battery & power source"
+msgstr "Batteri och strömkälla"
+
+msgid "Battery (0–"
+msgstr "Batteri (0–"
+
+msgid "Battery discharge"
+msgstr "Batteriurladdning"
+
+msgid "Battery discharge "
+msgstr "Batteriurladdning "
+
+msgid "Battery discharge channel; separate from CPU package power"
+msgstr "Batteriurladdning, separat från CPU-paketeffekt"
+
+msgid "Battery health: "
+msgstr "Batterihälsa: "
+
+msgid "Battery health: Unavailable"
+msgstr "Batterihälsa: Otillgänglig"
+
+msgid "Battery totals combine compatible energy readings only. Power-source status and battery charging are independent, including USB-C supplies."
+msgstr "Batteritotaler kombinerar endast kompatibla energivärden. Strömkällans status och batteriladdning är separata, även för USB-C."
+
+msgid "Battery: "
+msgstr "Batteri: "
+
+msgid "Battery: Not present · "
+msgstr "Batteri: Saknas · "
+
+msgid "Battery: Unavailable"
+msgstr "Batteri: Otillgängligt"
+
+msgid "Bottleneck"
+msgstr "Flaskhals"
+
+msgid "Bucket duration: "
+msgstr "Intervallängd: "
+
+msgid "CPU "
+msgstr "CPU "
+
+msgid "CPU %"
+msgstr "CPU %"
+
+msgid "CPU & NVMe thermals"
+msgstr "CPU- och NVMe-temperaturer"
+
+msgid "CPU & SoC"
+msgstr "CPU och SoC"
+
+msgid "CPU & SoC (Load, frequencies)"
+msgstr "CPU och SoC (belastning, frekvenser)"
+
+msgid "CPU Load & Package Temperature Trends"
+msgstr "Trender för CPU-belastning och temperatur"
+
+msgid "CPU N/A"
+msgstr "CPU otillgänglig"
+
+msgid "CPU PSI wait"
+msgstr "CPU-väntetid (PSI)"
+
+msgid "CPU avg: "
+msgstr "CPU medel: "
+
+msgid "CPU cores and sensors"
+msgstr "CPU-kärnor och sensorer"
+
+msgid "CPU is close to its reported thermal limit"
+msgstr "CPU är nära sin rapporterade temperaturgräns"
+
+msgid "CPU is operating at its sustained power limit (PL1)"
+msgstr "CPU arbetar vid sin uthålliga effektgräns (PL1)"
+
+msgid "CPU load"
+msgstr "CPU-belastning"
+
+msgid "CPU load & frequency"
+msgstr "CPU-belastning och frekvens"
+
+msgid "CPU load (0–100%)"
+msgstr "CPU-belastning (0–100%)"
+
+msgid "CPU load and temperature trends"
+msgstr "Trender för CPU-belastning och temperatur"
+
+msgid "CPU load: 0–100% · Temperature: "
+msgstr "CPU-belastning: 0–100 % · Temperatur: "
+
+msgid "CPU package & power limits"
+msgstr "CPU-paket och effektgränser"
+
+msgid "CPU package power: Unavailable"
+msgstr "CPU-paketeffekt: Otillgänglig"
+
+msgid "CPU pressure or thermal risk is elevated"
+msgstr "CPU-belastning eller temperaturrisk är förhöjd"
+
+msgid "CPU temp (25–100 °C)"
+msgstr "CPU-temp (25–100 °C)"
+
+msgid "CPU temperature"
+msgstr "CPU-temperatur"
+
+msgid "CPU thermal throttling observed"
+msgstr "CPU-temperaturstrypning observerad"
+
+msgid "CPU use"
+msgstr "CPU-användning"
+
+msgid "CPU warming up"
+msgstr "CPU-mätningen förbereds"
+
+msgid "CPU: "
+msgstr "CPU: "
+
+msgid "Cancel"
+msgstr "Avbryt"
+
+msgid "Celsius (°C)"
+msgstr "Celsius (°C)"
+
+msgid "Charge unavailable"
+msgstr "Laddning otillgänglig"
+
+msgid "Check for background indexing, updates, or other heavy disk activity."
+msgstr "Kontrollera bakgrundsindexering, uppdateringar och annan tung diskaktivitet."
+
+msgid "Check whether the current workload is expected."
+msgstr "Kontrollera om den aktuella belastningen är förväntad."
+
+msgid "Clear Database"
+msgstr "Rensa databasen"
+
+msgid "Clear Recorded History"
+msgstr "Rensa inspelad historik"
+
+msgid "Clear persistent history?"
+msgstr "Rensa långtidshistoriken?"
+
+msgid "Clear recorded history"
+msgstr "Rensa inspelad historik"
+
+msgid "Clear recorded history?"
+msgstr "Rensa den inspelade historiken?"
+
+msgid "Click to freeze moment"
+msgstr "Klicka för att frysa ögonblicket"
+
+msgid "Collecting initial readings"
+msgstr "Samlar in inledande mätvärden"
+
+msgid "Collector disconnected"
+msgstr "Insamlaren är frånkopplad"
+
+msgid "Collector service is disconnected ("
+msgstr "Insamlingstjänsten är frånkopplad ("
+
+msgid "Collector: "
+msgstr "Insamlare: "
+
+msgid "Completed: "
+msgstr "Klart: "
+
+msgid "Concurrent process"
+msgstr "Samtidigt observerad process"
+
+msgid "Concurrent resource use"
+msgstr "Samtidig resursanvändning"
+
+msgid "Confirming system readings"
+msgstr "Bekräftar systemmätningar"
+
+msgid "Continue monitoring when all windows close"
+msgstr "Fortsätt övervakning i bakgrunden när alla fönster stängs"
+
+msgid "Cooling & device thermal"
+msgstr "Kylning och enhetstemperatur"
+
+msgid "Copy incident report"
+msgstr "Kopiera incidentrapport"
+
+msgid "Copy report"
+msgstr "Kopiera rapport"
+
+msgid "Copy report to clipboard"
+msgstr "Kopiera rapport till urklipp"
+
+msgid "Could not complete: "
+msgstr "Kunde inte slutföra: "
+
+msgid "Critical Throttle"
+msgstr "Kritisk strypning"
+
+msgid "Critical only (Severe throttling)"
+msgstr "Endast kritiska incidenter (kraftig strypning)"
+
+msgid "D (wait)"
+msgstr "D (väntar)"
+
+msgid "DATA POINTS"
+msgstr "MÄTPUNKTER"
+
+msgid "DISCONNECTED"
+msgstr "FRÅNKOPPLAD"
+
+msgid "DISK WAIT (D)"
+msgstr "DISKVÄNTAN (D)"
+
+msgid "Data quality and sources"
+msgstr "Datakvalitet och källor"
+
+msgid "Detected sensors"
+msgstr "Identifierade sensorer"
+
+msgid "Devices & network interfaces"
+msgstr "Enheter och nätverksgränssnitt"
+
+msgid "Disabled (Mute all notifications)"
+msgstr "Avstängt (tysta alla aviseringar)"
 
 msgid "Discard investigation and close"
 msgstr "Kasta utredning och stäng"
 
-msgid "System Monitor"
-msgstr "Systemövervakare"
+msgid "Discard investigation and quit"
+msgstr "Kasta undersökningen och avsluta"
 
-msgid "End process…"
-msgstr "Avsluta process…"
+msgid "Disk"
+msgstr "Disk"
+
+msgid "Disk "
+msgstr "Disk "
+
+msgid "Disk I/O (0–"
+msgstr "Disk-I/O (0–"
+
+msgid "Disk I/O throughput: Unavailable"
+msgstr "Disktrafik: Otillgänglig"
+
+msgid "Disk I/O:"
+msgstr "Disk-I/O:"
+
+msgid "Disk I/O: "
+msgstr "Disk-I/O: "
+
+msgid "Disk R "
+msgstr "Disk läsning "
+
+msgid "Disk throughput: "
+msgstr "Disktrafik: "
+
+msgid "Display & Units"
+msgstr "Visning och enheter"
+
+msgid "Domain: "
+msgstr "Område: "
+
+msgid "Driver: "
+msgstr "Drivrutin: "
+
+msgid "ELEVATED"
+msgstr "FÖRHÖJD"
+
+msgid "Elevated"
+msgstr "Förhöjd"
+
+msgid "Enable in Settings…"
+msgstr "Aktivera i inställningarna…"
+
+msgid "Enable incident notifications"
+msgstr "Aktivera incidentaviseringar"
+
+msgid "Enable incident notifications in this window"
+msgstr "Aktivera incidentaviseringar i det här fönstret"
+
+msgid "Enable long-term history to record 1-minute system hardware trends across restarts (up to 30 days)."
+msgstr "Aktivera långtidshistorik för att spara minutvärden mellan omstarter (upp till 30 dagar)."
+
+msgid "Enable persistent long-term metrics history"
+msgstr "Aktivera beständig långtidshistorik"
+
+msgid "Enable persistent metrics history across restarts (opt-in)"
+msgstr "Spara mäthistorik mellan omstarter (frivilligt)"
 
 msgid "End process"
 msgstr "Avsluta process"
@@ -83,140 +750,1187 @@ msgstr "Avsluta process"
 msgid "End process?"
 msgstr "Avsluta process?"
 
+msgid "End process…"
+msgstr "Avsluta process…"
+
+msgid "End unset"
+msgstr "Slut ej valt"
+
+msgid "Enter a valid time in HH:mm format (00:00–23:59). The last valid schedule remains active."
+msgstr "Ange en giltig tid i formatet HH:mm (00:00–23:59). Det senaste giltiga schemat gäller tills vidare."
+
+msgid "Error and drop counters unavailable for this interface."
+msgstr "Fel- och bortfallsräknare är otillgängliga för gränssnittet."
+
+msgid "Errors: ↓ "
+msgstr "Fel: ↓ "
+
+msgid "Estimated power"
+msgstr "Uppskattad effekt"
+
+msgid "Export incident"
+msgstr "Exportera incident"
+
+msgid "Export incident report"
+msgstr "Exportera incidentrapport"
+
+msgid "Export recording"
+msgstr "Exportera inspelning"
+
+msgid "FROZEN (EXPIRED)"
+msgstr "FRYST (UTGÅNGEN)"
+
+msgid "FROZEN SAMPLE"
+msgstr "FRYST MÄTPUNKT"
+
+msgid "Fahrenheit (°F)"
+msgstr "Fahrenheit (°F)"
+
+msgid "Fan speed: "
+msgstr "Fläkthastighet: "
+
+msgid "Fan: "
+msgstr "Fläkt: "
+
+msgid "Filter processes by name, PID or owner…"
+msgstr "Filtrera processer på namn, PID eller ägare…"
+
+msgid "Flight Recorder"
+msgstr "Färdskrivare"
+
+msgid "Flight recorder:"
+msgstr "Inspelning:"
+
+msgid "Follow Live"
+msgstr "Följ realtid"
+
 msgid "Force kill process"
 msgstr "Tvinga avslut"
 
 msgid "Force terminate immediately (SIGKILL)"
 msgstr "Tvinga omedelbar avslutning (SIGKILL)"
 
-msgid "Cancel"
-msgstr "Avbryt"
+msgid "Freeze selected range"
+msgstr "Frys valt intervall"
 
-msgid "Show Loofi Pulse"
-msgstr "Visa Loofi Pulse"
+msgid "Frequency unavailable"
+msgstr "Frekvens otillgänglig"
 
-msgid "Hide Loofi Pulse"
-msgstr "Dölj Loofi Pulse"
+msgid "Frozen investigation session"
+msgstr "Fryst undersökningssession"
 
-msgid "Pause Recording"
-msgstr "Pausa inspelning"
+msgid "GPU (Busy, VRAM, thermals)"
+msgstr "GPU (belastning, VRAM, temperaturer)"
 
-msgid "Resume Recording"
-msgstr "Återuppta inspelning"
+msgid "GPU driver: "
+msgstr "GPU-drivrutin: "
 
-msgid "Quit Loofi Pulse"
-msgstr "Avsluta Loofi Pulse"
+msgid "GPU load (0–100%)"
+msgstr "GPU-belastning (0–100%)"
 
-msgid "Snooze Notifications (15 min)"
-msgstr "Snooza aviseringar (15 min)"
+msgid "GPU load and temperature are high"
+msgstr "GPU-belastning och temperatur är höga"
 
-msgid "Nominal"
-msgstr "Nominell"
+msgid "GPU load: "
+msgstr "GPU-belastning: "
 
-msgid "Elevated"
-msgstr "Förhöjd"
+msgid "GPU telemetry at sample"
+msgstr "GPU-värden vid mätpunkten"
 
-msgid "Bottleneck"
-msgstr "Flaskhals"
+msgid "GPU temperature is high"
+msgstr "GPU-temperaturen är hög"
 
-msgid "Critical Throttle"
-msgstr "Kritisk strypning"
+msgid "GPU temperature: "
+msgstr "GPU-temperatur: "
 
-msgid "Observing"
-msgstr "Observerar"
+msgid "GitHub: https://github.com/loofiboss-bit/plasma-hardware-pulse"
+msgstr "GitHub: https://github.com/loofiboss-bit/plasma-hardware-pulse"
+
+msgid "Graphics (GPU)"
+msgstr "Grafik (GPU)"
+
+msgid "Graphics devices"
+msgstr "Grafikenheter"
+
+msgid "HISTORICAL SESSION"
+msgstr "HISTORISK SESSION"
 
 msgid "Hardware Health Monitor"
 msgstr "Hårdvaruövervakare"
 
-msgid "Background & Startup"
-msgstr "Bakgrund & Uppstart"
+msgid "Hardware history timeline. Select a sample with left and right arrow keys."
+msgstr "Tidslinje för hårdvaruhistorik. Välj en mätpunkt med vänster och höger piltangent."
 
-msgid "Service execution:"
-msgstr "Tjänstekörning:"
+msgid "Help & Diagnostics:"
+msgstr "Hjälp och diagnostik:"
 
-msgid "Continue monitoring when all windows close"
-msgstr "Fortsätt övervakning i bakgrunden när alla fönster stängs"
+msgid "Hide Loofi Pulse"
+msgstr "Dölj Loofi Pulse"
 
-msgid "Start monitoring automatically at login"
-msgstr "Starta övervakning automatiskt vid inloggning"
+msgid "Hide measurement details"
+msgstr "Dölj mätdetaljer"
 
-msgid "System Tray:"
-msgstr "Systemfält:"
+msgid "Hide status explanation"
+msgstr "Dölj statusförklaring"
 
-msgid "Show system tray icon with live status"
-msgstr "Visa ikon i systemfältet med realtidsstatus"
+msgid "High battery power draw"
+msgstr "Hög batteriförbrukning"
 
-msgid "Minimize to system tray when closing window"
-msgstr "Minimera till systemfältet när fönstret stängs"
+msgid "High workload while power-saver profile is active"
+msgstr "Hög belastning med energisparprofil aktiverad"
 
-msgid "Alert Notifications"
-msgstr "Varningsaviseringar"
+msgid "History"
+msgstr "Historik"
 
-msgid "Minimum alert severity:"
-msgstr "Lägsta allvarlighetsgrad för avisering:"
+msgid "History & Flight Recorder"
+msgstr "Historik och inspelning"
 
-msgid "Quiet Hours"
-msgstr "Tysta timmar"
+msgid "History retention"
+msgstr "Inspelningslängd"
 
-msgid "Temperature Unit"
-msgstr "Temperaturskala"
+msgid "History retention:"
+msgstr "Inspelningslängd:"
 
-msgid "Long-Term Trends & Incident History"
-msgstr "Långtidstrender och incidenthistorik"
+msgid "Hover @ "
+msgstr "Pekare vid "
+
+msgid "IOPS:"
+msgstr "IOPS:"
+
+msgid "Identity omitted"
+msgstr "Identitet utelämnad"
+
+msgid "In-memory history retention duration"
+msgstr "Hur länge historik sparas i minnet"
+
+msgid "In-memory investigation"
+msgstr "Undersökning i minnet"
+
+msgid "Include process details in exports"
+msgstr "Ta med processuppgifter i export"
+
+msgid "Include process names and IDs in reports"
+msgstr "Ta med processnamn och ID i rapporter"
+
+msgid "Include process names and PIDs in exported session reports"
+msgstr "Ta med processnamn och PID i sparade sessioner och rapporter"
+
+msgid "Index unavailable"
+msgstr "Index otillgängligt"
+
+msgid "Indicates when threads are blocked waiting for synchronous NVMe/disk transactions."
+msgstr "Visar när trådar blockeras i väntan på synkrona NVMe-/disktransaktioner."
+
+msgid "Individual batteries"
+msgstr "Enskilda batterier"
+
+msgid "Inspect "
+msgstr "Granska "
+
+msgid "Inspected moment: "
+msgstr "Granskat ögonblick: "
+
+msgid "Inspected sample "
+msgstr "Granskad mätpunkt "
+
+msgid "Interface selection:"
+msgstr "Val av gränssnitt:"
+
+msgid "Investigation range"
+msgstr "Undersökningsintervall"
+
+msgid "KDE Plasma 6 hardware health and pressure monitor"
+msgstr "KDE Plasma 6 hårdvaruhälso- och tryckövervakare"
+
+msgid "Keep Loofi Pulse open while readings stabilize."
+msgstr "Låt Loofi Pulse vara öppet medan mätvärdena stabiliseras."
+
+msgid "Keep an eye on storage temperature during long transfers."
+msgstr "Följ lagringstemperaturen under långa överföringar."
 
 msgid "Keep detailed historical metrics up to:"
 msgstr "Spara detaljerade historiska mått i upp till:"
 
-msgid "Clear Recorded History"
-msgstr "Rensa inspelad historik"
-
-msgid "About Loofi Pulse"
-msgstr "Om Loofi Pulse"
-
 msgid "Keyboard Shortcuts"
 msgstr "Kortkommandon"
 
-msgid "Filter processes by name, PID or owner…"
-msgstr "Filtrera processer på namn, PID eller ägare…"
+msgid "LIVE STREAM"
+msgstr "REALTID"
 
-msgid "Sort:"
-msgstr "Sortera:"
+msgid "Level unavailable"
+msgstr "Nivå otillgänglig"
 
-msgid "CPU use"
-msgstr "CPU-användning"
+msgid "License: GNU General Public License v3.0"
+msgstr "Licens: GNU General Public License v3.0"
+
+msgid "Linux Pressure Stall Information (PSI) measures time tasks spend waiting for CPU, memory, or storage. High RAM use alone does not mean the system is under pressure. The Responsiveness index runs from 0 to 100; higher is better, with 100 meaning little observed pressure. Raw PSI wait percentages increase with stalled work."
+msgstr "Linux Pressure Stall Information (PSI) mäter hur länge uppgifter väntar på CPU, minne eller lagring. Hög RAM-användning innebär inte i sig att systemet är belastat. Responsivitetsindex går från 0 till 100; högre är bättre och 100 innebär låg observerad belastning. Råa PSI-väntetider ökar när arbete blockeras."
+
+msgid "Live (RAM)"
+msgstr "Realtid (RAM)"
+
+msgid "Live Flight Recorder"
+msgstr "Inspelning i realtid"
+
+msgid "Live device readings. Physical and virtual devices are monitored individually. Aggregated totals use physical interfaces by default to avoid double-counting virtual tunnel or container traffic."
+msgstr "Realtidsvärden per enhet. Fysiska och virtuella enheter övervakas var för sig. Totalvärden använder normalt fysiska gränssnitt för att undvika dubbelräkning av tunnel- eller containertrafik."
+
+msgid "Load "
+msgstr "Belastning "
+
+msgid "Load N/A"
+msgstr "Belastning otillgänglig"
+
+msgid "Load: "
+msgstr "Belastning: "
+
+msgid "Loading history…"
+msgstr "Läser in historik…"
+
+msgid "Local hardware monitoring and incident investigation for KDE Plasma."
+msgstr "Lokal hårdvaruövervakning och incidentundersökning för KDE Plasma."
+
+msgid "Long term history retention period"
+msgstr "Lagringstid för långtidshistorik"
+
+msgid "Long-Term Metrics History is Disabled"
+msgstr "Långtidshistorik är avstängd"
+
+msgid "Long-Term Trends & Incident History"
+msgstr "Långtidstrender och incidenthistorik"
+
+msgid "Long-Term Trends (1h – 30d)"
+msgstr "Långtidstrender (1 timme–30 dagar)"
+
+msgid "Long-term history:"
+msgstr "Långtidshistorik:"
+
+msgid "Loofi Pulse"
+msgstr "Loofi Pulse"
+
+msgid "Loofi Pulse is still running in the system tray. Right-click the tray icon to quit."
+msgstr "Loofi Pulse körs fortfarande i systemfältet. Högerklicka på ikonen för att avsluta."
+
+msgid "Loofi Pulse — %1\nCPU: %2 · Temperature: %3 · Memory: %4"
+msgstr "Loofi Pulse — %1\nCPU: %2 · Temperatur: %3 · Minne: %4"
+
+msgid "MONITORING COVERAGE"
+msgstr "MÄTTÄCKNING"
+
+msgid "Margin "
+msgstr "Marginal "
+
+msgid "Mark Problem Now"
+msgstr "Markera problem nu"
+
+msgid "Mark problem now"
+msgstr "Markera problem nu"
+
+msgid "Measured hardware power"
+msgstr "Uppmätt hårdvarueffekt"
+
+msgid "Measurement capabilities"
+msgstr "Mätmöjligheter"
+
+msgid "Measurement details"
+msgstr "Mätdetaljer"
+
+msgid "Measures actual thread stall time spent on ZRAM compression, page reclaim, and allocation."
+msgstr "Mäter faktisk väntetid för trådar vid ZRAM-komprimering, sidåtervinning och allokering."
+
+msgid "Mem"
+msgstr "Minne"
+
+msgid "Memory & PSI"
+msgstr "Minne och PSI"
+
+msgid "Memory & PSI (RAM, Swap, Stalls)"
+msgstr "Minne och PSI (RAM, växling, väntetid)"
+
+msgid "Memory & PSI Pressure"
+msgstr "Minne och PSI-belastning"
+
+msgid "Memory & Pressure"
+msgstr "Minne och belastning"
+
+msgid "Memory & system pressure (PSI)"
+msgstr "Minne och systembelastning (PSI)"
+
+msgid "Memory PSI wait"
+msgstr "Minnesväntetid (PSI)"
+
+msgid "Memory pressure"
+msgstr "Minnesbelastning"
+
+msgid "Memory pressure is slowing the system"
+msgstr "Minnesbelastning saktar ned systemet"
 
 msgid "Memory use"
 msgstr "Minnesanvändning"
 
+msgid "Memory use, compression and swap"
+msgstr "Minnesanvändning, komprimering och växlingsutrymme"
+
+msgid "Minimize to system tray when closing window"
+msgstr "Minimera till systemfältet när fönstret stängs"
+
+msgid "Minimize to tray on close toggle"
+msgstr "Minimera till systemfältet vid stängning"
+
+msgid "Minimum alert severity threshold"
+msgstr "Lägsta allvarlighetsgrad för aviseringar"
+
+msgid "Minimum alert severity:"
+msgstr "Lägsta allvarlighetsgrad för avisering:"
+
+msgid "Missing: "
+msgstr "Saknas: "
+
+msgid "Monitor interface "
+msgstr "Övervaka gränssnitt "
+
+msgid "Monitoring & Sampling"
+msgstr "Övervakning och insamling"
+
+msgid "More"
+msgstr "Mer"
+
+msgid "Mute alerts for "
+msgstr "Tysta aviseringar för "
+
+msgid "Muted alert domains:"
+msgstr "Tysta aviseringar för:"
+
+msgid "NOMINAL"
+msgstr "NORMAL"
+
+msgid "NVMe "
+msgstr "NVMe "
+
+msgid "NVMe temp N/A"
+msgstr "NVMe-temp otillgänglig"
+
+msgid "NVMe temperature is elevated"
+msgstr "NVMe-temperaturen är förhöjd"
+
+msgid "NVMe temperature: "
+msgstr "NVMe-temperatur: "
+
+msgid "NVMe: "
+msgstr "NVMe: "
+
 msgid "Name"
 msgstr "Namn"
 
-msgid "PROCESS"
-msgstr "PROCESS"
+msgid "Navigation & Actions"
+msgstr "Navigering och åtgärder"
+
+msgid "Net"
+msgstr "Nätverk"
+
+msgid "Net ↓"
+msgstr "Net ↓"
+
+msgid "Network (Throughput spikes)"
+msgstr "Nätverk (trafiktoppar)"
+
+msgid "Network I/O: "
+msgstr "Nätverks-I/O: "
+
+msgid "Network Interfaces"
+msgstr "Nätverksgränssnitt"
+
+msgid "Network interfaces"
+msgstr "Nätverksgränssnitt"
+
+msgid "Network throughput: Unavailable"
+msgstr "Nätverkstrafik: Otillgänglig"
+
+msgid "Network throughput: ↓"
+msgstr "Nätverkstrafik: ↓"
+
+msgid "New throttle events: "
+msgstr "Nya strypningshändelser: "
+
+msgid "Next step: "
+msgstr "Nästa steg: "
+
+msgid "No GPU detected"
+msgstr "Ingen GPU identifierad"
+
+msgid "No action is needed."
+msgstr "Ingen åtgärd behövs."
+
+msgid "No additional detail"
+msgstr "Inga ytterligare uppgifter"
+
+msgid "No battery"
+msgstr "Inget batteri"
+
+msgid "No battery detected"
+msgstr "Inget batteri identifierat"
+
+msgid "No contributing signal is currently available."
+msgstr "Ingen bidragande signal finns tillgänglig just nu."
+
+msgid "No current system pressure detected"
+msgstr "Ingen aktuell systembelastning upptäckt"
+
+msgid "No history has been recorded yet"
+msgstr "Ingen historik har spelats in ännu"
+
+msgid "No history yet. Measurements appear here after the next sample."
+msgstr "Ingen historik ännu. Mätvärden visas efter nästa insamling."
+
+msgid "No incident summaries were recorded in this time range. Missing coverage does not establish that no incidents occurred."
+msgstr "Inga incidentsammanfattningar registrerades i det här tidsintervallet. Saknad mättäckning bevisar inte att inga incidenter inträffade."
+
+msgid "No matching processes found"
+msgstr "Inga matchande processer"
+
+msgid "No observations available"
+msgstr "Inga observationer tillgängliga"
+
+msgid "No persisted history samples for this time window yet."
+msgstr "Inga sparade historikvärden för det här tidsintervallet ännu."
+
+msgid "No power channel"
+msgstr "Ingen effektkälla för mätning"
+
+msgid "No process identities recorded at this moment"
+msgstr "Inga processidentiteter inspelade vid den här tidpunkten"
+
+msgid "No readable batteries present"
+msgstr "Inga läsbara batterier finns"
+
+msgid "No readable storage devices found"
+msgstr "Inga läsbara lagringsenheter hittades"
+
+msgid "No recorded gaps"
+msgstr "Inga registrerade luckor"
+
+msgid "No recorded sample"
+msgstr "Inget inspelat mätvärde"
+
+msgid "No supported GPU telemetry interface found"
+msgstr "Inget GPU-gränssnitt för mätning hittades"
+
+msgid "No supported temperature sensors were found."
+msgstr "Inga temperaturgivare med stöd hittades."
+
+msgid "No sustained pressure or thermal risk was observed in the available readings."
+msgstr "Ingen ihållande belastning eller temperaturrisk observerades i de tillgängliga mätvärdena."
+
+msgid "Nominal"
+msgstr "Nominell"
+
+msgid "None / Unavailable"
+msgstr "Ingen/otillgänglig"
+
+msgid "None observed"
+msgstr "Inga observerade"
+
+msgid "Not sampled"
+msgstr "Ej insamlat"
+
+msgid "Observed"
+msgstr "Observerat"
+
+msgid "Observed CPU and resident memory describe resource use; a busy process alone does not establish causation."
+msgstr "Observerad CPU- och minnesanvändning beskriver resursförbrukning. En aktiv process bevisar inte i sig orsakssamband."
+
+msgid "Observed every 2 seconds: the union of the top 8 CPU, memory and disk-wait processes. This is a bounded sample, not a complete historical process list. Process identities are excluded from saved files unless enabled in Settings."
+msgstr "Observeras varannan sekund: de åtta främsta processerna för CPU, minne respektive diskväntan. Urvalet är begränsat och utgör ingen fullständig historisk processlista. Processidentiteter utelämnas i sparade filer om de inte aktiveras i inställningarna."
+
+msgid "Observed for "
+msgstr "Observerat i "
+
+msgid "Observed process use: Unavailable"
+msgstr "Observerad processanvändning: Otillgänglig"
+
+msgid "Observed: "
+msgstr "Observerat: "
+
+msgid "Observing"
+msgstr "Observerar"
+
+msgid "Older incident summaries have no calendar timestamp and cannot be placed in this time range."
+msgstr "Äldre incidentsammanfattningar saknar kalenderdatum och kan inte placeras i det här tidsintervallet."
+
+msgid "Open"
+msgstr "Öppna"
+
+msgid "Open "
+msgstr "Öppna "
+
+msgid "Open / Save session file"
+msgstr "Öppna/spara sessionsfil"
+
+msgid "Open About Loofi Pulse dialog"
+msgstr "Öppna Om Loofi Pulse"
+
+msgid "Open History"
+msgstr "Öppna historik"
+
+msgid "Open Keyboard Shortcuts cheat sheet"
+msgstr "Visa kortkommandon"
+
+msgid "Open Pulse session"
+msgstr "Öppna Pulse-session"
+
+msgid "Open System Monitor"
+msgstr "Öppna Systemövervakaren"
+
+msgid "Open folder"
+msgstr "Öppna mapp"
+
+msgid "Open reports folder"
+msgstr "Öppna rapportmapp"
+
+msgid "Open session…"
+msgstr "Öppna session…"
+
+msgid "Original observations are frozen. Live monitoring continues separately. "
+msgstr "Ursprungliga observationer är frysta. Realtidsövervakning fortsätter separat. "
+
+msgid "Original technical evidence (preserved language):"
+msgstr "Ursprungligt tekniskt underlag (bevarat språk):"
+
+msgid "Overview"
+msgstr "Översikt"
+
+msgid "Overview page"
+msgstr "Översiktssidan"
+
+msgid "Owner: "
+msgstr "Ägare: "
 
 msgid "PID"
 msgstr "PID"
 
-msgid "USER"
-msgstr "ANVÄNDARE"
+msgid "PID "
+msgstr "PID "
 
-msgid "CPU %"
-msgstr "CPU %"
+msgid "PROCESS"
+msgstr "PROCESS"
+
+msgid "PSI wait some: "
+msgstr "PSI-väntan, någon: "
+
+msgid "Package "
+msgstr "Paket "
+
+msgid "Package power"
+msgstr "Paketeffekt"
+
+msgid "Pause"
+msgstr "Pausa"
+
+msgid "Pause / Resume Flight Recorder"
+msgstr "Pausa/återuppta inspelning"
+
+msgid "Pause Flight Recorder"
+msgstr "Pausa inspelningen"
+
+msgid "Pause Recording"
+msgstr "Pausa inspelning"
+
+msgid "Pause recording in this window"
+msgstr "Pausa inspelning i det här fönstret"
+
+msgid "Peak thermal spike"
+msgstr "Högsta temperaturtopp"
+
+msgid "Percentage of time at least one runnable thread is delayed waiting for CPU time."
+msgstr "Andel tid då minst en körbar tråd fördröjs i väntan på CPU-tid."
+
+msgid "Physical Drive"
+msgstr "Fysisk disk"
+
+msgid "Physical RAM"
+msgstr "Fysiskt RAM"
+
+msgid "Power & Cooling"
+msgstr "Effekt & Kylning"
+
+msgid "Power & Fan"
+msgstr "Effekt och fläkt"
+
+msgid "Power (0–"
+msgstr "Effekt (0–"
+
+msgid "Power limits: PL1 "
+msgstr "Effektgränser: PL1 "
+
+msgid "Power limits: Unavailable"
+msgstr "Effektgränser: Otillgängliga"
+
+msgid "Power profile"
+msgstr "Energiprofil"
+
+msgid "Power profile service unavailable"
+msgstr "Energiprofiltjänsten är otillgänglig"
+
+msgid "Power source: "
+msgstr "Strömkälla: "
+
+msgid "Power unavailable"
+msgstr "Effekt otillgänglig"
+
+msgid "Pressure & Disk I/O"
+msgstr "Belastning och disk-I/O"
+
+msgid "Pressure & Memory"
+msgstr "Tryck & Minne"
+
+msgid "Privacy & Data Storage"
+msgstr "Integritet och datalagring"
+
+msgid "Process details:"
+msgstr "Processuppgifter:"
+
+msgid "Processes"
+msgstr "Processer"
+
+msgid "Profile: "
+msgstr "Profil: "
+
+msgid "Pulse sessions (*.pulse-session)"
+msgstr "Pulse-sessioner (*.pulse-session)"
+
+msgid "Quick Settings…"
+msgstr "Snabbinställningar…"
+
+msgid "Quiet Hours"
+msgstr "Tysta timmar"
+
+msgid "Quiet hours end time (HH:mm)"
+msgstr "Tysta timmar slutar (HH:mm)"
+
+msgid "Quiet hours schedule:"
+msgstr "Schema för tysta timmar:"
+
+msgid "Quiet hours start time (HH:mm)"
+msgstr "Tysta timmar börjar (HH:mm)"
+
+msgid "Quiet hours toggle"
+msgstr "Aktivera tysta timmar"
+
+msgid "Quiet hours:"
+msgstr "Tysta timmar:"
+
+msgid "Quit Loofi Pulse"
+msgstr "Avsluta Loofi Pulse"
+
+msgid "R "
+msgstr "R "
+
+msgid "RAM reading unavailable"
+msgstr "RAM-mätning otillgänglig"
+
+msgid "RAM: "
+msgstr "RAM: "
+
+msgid "RECORDED GAPS"
+msgstr "REGISTRERADE LUCKOR"
+
+msgid "RECORDING PAUSED"
+msgstr "INSPELNING PAUSAD"
 
 msgid "RESIDENT RAM"
 msgstr "RESIDENT RAM"
 
+msgid "RESPONSIVENESS"
+msgstr "RESPONSIVITET"
+
+msgid "RSS: "
+msgstr "RSS: "
+
+msgid "Range: "
+msgstr "Intervall: "
+
+msgid "Read "
+msgstr "Läsning "
+
+msgid "Read:"
+msgstr "Läsning:"
+
+msgid "Recommendation: "
+msgstr "Rekommendation: "
+
+msgid "Reconnect"
+msgstr "Återanslut"
+
+msgid "Recorded Incidents & Hardware Events"
+msgstr "Registrerade incidenter och hårdvaruhändelser"
+
+msgid "Recorded data quality"
+msgstr "Inspelad datakvalitet"
+
+msgid "Recorded incidents (open original evidence and comparison):"
+msgstr "Inspelade incidenter (öppna ursprungligt underlag och jämförelse):"
+
+msgid "Recorded process observations"
+msgstr "Inspelade processobservationer"
+
+msgid "Recorded window: "
+msgstr "Inspelat intervall: "
+
+msgid "Recording paused"
+msgstr "Inspelning pausad"
+
+msgid "Reduce graphics work or lower the frame-rate limit if display performance is affected."
+msgstr "Minska grafikbelastningen eller bildfrekvensgränsen om bildskärmens prestanda påverkas."
+
+msgid "Reduce sustained CPU load or choose a lower power profile."
+msgstr "Minska den långvariga CPU-belastningen eller välj en lägre energiprofil."
+
+msgid "Refresh"
+msgstr "Uppdatera"
+
+msgid "Required measurements are available. Waiting for a consistent status before confirming the result."
+msgstr "Nödvändiga mätningar är tillgängliga. Väntar på en konsekvent status innan resultatet bekräftas."
+
+msgid "Responsiveness "
+msgstr "Responsivitet "
+
+msgid "Responsiveness (0–100)"
+msgstr "Responsivitet (0–100)"
+
+msgid "Responsiveness index "
+msgstr "Responsivitetsindex "
+
+msgid "Responsiveness index: "
+msgstr "Responsivitetsindex: "
+
+msgid "Resume"
+msgstr "Återuppta"
+
+msgid "Resume Flight Recorder"
+msgstr "Återuppta inspelningen"
+
+msgid "Resume Recording"
+msgstr "Återuppta inspelning"
+
+msgid "Retention period:"
+msgstr "Lagringstid:"
+
+msgid "Retry"
+msgstr "Försök igen"
+
+msgid "Review memory use in System Monitor and close work you no longer need."
+msgstr "Granska minnesanvändningen i Systemövervakaren och stäng arbete du inte längre behöver."
+
+msgid "Review the available measurements below."
+msgstr "Granska de tillgängliga mätningarna nedan."
+
+msgid "Review the data quality details for missing sensors and interfaces."
+msgstr "Granska datakvaliteten för saknade sensorer och gränssnitt."
+
+msgid "Rule: "
+msgstr "Regel: "
+
 msgid "STATE"
 msgstr "STATUS"
 
-msgid "Disk I/O:"
-msgstr "Disk-I/O:"
+msgid "Sampling interval (ms)"
+msgstr "Mätintervall (ms)"
+
+msgid "Sampling interval in milliseconds"
+msgstr "Mätintervall i millisekunder"
+
+msgid "Save Pulse session"
+msgstr "Spara Pulse-session"
+
+msgid "Save report + JSON"
+msgstr "Spara rapport och JSON"
+
+msgid "Save session…"
+msgstr "Spara session…"
+
+msgid "Save this investigation?"
+msgstr "Vill du spara den här utredningen?"
+
+msgid "Saved session"
+msgstr "Sparad session"
+
+msgid "Search processes"
+msgstr "Sök processer"
+
+msgid "Select a GPU for the live summary and recorded history. Availability depends on the driver."
+msgstr "Välj GPU för realtidssammanfattningen och inspelad historik. Tillgänglighet beror på drivrutinen."
+
+msgid "Select a sample in the timeline, set the beginning and end, then freeze the range. Comparisons use up to 30 seconds on either side."
+msgstr "Välj en mätpunkt i tidslinjen, ange början och slut och frys sedan intervallet. Jämförelser använder upp till 30 sekunder på vardera sidan."
+
+msgid "Service execution:"
+msgstr "Tjänstekörning:"
+
+msgid "Set beginning"
+msgstr "Ange början"
+
+msgid "Set end"
+msgstr "Ange slut"
+
+msgid "Settings"
+msgstr "Inställningar"
+
+msgid "Settings page"
+msgstr "Inställningssidan"
+
+msgid "Show"
+msgstr "Visa"
+
+msgid "Show Loofi Pulse"
+msgstr "Visa Loofi Pulse"
+
+msgid "Show measurement details"
+msgstr "Visa mätdetaljer"
+
+msgid "Show system tray icon with live status"
+msgstr "Visa ikon i systemfältet med realtidsstatus"
+
+msgid "Show this cheat sheet"
+msgstr "Visa kortkommandon"
+
+msgid "Snooze Notifications (15 min)"
+msgstr "Snooza aviseringar (15 min)"
+
+msgid "Snooze notifications for 15 minutes"
+msgstr "Tysta aviseringar i 15 minuter"
+
+msgid "Some system readings are unavailable"
+msgstr "Vissa systemmätningar är otillgängliga"
+
+msgid "Sort by load"
+msgstr "Sortera efter belastning"
+
+msgid "Sort processes"
+msgstr "Sortera processer"
+
+msgid "Sort:"
+msgstr "Sortera:"
+
+msgid "Sort: CPU %"
+msgstr "Sortera: CPU %"
+
+msgid "Sort: Combined"
+msgstr "Sortera: kombinerat"
+
+msgid "Sort: Disk Wait"
+msgstr "Sortera: diskväntan"
+
+msgid "Sort: Memory RSS"
+msgstr "Sortera: minne (RSS)"
+
+msgid "Sorted by load"
+msgstr "Sorterad efter belastning"
+
+msgid "Source: "
+msgstr "Källa: "
+
+msgid "Start monitoring at login"
+msgstr "Starta övervakning vid inloggning"
+
+msgid "Start monitoring at login toggle"
+msgstr "Starta övervakning vid inloggning"
+
+msgid "Start monitoring automatically at login"
+msgstr "Starta övervakning automatiskt vid inloggning"
+
+msgid "Start unset"
+msgstr "Början ej vald"
+
+msgid "State: "
+msgstr "Tillstånd: "
+
+msgid "Status at this time: "
+msgstr "Status vid denna tidpunkt: "
+
+msgid "Storage & I/O"
+msgstr "Lagring och I/O"
+
+msgid "Storage & NVMe (Disk I/O, temps)"
+msgstr "Lagring och NVMe (disk-I/O, temperaturer)"
+
+msgid "Storage & Net"
+msgstr "Lagring och nätverk"
+
+msgid "Storage & Network"
+msgstr "Lagring & Nätverk"
+
+msgid "Storage and I/O PSI wait"
+msgstr "Lagrings- och I/O-väntetid (PSI)"
+
+msgid "Storage devices"
+msgstr "Lagringsenheter"
+
+msgid "Storage pressure is blocking work"
+msgstr "Lagringsbelastning blockerar arbete"
+
+msgid "Storage usage:"
+msgstr "Lagringsutrymme:"
+
+msgid "Suppress alert notifications during quiet hours"
+msgstr "Tysta aviseringar under tysta timmar"
+
+msgid "Sustained performance is capped by the power envelope. Use 'performance' profile if higher limits are supported."
+msgstr "Uthållig prestanda begränsas av effektgränsen. Använd profilen 'performance' om högre gränser stöds."
+
+msgid "Swap Allocation"
+msgstr "Växlingsutrymme"
+
+msgid "Swap used: "
+msgstr "Använt växlingsutrymme: "
+
+msgid "Swap: Unavailable"
+msgstr "Växlingsutrymme: Otillgängligt"
+
+msgid "Switch to Balanced profile"
+msgstr "Byt till balanserad profil"
+
+msgid "Switch to the 'balanced' or 'performance' power profile for higher responsiveness."
+msgstr "Välj energiprofilen 'balanced' eller 'performance' för högre responsivitet."
+
+msgid "Switch to the 'balanced' or 'power-saver' profile to extend battery runtime."
+msgstr "Välj profilen 'balanced' eller 'power-saver' för längre batteritid."
+
+msgid "System Monitor"
+msgstr "Systemövervakare"
+
+msgid "System Tray:"
+msgstr "Systemfält:"
+
+msgid "System tray icon toggle"
+msgstr "Visa ikon i systemfältet"
+
+msgid "THROTTLING"
+msgstr "STRYPNING"
+
+msgid "Telemetry interval:"
+msgstr "Mätintervall:"
+
+msgid "Telemetry sampling interval"
+msgstr "Intervall för mätinsamling"
+
+msgid "Temp"
+msgstr "Temp"
+
+msgid "Temp N/A"
+msgstr "Temp otillgänglig"
+
+msgid "Temperature Unit"
+msgstr "Temperaturskala"
+
+msgid "Temperature unavailable"
+msgstr "Temperatur otillgänglig"
+
+msgid "Temperature unit preference"
+msgstr "Val av temperaturenhet"
+
+msgid "Temperature unit:"
+msgstr "Temperaturenhet:"
+
+msgid "Terminated / No longer observed"
+msgstr "Avslutad / observeras ej längre"
+
+msgid "The history database only records 1-minute numerical performance aggregates (min, avg, max) for CPU, GPU, memory, disks, and thermals. Process identities, command lines, window titles, and user PIDs are not stored in this database. Session files may include process identities when the export option above is enabled."
+msgstr "Historikdatabasen sparar endast numeriska minutvärden (minimum, medel, maximum) för CPU, GPU, minne, diskar och temperaturer. Processidentiteter, kommandorader, fönstertitlar och PID sparas inte i databasen. Sessionsfiler kan innehålla processidentiteter när exportalternativet ovan är aktiverat."
+
+msgid "Thermal headroom: "
+msgstr "Temperaturmarginal: "
+
+msgid "Thermal limit unavailable"
+msgstr "Temperaturgräns otillgänglig"
+
+msgid "Thermals & Throttling"
+msgstr "Temperaturer och strypning"
+
+msgid "This clears the current in-memory recording and incidents."
+msgstr "Detta rensar aktuell inspelning och incidenter i minnet."
+
+msgid "This investigation has not been saved. Save a session to keep the original evidence before quitting."
+msgstr "Undersökningen är inte sparad. Spara en session för att behålla det ursprungliga underlaget innan du avslutar."
+
+msgid "This permanently removes stored trends and incident summaries. Saved session files are kept."
+msgstr "Detta tar bort sparade trender och incidentsammanfattningar permanent. Sparade sessionsfiler behålls."
+
+msgid "Throttle count: "
+msgstr "Antal strypningar: "
+
+msgid "Throttle event counters: Unavailable"
+msgstr "Strypningsräknare: Otillgängliga"
+
+msgid "Throttle events since boot: "
+msgstr "Strypningshändelser sedan start: "
+
+msgid "Time-based chart. Missing observations and offline intervals are gaps. Numerical coverage and bucket duration are displayed above."
+msgstr "Tidsbaserat diagram. Saknade mätningar och frånkopplade perioder visas som luckor. Mättäckning och intervallängd visas ovan."
+
+msgid "Top process (concurrent CPU load):"
+msgstr "Främsta process (samtidig CPU-belastning):"
+
+msgid "Total stall rate: "
+msgstr "Total väntetid: "
+
+msgid "Trends"
+msgstr "Trender"
+
+msgid "USER"
+msgstr "ANVÄNDARE"
 
 msgid "Unavailable"
 msgstr "Otillgänglig"
 
-msgid "Active observation"
-msgstr "Aktiv observation"
+msgid "Use automatic physical device totals for storage history"
+msgstr "Använd automatiska fysiska totalvärden för lagringshistorik"
 
-msgid "Terminated / No longer observed"
-msgstr "Avslutad / observeras ej längre"
+msgid "Use this device for storage history"
+msgstr "Använd den här enheten för lagringshistorik"
+
+msgid "VRAM: "
+msgstr "VRAM: "
+
+msgid "Version "
+msgstr "Version "
+
+msgid "View: Current recording"
+msgstr "Vy: Aktuell inspelning"
+
+msgid "View: Historical investigation"
+msgstr "Vy: Historisk undersökning"
+
+msgid "WARMING UP"
+msgstr "VÄRMER UPP"
+
+msgid "Waiting for readable process observations…"
+msgstr "Väntar på läsbara processobservationer…"
+
+msgid "Waiting for stable measurements before confirming system status."
+msgstr "Väntar på stabila mätningar innan systemstatus bekräftas."
+
+msgid "Warming up"
+msgstr "Förbereder mätning"
+
+msgid "Warnings & Critical (Recommended)"
+msgstr "Varningar och kritiska incidenter (rekommenderas)"
+
+msgid "Watch GPU temperature during graphics-intensive workloads."
+msgstr "Följ GPU-temperaturen vid grafikintensivt arbete."
+
+msgid "Watch the temperature during sustained work. A lower power profile can reduce heat."
+msgstr "Följ temperaturen vid långvarigt arbete. En lägre energiprofil kan minska värmen."
+
+msgid "When background monitoring is active, the collector continues to detect hardware bottlenecks and power spikes quietly in the background without keeping the full window open."
+msgstr "Med bakgrundsövervakning fortsätter insamlaren att upptäcka hårdvaruproblem när appfönstret är stängt."
+
+msgid "Why this status?"
+msgstr "Varför denna status?"
+
+msgid "Wireless temperature: "
+msgstr "Trådlös temperatur: "
+
+msgid "Working: "
+msgstr "Arbetar: "
+
+msgid "Worst PSI wait"
+msgstr "Längsta PSI-väntetid"
+
+msgid "Write:"
+msgstr "Skrivning:"
+
+msgid "ZRAM Compression"
+msgstr "ZRAM-komprimering"
+
+msgid "ZRAM data: "
+msgstr "ZRAM-data: "
+
+msgid "ZRAM details: Unavailable"
+msgstr "ZRAM-detaljer: Otillgängliga"
+
+msgid "ZRAM: "
+msgstr "ZRAM: "
+
+msgid "ZRAM: No compressed pages in use"
+msgstr "ZRAM: Inga komprimerade sidor används"
+
+msgid "ZRAM: Unavailable"
+msgstr "ZRAM: Otillgängligt"
+
+msgid "allocation section"
+msgstr "avsnitt för allokering"
+
+msgid "battery section"
+msgstr "batteriavsnitt"
+
+msgid "cooling section"
+msgstr "kylningsavsnitt"
+
+msgid "cpu section"
+msgstr "CPU-avsnitt"
+
+msgid "gpu section"
+msgstr "GPU-avsnitt"
+
+msgid "incidents section"
+msgstr "incidentavsnitt"
+
+msgid "inspector section"
+msgstr "granskningsavsnitt"
+
+msgid "measurements section"
+msgstr "mätavsnitt"
+
+msgid "memory section"
+msgstr "minnesavsnitt"
+
+msgid "observed"
+msgstr "observerat"
+
+msgid "overview section"
+msgstr "översiktsavsnitt"
+
+msgid "processes"
+msgstr "processer"
+
+msgid "profile section"
+msgstr "profilavsnitt"
+
+msgid "sensors section"
+msgstr "sensoravsnitt"
+
+msgid "storage section"
+msgstr "lagringsavsnitt"
+
+msgid "to"
+msgstr "till"
+
+msgid "·"
+msgstr "·"
+
+msgid "· "
+msgstr "· "
+
+msgid "· CPU package "
+msgstr "· CPU-paket "
+
+msgid "× compression"
+msgstr "× komprimering"
+
+msgid "↑ Send:"
+msgstr "↑ Skicka:"
+
+msgid "↓ Receive:"
+msgstr "↓ Ta emot:"
+
+msgid "🔒 Privacy: Persistent history is stored in a private SQLite database with strict 64 MB storage limits. Only numerical hardware aggregates (CPU, thermals, GPU, RAM, disk throughput) are recorded. Process names, commands, window titles, and user PIDs are never stored."
+msgstr "Integritet: Beständig historik sparas i en privat SQLite-databas med en lagringsgräns på 64 MB. Endast numeriska hårdvaruvärden (CPU, temperaturer, GPU, RAM, disktrafik) registreras. Processnamn, kommandon, fönstertitlar och PID sparas inte i databasen."
+
+msgid "Older incident summaries without calendar timestamps are retained but excluded from time-based trends."
+msgstr "Äldre incidentsammanfattningar utan kalenderdatum behålls men utelämnas från tidsbaserade trender."
+
+msgid "CPU temp (77–212 °F)"
+msgstr "CPU-temp (77–212 °F)"
+
+msgid "Navigate to page"
+msgstr "Gå till sida"

@@ -166,7 +166,7 @@ PowerFlowSnapshot PowerFlowSampler::sample(qint64 elapsedMs, double cpuLoadPerce
             if (deltaAvailable) {
                 const double dJoules = static_cast<double>(deltaUj) / 1000000.0;
                 const double dtSec = static_cast<double>(elapsedMs) / 1000.0;
-                snap.packageWatts = std::clamp(dJoules / dtSec, 0.0, 250.0);
+                snap.packageWatts = dJoules / dtSec;
                 snap.raplExactAvailable = true;
                 snap.packagePowerAvailable = true;
             }

@@ -43,7 +43,7 @@ private:
     void updateIncidents(const FlightSample &sample);
     void trimRecords();
     QString m_recordingId;
-    QString m_engineVersion = QStringLiteral("0.11.0");
+    QString m_engineVersion = QStringLiteral(LOOFI_PULSE_VERSION);
     QVariantList m_incidents;
     QVariantList m_markers;
     QVariantMap m_activeIncident;

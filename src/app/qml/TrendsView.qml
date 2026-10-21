@@ -1,11 +1,13 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import org.kde.ki18n
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 
 Rectangle {
     id: root
+    objectName: "trendsView"
 
     required property var controller
     required property var theme
@@ -54,13 +56,13 @@ Rectangle {
         spacing: Kirigami.Units.largeSpacing
 
         // --- Header & Range Switcher ---
-        RowLayout {
+        ColumnLayout {
             Layout.fillWidth: true
             spacing: Kirigami.Units.mediumSpacing
 
             Kirigami.Heading {
                 level: 3
-                text: "Long-Term Trends & Incident History"
+                text: KI18n.i18n("Long-Term Trends & Incident History")
                 Layout.fillWidth: true
             }
 
@@ -71,11 +73,11 @@ Rectangle {
 
                 Repeater {
                     model: [
-                        { label: "1h", key: "1h" },
-                        { label: "6h", key: "6h" },
-                        { label: "24h", key: "24h" },
-                        { label: "7d", key: "7d" },
-                        { label: "30d", key: "30d" }
+                        { label: KI18n.i18n("1h"), key: "1h" },
+                        { label: KI18n.i18n("6h"), key: "6h" },
+                        { label: KI18n.i18n("24h"), key: "24h" },
+                        { label: KI18n.i18n("7d"), key: "7d" },
+                        { label: KI18n.i18n("30d"), key: "30d" }
                     ]
 
                     delegate: PulseButton {
@@ -89,7 +91,7 @@ Rectangle {
 
                 PulseButton {
                     icon.name: "view-refresh"
-                    text: "Refresh"
+                    text: KI18n.i18n("Refresh")
                     enabled: !root.controller.trendsLoading
                     onClicked: root.controller.loadTrendsRange(root.controller.trendsRange || "1h")
                 }
@@ -113,7 +115,8 @@ Rectangle {
                 anchors.margins: Kirigami.Units.largeSpacing
                 spacing: Kirigami.Units.mediumSpacing
 
-                RowLayout {
+                ColumnLayout {
+                    Layout.fillWidth: true
                     spacing: Kirigami.Units.mediumSpacing
 
                     Kirigami.Icon {
@@ -124,14 +127,19 @@ Rectangle {
                     }
 
                     ColumnLayout {
+                        Layout.fillWidth: true
                         spacing: 2
                         QQC2.Label {
-                            text: "Long-Term Metrics History is Disabled"
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                            text: KI18n.i18n("Long-Term Metrics History is Disabled")
                             font.bold: true
                             font.pointSize: 12
                         }
                         QQC2.Label {
-                            text: "Enable long-term history to record 1-minute system hardware trends across restarts (up to 30 days)."
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                            text: KI18n.i18n("Enable long-term history to record 1-minute system hardware trends across restarts (up to 30 days).")
                             color: root.theme.disabledColor
                         }
                     }
@@ -139,7 +147,7 @@ Rectangle {
                     Item { Layout.fillWidth: true }
 
                     PulseButton {
-                        text: "Enable in Settings…"
+                        text: KI18n.i18n("Enable in Settings…")
                         icon.name: "configure"
                         isPrimary: true
                         onClicked: root.openSettingsRequested()
@@ -149,11 +157,32 @@ Rectangle {
                 QQC2.Label {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
-                    text: "🔒 Privacy: Persistent history is stored in a private SQLite database with strict 64 MB storage limits. Only numerical hardware aggregates (CPU, thermals, GPU, RAM, disk throughput) are recorded. Process names, commands, window titles, and user PIDs are never stored."
+                    text: KI18n.i18n("🔒 Privacy: Persistent history is stored in a private SQLite database with strict 64 MB storage limits. Only numerical hardware aggregates (CPU, thermals, GPU, RAM, disk throughput) are recorded. Process names, commands, window titles, and user PIDs are never stored.")
                     font.pointSize: 9
                     color: root.theme.disabledColor
                 }
             }
+        }
+
+        Kirigami.InlineMessage {
+            Layout.fillWidth: true
+            visible: root.controller.trendsLoading || root.controller.persistedIncidentsLoading
+            text: KI18n.i18n("Loading history…")
+            type: Kirigami.MessageType.Information
+        }
+        Kirigami.InlineMessage {
+            objectName: "trendsErrorBanner"
+            Layout.fillWidth: true
+            visible: Boolean(root.controller.trendsError || root.controller.persistedIncidentsError || root.trends.storageError)
+            text: root.controller.trendsError || root.controller.persistedIncidentsError || root.trends.storageError || ""
+            type: Kirigami.MessageType.Error
+            actions: [Kirigami.Action { text: KI18n.i18n("Retry"); onTriggered: root.controller.loadTrendsRange(root.controller.trendsRange || "1h") }]
+        }
+        Kirigami.InlineMessage {
+            Layout.fillWidth: true
+            visible: Number(root.trends.calendarTimeUnknownIncidents || 0) > 0
+            text: KI18n.i18n("Older incident summaries have no calendar timestamp and cannot be placed in this time range.")
+            type: Kirigami.MessageType.Warning
         }
 
         // --- Enabled State: Trends Content ---
@@ -179,7 +208,7 @@ Rectangle {
                         anchors.centerIn: parent
                         spacing: 2
                         QQC2.Label {
-                            text: "MONITORING COVERAGE"
+                            text: KI18n.i18n("MONITORING COVERAGE")
                             font.bold: true
                             font.pointSize: 8
                             color: root.theme.disabledColor
@@ -191,7 +220,7 @@ Rectangle {
                             color: root.coveragePercent > 80 ? root.theme.positiveColor : root.theme.neutralColor
                         }
                         QQC2.Label {
-                            text: (root.coverageMs / 3600000).toFixed(1) + " h recorded"
+                            text: (root.coverageMs / 3600000).toFixed(1) + KI18n.i18n(" h recorded")
                             font.pointSize: 8
                             color: root.theme.disabledColor
                         }
@@ -210,19 +239,19 @@ Rectangle {
                         anchors.centerIn: parent
                         spacing: 2
                         QQC2.Label {
-                            text: "DATA POINTS"
+                            text: KI18n.i18n("DATA POINTS")
                             font.bold: true
                             font.pointSize: 8
                             color: root.theme.disabledColor
                         }
                         QQC2.Label {
                             property var cpuList: root.series.cpuLoad || []
-                            text: String(cpuList.length) + " buckets"
+                            text: String(cpuList.length) + KI18n.i18n(" buckets")
                             font.bold: true
                             font.pointSize: 15
                         }
                         QQC2.Label {
-                            text: "1-minute resolution"
+                            text: KI18n.i18n("Bucket duration: ") + Math.round(Number(root.trends.bucketMs || 60000) / 60000) + KI18n.i18n(" min")
                             font.pointSize: 8
                             color: root.theme.disabledColor
                         }
@@ -241,7 +270,7 @@ Rectangle {
                         anchors.centerIn: parent
                         spacing: 2
                         QQC2.Label {
-                            text: "RECORDED GAPS"
+                            text: KI18n.i18n("RECORDED GAPS")
                             font.bold: true
                             font.pointSize: 8
                             color: root.theme.disabledColor
@@ -253,7 +282,7 @@ Rectangle {
                             color: root.gaps.length > 0 ? root.theme.neutralColor : root.theme.positiveColor
                         }
                         QQC2.Label {
-                            text: root.gaps.length > 0 ? "Suspend/Offline" : "Continuous"
+                            text: root.gaps.length > 0 ? "Suspend/Offline" : KI18n.i18n("No recorded gaps")
                             font.pointSize: 8
                             color: root.theme.disabledColor
                         }
@@ -275,15 +304,15 @@ Rectangle {
                     anchors.margins: Kirigami.Units.mediumSpacing
                     spacing: 4
 
-                    RowLayout {
+                    ColumnLayout {
                         Layout.fillWidth: true
                         QQC2.Label {
-                            text: "CPU Load & Package Temperature Trends"
+                            text: KI18n.i18n("CPU Load & Package Temperature Trends")
                             font.bold: true
                         }
                         Item { Layout.fillWidth: true }
                         QQC2.Label {
-                            text: "■ CPU Load (%)  ■ CPU Temp (" + (root.controller.temperatureUnit === "F" ? "°F" : "°C") + ")"
+                            text: KI18n.i18n("CPU load: 0–100% · Temperature: ") + (root.controller.temperatureUnit === "F" ? KI18n.i18n("68–212 °F") : KI18n.i18n("20–100 °C"))
                             font.pointSize: 9
                             color: root.theme.disabledColor
                         }
@@ -299,80 +328,74 @@ Rectangle {
                             function onTrendsDataChanged() { trendCanvas.requestPaint() }
                         }
 
+                        Accessible.role: Accessible.Graphic
+                        Accessible.name: KI18n.i18n("CPU load and temperature trends")
+                        Accessible.description: KI18n.i18n("Time-based chart. Missing observations and offline intervals are gaps. Numerical coverage and bucket duration are displayed above.")
+                        onWidthChanged: requestPaint()
+                        onHeightChanged: requestPaint()
                         onPaint: {
-                            var ctx = getContext("2d")
+                            const ctx = getContext("2d")
                             ctx.clearRect(0, 0, width, height)
-
-                            var cpuData = root.series.cpuLoad || []
-                            var tempData = root.series.cpuTemp || []
-                            if (cpuData.length === 0) {
+                            const from = Number(root.trends.fromMs || 0)
+                            const to = Number(root.trends.toMs || 0)
+                            const bucket = Number(root.trends.bucketMs || 60000)
+                            const cpu = root.series.cpuLoad || []
+                            const temp = root.series.cpuTemp || []
+                            if (to <= from || (!cpu.length && !temp.length)) {
                                 ctx.fillStyle = root.theme.disabledColor
                                 ctx.font = "12px sans-serif"
                                 ctx.textAlign = "center"
-                                ctx.fillText("No persisted history samples for this time window yet.", width / 2, height / 2)
+                                ctx.fillText(KI18n.i18n("No persisted history samples for this time window yet."), width / 2, height / 2)
                                 return
                             }
-
-                            var pad = 30
-                            var plotW = width - pad * 2
-                            var plotH = height - 20
-
-                            // Grid lines
-                            ctx.strokeStyle = Qt.rgba(1, 1, 1, 0.08)
+                            const pad = 32
+                            const plotW = Math.max(1, width - pad * 2)
+                            const plotH = Math.max(1, height - 38)
+                            ctx.strokeStyle = root.theme.cardBorderColor
                             ctx.lineWidth = 1
-                            for (var g = 0; g <= 4; ++g) {
-                                var y = 10 + (plotH / 4) * g
+                            for (let g = 0; g <= 4; ++g) {
+                                const y = 8 + plotH * g / 4
+                                ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(pad + plotW, y); ctx.stroke()
+                            }
+                            const xAt = function(t) { return pad + (t - from) / (to - from) * plotW }
+                            const intersectsGap = function(a, b) {
+                                for (let j = 0; j < root.gaps.length; ++j)
+                                    if (Number(root.gaps[j].startMs) < b && Number(root.gaps[j].endMs) > a) return true
+                                return false
+                            }
+                            for (let q = 0; q < root.gaps.length; ++q) {
+                                const left = xAt(Math.max(from, Number(root.gaps[q].startMs)))
+                                const right = xAt(Math.min(to, Number(root.gaps[q].endMs)))
+                                ctx.fillStyle = Qt.rgba(root.theme.neutralColor.r, root.theme.neutralColor.g, root.theme.neutralColor.b, 0.15)
+                                ctx.fillRect(left, 8, Math.max(0, right - left), plotH)
+                            }
+                            const drawSeries = function(points, color, temperature) {
                                 ctx.beginPath()
-                                ctx.moveTo(pad, y)
-                                ctx.lineTo(pad + plotW, y)
-                                ctx.stroke()
-                            }
-
-                            // Plot CPU Load (Blue-cyan fill and line)
-                            var step = plotW / Math.max(1, cpuData.length - 1)
-                            ctx.beginPath()
-                            ctx.moveTo(pad, 10 + plotH)
-                            for (var i = 0; i < cpuData.length; ++i) {
-                                var avg = cpuData[i].avg || 0
-                                var px = pad + i * step
-                                var py = 10 + plotH - (avg / 100.0) * plotH
-                                ctx.lineTo(px, py)
-                            }
-                            ctx.lineTo(pad + (cpuData.length - 1) * step, 10 + plotH)
-                            ctx.closePath()
-                            ctx.fillStyle = Qt.rgba(0.2, 0.6, 1.0, 0.15)
-                            ctx.fill()
-
-                            // CPU Load Line
-                            ctx.beginPath()
-                            for (var j = 0; j < cpuData.length; ++j) {
-                                var cAvg = cpuData[j].avg || 0
-                                var cX = pad + j * step
-                                var cY = 10 + plotH - (cAvg / 100.0) * plotH
-                                if (j === 0) ctx.moveTo(cX, cY)
-                                else ctx.lineTo(cX, cY)
-                            }
-                            ctx.strokeStyle = Qt.rgba(0.2, 0.7, 1.0, 0.85)
-                            ctx.lineWidth = 2
-                            ctx.stroke()
-
-                            // Plot CPU Temp Line (Orange/Red)
-                            if (tempData.length > 0) {
-                                var tStep = plotW / Math.max(1, tempData.length - 1)
-                                ctx.beginPath()
-                                for (var k = 0; k < tempData.length; ++k) {
-                                    var tAvg = tempData[k].avg || 0
-                                    // Scale 20°C - 100°C
-                                    var tNorm = Math.max(0, Math.min(1.0, (tAvg - 20.0) / 80.0))
-                                    var tX = pad + k * tStep
-                                    var tY = 10 + plotH - tNorm * plotH
-                                    if (k === 0) ctx.moveTo(tX, tY)
-                                    else ctx.lineTo(tX, tY)
+                                let previous = null
+                                for (let i = 0; i < points.length; ++i) {
+                                    const point = points[i]
+                                    const time = Math.max(from, Number(point.t))
+                                    const value = Number(point.avg)
+                                    if (!isFinite(value) || time > to) { previous = null; continue }
+                                    const ratio = temperature ? (value - 20) / 80 : value / 100
+                                    const x = xAt(time)
+                                    const y = 8 + plotH * (1 - Math.max(0, Math.min(1, ratio)))
+                                    if (previous === null || time - previous > bucket * 1.5 || intersectsGap(previous, time)) ctx.moveTo(x, y)
+                                    else ctx.lineTo(x, y)
+                                    ctx.fillStyle = color
+                                    ctx.fillRect(x - 1.5, y - 1.5, 3, 3)
+                                    previous = time
                                 }
-                                ctx.strokeStyle = Qt.rgba(1.0, 0.45, 0.15, 0.85)
-                                ctx.lineWidth = 2
-                                ctx.stroke()
+                                ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke()
                             }
+                            drawSeries(cpu, Qt.rgba(0.2, 0.7, 1.0, 0.85), false)
+                            drawSeries(temp, Qt.rgba(1.0, 0.45, 0.15, 0.85), true)
+                            ctx.fillStyle = root.theme.disabledColor
+                            ctx.font = "10px sans-serif"
+                            ctx.textAlign = "left"
+                            ctx.fillText(Qt.formatDateTime(new Date(from), "MM-dd HH:mm"), pad, height - 3)
+                            ctx.textAlign = "right"
+                            ctx.fillText(Qt.formatDateTime(new Date(to), "MM-dd HH:mm"), pad + plotW, height - 3)
                         }
                     }
                 }
@@ -396,12 +419,12 @@ Rectangle {
                     RowLayout {
                         Layout.fillWidth: true
                         QQC2.Label {
-                            text: "Recorded Incidents & Hardware Events"
+                            text: KI18n.i18n("Recorded Incidents & Hardware Events")
                             font.bold: true
                         }
                         Item { Layout.fillWidth: true }
                         QQC2.Label {
-                            text: (root.controller.persistedIncidents || []).length + " incidents recorded"
+                            text: (root.controller.persistedIncidents || []).length + KI18n.i18n(" incidents recorded")
                             font.pointSize: 9
                             color: root.theme.disabledColor
                         }
@@ -409,8 +432,8 @@ Rectangle {
 
                     QQC2.Label {
                         Layout.fillWidth: true
-                        visible: (root.controller.persistedIncidents || []).length === 0
-                        text: "No severe incidents or thermal throttling events occurred during this time period."
+                        visible: !root.controller.persistedIncidentsLoading && !root.controller.persistedIncidentsError && !root.controller.trendsError && (root.controller.persistedIncidents || []).length === 0
+                        text: KI18n.i18n("No incident summaries were recorded in this time range. Missing coverage does not establish that no incidents occurred.")
                         color: root.theme.disabledColor
                         font.pointSize: 9
                     }
@@ -447,7 +470,7 @@ Rectangle {
                                         font.pointSize: 9
                                     }
                                     QQC2.Label {
-                                        text: "Domain: " + (incDelegate.modelData.domain || "system") + " · Rule: " + (incDelegate.modelData.ruleId || "auto")
+                                        text: KI18n.i18n("Domain: ") + (incDelegate.modelData.domain || "system") + KI18n.i18n(" · Rule: ") + (incDelegate.modelData.ruleId || "auto")
                                         font.pointSize: 8
                                         color: root.theme.disabledColor
                                     }

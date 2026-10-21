@@ -37,3 +37,5 @@ target_link_libraries(loofipulsecore PUBLIC
     Qt6::DBus
     Qt6::Sql
 )
+
+target_compile_definitions(loofipulsecore PUBLIC LOOFI_PULSE_VERSION="${PROJECT_VERSION}")

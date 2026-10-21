@@ -67,7 +67,7 @@ void FlightRecorder::clear()
     m_activeIncident.clear();
     m_peakRank = -1;
     m_recordingId = QUuid::createUuid().toString(QUuid::WithoutBraces);
-    m_engineVersion = QStringLiteral("0.11.0");
+    m_engineVersion = QStringLiteral(LOOFI_PULSE_VERSION);
 }
 
 void FlightRecorder::restoreSnapshot(const SessionSnapshot &snapshot)

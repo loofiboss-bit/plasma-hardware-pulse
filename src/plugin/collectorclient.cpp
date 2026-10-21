@@ -1,5 +1,6 @@
 #include "pulsetelemetrycontroller.h"
 #include "collectorprotocol.h"
+#include "historystore.h"
 #include <QCoreApplication>
 #include <QDBusConnectionInterface>
 #include <QDBusMessage>
@@ -51,14 +52,15 @@ PulseTelemetryController::~PulseTelemetryController()
 }
 
 void PulseTelemetryController::callCollector(const QString &method, const QVariantList &arguments,
-                                             std::function<void(const QByteArray &)> completion)
+                                             std::function<void(const QByteArray &)> completion,
+                                             std::function<void(const QString &)> failure)
 {
     QDBusMessage request = QDBusMessage::createMethodCall(QString::fromLatin1(CollectorServiceName),
         QString::fromLatin1(CollectorObjectPath), QString::fromLatin1(CollectorInterface), method);
     request.setArguments(arguments);
     const auto generation = m_connectionGeneration;
     auto *watcher = new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(request, 10000), this);
-    connect(watcher, &QDBusPendingCallWatcher::finished, this, [this, completion, method, generation](QDBusPendingCallWatcher *done) {
+    connect(watcher, &QDBusPendingCallWatcher::finished, this, [this, completion, failure, method, generation](QDBusPendingCallWatcher *done) {
         QDBusPendingReply<QByteArray> reply = *done;
         done->deleteLater();
         if ((method == QStringLiteral("Subscribe") || method == QStringLiteral("History")) && generation != m_connectionGeneration) return;
@@ -75,7 +77,8 @@ void PulseTelemetryController::callCollector(const QString &method, const QVaria
                     m_lastLaunchAttempt.start();
                     QProcess::startDetached(sibling, {});
                 }
-            } else setActionResult(false, QStringLiteral("Collector action failed: %1").arg(reply.error().message()));
+            } else if (!failure) setActionResult(false, QStringLiteral("Collector action failed: %1").arg(reply.error().message()));
+            if (failure) failure(reply.error().message());
             Q_EMIT telemetryUpdated();
             return;
         }
@@ -154,9 +157,8 @@ void PulseTelemetryController::receiveCollectorFrame(const QByteArray &data)
     for (auto it = values.cbegin(); it != values.cend(); ++it) m_remoteValues[it.key()] = it.value();
     if (values.contains(QStringLiteral("preferences"))) {
         const auto prefs = values.value(QStringLiteral("preferences")).toMap();
-        if (prefs != m_collectorPreferences) {
-            m_collectorPreferences = prefs;
-            Q_EMIT collectorPreferencesChanged();
+        if (!m_preferencesUpdating && prefs != m_collectorPreferences) {
+            applyCollectorPreferences(prefs);
         }
     }
     m_receivedAt.restart();
@@ -284,7 +286,10 @@ QVariantList PulseTelemetryController::gpuDevices() const
     for (const auto &g : m_gpus) result.append(QVariantMap{{QStringLiteral("id"), g.identity}, {QStringLiteral("name"), g.name},
         {QStringLiteral("available"), g.available}, {QStringLiteral("busyAvailable"), g.busyAvailable},
         {QStringLiteral("temperatureAvailable"), g.temperatureAvailable}, {QStringLiteral("busyPercent"), g.busyPercent},
-        {QStringLiteral("tempCelsius"), g.tempCelsius}, {QStringLiteral("detail"), g.unavailableReason},
+        {QStringLiteral("tempCelsius"), g.tempCelsius},
+        {QStringLiteral("temperatureSensorId"), g.temperatureSensorId},
+        {QStringLiteral("temperatureSensorLabel"), g.temperatureSensorLabel},
+        {QStringLiteral("detail"), g.unavailableReason},
         {QStringLiteral("powerAvailable"), g.powerAvailable}, {QStringLiteral("powerWatts"), g.powerWatts},
         {QStringLiteral("boostFreqMhz"), g.boostFreqMhz}, {QStringLiteral("currentFreqMhz"), g.currentFreqMhz}, {QStringLiteral("frequencyAvailable"), g.frequencyAvailable},
         {QStringLiteral("driverName"), g.driverName}, {QStringLiteral("vramAvailable"), g.vramAvailable},
@@ -356,13 +361,45 @@ void PulseTelemetryController::setStartAtLogin(bool value) { callCollector(QStri
 void PulseTelemetryController::snoozeNotifications() { callCollector(QStringLiteral("Snooze"), {}, [this](const QByteArray &) { setActionResult(true, QStringLiteral("Notifications snoozed for 15 minutes.")); }); }
 void PulseTelemetryController::quitMonitoring() { callCollector(QStringLiteral("StopMonitoring")); }
 
-void PulseTelemetryController::updateCollectorPreferences(const QVariantMap &prefs)
+void PulseTelemetryController::applyCollectorPreferences(const QVariantMap &prefs)
 {
     m_collectorPreferences = prefs;
-    Q_EMIT collectorPreferencesChanged();
-    if (m_remoteClient) {
-        callCollector(QStringLiteral("SetPreferences"), {QJsonDocument(QJsonObject::fromVariantMap(prefs)).toJson(QJsonDocument::Compact)});
+    const QString unit = prefs.value(QStringLiteral("temperatureUnit")).toString();
+    if ((unit == QStringLiteral("C") || unit == QStringLiteral("F")) && unit != m_temperatureUnit) {
+        m_temperatureUnit = unit;
+        Q_EMIT temperatureUnitChanged();
     }
+    Q_EMIT collectorPreferencesChanged();
+}
+
+void PulseTelemetryController::updateCollectorPreferences(const QVariantMap &prefs)
+{
+    if (!m_remoteClient) { applyCollectorPreferences(prefs); return; }
+    const quint64 requestId = ++m_preferencesRequestId;
+    m_preferencesUpdating = true;
+    auto proposed = m_collectorPreferences;
+    for (auto it = prefs.cbegin(); it != prefs.cend(); ++it) proposed.insert(it.key(), it.value());
+    applyCollectorPreferences(proposed);
+    auto refresh = [this, requestId] {
+        callCollector(QStringLiteral("GetPreferences"), {}, [this, requestId](const QByteArray &bytes) {
+            if (requestId == m_preferencesRequestId) applyCollectorPreferences(object(bytes));
+        });
+    };
+    callCollector(QStringLiteral("SetPreferences"), {json(prefs)},
+        [this, requestId, refresh](const QByteArray &bytes) {
+            if (requestId != m_preferencesRequestId) return;
+            m_preferencesUpdating = false;
+            const auto authoritative = object(bytes);
+            // Older Collector1 implementations acknowledge writes with {}.
+            if (authoritative.isEmpty()) refresh();
+            else applyCollectorPreferences(authoritative);
+        },
+        [this, requestId, refresh](const QString &error) {
+            if (requestId != m_preferencesRequestId) return;
+            m_preferencesUpdating = false;
+            refresh();
+            setActionResult(false, QStringLiteral("Could not save collector preferences: %1").arg(error));
+        });
 }
 
 void PulseTelemetryController::setTemperatureUnit(const QString &unit)
@@ -371,6 +408,7 @@ void PulseTelemetryController::setTemperatureUnit(const QString &unit)
     if (m_temperatureUnit == u) return;
     m_temperatureUnit = u;
     Q_EMIT temperatureUnitChanged();
+    if (m_remoteClient) updateCollectorPreferences({{QStringLiteral("temperatureUnit"), u}});
 }
 
 void PulseTelemetryController::rebuildHistoryView()
@@ -523,58 +561,106 @@ void PulseTelemetryController::setTrendsRange(const QString &range)
 
 void PulseTelemetryController::requestTrends(qint64 fromMs, qint64 toMs, int maxPoints, const QStringList &metricIds)
 {
+    const quint64 requestId = ++m_trendsRequestId;
     m_trendsLoading = true;
+    m_trendsError.clear();
+    m_trendsData.clear();
     Q_EMIT trendsLoadingChanged();
-    const QStringList metrics = metricIds.isEmpty() ? QStringList{
-        QStringLiteral("cpuLoad"), QStringLiteral("cpuTemp"), QStringLiteral("cpuPower"),
-        QStringLiteral("gpuBusy"), QStringLiteral("gpuTemp"), QStringLiteral("gpuPower"),
-        QStringLiteral("ramUsed"), QStringLiteral("swapUsed"),
-        QStringLiteral("psiCpuSome"), QStringLiteral("psiMemSome"), QStringLiteral("psiIoSome"),
-        QStringLiteral("diskRead"), QStringLiteral("diskWrite"),
-        QStringLiteral("batteryWatts"), QStringLiteral("fanRpm")
-    } : metricIds;
-
-    callCollector(QStringLiteral("Trends"), {fromMs, toMs, maxPoints, metrics}, [this](const QByteArray &data) {
+    Q_EMIT trendsErrorChanged();
+    Q_EMIT trendsDataChanged();
+    QStringList metrics = metricIds;
+    if (metrics.isEmpty()) {
+        for (const auto &spec : HistoryStore::metrics()) metrics.append(spec.id);
+    }
+    auto fail = [this, requestId](const QString &error) {
+        if (requestId != m_trendsRequestId) return;
         m_trendsLoading = false;
-        m_trendsData = object(data);
+        m_trendsError = error;
         Q_EMIT trendsLoadingChanged();
-        Q_EMIT trendsDataChanged();
-    });
+        Q_EMIT trendsErrorChanged();
+    };
+    callCollector(QStringLiteral("Trends"), {fromMs, toMs, maxPoints, metrics},
+        [this, requestId, fail](const QByteArray &data) {
+            if (requestId != m_trendsRequestId) return;
+            QJsonParseError parseError;
+            const auto document = QJsonDocument::fromJson(data, &parseError);
+            if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
+                fail(QStringLiteral("The collector returned an invalid trends response."));
+                return;
+            }
+            m_trendsData = document.object().toVariantMap();
+            m_trendsLoading = false;
+            m_trendsError = m_trendsData.value(QStringLiteral("storageError")).toString();
+            Q_EMIT trendsLoadingChanged();
+            Q_EMIT trendsErrorChanged();
+            Q_EMIT trendsDataChanged();
+        }, fail);
 }
 
 void PulseTelemetryController::loadTrendsRange(const QString &rangeKey)
 {
-    m_trendsRange = rangeKey;
+    static const QMap<QString, qint64> durations{
+        {QStringLiteral("1h"), 3600000LL}, {QStringLiteral("6h"), 6LL * 3600000LL},
+        {QStringLiteral("24h"), 24LL * 3600000LL}, {QStringLiteral("7d"), 7LL * 86400000LL},
+        {QStringLiteral("30d"), 30LL * 86400000LL}};
+    m_trendsRange = durations.contains(rangeKey) ? rangeKey : QStringLiteral("1h");
     Q_EMIT trendsRangeChanged();
-
-    qint64 durationMs = 3600000LL; // default 1h
-    if (rangeKey == QStringLiteral("6h")) durationMs = 6LL * 3600000LL;
-    else if (rangeKey == QStringLiteral("24h")) durationMs = 24LL * 3600000LL;
-    else if (rangeKey == QStringLiteral("7d")) durationMs = 7LL * 86400000LL;
-    else if (rangeKey == QStringLiteral("30d")) durationMs = 30LL * 86400000LL;
-
     const qint64 now = QDateTime::currentMSecsSinceEpoch();
-    requestTrends(now - durationMs, now, 120, {});
+    const qint64 from = now - durations.value(m_trendsRange);
+    requestTrends(from, now, 120, {});
+    loadPersistedIncidents(from, now, 100);
 }
 
 void PulseTelemetryController::loadPersistedIncidents(qint64 fromMs, qint64 toMs, int limit)
 {
-    callCollector(QStringLiteral("PersistedIncidents"), {fromMs, toMs, limit}, [this](const QByteArray &data) {
-        const auto doc = QJsonDocument::fromJson(data);
-        if (doc.isArray()) {
+    const quint64 requestId = ++m_incidentsRequestId;
+    m_persistedIncidentsLoading = true;
+    m_persistedIncidentsError.clear();
+    m_persistedIncidents.clear();
+    Q_EMIT persistedIncidentsLoadingChanged();
+    Q_EMIT persistedIncidentsErrorChanged();
+    Q_EMIT persistedIncidentsChanged();
+    auto fail = [this, requestId](const QString &error) {
+        if (requestId != m_incidentsRequestId) return;
+        m_persistedIncidentsLoading = false;
+        m_persistedIncidentsError = error;
+        Q_EMIT persistedIncidentsLoadingChanged();
+        Q_EMIT persistedIncidentsErrorChanged();
+    };
+    callCollector(QStringLiteral("PersistedIncidents"), {fromMs, toMs, limit},
+        [this, requestId, fail](const QByteArray &data) {
+            if (requestId != m_incidentsRequestId) return;
+            const auto doc = QJsonDocument::fromJson(data);
+            if (!doc.isArray()) {
+                fail(QStringLiteral("The collector returned an invalid incident response."));
+                return;
+            }
             m_persistedIncidents = doc.array().toVariantList();
+            m_persistedIncidentsLoading = false;
+            Q_EMIT persistedIncidentsLoadingChanged();
             Q_EMIT persistedIncidentsChanged();
-        }
-    });
+        }, fail);
 }
 
 void PulseTelemetryController::clearPersistedHistory()
 {
+    // Invalidate pre-clear reads immediately. Reads submitted after this call must
+    // survive even if their replies arrive before the clear acknowledgement.
+    ++m_trendsRequestId;
+    ++m_incidentsRequestId;
+    m_trendsLoading = false;
+    m_persistedIncidentsLoading = false;
+    m_trendsError.clear();
+    m_persistedIncidentsError.clear();
+    m_trendsData.clear();
+    m_persistedIncidents.clear();
+    Q_EMIT trendsLoadingChanged();
+    Q_EMIT persistedIncidentsLoadingChanged();
+    Q_EMIT trendsErrorChanged();
+    Q_EMIT persistedIncidentsErrorChanged();
+    Q_EMIT trendsDataChanged();
+    Q_EMIT persistedIncidentsChanged();
     callCollector(QStringLiteral("ClearPersistedHistory"), {}, [this](const QByteArray &) {
-        m_trendsData.clear();
-        m_persistedIncidents.clear();
-        Q_EMIT trendsDataChanged();
-        Q_EMIT persistedIncidentsChanged();
         setActionResult(true, QStringLiteral("Persistent long-term history cleared."));
     });
 }
