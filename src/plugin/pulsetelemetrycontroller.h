@@ -83,7 +83,13 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(double zramOrigMib READ zramOrigMib NOTIFY telemetryUpdated)
     Q_PROPERTY(double zramComprMib READ zramComprMib NOTIFY telemetryUpdated)
     Q_PROPERTY(double zramMemUsedMib READ zramMemUsedMib NOTIFY telemetryUpdated)
+    Q_PROPERTY(double zramDiskSizeGib READ zramDiskSizeGib NOTIFY telemetryUpdated)
+    Q_PROPERTY(double zramSavedGib READ zramSavedGib NOTIFY telemetryUpdated)
     Q_PROPERTY(double zramCompressionRatio READ zramCompressionRatio NOTIFY telemetryUpdated)
+    Q_PROPERTY(bool cgroupsAvailable READ cgroupsAvailable NOTIFY telemetryUpdated)
+    Q_PROPERTY(double userSliceMemoryGib READ userSliceMemoryGib NOTIFY telemetryUpdated)
+    Q_PROPERTY(double systemSliceMemoryGib READ systemSliceMemoryGib NOTIFY telemetryUpdated)
+    Q_PROPERTY(double machineSliceMemoryGib READ machineSliceMemoryGib NOTIFY telemetryUpdated)
     Q_PROPERTY(double swapUsedGib READ swapUsedGib NOTIFY telemetryUpdated)
     Q_PROPERTY(double swapTotalGib READ swapTotalGib NOTIFY telemetryUpdated)
     Q_PROPERTY(bool swapAvailable READ swapAvailable NOTIFY telemetryUpdated)
@@ -247,7 +253,13 @@ public:
     double zramOrigMib() const { return remoteValue<double>("zramOrigMib", static_cast<double>(m_psiMem.zramOrigBytes) / (1024.0 * 1024.0)); }
     double zramComprMib() const { return remoteValue<double>("zramComprMib", static_cast<double>(m_psiMem.zramCompressedBytes) / (1024.0 * 1024.0)); }
     double zramMemUsedMib() const { return remoteValue<double>("zramMemUsedMib", static_cast<double>(m_psiMem.zramMemUsedTotalBytes) / (1024.0 * 1024.0)); }
+    double zramDiskSizeGib() const { return remoteValue<double>("zramDiskSizeGib", static_cast<double>(m_psiMem.zramDiskSizeBytes) / (1024.0 * 1024.0 * 1024.0)); }
+    double zramSavedGib() const { return remoteValue<double>("zramSavedGib", static_cast<double>(m_psiMem.zramSpaceSavedBytes) / (1024.0 * 1024.0 * 1024.0)); }
     double zramCompressionRatio() const { return remoteValue<double>("zramCompressionRatio", m_psiMem.zramCompressionRatio); }
+    bool cgroupsAvailable() const { return remoteValue<bool>("cgroupsAvailable", m_psiMem.cgroupsAvailable); }
+    double userSliceMemoryGib() const { return remoteValue<double>("userSliceMemoryGib", static_cast<double>(m_psiMem.userSliceMemoryBytes) / (1024.0 * 1024.0 * 1024.0)); }
+    double systemSliceMemoryGib() const { return remoteValue<double>("systemSliceMemoryGib", static_cast<double>(m_psiMem.systemSliceMemoryBytes) / (1024.0 * 1024.0 * 1024.0)); }
+    double machineSliceMemoryGib() const { return remoteValue<double>("machineSliceMemoryGib", static_cast<double>(m_psiMem.machineSliceMemoryBytes) / (1024.0 * 1024.0 * 1024.0)); }
     double swapUsedGib() const
     {
         const quint64 used = (m_psiMem.swapTotalBytes > m_psiMem.swapFreeBytes)

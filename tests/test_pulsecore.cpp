@@ -379,6 +379,23 @@ private Q_SLOTS:
         QCOMPARE(wifiDegraded.primaryBottleneckDomain, QStringLiteral("Storage & Network"));
         QVERIFY(wifiDegraded.causalChain.contains(QStringLiteral("Home-WiFi")));
         QVERIFY(wifiDegraded.causalChain.contains(QStringLiteral("18%")));
+
+        // 11. ZRAM Memory Exhaustion verdict (Bottleneck / Severity 2)
+        psi.wifiQualityAvailable = false;
+        psi.zramActive = true;
+        psi.zramDiskSizeBytes = 8ULL * 1024ULL * 1024ULL * 1024ULL;
+        psi.zramOrigBytes = 7ULL * 1024ULL * 1024ULL * 1024ULL;
+        psi.zramCompressedBytes = 3ULL * 1024ULL * 1024ULL * 1024ULL;
+        psi.zramMemUsedTotalBytes = 3ULL * 1024ULL * 1024ULL * 1024ULL;
+        psi.zramCompressionRatio = 2.33;
+        psi.memoryPsi.someAvailable = true;
+        psi.memoryPsi.someAvg10 = 5.5;
+        const CausalVerdict zramExhausted = CausalDiagnosisEngine::evaluate(cpu, gpu, psi, power, domains, culprit);
+        QCOMPARE(zramExhausted.ruleId, QStringLiteral("memory.zram-exhaustion"));
+        QCOMPARE(zramExhausted.severity, VerdictSeverity::Bottleneck);
+        QCOMPARE(zramExhausted.primaryBottleneckDomain, QStringLiteral("Memory"));
+        QVERIFY(zramExhausted.headline.contains(QStringLiteral("ZRAM compressed swap")));
+        QVERIFY(zramExhausted.causalChain.contains(QStringLiteral("88% filled")));
     }
 
     void testBatteryEtaAndHealthCalculation()

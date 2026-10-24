@@ -63,7 +63,27 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
                      QStringLiteral("Reduce sustained CPU load or choose a lower power profile."));
     }
 
-    if (psiMem.memoryPsi.someAvailable
+    bool zramExhausted = false;
+    if (psiMem.zramActive && psiMem.zramDiskSizeBytes > 0) {
+        const double zramFillRatio = static_cast<double>(psiMem.zramOrigBytes) / static_cast<double>(psiMem.zramDiskSizeBytes);
+        zramExhausted = (zramFillRatio >= 0.85)
+            || (psiMem.zramCompressionRatio < 1.35 && psiMem.zramMemUsedTotalBytes >= psiMem.zramDiskSizeBytes * 0.70);
+        if (zramExhausted && psiMem.memoryPsi.someAvailable && psiMem.memoryPsi.someAvg10 >= 4.0) {
+            const double diskSizeGib = static_cast<double>(psiMem.zramDiskSizeBytes) / (1024.0 * 1024.0 * 1024.0);
+            QString details = QStringLiteral("ZRAM capacity is %1% filled (%2 GiB disksize, %3x compression); memory pressure is %4%")
+                .arg(zramFillRatio * 100.0, 0, 'f', 0)
+                .arg(diskSizeGib, 0, 'f', 1)
+                .arg(psiMem.zramCompressionRatio, 0, 'f', 1)
+                .arg(psiMem.memoryPsi.someAvg10, 0, 'f', 1);
+            addCandidate(QStringLiteral("memory.zram-exhaustion"), VerdictSeverity::Bottleneck,
+                         QStringLiteral("Memory"),
+                         QStringLiteral("ZRAM compressed swap capacity exhausted"),
+                         details,
+                         QStringLiteral("Close heavy browser tabs, virtual machines, or container workloads to avoid system freeze or OOM killer invocation."));
+        }
+    }
+
+    if (!zramExhausted && psiMem.memoryPsi.someAvailable
         && (psiMem.memoryPsi.someAvg10 >= 5.0
             || (psiMem.memoryPsi.fullAvailable && psiMem.memoryPsi.fullAvg10 >= 2.0))) {
         QString details = QStringLiteral("Memory pressure: %1% some pressure, %2 ms/s stalled")

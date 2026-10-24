@@ -201,7 +201,14 @@ struct PsiAndMemorySnapshot
     quint64 zramOrigBytes = 0;
     quint64 zramCompressedBytes = 0;
     quint64 zramMemUsedTotalBytes = 0;
+    quint64 zramDiskSizeBytes = 0;
+    quint64 zramSpaceSavedBytes = 0;
     double zramCompressionRatio = 1.0;
+
+    bool cgroupsAvailable = false;
+    quint64 userSliceMemoryBytes = 0;
+    quint64 systemSliceMemoryBytes = 0;
+    quint64 machineSliceMemoryBytes = 0;
 
     quint64 swapTotalBytes = 0;
     quint64 swapFreeBytes = 0;
