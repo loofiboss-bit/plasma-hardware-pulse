@@ -7,6 +7,7 @@ set(loofipulsecore_SRCS
     flightrecorder.cpp
     sessionstore.cpp
     historystore.cpp
+    kernellogreader.cpp
 )
 
 set(loofipulsecore_HDRS
@@ -19,6 +20,7 @@ set(loofipulsecore_HDRS
     flightrecorder.h
     sessionstore.h
     historystore.h
+    kernellogreader.h
 )
 
 add_library(loofipulsecore STATIC

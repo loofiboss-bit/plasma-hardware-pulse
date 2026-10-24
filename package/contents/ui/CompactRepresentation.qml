@@ -13,6 +13,7 @@ Item {
     required property var controller
     required property bool expanded
     property bool verticalPanel: false
+    property int panelDisplayStyle: 0
     property bool showCpuLoadInPanel: false
     property bool showGpuInPanel: false
     property bool showRamInPanel: false
@@ -47,10 +48,10 @@ Item {
         return values.join(" · ")
     }
 
-    Layout.minimumWidth: verticalPanel ? Kirigami.Units.gridUnit * 2 : Kirigami.Units.gridUnit * 4
+    Layout.minimumWidth: verticalPanel ? Kirigami.Units.gridUnit * 2 : (panelDisplayStyle === 1 ? Kirigami.Units.gridUnit * 6 : Kirigami.Units.gridUnit * 4)
     Layout.preferredWidth: verticalPanel ? Kirigami.Units.gridUnit * 2.5
-                          : Math.min(panelLabel.implicitWidth + Kirigami.Units.largeSpacing * 3, Kirigami.Units.gridUnit * 18)
-    Layout.maximumWidth: verticalPanel ? -1 : Kirigami.Units.gridUnit * 18
+                          : Math.min(panelRow.implicitWidth + Kirigami.Units.largeSpacing * 2, Kirigami.Units.gridUnit * 20)
+    Layout.maximumWidth: verticalPanel ? -1 : Kirigami.Units.gridUnit * 20
     Layout.minimumHeight: Kirigami.Units.iconSizes.smallMedium
     Layout.preferredHeight: verticalPanel ? Kirigami.Units.gridUnit * 2.5 : Kirigami.Units.iconSizes.smallMedium
 
@@ -75,15 +76,131 @@ Item {
         contentItem: Item {
             clip: true
             RowLayout {
+                id: panelRow
                 anchors.fill: parent
                 spacing: Kirigami.Units.smallSpacing
+
+                // Style 0 & 1: Status dot
                 Rectangle {
+                    visible: compactRoot.panelDisplayStyle !== 2
                     Layout.alignment: Qt.AlignVCenter
                     Layout.preferredWidth: 7
                     Layout.preferredHeight: 7
                     radius: 3.5
                     color: compactRoot.badgeColor(compactRoot.controller.verdictSeverity)
                 }
+
+                // Style 2: Ring gauge
+                Item {
+                    id: ringGaugeWrapper
+                    visible: compactRoot.panelDisplayStyle === 2
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: 16
+                    Layout.preferredHeight: 16
+
+                    Canvas {
+                        id: ringCanvas
+                        anchors.fill: parent
+                        renderTarget: Canvas.Image
+                        onPaint: {
+                            var ctx = getContext("2d")
+                            ctx.clearRect(0, 0, width, height)
+                            var cx = width / 2
+                            var cy = height / 2
+                            var r = Math.min(cx, cy) - 2
+                            if (r <= 0) return
+
+                            // Track
+                            ctx.beginPath()
+                            ctx.arc(cx, cy, r, 0, 2 * Math.PI)
+                            ctx.lineWidth = 2.5
+                            ctx.strokeStyle = Kirigami.Theme.disabledTextColor
+                            ctx.globalAlpha = 0.3
+                            ctx.stroke()
+                            ctx.globalAlpha = 1.0
+
+                            // Value arc (CPU load)
+                            var load = compactRoot.controller.cpuLoadAvailable ? (compactRoot.controller.cpuLoadPercent / 100.0) : 0.0
+                            var fraction = Math.min(1.0, Math.max(0.0, load))
+                            if (fraction > 0.02) {
+                                ctx.beginPath()
+                                ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + fraction * 2 * Math.PI)
+                                ctx.lineWidth = 2.5
+                                ctx.strokeStyle = compactRoot.badgeColor(compactRoot.controller.verdictSeverity)
+                                ctx.stroke()
+                            }
+                        }
+                        Connections {
+                            target: compactRoot.controller
+                            function onTelemetryUpdated() {
+                                if (compactRoot.panelDisplayStyle === 2) ringCanvas.requestPaint()
+                            }
+                        }
+                    }
+                }
+
+                // Style 1: Mini Sparkline
+                Item {
+                    id: miniSparkWrapper
+                    visible: compactRoot.panelDisplayStyle === 1
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: compactRoot.verticalPanel ? 26 : 38
+                    Layout.preferredHeight: 14
+
+                    Canvas {
+                        id: sparkCanvas
+                        anchors.fill: parent
+                        renderTarget: Canvas.Image
+                        onPaint: {
+                            var ctx = getContext("2d")
+                            ctx.clearRect(0, 0, width, height)
+                            var rawJson = compactRoot.controller.historyRecentSeriesJson("cpuLoadPercent", "cpuLoadAvailable", 16)
+                            if (!rawJson) return
+                            var samples = []
+                            try {
+                                samples = JSON.parse(rawJson)
+                            } catch (e) {
+                                return
+                            }
+                            var count = samples.length
+                            if (count < 2) return
+
+                            var pts = []
+                            for (var i = 0; i < count; ++i) {
+                                var s = samples[i]
+                                if (!s.available || !isFinite(s.value)) { pts.push(null); continue }
+                                var px = (i / Math.max(1, count - 1)) * width
+                                var norm = Math.min(1.0, Math.max(0.0, s.value / 100.0))
+                                var py = height - norm * (height - 3) - 1.5
+                                pts.push({ x: px, y: py })
+                            }
+
+                            var strokeColor = compactRoot.badgeColor(compactRoot.controller.verdictSeverity)
+                            ctx.strokeStyle = strokeColor
+                            ctx.lineWidth = 1.5
+                            ctx.beginPath()
+                            var active = false
+                            for (var j = 0; j < pts.length; ++j) {
+                                var pt = pts[j]
+                                if (!pt) { active = false; continue }
+                                if (!active) {
+                                    ctx.moveTo(pt.x, pt.y)
+                                    active = true
+                                } else {
+                                    ctx.lineTo(pt.x, pt.y)
+                                }
+                            }
+                            ctx.stroke()
+                        }
+                        Connections {
+                            target: compactRoot.controller
+                            function onTelemetryUpdated() {
+                                if (compactRoot.panelDisplayStyle === 1) sparkCanvas.requestPaint()
+                            }
+                        }
+                    }
+                }
+
                 PlasmaComponents3.Label {
                     id: panelLabel
                     Layout.fillWidth: true

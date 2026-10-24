@@ -291,6 +291,16 @@ SessionSnapshot FlightRecorder::freezeIncident(const QString &incidentId) const
         result.metadata.insert(QStringLiteral("incidentId"), incidentId);
         return result;
     }
+    for (const auto &value : m_markers) {
+        const auto marker = value.toMap();
+        if (marker.value(QStringLiteral("markerId")).toString() == incidentId) {
+            const auto sampleId = marker.value(QStringLiteral("sampleId")).toULongLong();
+            auto result = freezeRange(sampleId, sampleId);
+            result.metadata.insert(QStringLiteral("markerId"), incidentId);
+            result.metadata.insert(QStringLiteral("incidentId"), incidentId);
+            return result;
+        }
+    }
     return {};
 }
 QVariantMap FlightRecorder::compareRange(quint64 startSampleId, quint64 endSampleId) const
@@ -326,6 +336,52 @@ QVariantMap FlightRecorder::compareRange(quint64 startSampleId, quint64 endSampl
     };
     return {{QStringLiteral("before"), window(begin - 30000, begin, true, false)},
         {QStringLiteral("during"), window(begin, finish, true, true)}, {QStringLiteral("after"), window(finish, finish + 30000, false, true)}};
+}
+
+QVariantMap FlightRecorder::compareIncidents(const QString &incidentIdA, const QString &incidentIdB) const
+{
+    const auto summarizeIncident = [this](const QString &id) -> QVariantMap {
+        const auto snap = freezeIncident(id);
+        if (snap.samples.isEmpty()) return {};
+        double maxTemp = 0.0, sumCpu = 0.0, worstResp = 100.0;
+        int cpuSamples = 0;
+        QString topCulprit;
+        double maxCulpritCpu = 0.0;
+        for (const auto &s : snap.samples) {
+            if (s.cpuTempCelsius > maxTemp) maxTemp = s.cpuTempCelsius;
+            if (s.cpuLoadPercent > 0.0) { sumCpu += s.cpuLoadPercent; ++cpuSamples; }
+            if (s.responsivenessScore < worstResp) worstResp = s.responsivenessScore;
+            if (s.culpritCpuPercent > maxCulpritCpu) {
+                maxCulpritCpu = s.culpritCpuPercent;
+                topCulprit = s.culpritName;
+            }
+        }
+        QVariantMap info;
+        info.insert(QStringLiteral("incidentId"), id);
+        info.insert(QStringLiteral("sampleCount"), snap.samples.size());
+        info.insert(QStringLiteral("peakTemperature"), maxTemp);
+        info.insert(QStringLiteral("avgCpuLoad"), cpuSamples ? (sumCpu / cpuSamples) : 0.0);
+        info.insert(QStringLiteral("worstResponsiveness"), worstResp);
+        info.insert(QStringLiteral("topCulprit"), topCulprit);
+        info.insert(QStringLiteral("topCulpritCpu"), maxCulpritCpu);
+        const qint64 startMs = snap.samples.first().timestampMs;
+        const qint64 endMs = snap.samples.last().timestampMs;
+        info.insert(QStringLiteral("durationSeconds"), (endMs >= startMs) ? (endMs - startMs) / 1000.0 : 0.0);
+        info.insert(QStringLiteral("timeString"), QDateTime::fromMSecsSinceEpoch(startMs).toString(QStringLiteral("HH:mm:ss")));
+        return info;
+    };
+
+    const QVariantMap a = summarizeIncident(incidentIdA);
+    const QVariantMap b = summarizeIncident(incidentIdB);
+    if (a.isEmpty() || b.isEmpty()) return {};
+
+    QVariantMap diff;
+    diff.insert(QStringLiteral("deltaDurationSeconds"), b.value(QStringLiteral("durationSeconds")).toDouble() - a.value(QStringLiteral("durationSeconds")).toDouble());
+    diff.insert(QStringLiteral("deltaPeakTemp"), b.value(QStringLiteral("peakTemperature")).toDouble() - a.value(QStringLiteral("peakTemperature")).toDouble());
+    diff.insert(QStringLiteral("deltaAvgCpuLoad"), b.value(QStringLiteral("avgCpuLoad")).toDouble() - a.value(QStringLiteral("avgCpuLoad")).toDouble());
+    diff.insert(QStringLiteral("deltaWorstResponsiveness"), b.value(QStringLiteral("worstResponsiveness")).toDouble() - a.value(QStringLiteral("worstResponsiveness")).toDouble());
+
+    return {{QStringLiteral("incidentA"), a}, {QStringLiteral("incidentB"), b}, {QStringLiteral("diff"), diff}};
 }
 
 QString FlightRecorder::exportSummaryMarkdown(bool includeProcessDetails) const

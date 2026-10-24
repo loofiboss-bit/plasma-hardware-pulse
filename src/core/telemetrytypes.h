@@ -145,6 +145,30 @@ struct DiskTelemetry
     bool requestTimeAvailable = false;
     double readMibPerSec = 0.0, writeMibPerSec = 0.0;
     double readIops = 0.0, writeIops = 0.0, averageRequestMs = 0.0;
+    bool nvmeWarningAvailable = false;
+    quint8 nvmeCriticalWarning = 0;
+    QString nvmeState;
+    QString nvmeModel;
+};
+
+struct NvmeControllerTelemetry
+{
+    QString id;
+    QString model;
+    QString state;
+    bool warningAvailable = false;
+    quint8 criticalWarning = 0;
+    bool criticalWarningAlarm = false;
+    double compositeTempCelsius = 0.0;
+    bool compositeTempAvailable = false;
+};
+
+struct FanTelemetry
+{
+    QString id;
+    QString label;
+    int rpm = 0;
+    bool available = false;
 };
 
 struct PsiAndMemorySnapshot
@@ -179,6 +203,7 @@ struct PsiAndMemorySnapshot
     double diskWriteMibPerSec = 0.0;
 
     QList<DiskTelemetry> disks;
+    QList<NvmeControllerTelemetry> nvmeControllers;
     QList<NetworkInterfaceTelemetry> networkInterfaces;
     bool netThroughputAvailable = false;
     double netRxMibPerSec = 0.0;
@@ -200,6 +225,7 @@ struct BatteryTelemetry
 struct PowerFlowSnapshot
 {
     QList<BatteryTelemetry> batteries;
+    QList<FanTelemetry> fans;
     bool batteryStateAvailable = false;
     bool batteryLevelAvailable = false;
     bool batteryHealthAvailable = false;

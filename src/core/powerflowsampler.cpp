@@ -215,6 +215,18 @@ PowerFlowSnapshot PowerFlowSampler::sample(qint64 elapsedMs, double cpuLoadPerce
                 if (fOk) {
                     snap.fanAvailable = true;
                     snap.primaryFanRpm = std::max(snap.primaryFanRpm, rpm);
+
+                    FanTelemetry fan;
+                    fan.id = chipDir.dirName() + QLatin1Char('/') + fanFile;
+                    const QString prefix = fanFile.left(fanFile.indexOf(QLatin1Char('_')));
+                    const QString labelPath = chipDir.filePath(prefix + QStringLiteral("_label"));
+                    const QString customLabel = SysfsReader::readTrimmedLine(labelPath);
+                    fan.label = customLabel.isEmpty()
+                        ? (chipName.isEmpty() ? fanFile : chipName + QStringLiteral(" ") + fanFile)
+                        : customLabel;
+                    fan.rpm = rpm;
+                    fan.available = true;
+                    snap.fans.append(fan);
                 }
             }
         }

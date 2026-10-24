@@ -33,6 +33,7 @@ public:
     SessionSnapshot freezeRange(quint64 startSampleId, quint64 endSampleId) const;
     SessionSnapshot freezeIncident(const QString &incidentId) const;
     QVariantMap compareRange(quint64 startSampleId, quint64 endSampleId) const;
+    QVariantMap compareIncidents(const QString &incidentIdA, const QString &incidentIdB) const;
     QVariantList markers() const;
     QString recordingId() const;
     QString exportSummaryMarkdown(bool includeProcessDetails = false) const;

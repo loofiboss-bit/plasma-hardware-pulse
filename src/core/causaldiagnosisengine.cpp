@@ -191,6 +191,36 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
                      QStringLiteral("Sustained performance is capped by the power envelope. Use 'performance' profile if higher limits are supported."));
     }
 
+    int saturatedCoreId = -1;
+    double maxCoreLoad = 0.0;
+    for (const CoreTelemetry &core : cpu.cores) {
+        if (core.loadAvailable && core.loadPercent >= 95.0 && core.loadPercent > maxCoreLoad) {
+            maxCoreLoad = core.loadPercent;
+            saturatedCoreId = core.coreId;
+        }
+    }
+    if (saturatedCoreId >= 0 && cpu.cores.size() >= 2 && cpuLoadValid && cpu.totalLoadPercent < 75.0) {
+        const bool cpuPsiElevated = psiMem.cpuPsi.someAvailable && psiMem.cpuPsi.someAvg10 >= 3.0;
+        const bool processHeavy = cpuProcess.cpuPercent >= (80.0 / std::max(1, static_cast<int>(cpu.cores.size())));
+        if (cpuPsiElevated || processHeavy || maxCoreLoad >= 98.0) {
+            const VerdictSeverity sev = (cpuPsiElevated && psiMem.cpuPsi.someAvg10 >= 8.0)
+                ? VerdictSeverity::Bottleneck : VerdictSeverity::Elevated;
+            QString details = QStringLiteral("Core %1 is saturated at %2% load (total CPU load: %3%)")
+                .arg(saturatedCoreId).arg(maxCoreLoad, 0, 'f', 0).arg(cpu.totalLoadPercent, 0, 'f', 0);
+            if (cpuProcess.cpuPercent > 0.0 && !cpuProcess.name.isEmpty()) {
+                details += QStringLiteral("; main load from '%1' (%2% CPU)").arg(cpuProcess.name).arg(cpuProcess.cpuPercent, 0, 'f', 0);
+            }
+            if (psiMem.cpuPsi.someAvailable) {
+                details += QStringLiteral("; CPU pressure: %1%").arg(psiMem.cpuPsi.someAvg10, 0, 'f', 1);
+            }
+            addCandidate(QStringLiteral("cpu.single-core-saturation"), sev,
+                         QStringLiteral("CPU & SoC"),
+                         QStringLiteral("Single-core CPU saturation observed"),
+                         details,
+                         QStringLiteral("A single thread or process is bottlenecking work. Check the top culprit process in System Monitor."));
+        }
+    }
+
     if ((psiMem.cpuPsi.someAvailable && psiMem.cpuPsi.someAvg10 >= 10.0)
         || (cpu.temperatureAvailable && cpu.thermalLimitAvailable && cpu.thermalHeadroomCelsius < 20.0)) {
         QString details;

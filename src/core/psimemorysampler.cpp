@@ -210,6 +210,58 @@ PsiAndMemorySnapshot PsiMemorySampler::sample(qint64 elapsedMs)
     }
     m_diskCounters = std::move(nextDisks);
 
+    const QDir nvmeClassDir(QDir(m_config.sysRoot).filePath(QStringLiteral("class/nvme")));
+    if (nvmeClassDir.exists()) {
+        static const QRegularExpression ctrlRe(QStringLiteral("^nvme\\d+$"));
+        const QStringList nvmeEntries = nvmeClassDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+        for (const QString &entry : nvmeEntries) {
+            if (!ctrlRe.match(entry).hasMatch()) continue;
+            const QDir ctrlDir(nvmeClassDir.filePath(entry));
+            NvmeControllerTelemetry ctrl;
+            ctrl.id = entry;
+            ctrl.model = SysfsReader::readTrimmedLine(ctrlDir.filePath(QStringLiteral("model")));
+            ctrl.state = SysfsReader::readTrimmedLine(ctrlDir.filePath(QStringLiteral("state")));
+
+            const QString critWarnFile = ctrlDir.filePath(QStringLiteral("critical_warning"));
+            if (QFileInfo::exists(critWarnFile)) {
+                bool ok = false;
+                const auto val = SysfsReader::readInt64(critWarnFile, 0, &ok);
+                if (ok) {
+                    ctrl.warningAvailable = true;
+                    ctrl.criticalWarning = static_cast<quint8>(val & 0xFF);
+                    ctrl.criticalWarningAlarm = (ctrl.criticalWarning != 0);
+                }
+            }
+
+            const QStringList hwmonDirs = ctrlDir.entryList(QStringList{QStringLiteral("hwmon*")}, QDir::Dirs, QDir::Name);
+            for (const QString &hwDirName : hwmonDirs) {
+                const QDir hwDir(ctrlDir.filePath(hwDirName));
+                bool tOk = false;
+                const double tempC = SysfsReader::readScaledDouble(hwDir.filePath(QStringLiteral("temp1_input")), 1000.0, 0.0, &tOk);
+                if (tOk) {
+                    ctrl.compositeTempAvailable = true;
+                    ctrl.compositeTempCelsius = tempC;
+                }
+                bool aOk = false;
+                const auto alarmVal = SysfsReader::readInt64(hwDir.filePath(QStringLiteral("temp1_alarm")), 0, &aOk);
+                if (aOk && alarmVal > 0) {
+                    ctrl.criticalWarningAlarm = true;
+                }
+            }
+
+            snap.nvmeControllers.append(ctrl);
+
+            for (DiskTelemetry &disk : snap.disks) {
+                if (disk.name.startsWith(entry) && disk.name.contains(QLatin1Char('n'))) {
+                    disk.nvmeWarningAvailable = ctrl.warningAvailable;
+                    disk.nvmeCriticalWarning = ctrl.criticalWarning;
+                    disk.nvmeState = ctrl.state;
+                    disk.nvmeModel = ctrl.model;
+                }
+            }
+        }
+    }
+
     QHash<QString, Counters> nextInterfaces;
     const QString netDevText = readWholeText(procDir.filePath(QStringLiteral("net/dev")));
     for (const QString &line : netDevText.split(QLatin1Char('\n'), Qt::SkipEmptyParts)) {

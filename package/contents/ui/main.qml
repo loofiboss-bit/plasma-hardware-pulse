@@ -40,6 +40,7 @@ PlasmoidItem {
         controller: pulse
         expanded: root.expanded
         verticalPanel: Plasmoid.formFactor === PlasmaCore.Types.Vertical
+        panelDisplayStyle: Plasmoid.configuration.panelDisplayStyle || 0
         showCpuLoadInPanel: Plasmoid.configuration.showCpuLoadInPanel === true
         showGpuInPanel: Plasmoid.configuration.showGpuInPanel === true
         showRamInPanel: Plasmoid.configuration.showRamInPanel === true
