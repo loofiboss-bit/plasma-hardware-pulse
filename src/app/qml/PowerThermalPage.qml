@@ -464,25 +464,78 @@ Kirigami.ScrollablePage {
                         }
                     }
 
-                    Kirigami.Heading {
-                        level: 3
+                    ColumnLayout {
                         Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        text: KI18n.i18n("Fan speed: ") + (powerPage.controller.fanAvailable
-                              ? powerPage.controller.primaryFanRpm + KI18n.i18n(" RPM") : KI18n.i18n("Unavailable"))
+                        spacing: 6
+                        visible: (powerPage.controller.fans || []).length > 0
+
+                        Repeater {
+                            model: powerPage.controller.fans || []
+                            delegate: ColumnLayout {
+                                id: fanRow
+                                required property var modelData
+                                Layout.fillWidth: true
+                                spacing: 3
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    QQC2.Label {
+                                        text: (fanRow.modelData.label && fanRow.modelData.label.length > 0)
+                                              ? fanRow.modelData.label
+                                              : (KI18n.i18n("Fan ") + (fanRow.modelData.name || ""))
+                                        font.bold: true
+                                        Layout.fillWidth: true
+                                        wrapMode: Text.WordWrap
+                                    }
+                                    QQC2.Label {
+                                        text: fanRow.modelData.rpm > 0 ? (fanRow.modelData.rpm + KI18n.i18n(" RPM")) : KI18n.i18n("Stopped / 0 RPM")
+                                        font.bold: true
+                                        color: fanRow.modelData.rpm > 0 ? Kirigami.Theme.textColor : Kirigami.Theme.disabledTextColor
+                                    }
+                                }
+
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 6
+                                    radius: 3
+                                    color: theme.trackColor
+                                    Rectangle {
+                                        visible: fanRow.modelData.rpm > 0
+                                        width: parent.width * Math.min(1.0, Math.max(0.0, fanRow.modelData.rpm / (fanRow.modelData.maxRpm > 0 ? fanRow.modelData.maxRpm : 5500.0)))
+                                        height: parent.height
+                                        radius: 3
+                                        color: theme.tempAccent
+                                    }
+                                }
+                            }
+                        }
                     }
 
-                    Rectangle {
+                    ColumnLayout {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 8
-                        radius: 4
-                        color: theme.trackColor
+                        spacing: 4
+                        visible: !(powerPage.controller.fans || []).length
+
+                        Kirigami.Heading {
+                            level: 3
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                            text: KI18n.i18n("Fan speed: ") + (powerPage.controller.fanAvailable
+                                  ? powerPage.controller.primaryFanRpm + KI18n.i18n(" RPM") : KI18n.i18n("Unavailable"))
+                        }
+
                         Rectangle {
-                            visible: powerPage.controller.fanAvailable
-                            width: parent.width * Math.min(1.0, Math.max(0.0, powerPage.controller.primaryFanRpm / 5500.0))
-                            height: parent.height
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 8
                             radius: 4
-                            color: theme.tempAccent
+                            color: theme.trackColor
+                            Rectangle {
+                                visible: powerPage.controller.fanAvailable
+                                width: parent.width * Math.min(1.0, Math.max(0.0, powerPage.controller.primaryFanRpm / 5500.0))
+                                height: parent.height
+                                radius: 4
+                                color: theme.tempAccent
+                            }
                         }
                     }
 

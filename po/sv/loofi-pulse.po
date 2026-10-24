@@ -1934,3 +1934,69 @@ msgstr "CPU-temp (77–212 °F)"
 
 msgid "Navigate to page"
 msgstr "Gå till sida"
+
+msgid "Compare incidents…"
+msgstr "Jämför incidenter…"
+
+msgid "Compare Recorded Incidents"
+msgstr "Jämför registrerade incidenter"
+
+msgid "Baseline incident (A):"
+msgstr "Referensincident (A):"
+
+msgid "Comparison incident (B):"
+msgstr "Jämförelseincident (B):"
+
+msgid "Incident A"
+msgstr "Incident A"
+
+msgid "Incident B"
+msgstr "Incident B"
+
+msgid "Delta (B − A)"
+msgstr "Skillnad (B − A)"
+
+msgid "Incident Duration"
+msgstr "Incidentens varaktighet"
+
+msgid "Top Culprit Process"
+msgstr "Främsta orsakande process"
+
+msgid "None / Unobserved"
+msgstr "Ingen / ej observerad"
+
+msgid "Correlated kernel events (dmesg / journald)"
+msgstr "Korrelerade kärnhändelser (dmesg / journald)"
+
+msgid "Hardware-relevant kernel logs captured within ±15s of incident. Network identifiers and private paths are redacted."
+msgstr "Hårdvarurelaterade kärnloggar infångade inom ±15 s från incidenten. Nätverksidentifierare och privata sökvägar har maskerats."
+
+msgid "Refresh logs"
+msgstr "Uppdatera loggar"
+
+msgid "No hardware-related kernel messages recorded within ±15s of this incident."
+msgstr "Inga hårdvarurelaterade kärnmeddelanden registrerades inom ±15 s från denna incident."
+
+msgid "Fan "
+msgstr "Fläkt "
+
+msgid "Stopped / 0 RPM"
+msgstr "Stoppad / 0 RPM"
+
+msgid "NVMe controllers & hardware health"
+msgstr "NVMe-kontroller och hårdvaruhälsa"
+
+msgid "CRITICAL HARDWARE WARNING"
+msgstr "KRITISK HÅRDVARUVARNING"
+
+msgid "WARNING (0x%1)"
+msgstr "VARNING (0x%1)"
+
+msgid "Healthy (0x0)"
+msgstr "Felfri (0x0)"
+
+msgid "Composite temp:"
+msgstr "Kombinerad temp:"
+
+msgid "Controller state:"
+msgstr "Kontrollerstatus:"

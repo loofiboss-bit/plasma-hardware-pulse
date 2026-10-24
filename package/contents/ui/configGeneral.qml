@@ -18,6 +18,7 @@ KCM.SimpleKCM {
     property alias cfg_showWattsInPanel: showWattsCheck.checked
     property alias cfg_showPsiInPanel: showPsiCheck.checked
     property alias cfg_alwaysShowStatusInPanel: alwaysShowStatusCheck.checked
+    property alias cfg_panelDisplayStyle: styleCombo.currentIndex
     property alias cfg_notificationsEnabled: notificationsCheck.checked
 
     function applyPreset(index) {
@@ -76,6 +77,16 @@ KCM.SimpleKCM {
             model: [KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Minimal"), KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Balanced"), KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Detailed"), KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Custom")]
             currentIndex: configRoot.matchingPreset()
             onActivated: index => configRoot.applyPreset(index)
+        }
+
+        QQC2.ComboBox {
+            id: styleCombo
+            Kirigami.FormData.label: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Display style:")
+            model: [
+                KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Text Pill"),
+                KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Mini Sparkline"),
+                KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Ring Gauge")
+            ]
         }
 
         QQC2.Label {

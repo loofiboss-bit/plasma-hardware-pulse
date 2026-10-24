@@ -123,10 +123,13 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(bool powerProfileServiceAvailable READ powerProfileServiceAvailable NOTIFY telemetryUpdated)
     Q_PROPERTY(int primaryFanRpm READ primaryFanRpm NOTIFY telemetryUpdated)
     Q_PROPERTY(bool fanAvailable READ fanAvailable NOTIFY telemetryUpdated)
+    Q_PROPERTY(QVariantList fans READ fans NOTIFY telemetryUpdated)
     Q_PROPERTY(double nvmeTempCelsius READ nvmeTempCelsius NOTIFY telemetryUpdated)
     Q_PROPERTY(double wifiTempCelsius READ wifiTempCelsius NOTIFY telemetryUpdated)
     Q_PROPERTY(bool nvmeTempAvailable READ nvmeTempAvailable NOTIFY telemetryUpdated)
     Q_PROPERTY(bool wifiTempAvailable READ wifiTempAvailable NOTIFY telemetryUpdated)
+    Q_PROPERTY(QVariantList nvmeControllers READ nvmeControllers NOTIFY telemetryUpdated)
+    Q_PROPERTY(bool nvmeWarningActive READ nvmeWarningActive NOTIFY telemetryUpdated)
 
     // Causal Verdict & Culprit properties
     Q_PROPERTY(int verdictSeverity READ verdictSeverity NOTIFY telemetryUpdated)
@@ -282,10 +285,13 @@ public:
     bool powerProfileServiceAvailable() const { return remoteValue<bool>("powerProfileServiceAvailable", m_powerProfileServiceAvailable); }
     int primaryFanRpm() const { return remoteValue<int>("primaryFanRpm", m_power.primaryFanRpm); }
     bool fanAvailable() const { return remoteValue<bool>("fanAvailable", m_power.fanAvailable); }
+    QVariantList fans() const { return remoteValue<QVariantList>("fans", m_fansVariant); }
     double nvmeTempCelsius() const { return remoteValue<double>("nvmeTempCelsius", m_nvmeTemp); }
     double wifiTempCelsius() const { return remoteValue<double>("wifiTempCelsius", m_wifiTemp); }
     bool nvmeTempAvailable() const { return remoteValue<bool>("nvmeTempAvailable", m_nvmeTempAvailable); }
     bool wifiTempAvailable() const { return remoteValue<bool>("wifiTempAvailable", m_wifiTempAvailable); }
+    QVariantList nvmeControllers() const { return remoteValue<QVariantList>("nvmeControllers", m_nvmeControllersVariant); }
+    bool nvmeWarningActive() const { return remoteValue<bool>("nvmeWarningActive", m_nvmeWarningActive); }
 
     int verdictSeverity() const { return remoteValue<int>("verdictSeverity", static_cast<int>(m_verdict.severity)); }
     QString verdictHeadline() const { return remoteValue<QString>("verdictHeadline", m_verdict.headline); }
@@ -366,6 +372,8 @@ public:
     Q_INVOKABLE void loadPersistedIncidents(qint64 fromMs, qint64 toMs, int limit = 100);
     Q_INVOKABLE void clearPersistedHistory();
     Q_INVOKABLE QVariantMap processIoStats(int pid) const;
+    Q_INVOKABLE QVariantList incidentKernelLogs(const QString &incidentId) const;
+    Q_INVOKABLE QVariantMap compareIncidents(const QString &incidentIdA, const QString &incidentIdB) const;
 
 Q_SIGNALS:
     void selectedNetworkInterfacesChanged();
@@ -573,6 +581,9 @@ private:
 
     QVariantList m_domainSensorsVariant;
     QVariantList m_coreItemsVariant;
+    QVariantList m_fansVariant;
+    QVariantList m_nvmeControllersVariant;
+    bool m_nvmeWarningActive = false;
     QVariantList m_topProcessesVariant;
     struct HistoryPlotSample {
         quint64 sampleId = 0;

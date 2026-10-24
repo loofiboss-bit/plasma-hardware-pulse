@@ -474,6 +474,7 @@ Kirigami.ScrollablePage {
                         sampleAvailKey: "cpuLoadAvailable",
                         sampleMin: 0.0,
                         sampleMax: 100.0,
+                        quickActionText: KI18n.i18n("Inspect cores"),
                         value: page.metric(page.controller.cpuLoadAvailable, page.controller.cpuLoadPercent.toFixed(1), "%"),
                         subtitle: page.controller.cpuAvgFreqMhz > 0
                             ? page.controller.cpuAvgFreqMhz + KI18n.i18n(" MHz avg · ") + page.controller.cpuPeakFreqMhz + KI18n.i18n(" MHz peak")
@@ -490,13 +491,14 @@ Kirigami.ScrollablePage {
                         sampleAvailKey: "cpuTempAvailable",
                         sampleMin: 25.0,
                         sampleMax: 100.0,
+                        quickActionText: KI18n.i18n("Cooling & fans"),
                         value: page.temp(page.controller.cpuTempAvailable, page.controller.cpuPackageTemp),
                         subtitle: page.controller.thermalHeadroomAvailable
                             ? MeasurementLabels.formatTemperatureDelta(page.controller.thermalHeadroom, page.controller.temperatureUnit) + KI18n.i18n(" headroom")
                             : KI18n.i18n("Thermal limit unavailable"),
                         ratio: page.controller.cpuTempAvailable ? Math.min(1.0, Math.max(0.0, (page.controller.cpuPackageTemp - 25.0) / 75.0)) : 0.0,
                         barAvailable: page.controller.cpuTempAvailable,
-                        targetPage: "power", section: "cpu"
+                        targetPage: "power", section: "cooling"
                     },
                     {
                         title: KI18n.i18n("Graphics (GPU)"),
@@ -506,6 +508,7 @@ Kirigami.ScrollablePage {
                         sampleAvailKey: "gpuBusyAvailable",
                         sampleMin: 0.0,
                         sampleMax: 100.0,
+                        quickActionText: KI18n.i18n("GPU status"),
                         value: page.controller.gpuBusyAvailable
                             ? page.controller.gpuBusyPercent.toFixed(0) + KI18n.i18n("% load")
                             : (page.controller.gpuFrequencyAvailable ? page.controller.gpuCurrentFreqMhz + KI18n.i18n(" MHz") : KI18n.i18n("Unavailable")),
@@ -527,6 +530,7 @@ Kirigami.ScrollablePage {
                         sampleAvailKey: "psiMemorySomeAvailable",
                         sampleMin: 0.0,
                         sampleMax: 25.0,
+                        quickActionText: KI18n.i18n("View memory"),
                         value: page.metric(page.controller.psiMemoryAvailable, page.controller.psiMemSome10.toFixed(1), KI18n.i18n("% time waiting")),
                         subtitle: page.controller.memoryAvailable
                             ? KI18n.i18n("RAM: ") + page.controller.ramUsedGib.toFixed(1) + " / " + page.controller.ramTotalGib.toFixed(1) + KI18n.i18n(" GiB")
@@ -544,6 +548,7 @@ Kirigami.ScrollablePage {
                         sampleAvailKey: "diskThroughputAvailable",
                         sampleMin: 0.0,
                         sampleMax: 250.0,
+                        quickActionText: KI18n.i18n("Storage details"),
                         value: page.controller.diskThroughputAvailable
                             ? Number(page.controller.diskReadMibPerSec + page.controller.diskWriteMibPerSec).toFixed(1) + KI18n.i18n(" MiB/s")
                             : page.metric(page.controller.psiIoFullAvailable, page.controller.psiIoFull10.toFixed(1), KI18n.i18n("% I/O wait")),
@@ -552,7 +557,7 @@ Kirigami.ScrollablePage {
                             : "")
                             + (page.controller.netThroughputAvailable
                                ? KI18n.i18n("Net ↓") + page.controller.netRxMibPerSec.toFixed(1) + " ↑" + page.controller.netTxMibPerSec.toFixed(1) + KI18n.i18n(" MiB/s · ")
-                               : "")
+                                : "")
                             + (page.controller.nvmeTempAvailable ? KI18n.i18n("NVMe ") + MeasurementLabels.formatTemperature(page.controller.nvmeTempCelsius, page.controller.temperatureUnit) : KI18n.i18n("NVMe temp N/A")),
                         ratio: page.controller.diskThroughputAvailable
                             ? Math.min(1.0, Math.max(0.0, (page.controller.diskReadMibPerSec + page.controller.diskWriteMibPerSec) / 500.0))
@@ -568,6 +573,7 @@ Kirigami.ScrollablePage {
                         sampleAvailKey: "packagePowerAvailable",
                         sampleMin: 0.0,
                         sampleMax: Math.max(45.0, page.controller.historyMaxWatts),
+                        quickActionText: KI18n.i18n("Power profile"),
                         value: page.controller.packagePowerAvailable
                             ? page.controller.packageWatts.toFixed(1) + KI18n.i18n(" W · ") + (page.controller.packagePowerEstimated ? "Estimated" : "Measured")
                             : KI18n.i18n("Unavailable"),
@@ -577,7 +583,7 @@ Kirigami.ScrollablePage {
                             ? Math.min(1.0, Math.max(0.0, page.controller.packageWatts / Math.max(25.0, page.controller.pl1LimitWatts > 0 ? page.controller.pl1LimitWatts : 45.0)))
                             : 0.0,
                         barAvailable: page.controller.packagePowerAvailable,
-                        targetPage: "power", section: "cpu"
+                        targetPage: "power", section: "profile"
                     }
                 ]
 
@@ -607,15 +613,15 @@ Kirigami.ScrollablePage {
                         opacity: metricCard.cardHovered ? 0.95 : 0.55
                     }
 
-                    // Background mini-sparkline canvas
+                    // Background mini-sparkline canvas with smooth gradient fill
                     Canvas {
                         id: cardSparkCanvas
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.bottom: parent.bottom
-                        anchors.margins: 6
-                        height: 36
-                        opacity: 0.32
+                        anchors.margins: 4
+                        height: 48
+                        opacity: metricCard.cardHovered ? 0.45 : 0.28
 
                         Connections {
                             target: page.controller
@@ -628,28 +634,48 @@ Kirigami.ScrollablePage {
                             var ctx = getContext("2d")
                             ctx.clearRect(0, 0, width, height)
                             var samples = JSON.parse(page.controller.historyRecentSeriesJson(metricCard.modelData.sampleKey,
-                                metricCard.modelData.sampleAvailKey, 36))
+                                metricCard.modelData.sampleAvailKey, 48))
                             var count = samples.length
                             if (count < 2) return
                             var sMin = metricCard.modelData.sampleMin
                             var sMax = Math.max(sMin + 1, metricCard.modelData.sampleMax)
                             var col = metricCard.cardAccent
 
-                            ctx.strokeStyle = col.toString()
-                            ctx.lineWidth = 1.8
-                            ctx.beginPath()
                             var pts = []
+                            var firstValid = -1
+                            var lastValid = -1
                             for (var i = 0; i < count; ++i) {
                                 var s = samples[i]
                                 if (!s.available || !isFinite(s.value) || s.gapBefore) { pts.push(null); continue }
                                 var px = (i / Math.max(1, count - 1)) * width
                                 var norm = Math.min(1, Math.max(0, (s.value - sMin) / (sMax - sMin)))
-                                var py = height - norm * (height - 6) - 3
+                                var py = height - norm * (height - 8) - 4
                                 pts.push({ x: px, y: py })
+                                if (firstValid < 0) firstValid = i
+                                lastValid = i
                             }
-                            if (pts.length < 2) return
+                            if (firstValid < 0 || lastValid <= firstValid) return
+
+                            // 1. Draw smooth gradient area underneath the curve
+                            var grad = ctx.createLinearGradient(0, 0, 0, height)
+                            grad.addColorStop(0, Qt.rgba(col.r, col.g, col.b, theme.isDark ? 0.38 : 0.25))
+                            grad.addColorStop(1, Qt.rgba(col.r, col.g, col.b, 0.0))
+                            ctx.fillStyle = grad
+                            ctx.beginPath()
+                            ctx.moveTo(pts[firstValid].x, height)
+                            for (var k = firstValid; k <= lastValid; ++k) {
+                                if (pts[k]) ctx.lineTo(pts[k].x, pts[k].y)
+                            }
+                            ctx.lineTo(pts[lastValid].x, height)
+                            ctx.closePath()
+                            ctx.fill()
+
+                            // 2. Draw crisp foreground sparkline
+                            ctx.strokeStyle = col.toString()
+                            ctx.lineWidth = 2.0
+                            ctx.beginPath()
                             var continuous = false
-                            for (var j = 0; j < pts.length; ++j) {
+                            for (var j = firstValid; j <= lastValid; ++j) {
                                 if (!pts[j]) { continuous = false; continue }
                                 if (continuous) ctx.lineTo(pts[j].x, pts[j].y)
                                 else ctx.moveTo(pts[j].x, pts[j].y)
@@ -736,6 +762,18 @@ Kirigami.ScrollablePage {
                             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                             Layout.fillWidth: true
                             wrapMode: Text.WordWrap
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Item { Layout.fillWidth: true }
+                            QQC2.Button {
+                                text: metricCard.modelData.quickActionText || KI18n.i18n("Inspect")
+                                icon.name: "go-next"
+                                flat: true
+                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                                onClicked: page.navigateRequested(metricCard.modelData.targetPage, metricCard.modelData.section)
+                            }
                         }
                     }
                 }

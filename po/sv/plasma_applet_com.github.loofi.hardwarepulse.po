@@ -635,3 +635,15 @@ msgstr "Uppskattat"
 
 msgid "now"
 msgstr "nu"
+
+msgid "Display style:"
+msgstr "Visningsstil:"
+
+msgid "Text Pill"
+msgstr "Textpiller"
+
+msgid "Mini Sparkline"
+msgstr "Minignistlinje"
+
+msgid "Ring Gauge"
+msgstr "Cirkelmätare"

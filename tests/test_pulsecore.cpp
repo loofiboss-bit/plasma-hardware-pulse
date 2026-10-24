@@ -1,6 +1,7 @@
 #include "causaldiagnosisengine.h"
 #include "cpusocsampler.h"
 #include "flightrecorder.h"
+#include "kernellogreader.h"
 #include "powerflowsampler.h"
 #include "psimemorysampler.h"
 #include "sysfsreader.h"
@@ -306,6 +307,25 @@ private Q_SLOTS:
         QCOMPARE(batteryDrain.severity, VerdictSeverity::Elevated);
         QCOMPARE(batteryDrain.primaryBottleneckDomain, QStringLiteral("Power & Cooling"));
         QVERIFY(batteryDrain.headline.contains(QStringLiteral("battery")));
+
+        // 7. Single-Core Saturation verdict
+        power.onAcPower = true;
+        power.batteryWatts = 0.0;
+        cpu.totalLoadPercent = 25.0;
+        cpu.cores.clear();
+        for (int c = 0; c < 4; ++c) {
+            CoreTelemetry ct;
+            ct.coreId = c;
+            ct.loadAvailable = true;
+            ct.loadPercent = (c == 2) ? 99.0 : 1.0;
+            cpu.cores.append(ct);
+        }
+        psi.cpuPsi.someAvailable = true;
+        psi.cpuPsi.someAvg10 = 5.0;
+        const CausalVerdict singleCoreVerdict = CausalDiagnosisEngine::evaluate(cpu, gpu, psi, power, domains, culprit);
+        QCOMPARE(singleCoreVerdict.ruleId, QStringLiteral("cpu.single-core-saturation"));
+        QCOMPARE(singleCoreVerdict.severity, VerdictSeverity::Elevated);
+        QVERIFY(singleCoreVerdict.evidence.first().contains(QStringLiteral("Core 2 is saturated")));
     }
 
     void testBatteryEtaAndHealthCalculation()
@@ -336,6 +356,119 @@ private Q_SLOTS:
         QCOMPARE(snap.batteryWatts, 15.0);
         QCOMPARE(snap.batteryTimeRemainingMinutes, 120);
         QCOMPARE(snap.batteryHealthPercent, 90.0);
+    }
+
+    void testMultiFanAndNvmeControllerDiscovery()
+    {
+        QTemporaryDir tempDir;
+        QVERIFY(tempDir.isValid());
+        const QString sysRoot = tempDir.filePath(QStringLiteral("sys"));
+        const QString procRoot = tempDir.filePath(QStringLiteral("proc"));
+
+        // Setup hwmon with two fans
+        writeTextFile(sysRoot + QStringLiteral("/class/hwmon/hwmon0/name"), QStringLiteral("nct6775\n"));
+        writeTextFile(sysRoot + QStringLiteral("/class/hwmon/hwmon0/fan1_label"), QStringLiteral("CPU Fan\n"));
+        writeTextFile(sysRoot + QStringLiteral("/class/hwmon/hwmon0/fan1_input"), QStringLiteral("1450\n"));
+        writeTextFile(sysRoot + QStringLiteral("/class/hwmon/hwmon0/fan2_label"), QStringLiteral("Chassis Fan 1\n"));
+        writeTextFile(sysRoot + QStringLiteral("/class/hwmon/hwmon0/fan2_input"), QStringLiteral("980\n"));
+
+        PowerFlowSampler powerSampler({sysRoot, procRoot});
+        const PowerFlowSnapshot powerSnap = powerSampler.sample(1000, 25.0, 2000, 4000);
+        QVERIFY(powerSnap.fanAvailable);
+        QCOMPARE(powerSnap.primaryFanRpm, 1450);
+        QCOMPARE(powerSnap.fans.size(), 2);
+        QCOMPARE(powerSnap.fans.at(0).label, QStringLiteral("CPU Fan"));
+        QCOMPARE(powerSnap.fans.at(0).rpm, 1450);
+        QCOMPARE(powerSnap.fans.at(1).label, QStringLiteral("Chassis Fan 1"));
+        QCOMPARE(powerSnap.fans.at(1).rpm, 980);
+
+        // Setup nvme controller in sysfs
+        writeTextFile(sysRoot + QStringLiteral("/class/nvme/nvme0/model"), QStringLiteral("Samsung 980 PRO 1TB\n"));
+        writeTextFile(sysRoot + QStringLiteral("/class/nvme/nvme0/state"), QStringLiteral("live\n"));
+        writeTextFile(sysRoot + QStringLiteral("/class/nvme/nvme0/critical_warning"), QStringLiteral("0\n"));
+        writeTextFile(sysRoot + QStringLiteral("/class/nvme/nvme0/hwmon2/temp1_input"), QStringLiteral("41000\n"));
+        writeTextFile(sysRoot + QStringLiteral("/class/nvme/nvme0/hwmon2/temp1_alarm"), QStringLiteral("0\n"));
+
+        writeTextFile(procRoot + QStringLiteral("/stat"), QStringLiteral("cpu  100 0 100 800 0 0 0 0 0 0\n"));
+        writeTextFile(procRoot + QStringLiteral("/meminfo"), QStringLiteral("MemTotal:        16384000 kB\nMemAvailable:     8192000 kB\n"));
+
+        PsiMemorySampler psiSampler({sysRoot, procRoot});
+        const PsiAndMemorySnapshot psiSnap = psiSampler.sample(1000);
+        QCOMPARE(psiSnap.nvmeControllers.size(), 1);
+        QCOMPARE(psiSnap.nvmeControllers.first().id, QStringLiteral("nvme0"));
+        QCOMPARE(psiSnap.nvmeControllers.first().model, QStringLiteral("Samsung 980 PRO 1TB"));
+        QCOMPARE(psiSnap.nvmeControllers.first().state, QStringLiteral("live"));
+        QVERIFY(psiSnap.nvmeControllers.first().warningAvailable);
+        QCOMPARE(psiSnap.nvmeControllers.first().criticalWarning, 0);
+        QVERIFY(!psiSnap.nvmeControllers.first().criticalWarningAlarm);
+        QVERIFY(psiSnap.nvmeControllers.first().compositeTempAvailable);
+        QCOMPARE(psiSnap.nvmeControllers.first().compositeTempCelsius, 41.0);
+    }
+
+    void testKernelLogReaderParsingAndRedaction()
+    {
+        const QString mockJournal = QStringLiteral(
+            "2026-10-24T21:38:40+02:00 myhost kernel: thermal thermal_zone0: critical temperature reached (100 C), throttling\n"
+            "2026-10-24T21:38:42+02:00 myhost kernel: Bluetooth: hci0: unexpected packet received\n"
+            "2026-10-24T21:38:45+02:00 myhost kernel: amdgpu 0000:03:00.0: [drm:amdgpu_job_timedout] *ERROR* ring gfx_0.0.0 timeout for /home/johndoe/projects/game\n"
+            "2026-10-24T21:38:50+02:00 myhost kernel: oom-killer: gfp_mask=0x100cca(GFP_HIGHUSER_MOVABLE), order=0, oom_score_adj=0 from 192.168.1.100 with dev 00:1a:2b:3c:4d:5e\n"
+        );
+
+        const QList<KernelLogEntry> entries = KernelLogReader::parseJournalLines(mockJournal);
+        QCOMPARE(entries.size(), 3); // Bluetooth should be filtered out
+
+        // 1. Thermal
+        QCOMPARE(entries.at(0).subsystem, QStringLiteral("Thermal"));
+        QCOMPARE(entries.at(0).severity, QStringLiteral("error"));
+        QVERIFY(entries.at(0).message.contains(QStringLiteral("critical temperature reached")));
+
+        // 2. GPU DRM error with path redaction
+        QCOMPARE(entries.at(1).subsystem, QStringLiteral("Graphics"));
+        QCOMPARE(entries.at(1).severity, QStringLiteral("error"));
+        QVERIFY(entries.at(1).message.contains(QStringLiteral("/home/[user]/projects/game")));
+        QVERIFY(!entries.at(1).message.contains(QStringLiteral("johndoe")));
+
+        // 3. OOM Killer with IP and MAC redaction
+        QCOMPARE(entries.at(2).subsystem, QStringLiteral("Memory/OOM"));
+        QCOMPARE(entries.at(2).severity, QStringLiteral("error"));
+        QVERIFY(entries.at(2).message.contains(QStringLiteral("[ip-redacted]")));
+        QVERIFY(entries.at(2).message.contains(QStringLiteral("[mac-redacted]")));
+        QVERIFY(!entries.at(2).message.contains(QStringLiteral("192.168.1.100")));
+        QVERIFY(!entries.at(2).message.contains(QStringLiteral("00:1a:2b:3c:4d:5e")));
+    }
+
+    void testFlightRecorderCompareIncidents()
+    {
+        FlightRecorder recorder;
+        FlightSample s1;
+        s1.sampleId = 1;
+        s1.timestampMs = 1000000;
+        s1.cpuTempCelsius = 60.0;
+        s1.cpuLoadPercent = 20.0;
+        s1.responsivenessScore = 95.0;
+        recorder.appendSample(s1);
+
+        const QString marker1 = recorder.markProblemNow(QStringLiteral("First problem"));
+
+        FlightSample s2;
+        s2.sampleId = 2;
+        s2.timestampMs = 1100000; // 100 seconds later, well outside the 30s context window
+        s2.cpuTempCelsius = 85.0;
+        s2.cpuLoadPercent = 88.0;
+        s2.responsivenessScore = 65.0;
+        s2.culpritName = QStringLiteral("compiler");
+        s2.culpritCpuPercent = 90.0;
+        recorder.appendSample(s2);
+
+        const QString marker2 = recorder.markProblemNow(QStringLiteral("Second problem"));
+
+        const QVariantMap comp = recorder.compareIncidents(marker1, marker2);
+        QVERIFY(!comp.isEmpty());
+        QVERIFY(comp.contains(QStringLiteral("incidentA")));
+        QVERIFY(comp.contains(QStringLiteral("incidentB")));
+        QVERIFY(comp.contains(QStringLiteral("diff")));
+        const QVariantMap diff = comp.value(QStringLiteral("diff")).toMap();
+        QCOMPARE(diff.value(QStringLiteral("deltaPeakTemp")).toDouble(), 25.0);
     }
 
     void testBatteryOnlyDischargingAndZeroPower()

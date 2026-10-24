@@ -253,6 +253,148 @@ Kirigami.ScrollablePage {
             }
         }
 
+        // Section: NVMe Controllers & Health
+        RowLayout {
+            Layout.fillWidth: true
+            visible: (page.controller.nvmeControllers || []).length > 0
+
+            Kirigami.Heading {
+                text: KI18n.i18n("NVMe controllers & hardware health")
+                level: 2
+                Layout.fillWidth: true
+            }
+
+            Rectangle {
+                visible: page.controller.nvmeWarningActive
+                radius: theme.pillRadius
+                color: theme.accentTint(Kirigami.Theme.negativeTextColor, 0.2)
+                border.width: 1
+                border.color: Kirigami.Theme.negativeTextColor
+                implicitWidth: nvmeWarnLbl.implicitWidth + 12
+                implicitHeight: nvmeWarnLbl.implicitHeight + 6
+
+                QQC2.Label {
+                    id: nvmeWarnLbl
+                    anchors.centerIn: parent
+                    text: KI18n.i18n("CRITICAL HARDWARE WARNING")
+                    font.bold: true
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize - 1
+                    color: Kirigami.Theme.negativeTextColor
+                }
+            }
+        }
+
+        GridLayout {
+            Layout.fillWidth: true
+            visible: (page.controller.nvmeControllers || []).length > 0
+            columns: page.width < 720 ? 1 : 2
+            columnSpacing: Kirigami.Units.mediumSpacing
+            rowSpacing: Kirigami.Units.mediumSpacing
+
+            Repeater {
+                model: page.controller.nvmeControllers || []
+                delegate: Rectangle {
+                    id: nvmeCard
+                    required property var modelData
+                    Layout.fillWidth: true
+                    implicitHeight: nvmeInnerCol.implicitHeight + Kirigami.Units.largeSpacing * 2
+                    radius: theme.cardRadius
+                    color: theme.surfaceColor
+                    border.width: 1
+                    border.color: nvmeCard.modelData.criticalWarningAlarm ? Kirigami.Theme.negativeTextColor : theme.cardBorderColor
+
+                    ColumnLayout {
+                        id: nvmeInnerCol
+                        anchors.fill: parent
+                        anchors.margins: Kirigami.Units.largeSpacing
+                        spacing: Kirigami.Units.smallSpacing
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            Kirigami.Icon {
+                                source: nvmeCard.modelData.criticalWarningAlarm ? "dialog-warning" : "drive-harddisk-solidstate"
+                                Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                                Layout.preferredHeight: Kirigami.Units.iconSizes.small
+                                color: nvmeCard.modelData.criticalWarningAlarm ? Kirigami.Theme.negativeTextColor : theme.storageAccent
+                            }
+
+                            QQC2.Label {
+                                text: (nvmeCard.modelData.id || "") + (nvmeCard.modelData.model ? " · " + nvmeCard.modelData.model : "")
+                                font.bold: true
+                                color: Kirigami.Theme.textColor
+                                Layout.fillWidth: true
+                                wrapMode: Text.WordWrap
+                            }
+
+                            Rectangle {
+                                radius: theme.pillRadius
+                                color: nvmeCard.modelData.criticalWarningAlarm
+                                       ? theme.accentTint(Kirigami.Theme.negativeTextColor, 0.18)
+                                       : theme.accentTint(Kirigami.Theme.positiveTextColor, 0.14)
+                                border.width: 1
+                                border.color: nvmeCard.modelData.criticalWarningAlarm ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.positiveTextColor
+                                implicitWidth: nvmeHealthLbl.implicitWidth + 10
+                                implicitHeight: nvmeHealthLbl.implicitHeight + 4
+
+                                QQC2.Label {
+                                    id: nvmeHealthLbl
+                                    anchors.centerIn: parent
+                                    text: nvmeCard.modelData.criticalWarningAlarm ? KI18n.i18n("WARNING (0x%1)").arg(Number(nvmeCard.modelData.criticalWarning).toString(16)) : KI18n.i18n("Healthy (0x0)")
+                                    font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 2)
+                                    font.bold: true
+                                    color: nvmeCard.modelData.criticalWarningAlarm ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.positiveTextColor
+                                }
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                implicitHeight: tempRow.implicitHeight + 10
+                                radius: theme.innerRadius
+                                color: theme.cardNestedBg
+                                RowLayout {
+                                    id: tempRow
+                                    anchors.fill: parent
+                                    anchors.margins: 6
+                                    QQC2.Label { text: KI18n.i18n("Composite temp:"); font.pixelSize: Kirigami.Theme.smallFont.pixelSize; color: Kirigami.Theme.disabledTextColor }
+                                    QQC2.Label {
+                                        text: nvmeCard.modelData.compositeTempAvailable ? (Number(nvmeCard.modelData.compositeTempCelsius).toFixed(1) + " °C") : KI18n.i18n("Unavailable")
+                                        font.bold: true
+                                        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                                        color: nvmeCard.modelData.compositeTempCelsius > 70.0 ? Kirigami.Theme.negativeTextColor : theme.tempAccent
+                                    }
+                                }
+                            }
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                implicitHeight: stateRow.implicitHeight + 10
+                                radius: theme.innerRadius
+                                color: theme.cardNestedBg
+                                RowLayout {
+                                    id: stateRow
+                                    anchors.fill: parent
+                                    anchors.margins: 6
+                                    QQC2.Label { text: KI18n.i18n("Controller state:"); font.pixelSize: Kirigami.Theme.smallFont.pixelSize; color: Kirigami.Theme.disabledTextColor }
+                                    QQC2.Label {
+                                        text: nvmeCard.modelData.state ? nvmeCard.modelData.state : KI18n.i18n("Unknown")
+                                        font.bold: true
+                                        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // Section: Network Interfaces
         Kirigami.Heading {
             text: KI18n.i18n("Network interfaces")

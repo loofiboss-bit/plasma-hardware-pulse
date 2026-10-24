@@ -31,6 +31,28 @@ Kirigami.ScrollablePage {
     readonly property string rangeCaptureId: String(historyInfo.captureId || "")
     onRangeCaptureIdChanged: { rangeStartId = 0; rangeEndId = 0; rangeStartTimeMs = 0; rangeEndTimeMs = 0 }
 
+    property string selectedIncidentId: ""
+    property var incidentLogs: []
+    property var comparisonResult: ({})
+
+    function reloadKernelLogs(id) {
+        if (!id) {
+            incidentLogs = []
+            return
+        }
+        incidentLogs = controller.incidentKernelLogs(id) || []
+    }
+
+    Connections {
+        target: flightPage.controller
+        function onTelemetryUpdated() {
+            if (!flightPage.selectedIncidentId && (flightPage.controller.incidentHistory || []).length > 0) {
+                flightPage.selectedIncidentId = flightPage.controller.incidentHistory[0].incidentId
+                flightPage.reloadKernelLogs(flightPage.selectedIncidentId)
+            }
+        }
+    }
+
     function comparisonText(window) {
         if (!window || !window.available) return KI18n.i18n("No observations available")
         return window.sampleCount + KI18n.i18n(" observations · ") + (Number(window.coverageMs) / 1000).toFixed(1) + KI18n.i18n(" s coverage")
@@ -980,12 +1002,22 @@ Kirigami.ScrollablePage {
                 anchors.margins: Kirigami.Units.largeSpacing
                 spacing: Kirigami.Units.smallSpacing
 
-                QQC2.Label {
+                RowLayout {
                     Layout.fillWidth: true
-                    text: KI18n.i18n("Recorded incidents (open original evidence and comparison):")
-                    font.bold: true
-                    color: Kirigami.Theme.disabledTextColor
-                    wrapMode: Text.WordWrap
+                    QQC2.Label {
+                        Layout.fillWidth: true
+                        text: KI18n.i18n("Recorded incidents (open original evidence and comparison):")
+                        font.bold: true
+                        color: Kirigami.Theme.disabledTextColor
+                        wrapMode: Text.WordWrap
+                    }
+
+                    PulseButton {
+                        visible: (flightPage.controller.incidentHistory || []).length >= 2
+                        text: KI18n.i18n("Compare incidents…")
+                        icon.name: "view-split-left-right"
+                        onClicked: compareDialog.open()
+                    }
                 }
 
                 Flow {
@@ -1002,7 +1034,11 @@ Kirigami.ScrollablePage {
                             text: incidentChip.modelData.timeString
                                   + (incidentChip.modelData.durationSeconds > 1 ? " (" + incidentChip.modelData.durationSeconds + "s)" : "")
                                   + " · " + incidentChip.modelData.headline
-                            onClicked: flightPage.controller.selectIncident(incidentChip.modelData.incidentId)
+                            onClicked: {
+                                flightPage.selectedIncidentId = incidentChip.modelData.incidentId
+                                flightPage.controller.selectIncident(incidentChip.modelData.incidentId)
+                                flightPage.reloadKernelLogs(incidentChip.modelData.incidentId)
+                            }
                         }
                     }
                 }
@@ -1246,6 +1282,127 @@ Kirigami.ScrollablePage {
 
                 QQC2.GroupBox {
                     Layout.fillWidth: true
+                    title: KI18n.i18n("Correlated kernel events (dmesg / journald)")
+                    visible: (flightPage.controller.incidentHistory || []).length > 0
+
+                    ColumnLayout {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        spacing: Kirigami.Units.smallSpacing
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Kirigami.Units.smallSpacing
+
+                            QQC2.Label {
+                                Layout.fillWidth: true
+                                wrapMode: Text.WordWrap
+                                text: KI18n.i18n("Hardware-relevant kernel logs captured within ±15s of incident. Network identifiers and private paths are redacted.")
+                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                                color: Kirigami.Theme.disabledTextColor
+                            }
+
+                            PulseButton {
+                                text: KI18n.i18n("Refresh logs")
+                                icon.name: "view-refresh"
+                                onClicked: flightPage.reloadKernelLogs(flightPage.selectedIncidentId)
+                            }
+                        }
+
+                        QQC2.Label {
+                            visible: flightPage.incidentLogs.length === 0
+                            text: KI18n.i18n("No hardware-related kernel messages recorded within ±15s of this incident.")
+                            color: Kirigami.Theme.disabledTextColor
+                            font.italic: true
+                        }
+
+                        Repeater {
+                            model: flightPage.incidentLogs
+                            delegate: Rectangle {
+                                id: logCard
+                                required property var modelData
+                                Layout.fillWidth: true
+                                implicitHeight: logLayout.implicitHeight + 12
+                                radius: theme.innerRadius
+                                color: theme.subtleSurfaceColor
+                                border.width: 1
+                                border.color: theme.subtleBorderColor
+
+                                RowLayout {
+                                    id: logLayout
+                                    anchors.fill: parent
+                                    anchors.margins: 6
+                                    spacing: Kirigami.Units.smallSpacing
+
+                                    // Severity badge
+                                    Rectangle {
+                                        radius: 4
+                                        implicitWidth: sevLbl.implicitWidth + 8
+                                        implicitHeight: sevLbl.implicitHeight + 4
+                                        color: logCard.modelData.severity === "error" || logCard.modelData.severity === "crit" || logCard.modelData.severity === "emerg" || logCard.modelData.severity === "alert"
+                                               ? theme.accentTint(Kirigami.Theme.negativeTextColor, 0.2)
+                                               : logCard.modelData.severity === "warning"
+                                               ? theme.accentTint(Kirigami.Theme.neutralTextColor, 0.2)
+                                               : theme.accentTint(Kirigami.Theme.highlightColor, 0.15)
+                                        border.width: 1
+                                        border.color: logCard.modelData.severity === "error" || logCard.modelData.severity === "crit" || logCard.modelData.severity === "emerg" || logCard.modelData.severity === "alert"
+                                                      ? Kirigami.Theme.negativeTextColor
+                                                      : logCard.modelData.severity === "warning"
+                                                      ? Kirigami.Theme.neutralTextColor
+                                                      : Kirigami.Theme.highlightColor
+
+                                        QQC2.Label {
+                                            id: sevLbl
+                                            anchors.centerIn: parent
+                                            text: (logCard.modelData.severity || "info").toUpperCase()
+                                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize - 1
+                                            font.bold: true
+                                            color: parent.border.color
+                                        }
+                                    }
+
+                                    // Subsystem badge
+                                    Rectangle {
+                                        radius: 4
+                                        implicitWidth: subLbl.implicitWidth + 8
+                                        implicitHeight: subLbl.implicitHeight + 4
+                                        color: theme.accentTint(Kirigami.Theme.highlightColor, 0.1)
+                                        border.width: 1
+                                        border.color: theme.accentTint(Kirigami.Theme.highlightColor, 0.3)
+
+                                        QQC2.Label {
+                                            id: subLbl
+                                            anchors.centerIn: parent
+                                            text: (logCard.modelData.subsystem || "kernel").toUpperCase()
+                                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize - 1
+                                            color: Kirigami.Theme.highlightColor
+                                        }
+                                    }
+
+                                    // Timestamp
+                                    QQC2.Label {
+                                        text: logCard.modelData.timestamp || ""
+                                        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                                        color: Kirigami.Theme.disabledTextColor
+                                    }
+
+                                    // Redacted message
+                                    QQC2.Label {
+                                        Layout.fillWidth: true
+                                        wrapMode: Text.WordWrap
+                                        text: logCard.modelData.message || ""
+                                        font.family: "monospace"
+                                        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                                        color: Kirigami.Theme.textColor
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                QQC2.GroupBox {
+                    Layout.fillWidth: true
                     title: KI18n.i18n("Recorded data quality")
                     ColumnLayout {
                         anchors.left: parent.left
@@ -1266,6 +1423,187 @@ Kirigami.ScrollablePage {
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+
+    QQC2.Dialog {
+        id: compareDialog
+        title: KI18n.i18n("Compare Recorded Incidents")
+        modal: true
+        standardButtons: QQC2.Dialog.Close
+        anchors.centerIn: parent
+        implicitWidth: Math.min(flightPage.width - Kirigami.Units.gridUnit * 2, Kirigami.Units.gridUnit * 38)
+
+        property string idA: ""
+        property string idB: ""
+
+        onAboutToShow: {
+            var hist = flightPage.controller.incidentHistory || []
+            if (hist.length >= 2) {
+                idA = hist[0].incidentId
+                idB = hist[1].incidentId
+                updateComparison()
+            }
+        }
+
+        function updateComparison() {
+            if (idA && idB && idA !== idB) {
+                flightPage.comparisonResult = flightPage.controller.compareIncidents(idA, idB) || ({})
+            } else {
+                flightPage.comparisonResult = ({})
+            }
+        }
+
+        contentItem: ColumnLayout {
+            spacing: Kirigami.Units.mediumSpacing
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Kirigami.Units.mediumSpacing
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    QQC2.Label { text: KI18n.i18n("Baseline incident (A):"); font.bold: true }
+                    QQC2.ComboBox {
+                        Layout.fillWidth: true
+                        model: flightPage.controller.incidentHistory
+                        textRole: "headline"
+                        onActivated: function(index) {
+                            compareDialog.idA = model[index].incidentId
+                            compareDialog.updateComparison()
+                        }
+                    }
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    QQC2.Label { text: KI18n.i18n("Comparison incident (B):"); font.bold: true }
+                    QQC2.ComboBox {
+                        Layout.fillWidth: true
+                        model: flightPage.controller.incidentHistory
+                        currentIndex: Math.min(1, Math.max(0, (flightPage.controller.incidentHistory || []).length - 1))
+                        textRole: "headline"
+                        onActivated: function(index) {
+                            compareDialog.idB = model[index].incidentId
+                            compareDialog.updateComparison()
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                implicitHeight: compGrid.implicitHeight + Kirigami.Units.mediumSpacing * 2
+                radius: theme.innerRadius
+                color: theme.subtleSurfaceColor
+                border.width: 1
+                border.color: theme.subtleBorderColor
+
+                GridLayout {
+                    id: compGrid
+                    anchors.fill: parent
+                    anchors.margins: Kirigami.Units.mediumSpacing
+                    columns: 4
+                    columnSpacing: Kirigami.Units.mediumSpacing
+                    rowSpacing: Kirigami.Units.smallSpacing
+
+                    // Header row
+                    QQC2.Label { text: KI18n.i18n("Metric"); font.bold: true; color: Kirigami.Theme.disabledTextColor }
+                    QQC2.Label { text: KI18n.i18n("Incident A"); font.bold: true; color: Kirigami.Theme.highlightColor }
+                    QQC2.Label { text: KI18n.i18n("Incident B"); font.bold: true; color: Kirigami.Theme.highlightColor }
+                    QQC2.Label { text: KI18n.i18n("Delta (B − A)"); font.bold: true; color: Kirigami.Theme.disabledTextColor }
+
+                    // Peak Temperature
+                    QQC2.Label { text: KI18n.i18n("Peak Temperature") }
+                    QQC2.Label {
+                        text: (flightPage.comparisonResult.incidentA && flightPage.comparisonResult.incidentA.peakTemperature !== undefined)
+                              ? MeasurementLabels.formatTemperature(flightPage.comparisonResult.incidentA.peakTemperature, flightPage.controller.temperatureUnit) : "—"
+                        font.bold: true
+                    }
+                    QQC2.Label {
+                        text: (flightPage.comparisonResult.incidentB && flightPage.comparisonResult.incidentB.peakTemperature !== undefined)
+                              ? MeasurementLabels.formatTemperature(flightPage.comparisonResult.incidentB.peakTemperature, flightPage.controller.temperatureUnit) : "—"
+                        font.bold: true
+                    }
+                    QQC2.Label {
+                        readonly property double d: (flightPage.comparisonResult.diff && flightPage.comparisonResult.diff.deltaPeakTemp !== undefined) ? flightPage.comparisonResult.diff.deltaPeakTemp : 0
+                        text: (flightPage.comparisonResult.diff && flightPage.comparisonResult.diff.deltaPeakTemp !== undefined)
+                              ? (d >= 0 ? "+" : "") + d.toFixed(1) + " °C" : "—"
+                        color: d > 0.5 ? Kirigami.Theme.negativeTextColor : (d < -0.5 ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.disabledTextColor)
+                        font.bold: true
+                    }
+
+                    // Average CPU Load
+                    QQC2.Label { text: KI18n.i18n("Average CPU Load") }
+                    QQC2.Label {
+                        text: (flightPage.comparisonResult.incidentA && flightPage.comparisonResult.incidentA.avgCpuLoad !== undefined)
+                              ? flightPage.comparisonResult.incidentA.avgCpuLoad.toFixed(1) + "%" : "—"
+                        font.bold: true
+                    }
+                    QQC2.Label {
+                        text: (flightPage.comparisonResult.incidentB && flightPage.comparisonResult.incidentB.avgCpuLoad !== undefined)
+                              ? flightPage.comparisonResult.incidentB.avgCpuLoad.toFixed(1) + "%" : "—"
+                        font.bold: true
+                    }
+                    QQC2.Label {
+                        readonly property double d: (flightPage.comparisonResult.diff && flightPage.comparisonResult.diff.deltaAvgCpuLoad !== undefined) ? flightPage.comparisonResult.diff.deltaAvgCpuLoad : 0
+                        text: (flightPage.comparisonResult.diff && flightPage.comparisonResult.diff.deltaAvgCpuLoad !== undefined)
+                              ? (d >= 0 ? "+" : "") + d.toFixed(1) + "%" : "—"
+                        color: d > 2.0 ? Kirigami.Theme.negativeTextColor : (d < -2.0 ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.disabledTextColor)
+                        font.bold: true
+                    }
+
+                    // Worst Responsiveness
+                    QQC2.Label { text: KI18n.i18n("Worst Responsiveness") }
+                    QQC2.Label {
+                        text: (flightPage.comparisonResult.incidentA && flightPage.comparisonResult.incidentA.worstResponsiveness !== undefined)
+                              ? flightPage.comparisonResult.incidentA.worstResponsiveness.toFixed(1) + "/100" : "—"
+                        font.bold: true
+                    }
+                    QQC2.Label {
+                        text: (flightPage.comparisonResult.incidentB && flightPage.comparisonResult.incidentB.worstResponsiveness !== undefined)
+                              ? flightPage.comparisonResult.incidentB.worstResponsiveness.toFixed(1) + "/100" : "—"
+                        font.bold: true
+                    }
+                    QQC2.Label {
+                        readonly property double d: (flightPage.comparisonResult.diff && flightPage.comparisonResult.diff.deltaWorstResponsiveness !== undefined) ? flightPage.comparisonResult.diff.deltaWorstResponsiveness : 0
+                        text: (flightPage.comparisonResult.diff && flightPage.comparisonResult.diff.deltaWorstResponsiveness !== undefined)
+                              ? (d >= 0 ? "+" : "") + d.toFixed(1) : "—"
+                        color: d < -2.0 ? Kirigami.Theme.negativeTextColor : (d > 2.0 ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.disabledTextColor)
+                        font.bold: true
+                    }
+
+                    // Duration
+                    QQC2.Label { text: KI18n.i18n("Incident Duration") }
+                    QQC2.Label {
+                        text: (flightPage.comparisonResult.incidentA && flightPage.comparisonResult.incidentA.durationSeconds !== undefined)
+                              ? flightPage.comparisonResult.incidentA.durationSeconds.toFixed(1) + " s" : "—"
+                    }
+                    QQC2.Label {
+                        text: (flightPage.comparisonResult.incidentB && flightPage.comparisonResult.incidentB.durationSeconds !== undefined)
+                              ? flightPage.comparisonResult.incidentB.durationSeconds.toFixed(1) + " s" : "—"
+                    }
+                    QQC2.Label {
+                        readonly property double d: (flightPage.comparisonResult.diff && flightPage.comparisonResult.diff.deltaDurationSeconds !== undefined) ? flightPage.comparisonResult.diff.deltaDurationSeconds : 0
+                        text: (flightPage.comparisonResult.diff && flightPage.comparisonResult.diff.deltaDurationSeconds !== undefined)
+                              ? (d >= 0 ? "+" : "") + d.toFixed(1) + " s" : "—"
+                    }
+
+                    // Top Culprit
+                    QQC2.Label { text: KI18n.i18n("Top Culprit Process") }
+                    QQC2.Label {
+                        text: (flightPage.comparisonResult.incidentA && flightPage.comparisonResult.incidentA.topCulprit)
+                              ? flightPage.comparisonResult.incidentA.topCulprit : KI18n.i18n("None / Unobserved")
+                        wrapMode: Text.WordWrap
+                    }
+                    QQC2.Label {
+                        text: (flightPage.comparisonResult.incidentB && flightPage.comparisonResult.incidentB.topCulprit)
+                              ? flightPage.comparisonResult.incidentB.topCulprit : KI18n.i18n("None / Unobserved")
+                        wrapMode: Text.WordWrap
+                    }
+                    QQC2.Label { text: "—" }
                 }
             }
         }

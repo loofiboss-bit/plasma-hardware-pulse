@@ -1,4 +1,5 @@
 #include "pulsetelemetrycontroller.h"
+#include "kernellogreader.h"
 
 #include <KNotification>
 #include "collectorprotocol.h"
@@ -587,6 +588,32 @@ void PulseTelemetryController::refreshNow()
         m_coreItemsVariant.append(cm);
     }
 
+    m_fansVariant.clear();
+    for (const FanTelemetry &f : std::as_const(m_power.fans)) {
+        QVariantMap fm;
+        fm.insert(QStringLiteral("id"), f.id);
+        fm.insert(QStringLiteral("label"), f.label);
+        fm.insert(QStringLiteral("rpm"), f.rpm);
+        fm.insert(QStringLiteral("available"), f.available);
+        m_fansVariant.append(fm);
+    }
+
+    m_nvmeControllersVariant.clear();
+    m_nvmeWarningActive = false;
+    for (const NvmeControllerTelemetry &n : std::as_const(m_psiMem.nvmeControllers)) {
+        QVariantMap nm;
+        nm.insert(QStringLiteral("id"), n.id);
+        nm.insert(QStringLiteral("model"), n.model);
+        nm.insert(QStringLiteral("state"), n.state);
+        nm.insert(QStringLiteral("warningAvailable"), n.warningAvailable);
+        nm.insert(QStringLiteral("criticalWarning"), n.criticalWarning);
+        nm.insert(QStringLiteral("criticalWarningAlarm"), n.criticalWarningAlarm);
+        nm.insert(QStringLiteral("compositeTempCelsius"), n.compositeTempCelsius);
+        nm.insert(QStringLiteral("compositeTempAvailable"), n.compositeTempAvailable);
+        if (n.criticalWarningAlarm) m_nvmeWarningActive = true;
+        m_nvmeControllersVariant.append(nm);
+    }
+
     if (!m_recordingPaused || m_recorder.count() == 0) {
         const CulpritProcess &primaryCulprit = (m_verdict.primaryBottleneckDomain.contains(QStringLiteral("Memory")))
             ? m_verdict.topMemoryProcess
@@ -1101,6 +1128,46 @@ QVariantMap PulseTelemetryController::processIoStats(int pid) const
         result.insert(QStringLiteral("wchar"), QVariant::fromValue(wchar));
     }
     return result;
+}
+
+QVariantList PulseTelemetryController::incidentKernelLogs(const QString &incidentId) const
+{
+    if (incidentId.isEmpty()) return {};
+
+    qint64 startMs = 0;
+    qint64 endMs = 0;
+
+    for (const auto &v : m_recorder.incidentEpisodes()) {
+        const auto map = v.toMap();
+        if (map.value(QStringLiteral("incidentId")).toString() == incidentId) {
+            startMs = map.value(QStringLiteral("startMs")).toLongLong();
+            endMs = map.value(QStringLiteral("endMs")).toLongLong();
+            break;
+        }
+    }
+
+    if (startMs <= 0) {
+        for (const auto &v : m_recorder.markers()) {
+            const auto map = v.toMap();
+            if (map.value(QStringLiteral("markerId")).toString() == incidentId) {
+                startMs = map.value(QStringLiteral("timestampMs")).toLongLong();
+                endMs = startMs;
+                break;
+            }
+        }
+    }
+
+    if (startMs <= 0 && m_selectedHistorySnapshot.contains(QStringLiteral("timestampMs"))) {
+        startMs = m_selectedHistorySnapshot.value(QStringLiteral("timestampMs")).toLongLong();
+        endMs = startMs;
+    }
+
+    return KernelLogReader::fetchIncidentLogsVariant(startMs, endMs, 15000);
+}
+
+QVariantMap PulseTelemetryController::compareIncidents(const QString &incidentIdA, const QString &incidentIdB) const
+{
+    return m_recorder.compareIncidents(incidentIdA, incidentIdB);
 }
 
 } // namespace LoofiPulse
