@@ -285,6 +285,15 @@ PsiAndMemorySnapshot PsiMemorySampler::sample(qint64 elapsedMs)
             item.countersAvailable = rxErrorOk && txErrorOk && rxDropOk && txDropOk;
         }
         item.isPhysical = QFileInfo::exists(interfaceDir.filePath(QStringLiteral("device")));
+        item.isWireless = QFileInfo::exists(interfaceDir.filePath(QStringLiteral("wireless")))
+                       || QFileInfo::exists(interfaceDir.filePath(QStringLiteral("phy80211")));
+        item.duplexMode = SysfsReader::readTrimmedLine(interfaceDir.filePath(QStringLiteral("duplex")));
+        const QString speedStr = SysfsReader::readTrimmedLine(interfaceDir.filePath(QStringLiteral("speed")));
+        bool speedOk = false;
+        const int speedVal = speedStr.toInt(&speedOk);
+        if (speedOk && speedVal > 0) item.linkSpeedMbps = speedVal;
+        const QString carrierStr = SysfsReader::readTrimmedLine(interfaceDir.filePath(QStringLiteral("carrier")));
+        item.carrier = (carrierStr == QStringLiteral("1"));
         const QString ifindex = SysfsReader::readTrimmedLine(interfaceDir.filePath(QStringLiteral("ifindex")));
         item.identity = name + QLatin1Char(':') + ifindex;
         item.included = m_includedNetworkInterfaces.isEmpty() ? item.isPhysical : m_includedNetworkInterfaces.contains(name);

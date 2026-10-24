@@ -126,12 +126,21 @@ struct NetworkInterfaceTelemetry
     QString identity;
     QString name;
     bool isPhysical = false;
+    bool isWireless = false;
     bool included = false;
     bool throughputAvailable = false;
     bool countersAvailable = false;
     quint64 rxErrors = 0, txErrors = 0, rxDropped = 0, txDropped = 0;
     double rxMibPerSec = 0.0;
     double txMibPerSec = 0.0;
+    QString duplexMode;
+    int linkSpeedMbps = 0;
+    bool carrier = false;
+    QString wirelessSsid;
+    int wirelessSignalPercent = 0;
+    int wirelessSignalDbm = 0;
+    double wirelessFrequencyGhz = 0.0;
+    int wirelessBitrateMbps = 0;
 };
 
 struct DiskTelemetry
@@ -208,6 +217,13 @@ struct PsiAndMemorySnapshot
     bool netThroughputAvailable = false;
     double netRxMibPerSec = 0.0;
     double netTxMibPerSec = 0.0;
+
+    bool wifiQualityAvailable = false;
+    int primaryWifiSignalPercent = 0;
+    int primaryWifiSignalDbm = 0;
+    double primaryWifiFrequencyGhz = 0.0;
+    QString primaryWifiSsid;
+    int primaryWifiBitrateMbps = 0;
 };
 
 struct BatteryTelemetry

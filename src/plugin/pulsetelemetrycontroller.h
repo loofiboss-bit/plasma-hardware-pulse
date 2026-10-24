@@ -132,6 +132,12 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(bool wifiTempAvailable READ wifiTempAvailable NOTIFY telemetryUpdated)
     Q_PROPERTY(QVariantList nvmeControllers READ nvmeControllers NOTIFY telemetryUpdated)
     Q_PROPERTY(bool nvmeWarningActive READ nvmeWarningActive NOTIFY telemetryUpdated)
+    Q_PROPERTY(bool wifiAvailable READ wifiAvailable NOTIFY telemetryUpdated)
+    Q_PROPERTY(QString wifiSsid READ wifiSsid NOTIFY telemetryUpdated)
+    Q_PROPERTY(int wifiSignalPercent READ wifiSignalPercent NOTIFY telemetryUpdated)
+    Q_PROPERTY(int wifiSignalDbm READ wifiSignalDbm NOTIFY telemetryUpdated)
+    Q_PROPERTY(double wifiFrequencyGhz READ wifiFrequencyGhz NOTIFY telemetryUpdated)
+    Q_PROPERTY(int wifiBitrateMbps READ wifiBitrateMbps NOTIFY telemetryUpdated)
 
     // Causal Verdict & Culprit properties
     Q_PROPERTY(int verdictSeverity READ verdictSeverity NOTIFY telemetryUpdated)
@@ -296,6 +302,12 @@ public:
     bool wifiTempAvailable() const { return remoteValue<bool>("wifiTempAvailable", m_wifiTempAvailable); }
     QVariantList nvmeControllers() const { return remoteValue<QVariantList>("nvmeControllers", m_nvmeControllersVariant); }
     bool nvmeWarningActive() const { return remoteValue<bool>("nvmeWarningActive", m_nvmeWarningActive); }
+    bool wifiAvailable() const { return remoteValue<bool>("wifiAvailable", m_wifiAvailable); }
+    QString wifiSsid() const { return remoteValue<QString>("wifiSsid", m_wifiSsid); }
+    int wifiSignalPercent() const { return remoteValue<int>("wifiSignalPercent", m_wifiSignalPercent); }
+    int wifiSignalDbm() const { return remoteValue<int>("wifiSignalDbm", m_wifiSignalDbm); }
+    double wifiFrequencyGhz() const { return remoteValue<double>("wifiFrequencyGhz", m_wifiFrequencyGhz); }
+    int wifiBitrateMbps() const { return remoteValue<int>("wifiBitrateMbps", m_wifiBitrateMbps); }
 
     int verdictSeverity() const { return remoteValue<int>("verdictSeverity", static_cast<int>(m_verdict.severity)); }
     QString verdictHeadline() const { return remoteValue<QString>("verdictHeadline", m_verdict.headline); }
@@ -498,6 +510,7 @@ private:
     void setLastActionStatus(const QString &status);
     void setActionResult(bool succeeded, const QString &status, const QString &path = QString());
     void refreshPowerProfileProperties();
+    void refreshWifiProperties();
     static QVariantMap sampleToVariantMap(const FlightSample &s, int index);
 
     QString m_clientId = QUuid::createUuid().toString(QUuid::WithoutBraces);
@@ -584,6 +597,12 @@ private:
     double m_wifiTemp = 0.0;
     bool m_nvmeTempAvailable = false;
     bool m_wifiTempAvailable = false;
+    bool m_wifiAvailable = false;
+    QString m_wifiSsid;
+    int m_wifiSignalPercent = 0;
+    int m_wifiSignalDbm = 0;
+    double m_wifiFrequencyGhz = 0.0;
+    int m_wifiBitrateMbps = 0;
 
     QVariantList m_domainSensorsVariant;
     QVariantList m_coreItemsVariant;

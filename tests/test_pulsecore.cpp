@@ -363,6 +363,22 @@ private Q_SLOTS:
         QCOMPARE(nvmeThermal.severity, VerdictSeverity::Elevated);
         QCOMPARE(nvmeThermal.primaryBottleneckDomain, QStringLiteral("Storage"));
         QVERIFY(nvmeThermal.headline.contains(QStringLiteral("thermal threshold exceeded")));
+
+        // 10. Wi-Fi Link Degradation verdict (Elevated / Severity 1)
+        psi.nvmeControllers.clear();
+        psi.wifiQualityAvailable = true;
+        psi.primaryWifiSignalPercent = 18;
+        psi.primaryWifiSignalDbm = -82;
+        psi.primaryWifiSsid = QStringLiteral("Home-WiFi");
+        psi.netThroughputAvailable = true;
+        psi.netRxMibPerSec = 4.5;
+        psi.netTxMibPerSec = 0.8;
+        const CausalVerdict wifiDegraded = CausalDiagnosisEngine::evaluate(cpu, gpu, psi, power, domains, culprit);
+        QCOMPARE(wifiDegraded.ruleId, QStringLiteral("network.wifi-link-degradation"));
+        QCOMPARE(wifiDegraded.severity, VerdictSeverity::Elevated);
+        QCOMPARE(wifiDegraded.primaryBottleneckDomain, QStringLiteral("Storage & Network"));
+        QVERIFY(wifiDegraded.causalChain.contains(QStringLiteral("Home-WiFi")));
+        QVERIFY(wifiDegraded.causalChain.contains(QStringLiteral("18%")));
     }
 
     void testBatteryEtaAndHealthCalculation()

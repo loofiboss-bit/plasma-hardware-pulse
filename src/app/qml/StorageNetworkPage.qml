@@ -438,7 +438,7 @@ Kirigami.ScrollablePage {
                             spacing: 8
 
                             Kirigami.Icon {
-                                source: netCard.modelData.physical ? "network-wired" : "network-wireless"
+                                source: netCard.modelData.isWireless ? "network-wireless" : (netCard.modelData.physical ? "network-wired" : "network-workgroup")
                                 Layout.preferredWidth: Kirigami.Units.iconSizes.small
                                 Layout.preferredHeight: Kirigami.Units.iconSizes.small
                                 color: theme.psiAccent
@@ -467,6 +467,97 @@ Kirigami.ScrollablePage {
                                     font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 2)
                                     font.bold: true
                                     color: netCard.modelData.included ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.disabledTextColor
+                                }
+                            }
+                        }
+
+                        // Hardware & Link Quality Row (Wi-Fi or Ethernet Duplex)
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 6
+                            visible: netCard.modelData.isWireless || (netCard.modelData.physical && netCard.modelData.duplexMode && netCard.modelData.duplexMode.length > 0)
+
+                            // Wi-Fi SSID & Signal
+                            Rectangle {
+                                visible: netCard.modelData.isWireless && netCard.modelData.wirelessSignalPercent > 0
+                                radius: theme.pillRadius
+                                color: theme.cardNestedBg
+                                border.width: 1
+                                border.color: theme.subtleBorderColor
+                                implicitWidth: wifiPillRow.implicitWidth + 12
+                                implicitHeight: wifiPillRow.implicitHeight + 4
+                                RowLayout {
+                                    id: wifiPillRow
+                                    anchors.centerIn: parent
+                                    spacing: 4
+                                    Kirigami.Icon {
+                                        source: "network-wireless-signal-excellent"
+                                        Layout.preferredWidth: 12
+                                        Layout.preferredHeight: 12
+                                    }
+                                    QQC2.Label {
+                                        text: (netCard.modelData.wirelessSsid ? (netCard.modelData.wirelessSsid + " · ") : "")
+                                              + netCard.modelData.wirelessSignalPercent + "% (" + netCard.modelData.wirelessSignalDbm + " dBm)"
+                                        font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 2)
+                                        font.bold: true
+                                        color: netCard.modelData.wirelessSignalPercent < 25 ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.positiveTextColor
+                                    }
+                                }
+                            }
+
+                            // Wi-Fi Band / Frequency
+                            Rectangle {
+                                visible: netCard.modelData.isWireless && netCard.modelData.wirelessFrequencyGhz > 0
+                                radius: theme.pillRadius
+                                color: theme.cardNestedBg
+                                border.width: 1
+                                border.color: theme.subtleBorderColor
+                                implicitWidth: bandLbl.implicitWidth + 10
+                                implicitHeight: bandLbl.implicitHeight + 4
+                                QQC2.Label {
+                                    id: bandLbl
+                                    anchors.centerIn: parent
+                                    text: netCard.modelData.wirelessFrequencyGhz > 5.5 ? "6 GHz"
+                                        : (netCard.modelData.wirelessFrequencyGhz > 4.0 ? "5 GHz" : "2.4 GHz")
+                                    font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 2)
+                                    font.bold: true
+                                    color: theme.psiAccent
+                                }
+                            }
+
+                            // Link Bitrate
+                            Rectangle {
+                                visible: netCard.modelData.isWireless ? (netCard.modelData.wirelessBitrateMbps > 0) : (netCard.modelData.linkSpeedMbps > 0)
+                                radius: theme.pillRadius
+                                color: theme.cardNestedBg
+                                border.width: 1
+                                border.color: theme.subtleBorderColor
+                                implicitWidth: rateLbl.implicitWidth + 10
+                                implicitHeight: rateLbl.implicitHeight + 4
+                                QQC2.Label {
+                                    id: rateLbl
+                                    anchors.centerIn: parent
+                                    text: (netCard.modelData.isWireless ? netCard.modelData.wirelessBitrateMbps : netCard.modelData.linkSpeedMbps) + " Mbps"
+                                    font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 2)
+                                    color: Kirigami.Theme.textColor
+                                }
+                            }
+
+                            // Ethernet Duplex & Link State
+                            Rectangle {
+                                visible: !netCard.modelData.isWireless && netCard.modelData.physical && netCard.modelData.duplexMode && netCard.modelData.duplexMode.length > 0
+                                radius: theme.pillRadius
+                                color: theme.cardNestedBg
+                                border.width: 1
+                                border.color: theme.subtleBorderColor
+                                implicitWidth: duplexLbl.implicitWidth + 10
+                                implicitHeight: duplexLbl.implicitHeight + 4
+                                QQC2.Label {
+                                    id: duplexLbl
+                                    anchors.centerIn: parent
+                                    text: (netCard.modelData.duplexMode === "full" ? "Full Duplex" : "Half Duplex") + (netCard.modelData.carrier ? " · Link Up" : " · No Link")
+                                    font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 2)
+                                    color: netCard.modelData.carrier ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.disabledTextColor
                                 }
                             }
                         }

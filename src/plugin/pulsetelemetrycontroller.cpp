@@ -24,6 +24,7 @@
 #include <QDBusArgument>
 #include <QDBusConnection>
 #include <QDBusMessage>
+#include <QDBusObjectPath>
 #include <QDBusPendingCallWatcher>
 #include <QDBusPendingReply>
 #include <QDBusVariant>
@@ -81,8 +82,13 @@ PulseTelemetryController::PulseTelemetryController(QObject *parent)
     QTimer::singleShot(0, this, &PulseTelemetryController::connectCollector);
     refreshPowerProfileProperties();
     m_powerProfileRefreshTimer.setInterval(10000);
-    connect(&m_powerProfileRefreshTimer, &QTimer::timeout, this, &PulseTelemetryController::refreshPowerProfileProperties);
+    connect(&m_powerProfileRefreshTimer, &QTimer::timeout, this, [this] {
+        refreshPowerProfileProperties();
+        refreshWifiProperties();
+    });
     m_powerProfileRefreshTimer.start();
+    refreshPowerProfileProperties();
+    refreshWifiProperties();
 }
 
 PulseTelemetryController::PulseTelemetryController(const QDBusConnection &powerProfileBus, QObject *parent)
@@ -107,9 +113,13 @@ PulseTelemetryController::PulseTelemetryController(const QDBusConnection &powerP
     refreshNow();
     m_timer.start();
     m_powerProfileRefreshTimer.setInterval(10000);
-    connect(&m_powerProfileRefreshTimer, &QTimer::timeout, this, &PulseTelemetryController::refreshPowerProfileProperties);
+    connect(&m_powerProfileRefreshTimer, &QTimer::timeout, this, [this] {
+        refreshPowerProfileProperties();
+        refreshWifiProperties();
+    });
     m_powerProfileRefreshTimer.start();
     refreshPowerProfileProperties();
+    refreshWifiProperties();
 }
 
 QVariantList PulseTelemetryController::networkInterfaces() const
@@ -126,12 +136,22 @@ QVariantList PulseTelemetryController::networkInterfaces() const
             {QStringLiteral("identity"), interface.identity},
             {QStringLiteral("name"), interface.name},
             {QStringLiteral("physical"), interface.isPhysical},
+            {QStringLiteral("isWireless"), interface.isWireless},
             {QStringLiteral("included"), interface.included},
             {QStringLiteral("available"), interface.throughputAvailable},
             {QStringLiteral("rxMibPerSec"), interface.rxMibPerSec},
             {QStringLiteral("txMibPerSec"), interface.txMibPerSec},
             {QStringLiteral("rxErrors"), interface.rxErrors}, {QStringLiteral("txErrors"), interface.txErrors},
-            {QStringLiteral("rxDropped"), interface.rxDropped}, {QStringLiteral("txDropped"), interface.txDropped}, {QStringLiteral("countersAvailable"), interface.countersAvailable}
+            {QStringLiteral("rxDropped"), interface.rxDropped}, {QStringLiteral("txDropped"), interface.txDropped},
+            {QStringLiteral("countersAvailable"), interface.countersAvailable},
+            {QStringLiteral("duplexMode"), interface.duplexMode},
+            {QStringLiteral("linkSpeedMbps"), interface.linkSpeedMbps},
+            {QStringLiteral("carrier"), interface.carrier},
+            {QStringLiteral("wirelessSsid"), interface.isWireless ? (interface.wirelessSsid.isEmpty() ? m_wifiSsid : interface.wirelessSsid) : QString()},
+            {QStringLiteral("wirelessSignalPercent"), interface.isWireless ? (interface.wirelessSignalPercent > 0 ? interface.wirelessSignalPercent : m_wifiSignalPercent) : 0},
+            {QStringLiteral("wirelessSignalDbm"), interface.isWireless ? (interface.wirelessSignalDbm != 0 ? interface.wirelessSignalDbm : m_wifiSignalDbm) : 0},
+            {QStringLiteral("wirelessFrequencyGhz"), interface.isWireless ? (interface.wirelessFrequencyGhz > 0.0 ? interface.wirelessFrequencyGhz : m_wifiFrequencyGhz) : 0.0},
+            {QStringLiteral("wirelessBitrateMbps"), interface.isWireless ? (interface.wirelessBitrateMbps > 0 ? interface.wirelessBitrateMbps : m_wifiBitrateMbps) : 0}
         });
     }
     return items;
@@ -525,6 +545,14 @@ void PulseTelemetryController::refreshNow()
     m_gpu = {};
     for (const auto &gpu : m_gpus) if (gpu.available) { m_gpu = gpu; break; }
     m_psiMem = m_psiSampler.sample(elapsedMs);
+    if (m_wifiAvailable) {
+        m_psiMem.wifiQualityAvailable = true;
+        m_psiMem.primaryWifiSsid = m_wifiSsid;
+        m_psiMem.primaryWifiSignalPercent = m_wifiSignalPercent;
+        m_psiMem.primaryWifiSignalDbm = m_wifiSignalDbm;
+        m_psiMem.primaryWifiFrequencyGhz = m_wifiFrequencyGhz;
+        m_psiMem.primaryWifiBitrateMbps = m_wifiBitrateMbps;
+    }
     const double validCpuLoad = cpuLoadAvailable() ? m_cpu.totalLoadPercent : -1.0;
     m_power = m_powerSampler.sample(elapsedMs, validCpuLoad, m_cpu.avgFreqMhz, m_cpu.maxFreqMhz);
     m_power.activePowerProfile = m_activePowerProfile;
@@ -957,6 +985,100 @@ void PulseTelemetryController::refreshPowerProfileProperties()
         m_powerProfileHoldsVariant = holds;
         m_powerProfileHoldsSummary = summaries.join(QStringLiteral(", "));
         Q_EMIT telemetryUpdated();
+    });
+}
+
+void PulseTelemetryController::refreshWifiProperties()
+{
+    if (!QDBusConnection::systemBus().isConnected()) {
+        m_wifiAvailable = false;
+        return;
+    }
+
+    QDBusMessage devMsg = QDBusMessage::createMethodCall(
+        QStringLiteral("org.freedesktop.NetworkManager"),
+        QStringLiteral("/org/freedesktop/NetworkManager"),
+        QStringLiteral("org.freedesktop.DBus.Properties"),
+        QStringLiteral("Get"));
+    devMsg << QStringLiteral("org.freedesktop.NetworkManager") << QStringLiteral("Devices");
+
+    auto *devWatcher = new QDBusPendingCallWatcher(QDBusConnection::systemBus().asyncCall(devMsg), this);
+    connect(devWatcher, &QDBusPendingCallWatcher::finished, this, [this, devWatcher]() {
+        const QDBusPendingReply<QDBusVariant> devReply = *devWatcher;
+        devWatcher->deleteLater();
+        if (devReply.isError()) return;
+
+        QList<QDBusObjectPath> paths;
+        const QVariant var = devReply.value().variant();
+        if (var.canConvert<QDBusArgument>()) {
+            const QDBusArgument arg = var.value<QDBusArgument>();
+            if (arg.currentSignature() == QStringLiteral("ao")) {
+                arg >> paths;
+            }
+        }
+        for (const auto &devPath : paths) {
+            QDBusMessage apMsg = QDBusMessage::createMethodCall(
+                QStringLiteral("org.freedesktop.NetworkManager"),
+                devPath.path(),
+                QStringLiteral("org.freedesktop.DBus.Properties"),
+                QStringLiteral("Get"));
+            apMsg << QStringLiteral("org.freedesktop.NetworkManager.Device.Wireless") << QStringLiteral("ActiveAccessPoint");
+            auto *apWatcher = new QDBusPendingCallWatcher(QDBusConnection::systemBus().asyncCall(apMsg), this);
+            connect(apWatcher, &QDBusPendingCallWatcher::finished, this, [this, apWatcher, devPath]() {
+                const QDBusPendingReply<QDBusVariant> apReply = *apWatcher;
+                apWatcher->deleteLater();
+                if (apReply.isError()) return;
+                const QDBusObjectPath apPath = qvariant_cast<QDBusObjectPath>(apReply.value().variant());
+                if (apPath.path().isEmpty() || apPath.path() == QStringLiteral("/")) return;
+
+                QDBusMessage rateMsg = QDBusMessage::createMethodCall(
+                    QStringLiteral("org.freedesktop.NetworkManager"),
+                    devPath.path(),
+                    QStringLiteral("org.freedesktop.DBus.Properties"),
+                    QStringLiteral("Get"));
+                rateMsg << QStringLiteral("org.freedesktop.NetworkManager.Device.Wireless") << QStringLiteral("Bitrate");
+                auto *rateWatcher = new QDBusPendingCallWatcher(QDBusConnection::systemBus().asyncCall(rateMsg), this);
+                connect(rateWatcher, &QDBusPendingCallWatcher::finished, this, [this, rateWatcher]() {
+                    const QDBusPendingReply<QDBusVariant> rateReply = *rateWatcher;
+                    rateWatcher->deleteLater();
+                    if (!rateReply.isError()) {
+                        m_wifiBitrateMbps = static_cast<int>(rateReply.value().variant().toUInt() / 1000);
+                        m_psiMem.primaryWifiBitrateMbps = m_wifiBitrateMbps;
+                    }
+                });
+
+                QDBusMessage apPropsMsg = QDBusMessage::createMethodCall(
+                    QStringLiteral("org.freedesktop.NetworkManager"),
+                    apPath.path(),
+                    QStringLiteral("org.freedesktop.DBus.Properties"),
+                    QStringLiteral("GetAll"));
+                apPropsMsg << QStringLiteral("org.freedesktop.NetworkManager.AccessPoint");
+                auto *apPropsWatcher = new QDBusPendingCallWatcher(QDBusConnection::systemBus().asyncCall(apPropsMsg), this);
+                connect(apPropsWatcher, &QDBusPendingCallWatcher::finished, this, [this, apPropsWatcher]() {
+                    const QDBusPendingReply<QVariantMap> propsReply = *apPropsWatcher;
+                    apPropsWatcher->deleteLater();
+                    if (propsReply.isError()) return;
+                    const QVariantMap props = propsReply.value();
+                    const QByteArray ssidBytes = props.value(QStringLiteral("Ssid")).toByteArray();
+                    const quint32 freqMhz = props.value(QStringLiteral("Frequency")).toUInt();
+                    const uchar strength = props.value(QStringLiteral("Strength")).value<uchar>();
+
+                    m_wifiSsid = QString::fromUtf8(ssidBytes);
+                    m_wifiSignalPercent = static_cast<int>(strength);
+                    m_wifiSignalDbm = (static_cast<int>(strength) / 2) - 100;
+                    m_wifiFrequencyGhz = static_cast<double>(freqMhz) / 1000.0;
+                    m_wifiAvailable = !m_wifiSsid.isEmpty() && m_wifiSignalPercent > 0;
+
+                    m_psiMem.wifiQualityAvailable = m_wifiAvailable;
+                    m_psiMem.primaryWifiSsid = m_wifiSsid;
+                    m_psiMem.primaryWifiSignalPercent = m_wifiSignalPercent;
+                    m_psiMem.primaryWifiSignalDbm = m_wifiSignalDbm;
+                    m_psiMem.primaryWifiFrequencyGhz = m_wifiFrequencyGhz;
+                    m_psiMem.primaryWifiBitrateMbps = m_wifiBitrateMbps;
+                    Q_EMIT telemetryUpdated();
+                });
+            });
+        }
     });
 }
 

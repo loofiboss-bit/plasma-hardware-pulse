@@ -282,6 +282,25 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
         }
     }
 
+    if (psiMem.wifiQualityAvailable && psiMem.primaryWifiSignalPercent > 0
+        && (psiMem.primaryWifiSignalPercent <= 25 || psiMem.primaryWifiSignalDbm <= -78)
+        && psiMem.netThroughputAvailable && (psiMem.netRxMibPerSec + psiMem.netTxMibPerSec) >= 0.2) {
+        QString details = QStringLiteral("Wi-Fi signal quality is degraded (%1%, %2 dBm)")
+            .arg(psiMem.primaryWifiSignalPercent)
+            .arg(psiMem.primaryWifiSignalDbm);
+        if (!psiMem.primaryWifiSsid.isEmpty()) {
+            details += QStringLiteral(" on '%1'").arg(psiMem.primaryWifiSsid);
+        }
+        details += QStringLiteral("; active network traffic: %1 MiB/s")
+            .arg(psiMem.netRxMibPerSec + psiMem.netTxMibPerSec, 0, 'f', 1);
+
+        addCandidate(QStringLiteral("network.wifi-link-degradation"), VerdictSeverity::Elevated,
+                     QStringLiteral("Storage & Network"),
+                     QStringLiteral("Poor Wi-Fi signal degrading network throughput"),
+                     details,
+                     QStringLiteral("Move closer to your wireless access point or switch to a 5 GHz band or wired Ethernet."));
+    }
+
     if ((psiMem.cpuPsi.someAvailable && psiMem.cpuPsi.someAvg10 >= 10.0)
         || (cpu.temperatureAvailable && cpu.thermalLimitAvailable && cpu.thermalHeadroomCelsius < 20.0)) {
         QString details;
