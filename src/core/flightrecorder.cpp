@@ -429,6 +429,11 @@ QString FlightRecorder::exportSummaryMarkdown(bool includeProcessDetails) const
 
     md += QStringLiteral("- **Battery discharge**: %1\n\n")
               .arg(metricText(latest, QStringLiteral("batteryDischargeAvailable"), latest.batteryWatts, 1, QStringLiteral(" W")));
+
+    if (latest.nvmeTempCelsius > 0.0) {
+        md += QStringLiteral("- **NVMe Storage Temperature**: %1°C\n\n")
+                  .arg(latest.nvmeTempCelsius, 0, 'f', 1);
+    }
     const QVariantMap metadata = reportMetricMetadata(latest, includeProcessDetails);
     if (!metadata.isEmpty()) {
         md += QStringLiteral("## Data quality at latest sample\n");

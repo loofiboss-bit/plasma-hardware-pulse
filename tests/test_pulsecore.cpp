@@ -970,6 +970,7 @@ private Q_SLOTS:
         const QString md = recorder.exportSummaryMarkdown();
         QVERIFY(md.contains(QStringLiteral("## Data quality at latest sample")));
         QVERIFY(md.contains(QStringLiteral("**cpuTemperature**: available")));
+        QVERIFY(md.contains(QStringLiteral("**NVMe Storage Temperature**: 44.0°C")));
     }
 
     void testVerdictStabilityAndImmediateUnknown()

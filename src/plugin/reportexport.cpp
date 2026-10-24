@@ -35,9 +35,10 @@ void PulseTelemetryController::exportRecorderAsync(const FlightRecorder &recorde
     const bool include = m_exportIncludeProcessDetails;
     const auto filters = QVariantMap{{QStringLiteral("gpuId"), m_selectedGpuId}, {QStringLiteral("storageId"), m_selectedStorageId},
         {QStringLiteral("networkInterfaces"), m_selectedNetworkInterfaces}};
+    const QVariantList kernelLogs = fetchIncidentKernelLogs(QString());
     QPointer<PulseTelemetryController> guard(this);
     m_actionPending = true; Q_EMIT telemetryUpdated();
-    m_filePool.start(QRunnable::create([guard, recorder, selection = safeSelection, filters, base, include] {
+    m_filePool.start(QRunnable::create([guard, recorder, selection = safeSelection, filters, base, include, kernelLogs] {
         const QString directory = QDir(base).filePath(QStringLiteral("reports"));
         QString status, saved;
         bool succeeded = false;
@@ -51,11 +52,43 @@ void PulseTelemetryController::exportRecorderAsync(const FlightRecorder &recorde
                 auto sample = root.at(i).toObject();
                 sample.insert(QStringLiteral("selection"), QJsonObject::fromVariantMap(selection));
                 sample.insert(QStringLiteral("viewSelection"), QJsonObject::fromVariantMap(filters));
+                if (i == 0 && !kernelLogs.isEmpty()) {
+                    sample.insert(QStringLiteral("correlatedKernelEvents"), QJsonArray::fromVariantList(kernelLogs));
+                }
                 root[i] = sample;
             }
             QString markdown = recorder.exportSummaryMarkdown(include);
             if (!selection.isEmpty()) markdown += QStringLiteral("\n## Selected investigation\n\nOriginal selection sample IDs: %1–%2. The report includes available before/after context; missing context is not inferred.\n")
                 .arg(selection.value(QStringLiteral("selectionStartSampleId")).toString(), selection.value(QStringLiteral("selectionEndSampleId")).toString());
+
+            const auto comp = selection.value(QStringLiteral("comparison")).toMap();
+            if (!comp.isEmpty()) {
+                markdown += QStringLiteral("\n## Incident Comparison Analysis\n\n");
+                for (const auto &period : {QStringLiteral("before"), QStringLiteral("during"), QStringLiteral("after")}) {
+                    const auto p = comp.value(period).toMap();
+                    if (!p.isEmpty()) {
+                        markdown += QStringLiteral("- **%1**: %2 samples; CPU avg: %3%; Responsiveness: %4/100; Coverage: %5 ms\n")
+                            .arg(period)
+                            .arg(p.value(QStringLiteral("sampleCount")).toInt())
+                            .arg(p.value(QStringLiteral("cpuLoadPercent")).toDouble(), 0, 'f', 1)
+                            .arg(p.value(QStringLiteral("responsivenessScore")).toDouble(), 0, 'f', 1)
+                            .arg(p.value(QStringLiteral("coverageMs")).toLongLong());
+                    }
+                }
+            }
+
+            if (!kernelLogs.isEmpty()) {
+                markdown += QStringLiteral("\n## Correlated Kernel Events (±15s window, privacy-redacted)\n\n");
+                for (const auto &entryVal : kernelLogs) {
+                    const auto entry = entryVal.toMap();
+                    const QString timeStr = QDateTime::fromMSecsSinceEpoch(entry.value(QStringLiteral("timestampMs")).toLongLong()).toString(QStringLiteral("HH:mm:ss"));
+                    markdown += QStringLiteral("- [%1] [%2] %3 (priority: %4)\n")
+                        .arg(timeStr)
+                        .arg(entry.value(QStringLiteral("subsystem")).toString().toUpper())
+                        .arg(entry.value(QStringLiteral("message")).toString())
+                        .arg(entry.value(QStringLiteral("severity")).toString());
+                }
+            }
             const auto write = [](const QString &path, const QByteArray &bytes, QString &error) {
                 QSaveFile file(path);
                 if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size() || !file.commit()) { error = file.errorString(); return false; }
