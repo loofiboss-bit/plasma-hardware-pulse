@@ -1,5 +1,5 @@
 Name:           plasma-hardware-pulse
-Version:        0.12.0
+Version:        0.13.0
 Release:        1%{?dist}
 Summary:        Hardware, temperature, memory pressure, and power monitor for KDE Plasma 6
 
@@ -76,6 +76,15 @@ QT_QPA_PLATFORM=offscreen QML_IMPORT_PATH="%{_vpath_builddir}/bin" ctest --test-
 %{_kf6_metainfodir}/com.github.loofi.hardwarepulse.metainfo.xml
 
 %changelog
+* Sun Oct 25 2026 Loofi <loofi@github.com> - 0.13.0-1
+- Add multi-fan telemetry discovery and RPM progress in Power & Thermal
+- Add NVMe controller discovery, critical warning bitmask decoding and composite temperature
+- Implement causal diagnosis verdicts for single-core CPU saturation and NVMe critical warnings with KNotification integration
+- Add privacy-redacted kernel log correlation (+-15s window) around incidents
+- Add side-by-side incident comparison and delta metrics in Flight Recorder
+- Add gradient sparklines and direct action buttons on OverviewPage cards
+- Add 3 panel display styles in Plasmoid: Text Pill, Mini Sparkline, and Ring Gauge
+- Enrich Markdown and JSON report exports with kernel logs, NVMe health and comparison analysis
 * Wed Oct 21 2026 Loofi <loofi@github.com> - 0.12.0-1
 - Development stabilization: honest telemetry quality, multi-GPU diagnosis, collector lifecycle and bounded persistent history
 - Keep process inspection read-only and delegate process management to KDE System Monitor

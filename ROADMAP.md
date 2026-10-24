@@ -1,20 +1,25 @@
 # Loofi Pulse roadmap
 
-## v0.12.0 — Stabilization for public development
+## v0.13.0 — Telemetry, Diagnostics & Flight Recorder Enhancements
 
-This development update prioritizes trustworthy observations and maintainable operation over new telemetry features:
+This development release adds expanded hardware telemetry, causal diagnostic verdicts, and rich incident analysis:
 
-- Preserve unavailable/stale/warmup states throughout application, widget, history and exports. Select GPU sensors explicitly, assess every GPU, and avoid temperature-only bottleneck claims.
-- Preserve existing collector replacement/resume recovery and distinguish live, paused, historical and disconnected presentation across clients. Qualify physical suspend/resume separately.
-- Make persistent numerical history bounded, batched, retention-aware and recoverable, with visible failures and privacy tests.
-- Keep process inspection read-only and hand process management to KDE System Monitor. Maintain existing session/report formats and navigation/configuration compatibility.
-- Align version metadata, document installation and native dependencies, add practical contribution/security entry points, and use least-privilege Fedora 44 CI and development prereleases.
+- Multi-fan discovery with RPM progress bars across detected hwmon fan controllers.
+- NVMe controller telemetry with critical warning bitmask decoding (spare capacity, reliability, read-only mode, backup device) and composite temperature.
+- Causal diagnosis verdicts for single-core saturation (`cpu.single-core-saturation`) and differentiated NVMe critical warnings (`storage.nvme-critical-warning` / `storage.nvme-thermal-threshold`) with dedicated `KNotification` alerts.
+- Privacy-redacted kernel log correlation (`±15s` window around incidents) from `journalctl`/`dmesg` with automatic masking of IP, MAC, and home directory paths.
+- Interactive side-by-side incident comparison in Flight Recorder with deltas for temperature, CPU load, responsiveness, and culprit processes.
+- Enriched Markdown/JSON report exports including correlated kernel logs, NVMe health, and comparison analysis.
+- Three Plasmoid panel display styles: Text Pill (0), Mini Sparkline (1), and Ring Gauge (2).
+- Overview domain card gradient sparklines and direct action buttons.
 
-The evidence and remaining qualification gates live in [validation-v0.12.0.md](docs/validation-v0.12.0.md). Public visibility, branch settings and publication are separate actions tracked in [public-readiness.md](docs/public-readiness.md).
+The evidence and qualification gates live in [validation-v0.13.0.md](docs/validation-v0.13.0.md).
 
 ## Next development iteration
 
-Use real reports from the public development version to prioritize sensor/driver gaps and desktop interaction defects. Expand tests when a concrete unsupported or incorrect case is found. Do not add new hardware claims based solely on fixtures. Keep diagnostics evidence-based and distinguish kernel limitations from product failures.
+- Power profiles daemon integration (power-profiles-daemon / tuneD) with active switching and policy correlation.
+- Detailed Wi-Fi link quality, signal strength, and network interface duplex telemetry.
+- Long-term trend correlation against power profile history in SQLite persistent store.
 
 ## v1.0 — Stable daily-use qualification
 
@@ -24,8 +29,7 @@ Preserve the existing configuration keys, Collector1 compatibility where documen
 
 ## Previous development stages
 
-- v0.11 introduced single-instance behavior, preferences, tray integration, localization and persistent trends. v0.12 corrects reliability and qualification gaps discovered during review.
+- v0.12 stabilized measurements, GPU selection, collector lifecycle and bounded persistent history.
+- v0.11 introduced single-instance behavior, preferences, tray integration, localization and persistent trends.
 - v0.10 reorganized application/widget presentation and process/device inspection.
 - v0.9 introduced the shared collector, incident investigations, local sessions, per-device telemetry and coordinated notifications.
-
-Historical implementation milestones do not imply that every stated hardware or desktop qualification gate passed.

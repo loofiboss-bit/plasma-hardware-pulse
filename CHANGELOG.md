@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.13.0 — Development candidate (2026-10-25)
+
+### Added
+
+- Multi-fan telemetry discovery and RPM progress indicators across all detected sysfs hwmon fans.
+- NVMe controller discovery via `/sys/class/nvme/nvme*`, decoding critical warning bitmasks and composite temperature.
+- Causal diagnosis rule `cpu.single-core-saturation` for identifying asymmetric thread bottlenecking under moderate overall CPU load.
+- Causal diagnosis rules `storage.nvme-critical-warning` (Severity 3, critical hardware alert) and `storage.nvme-thermal-threshold` (Severity 2, elevated thermal risk).
+- Dedicated desktop notification support for hardware-critical events (`[Event/hardwareCritical]`) via KNotification.
+- Privacy-redacted kernel log correlation (`±15s` window around incidents) from `journalctl`/`dmesg` with IP, MAC, and path masking.
+- Interactive side-by-side incident comparison in Flight Recorder with delta metrics calculation (peak temperature, average CPU load, worst responsiveness, culprit process).
+- Three selectable panel representation styles in Plasmoid: Text Pill (0), Mini Sparkline (1), and Ring Gauge (2).
+- Enriched Markdown and JSON report exports including correlated kernel events, NVMe health observations, and incident comparison deltas.
+- Gradient sparklines and direct action buttons on Overview domain cards.
+
+### Changed
+
+- Updated version metadata to 0.13.0 across application, widget, RPM spec and AppStream metadata.
+- Preserved session format 1 and JSON report schema 2 with backward-compatible metadata extensions.
+
+Session format 1, report schema 2 and existing configuration remain supported. Qualification results are recorded in [docs/validation-v0.13.0.md](docs/validation-v0.13.0.md).
+
 ## 0.12.0 — Development candidate (2026-10-21)
 
 ### Fixed

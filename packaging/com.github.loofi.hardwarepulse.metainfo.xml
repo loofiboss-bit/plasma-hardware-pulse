@@ -24,6 +24,11 @@
   </developer>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.13.0" date="2026-10-25" type="development">
+      <description>
+        <p>Telemetry, diagnostics and UX update: multi-fan discovery with RPM progress bars, NVMe controller health monitoring with critical warning decoding, causal diagnosis for single-core saturation and NVMe faults with KNotification integration, privacy-redacted kernel log correlation around incidents, side-by-side incident comparison, gradient sparklines with direct action buttons, three Plasmoid panel display styles (Text Pill, Mini Sparkline, Ring Gauge), and enriched Markdown/JSON report exports.</p>
+      </description>
+    </release>
     <release version="0.12.0" date="2026-10-21" type="development">
       <description>
         <p>Development stabilization of measurement quality, multi-GPU diagnosis, collector recovery, persistent history and session compatibility. Process inspection is read-only, with process management delegated to KDE System Monitor. Physical hardware and desktop qualification remain separate from automated checks.</p>
