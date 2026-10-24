@@ -29,7 +29,8 @@ public:
     int worstResponsivenessIndex() const;
 
     QVariantList incidentEpisodes() const;
-    QString markProblemNow(const QString &label = QString());
+    QString markProblemNow(const QString &label = QString(), bool isAutomated = false);
+    QString markAutomatedIncident(const QString &ruleId, const QString &headline, qint64 timestampMs);
     SessionSnapshot freezeRange(quint64 startSampleId, quint64 endSampleId) const;
     SessionSnapshot freezeIncident(const QString &incidentId) const;
     QVariantMap compareRange(quint64 startSampleId, quint64 endSampleId) const;
@@ -48,6 +49,7 @@ private:
     QVariantList m_incidents;
     QVariantList m_markers;
     QVariantMap m_activeIncident;
+    QMap<QString, qint64> m_lastAutoBookmarkMs;
     int m_peakRank = -1;
     int m_capacity = 7201;
     qint64 m_retentionMs = 5 * 60 * 1000;

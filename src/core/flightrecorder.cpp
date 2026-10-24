@@ -215,6 +215,12 @@ void FlightRecorder::updateIncidents(const FlightSample &sample)
     m_activeIncident.insert(QStringLiteral("endMs"), time);
     m_activeIncident.insert(QStringLiteral("durationSeconds"), std::max<qint64>(1, (time - m_activeIncident.value(QStringLiteral("startMs")).toLongLong()) / 1000));
     m_activeIncident.insert(QStringLiteral("endTimeString"), QDateTime::fromMSecsSinceEpoch(sample.timestampMs).toString(QStringLiteral("HH:mm:ss")));
+
+    if (sample.severity == VerdictSeverity::Bottleneck || sample.severity == VerdictSeverity::CriticalThrottle) {
+        if (!sample.verdictRuleId.isEmpty()) {
+            markAutomatedIncident(sample.verdictRuleId, sample.verdictHeadline, sample.timestampMs);
+        }
+    }
 }
 
 void FlightRecorder::trimRecords()
@@ -241,15 +247,30 @@ QVariantList FlightRecorder::incidentEpisodes() const
 }
 QString FlightRecorder::recordingId() const { return m_recordingId; }
 QVariantList FlightRecorder::markers() const { return m_markers; }
-QString FlightRecorder::markProblemNow(const QString &label)
+QString FlightRecorder::markProblemNow(const QString &label, bool isAutomated)
 {
     if (m_samples.isEmpty()) return {};
     const auto &s = m_samples.last();
     const QString id = QUuid::createUuid().toString(QUuid::WithoutBraces);
-    m_markers.append(QVariantMap{{QStringLiteral("markerId"), id}, {QStringLiteral("sampleId"), QVariant::fromValue(s.sampleId)},
-        {QStringLiteral("timestampMs"), s.timestampMs}, {QStringLiteral("label"), label.isEmpty() ? QStringLiteral("Problem marked") : label}});
+    m_markers.append(QVariantMap{
+        {QStringLiteral("markerId"), id},
+        {QStringLiteral("sampleId"), QVariant::fromValue(s.sampleId)},
+        {QStringLiteral("timestampMs"), s.timestampMs},
+        {QStringLiteral("label"), label.isEmpty() ? QStringLiteral("Problem marked") : label},
+        {QStringLiteral("isAutomated"), isAutomated}
+    });
     while (m_markers.size() > SessionStore::MaximumSamples) m_markers.removeFirst();
     return id;
+}
+
+QString FlightRecorder::markAutomatedIncident(const QString &ruleId, const QString &headline, qint64 timestampMs)
+{
+    if (ruleId.isEmpty() || m_samples.isEmpty()) return {};
+    const qint64 last = m_lastAutoBookmarkMs.value(ruleId, 0);
+    if (timestampMs > 0 && last > 0 && (timestampMs - last) < 60000) return {};
+    m_lastAutoBookmarkMs[ruleId] = timestampMs;
+    const QString text = QStringLiteral("[Auto] ") + (headline.isEmpty() ? ruleId : headline);
+    return markProblemNow(text, true);
 }
 SessionSnapshot FlightRecorder::freezeRange(quint64 startSampleId, quint64 endSampleId) const
 {

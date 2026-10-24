@@ -1448,6 +1448,39 @@ private Q_SLOTS:
         QVERIFY(recorder.exportSummaryMarkdown(true).contains(QStringLiteral("private-worker")));
     }
 
+    void testAutoIncidentMarkersAndHtmlReport()
+    {
+        FlightRecorder recorder(50);
+        FlightSample s1;
+        s1.sampleId = 1;
+        s1.timestampMs = 100000;
+        s1.cpuLoadPercent = 95.0;
+        s1.cpuTempCelsius = 98.0;
+        s1.severity = VerdictSeverity::CriticalThrottle;
+        s1.verdictRuleId = QStringLiteral("cpu.thermal-throttle");
+        s1.verdictHeadline = QStringLiteral("CPU thermal throttling observed");
+
+        recorder.appendSample(s1);
+        QCOMPARE(recorder.markers().size(), 1);
+        const auto m1 = recorder.markers().first().toMap();
+        QCOMPARE(m1.value(QStringLiteral("isAutomated")).toBool(), true);
+        QVERIFY(m1.value(QStringLiteral("label")).toString().contains(QStringLiteral("[Auto]")));
+
+        // Sample within 60s cooldown should not add a duplicate marker
+        FlightSample s2 = s1;
+        s2.sampleId = 2;
+        s2.timestampMs = 120000; // 20s later
+        recorder.appendSample(s2);
+        QCOMPARE(recorder.markers().size(), 1);
+
+        // Sample after 60s cooldown adds a new auto marker
+        FlightSample s3 = s1;
+        s3.sampleId = 3;
+        s3.timestampMs = 170000; // 70s later
+        recorder.appendSample(s3);
+        QCOMPARE(recorder.markers().size(), 2);
+    }
+
     void testLiveHostTelemetrySanity()
     {
         SysfsReader reader;

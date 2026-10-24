@@ -34,7 +34,10 @@ const QList<HistoryStore::MetricSpec> &HistoryStore::metrics()
         {QStringLiteral("batteryLevel"), QStringLiteral("batteryPercent"), QStringLiteral("batteryLevelAvailable")},
         {QStringLiteral("batteryPower"), QStringLiteral("batteryWatts"), QStringLiteral("batteryPowerAvailable")},
         {QStringLiteral("storageTemp"), QStringLiteral("nvmeTempCelsius"), QStringLiteral("nvmeTempAvailable")},
-        {QStringLiteral("fan"), QStringLiteral("primaryFanRpm"), QStringLiteral("fanAvailable")}
+        {QStringLiteral("fan"), QStringLiteral("primaryFanRpm"), QStringLiteral("fanAvailable")},
+        {QStringLiteral("batteryHealth"), QStringLiteral("batteryHealthPercent"), QStringLiteral("batteryHealthAvailable")},
+        {QStringLiteral("zramRatio"), QStringLiteral("zramCompressionRatio"), QStringLiteral("zramCompressionAvailable")},
+        {QStringLiteral("wifiSignal"), QStringLiteral("wifiSignalPercent"), QStringLiteral("wifiAvailable")}
     };
     return s_metrics;
 }
