@@ -665,6 +665,49 @@ Kirigami.ApplicationWindow {
                     }
                 }
 
+                // Interactive Power Profile Quick-Switcher Pill
+                Rectangle {
+                    visible: telemetry.powerProfileServiceAvailable && telemetry.availablePowerProfiles.length > 0
+                    radius: theme.pillRadius
+                    color: theme.subtleSurfaceColor
+                    border.width: 1
+                    border.color: theme.subtleBorderColor
+                    implicitHeight: powerProfileRow.implicitHeight + 6
+                    implicitWidth: powerProfileRow.implicitWidth + 12
+
+                    RowLayout {
+                        id: powerProfileRow
+                        anchors.centerIn: parent
+                        spacing: 2
+
+                        Kirigami.Icon {
+                            source: telemetry.activePowerProfile === "power-saver" ? "battery-profile-powersave"
+                                  : (telemetry.activePowerProfile === "performance" ? "battery-profile-performance" : "battery-profile-balanced")
+                            Layout.preferredWidth: 14
+                            Layout.preferredHeight: 14
+                        }
+
+                        Repeater {
+                            model: telemetry.availablePowerProfiles
+                            delegate: QQC2.Button {
+                                id: profQuickBtn
+                                required property string modelData
+                                text: modelData === "power-saver" ? KI18n.i18n("Saver")
+                                    : (modelData === "performance" ? KI18n.i18n("Perf") : KI18n.i18n("Bal"))
+                                flat: true
+                                checkable: true
+                                checked: telemetry.activePowerProfile === profQuickBtn.modelData
+                                enabled: !telemetry.powerProfileChangePending
+                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                                font.bold: checked
+                                padding: 4
+                                Accessible.name: KI18n.i18n("Power profile ") + profQuickBtn.modelData
+                                onClicked: telemetry.setPowerProfile(profQuickBtn.modelData)
+                            }
+                        }
+                    }
+                }
+
                 Item {
                     Layout.fillWidth: true
                 }

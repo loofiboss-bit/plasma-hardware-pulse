@@ -363,7 +363,7 @@ private Q_SLOTS:
     {
         QTemporaryDir dir;
         HistoryStore store;
-        QVERIFY(store.open(dir.filePath(QStringLiteral("bounded.sqlite")), 31LL * 86400000LL, 256 * 1024));
+        QVERIFY(store.open(dir.filePath(QStringLiteral("bounded.sqlite")), 31LL * 86400000LL, 512 * 1024));
         const qint64 base = 1700000040000LL;
         QVariantMap live;
         for (const auto &metric : HistoryStore::metrics()) {

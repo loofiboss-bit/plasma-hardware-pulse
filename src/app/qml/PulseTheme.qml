@@ -54,6 +54,20 @@ QtObject {
         ? Qt.rgba(1, 1, 1, 0.015)
         : Qt.rgba(0, 0, 0, 0.015)
 
+    // KDE 6 Glass & Accent Glow tokens
+    readonly property color glassCardBg: isDark
+        ? Qt.rgba(bgColor.r, bgColor.g, bgColor.b, 0.78)
+        : Qt.rgba(bgColor.r, bgColor.g, bgColor.b, 0.88)
+    readonly property color glassElevatedBg: isDark
+        ? Qt.tint(bgColor, Qt.rgba(1, 1, 1, 0.08))
+        : Qt.tint(bgColor, Qt.rgba(0, 0, 0, 0.04))
+    readonly property color glassBorder: isDark
+        ? Qt.rgba(1, 1, 1, 0.12)
+        : Qt.rgba(0, 0, 0, 0.10)
+    readonly property color glassGlowCritical: Qt.rgba(negativeColor.r, negativeColor.g, negativeColor.b, 0.45)
+    readonly property color glassGlowWarning: Qt.rgba(neutralColor.r, neutralColor.g, neutralColor.b, 0.40)
+    readonly property color glassGlowNominal: Qt.rgba(positiveColor.r, positiveColor.g, positiveColor.b, 0.25)
+
     // Semantic telemetry channel colors (high contrast in both dark and light mode)
     readonly property color tempAccent: isDark ? "#fb923c" : "#d97706"
     readonly property color cpuAccent: isDark ? "#38bdf8" : "#0284c7"
@@ -84,6 +98,12 @@ QtObject {
     function severityBorderColor(sev) {
         var base = severityColor(sev)
         return Qt.rgba(base.r, base.g, base.b, isDark ? 0.45 : 0.35)
+    }
+
+    function severityGlowColor(sev) {
+        if (sev === 3 || sev === 2) return glassGlowCritical
+        if (sev === 1) return glassGlowWarning
+        return glassGlowNominal
     }
 
     function severityBadgeText(sev) {

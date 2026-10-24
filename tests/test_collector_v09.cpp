@@ -144,6 +144,7 @@ private Q_SLOTS:
         QString jsonPath = app.lastActionPath();
         jsonPath.replace(QStringLiteral("loofi-pulse-report-"), QStringLiteral("loofi-pulse-samples-"));
         if (jsonPath.endsWith(QStringLiteral(".md"))) { jsonPath.chop(3); jsonPath.append(QStringLiteral(".json")); }
+        else if (jsonPath.endsWith(QStringLiteral(".html"))) { jsonPath.chop(5); jsonPath.append(QStringLiteral(".json")); }
         QFile report(jsonPath); QVERIFY2(report.open(QIODevice::ReadOnly), qPrintable(jsonPath));
         const auto document = QJsonDocument::fromJson(report.readAll());
         QVERIFY2(document.isArray(), "Schema 2 reports must retain their existing JSON array format.");
@@ -208,6 +209,7 @@ private Q_SLOTS:
         QString reportPath = client.lastActionPath();
         reportPath.replace(QStringLiteral("loofi-pulse-report-"), QStringLiteral("loofi-pulse-samples-"));
         if (reportPath.endsWith(QStringLiteral(".md"))) { reportPath.chop(3); reportPath.append(QStringLiteral(".json")); }
+        else if (reportPath.endsWith(QStringLiteral(".html"))) { reportPath.chop(5); reportPath.append(QStringLiteral(".json")); }
         QFile report(reportPath);
         QVERIFY2(report.open(QIODevice::ReadOnly), qPrintable(reportPath));
         const auto bytes = report.readAll();
@@ -486,6 +488,7 @@ private Q_SLOTS:
         QString reportPath = client.lastActionPath();
         reportPath.replace(QStringLiteral("loofi-pulse-report-"), QStringLiteral("loofi-pulse-samples-"));
         if (reportPath.endsWith(QStringLiteral(".md"))) { reportPath.chop(3); reportPath += QStringLiteral(".json"); }
+        else if (reportPath.endsWith(QStringLiteral(".html"))) { reportPath.chop(5); reportPath += QStringLiteral(".json"); }
         QFile report(reportPath); QVERIFY(report.open(QIODevice::ReadOnly));
         QCOMPARE(QJsonDocument::fromJson(report.readAll()).array().size(), 2);
         client.selectIncident(incidentId);

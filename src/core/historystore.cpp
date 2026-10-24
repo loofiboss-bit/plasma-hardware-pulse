@@ -34,7 +34,10 @@ const QList<HistoryStore::MetricSpec> &HistoryStore::metrics()
         {QStringLiteral("batteryLevel"), QStringLiteral("batteryPercent"), QStringLiteral("batteryLevelAvailable")},
         {QStringLiteral("batteryPower"), QStringLiteral("batteryWatts"), QStringLiteral("batteryPowerAvailable")},
         {QStringLiteral("storageTemp"), QStringLiteral("nvmeTempCelsius"), QStringLiteral("nvmeTempAvailable")},
-        {QStringLiteral("fan"), QStringLiteral("primaryFanRpm"), QStringLiteral("fanAvailable")}
+        {QStringLiteral("fan"), QStringLiteral("primaryFanRpm"), QStringLiteral("fanAvailable")},
+        {QStringLiteral("batteryHealth"), QStringLiteral("batteryHealthPercent"), QStringLiteral("batteryHealthAvailable")},
+        {QStringLiteral("zramRatio"), QStringLiteral("zramCompressionRatio"), QStringLiteral("zramCompressionAvailable")},
+        {QStringLiteral("wifiSignal"), QStringLiteral("wifiSignalPercent"), QStringLiteral("wifiAvailable")}
     };
     return s_metrics;
 }
@@ -119,7 +122,7 @@ qint64 HistoryStore::retentionMs() const
 
 void HistoryStore::setMaxBytes(qint64 bytes)
 {
-    m_maxBytes = std::clamp<qint64>(bytes, 256LL * 1024LL, 16LL * 1024LL * 1024LL * 1024LL);
+    m_maxBytes = std::clamp<qint64>(bytes, 512LL * 1024LL, 16LL * 1024LL * 1024LL * 1024LL);
 }
 
 qint64 HistoryStore::maxBytes() const

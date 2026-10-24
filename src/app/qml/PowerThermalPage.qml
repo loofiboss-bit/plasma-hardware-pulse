@@ -479,6 +479,23 @@ Kirigami.ScrollablePage {
 
                                 RowLayout {
                                     Layout.fillWidth: true
+                                    spacing: 6
+
+                                    Kirigami.Icon {
+                                        source: "view-refresh"
+                                        Layout.preferredWidth: 14
+                                        Layout.preferredHeight: 14
+                                        color: fanRow.modelData.rpm > 0 ? theme.tempAccent : Kirigami.Theme.disabledTextColor
+                                        rotation: 0
+                                        NumberAnimation on rotation {
+                                            running: fanRow.modelData.rpm > 0
+                                            from: 0
+                                            to: 360
+                                            loops: Animation.Infinite
+                                            duration: Math.max(250, Math.min(2500, 60000 / Math.max(300, fanRow.modelData.rpm)))
+                                        }
+                                    }
+
                                     QQC2.Label {
                                         text: (fanRow.modelData.label && fanRow.modelData.label.length > 0)
                                               ? fanRow.modelData.label
@@ -516,12 +533,33 @@ Kirigami.ScrollablePage {
                         spacing: 4
                         visible: !(powerPage.controller.fans || []).length
 
-                        Kirigami.Heading {
-                            level: 3
+                        RowLayout {
                             Layout.fillWidth: true
-                            wrapMode: Text.WordWrap
-                            text: KI18n.i18n("Fan speed: ") + (powerPage.controller.fanAvailable
-                                  ? powerPage.controller.primaryFanRpm + KI18n.i18n(" RPM") : KI18n.i18n("Unavailable"))
+                            spacing: 6
+
+                            Kirigami.Icon {
+                                source: "view-refresh"
+                                Layout.preferredWidth: 16
+                                Layout.preferredHeight: 16
+                                color: powerPage.controller.fanAvailable && powerPage.controller.primaryFanRpm > 0
+                                       ? theme.tempAccent : Kirigami.Theme.disabledTextColor
+                                rotation: 0
+                                NumberAnimation on rotation {
+                                    running: powerPage.controller.fanAvailable && powerPage.controller.primaryFanRpm > 0
+                                    from: 0
+                                    to: 360
+                                    loops: Animation.Infinite
+                                    duration: Math.max(250, Math.min(2500, 60000 / Math.max(300, powerPage.controller.primaryFanRpm)))
+                                }
+                            }
+
+                            Kirigami.Heading {
+                                level: 3
+                                Layout.fillWidth: true
+                                wrapMode: Text.WordWrap
+                                text: KI18n.i18n("Fan speed: ") + (powerPage.controller.fanAvailable
+                                      ? powerPage.controller.primaryFanRpm + KI18n.i18n(" RPM") : KI18n.i18n("Unavailable"))
+                            }
                         }
 
                         Rectangle {
@@ -592,6 +630,38 @@ Kirigami.ScrollablePage {
                                ? Kirigami.Theme.highlightColor
                                : Kirigami.Theme.disabledTextColor
                         font.bold: true
+                    }
+                }
+
+                Rectangle {
+                    visible: powerPage.controller.powerProfileHoldsSummary.length > 0
+                    Layout.fillWidth: true
+                    radius: theme.pillRadius
+                    color: theme.subtleSurfaceColor
+                    border.width: 1
+                    border.color: theme.neutralColor
+                    implicitHeight: holdsRow.implicitHeight + 8
+
+                    RowLayout {
+                        id: holdsRow
+                        anchors.fill: parent
+                        anchors.margins: 4
+                        spacing: 6
+
+                        Kirigami.Icon {
+                            source: "dialog-warning"
+                            Layout.preferredWidth: 14
+                            Layout.preferredHeight: 14
+                            color: theme.neutralColor
+                        }
+
+                        QQC2.Label {
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                            text: KI18n.i18n("Active holds: ") + powerPage.controller.powerProfileHoldsSummary
+                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                            color: Kirigami.Theme.neutralTextColor
+                        }
                     }
                 }
 

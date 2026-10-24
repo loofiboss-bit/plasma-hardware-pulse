@@ -63,7 +63,27 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
                      QStringLiteral("Reduce sustained CPU load or choose a lower power profile."));
     }
 
-    if (psiMem.memoryPsi.someAvailable
+    bool zramExhausted = false;
+    if (psiMem.zramActive && psiMem.zramDiskSizeBytes > 0) {
+        const double zramFillRatio = static_cast<double>(psiMem.zramOrigBytes) / static_cast<double>(psiMem.zramDiskSizeBytes);
+        zramExhausted = (zramFillRatio >= 0.85)
+            || (psiMem.zramCompressionRatio < 1.35 && psiMem.zramMemUsedTotalBytes >= psiMem.zramDiskSizeBytes * 0.70);
+        if (zramExhausted && psiMem.memoryPsi.someAvailable && psiMem.memoryPsi.someAvg10 >= 4.0) {
+            const double diskSizeGib = static_cast<double>(psiMem.zramDiskSizeBytes) / (1024.0 * 1024.0 * 1024.0);
+            QString details = QStringLiteral("ZRAM capacity is %1% filled (%2 GiB disksize, %3x compression); memory pressure is %4%")
+                .arg(zramFillRatio * 100.0, 0, 'f', 0)
+                .arg(diskSizeGib, 0, 'f', 1)
+                .arg(psiMem.zramCompressionRatio, 0, 'f', 1)
+                .arg(psiMem.memoryPsi.someAvg10, 0, 'f', 1);
+            addCandidate(QStringLiteral("memory.zram-exhaustion"), VerdictSeverity::Bottleneck,
+                         QStringLiteral("Memory"),
+                         QStringLiteral("ZRAM compressed swap capacity exhausted"),
+                         details,
+                         QStringLiteral("Close heavy browser tabs, virtual machines, or container workloads to avoid system freeze or OOM killer invocation."));
+        }
+    }
+
+    if (!zramExhausted && psiMem.memoryPsi.someAvailable
         && (psiMem.memoryPsi.someAvg10 >= 5.0
             || (psiMem.memoryPsi.fullAvailable && psiMem.memoryPsi.fullAvg10 >= 2.0))) {
         QString details = QStringLiteral("Memory pressure: %1% some pressure, %2 ms/s stalled")
@@ -99,6 +119,39 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
                      QStringLiteral("Storage pressure is blocking work"),
                      storageDetails,
                      QStringLiteral("Check for background indexing, updates, or other heavy disk activity."));
+    }
+
+    for (const NvmeControllerTelemetry &ctrl : psiMem.nvmeControllers) {
+        if (!ctrl.warningAvailable || ctrl.criticalWarning == 0) continue;
+        const quint8 mask = ctrl.criticalWarning;
+        const bool isHardwareFault = (mask & 0x1D) != 0; // bits 0, 2, 3, 4
+        const bool isTempThreshold = (mask & 0x02) != 0; // bit 1
+
+        QStringList issues;
+        if (mask & 0x01) issues << QStringLiteral("available spare below threshold");
+        if (mask & 0x02) issues << QStringLiteral("temperature threshold exceeded (%1°C)").arg(ctrl.compositeTempCelsius, 0, 'f', 1);
+        if (mask & 0x04) issues << QStringLiteral("NVM subsystem reliability degraded");
+        if (mask & 0x08) issues << QStringLiteral("media placed in read-only mode");
+        if (mask & 0x10) issues << QStringLiteral("volatile memory backup device failed");
+
+        if (isHardwareFault) {
+            addCandidate(QStringLiteral("storage.nvme-critical-warning"), VerdictSeverity::CriticalThrottle,
+                         QStringLiteral("Storage"),
+                         QStringLiteral("NVMe storage hardware critical warning"),
+                         QStringLiteral("Controller '%1' (%2) reported critical warning (0x%3): %4")
+                             .arg(ctrl.id, ctrl.model, QString::number(mask, 16).toUpper(), issues.join(QStringLiteral(", "))),
+                         QStringLiteral("Backup critical data immediately and check NVMe SMART attributes for drive replacement."));
+        } else if (isTempThreshold) {
+            const bool ioPsiElevated = psiMem.ioPsi.fullAvailable && psiMem.ioPsi.fullAvg10 >= 5.0;
+            const VerdictSeverity sev = ioPsiElevated ? VerdictSeverity::Bottleneck : VerdictSeverity::Elevated;
+            addCandidate(QStringLiteral("storage.nvme-thermal-threshold"), sev,
+                         QStringLiteral("Storage"),
+                         QStringLiteral("NVMe controller thermal threshold exceeded"),
+                         QStringLiteral("Controller '%1' composite temperature is %2°C; %3")
+                             .arg(ctrl.id).arg(ctrl.compositeTempCelsius, 0, 'f', 1)
+                             .arg(ioPsiElevated ? QStringLiteral("I/O stall observed") : QStringLiteral("no active I/O stall observed")),
+                         QStringLiteral("Improve NVMe heatsink thermal pad contact or case airflow."));
+        }
     }
 
     // Stable device ordering keeps equal-priority diagnoses independent of DRM enumeration.
@@ -160,7 +213,12 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
         }
     }
 
-    if (power.activePowerProfile == QStringLiteral("power-saver")
+    const bool isPowerSaverThrottlingCandidate = power.activePowerProfile == QStringLiteral("power-saver")
+        && power.onAcPower
+        && ((cpuLoadValid && cpu.totalLoadPercent >= 80.0)
+            || (psiMem.cpuPsi.someAvailable && psiMem.cpuPsi.someAvg10 >= 12.0));
+
+    if (!isPowerSaverThrottlingCandidate && power.activePowerProfile == QStringLiteral("power-saver")
         && ((cpuLoadValid && cpu.totalLoadPercent >= 65.0)
             || (busyGpu && busyGpu->busyPercent >= 75.0)
             || (psiMem.cpuPsi.someAvailable && psiMem.cpuPsi.someAvg10 >= 10.0))) {
@@ -221,6 +279,48 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
         }
     }
 
+    if (power.activePowerProfile == QStringLiteral("power-saver") && power.onAcPower) {
+        const bool cpuThrottledUnderPowerSaver = (cpuLoadValid && cpu.totalLoadPercent >= 80.0)
+            || (saturatedCoreId >= 0 && cpu.cores.size() >= 2 && cpuLoadValid && maxCoreLoad >= 90.0)
+            || (psiMem.cpuPsi.someAvailable && psiMem.cpuPsi.someAvg10 >= 12.0);
+        if (cpuThrottledUnderPowerSaver) {
+            QString details = QStringLiteral("Active power profile is 'power-saver' while on AC power");
+            if (cpuLoadValid) {
+                details += QStringLiteral("; CPU load is %1%").arg(cpu.totalLoadPercent, 0, 'f', 0);
+            }
+            if (saturatedCoreId >= 0 && maxCoreLoad >= 90.0) {
+                details += QStringLiteral(" (Core %1 saturated at %2%)").arg(saturatedCoreId).arg(maxCoreLoad, 0, 'f', 0);
+            }
+            if (psiMem.cpuPsi.someAvailable) {
+                details += QStringLiteral("; CPU pressure is %1%").arg(psiMem.cpuPsi.someAvg10, 0, 'f', 1);
+            }
+            addCandidate(QStringLiteral("power.profile-throttling"), VerdictSeverity::Bottleneck,
+                         QStringLiteral("Power & Cooling"),
+                         QStringLiteral("CPU performance throttled by power-saver profile"),
+                         details,
+                         QStringLiteral("Switch to 'balanced' or 'performance' mode using the header profile toggle."));
+        }
+    }
+
+    if (psiMem.wifiQualityAvailable && psiMem.primaryWifiSignalPercent > 0
+        && (psiMem.primaryWifiSignalPercent <= 25 || psiMem.primaryWifiSignalDbm <= -78)
+        && psiMem.netThroughputAvailable && (psiMem.netRxMibPerSec + psiMem.netTxMibPerSec) >= 0.2) {
+        QString details = QStringLiteral("Wi-Fi signal quality is degraded (%1%, %2 dBm)")
+            .arg(psiMem.primaryWifiSignalPercent)
+            .arg(psiMem.primaryWifiSignalDbm);
+        if (!psiMem.primaryWifiSsid.isEmpty()) {
+            details += QStringLiteral(" on '%1'").arg(psiMem.primaryWifiSsid);
+        }
+        details += QStringLiteral("; active network traffic: %1 MiB/s")
+            .arg(psiMem.netRxMibPerSec + psiMem.netTxMibPerSec, 0, 'f', 1);
+
+        addCandidate(QStringLiteral("network.wifi-link-degradation"), VerdictSeverity::Elevated,
+                     QStringLiteral("Storage & Network"),
+                     QStringLiteral("Poor Wi-Fi signal degrading network throughput"),
+                     details,
+                     QStringLiteral("Move closer to your wireless access point or switch to a 5 GHz band or wired Ethernet."));
+    }
+
     if ((psiMem.cpuPsi.someAvailable && psiMem.cpuPsi.someAvg10 >= 10.0)
         || (cpu.temperatureAvailable && cpu.thermalLimitAvailable && cpu.thermalHeadroomCelsius < 20.0)) {
         QString details;
@@ -257,6 +357,9 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
     }
 
     if (!matches.isEmpty()) {
+        std::stable_sort(matches.begin(), matches.end(), [](const CausalVerdict &a, const CausalVerdict &b) {
+            return static_cast<int>(a.severity) > static_cast<int>(b.severity);
+        });
         verdict = matches.first();
         for (int i = 1; i < matches.size(); ++i) {
             const CausalVerdict &secondary = matches.at(i);

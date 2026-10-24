@@ -2000,3 +2000,60 @@ msgstr "Kombinerad temp:"
 
 msgid "Controller state:"
 msgstr "Kontrollerstatus:"
+
+msgid "Active holds: "
+msgstr "Aktiva låsningar: "
+
+msgid "Active profile holds: "
+msgstr "Aktiva profillåsningar: "
+
+msgid "Power profile throttling workload"
+msgstr "Energiprofil stryper arbetsbelastning"
+
+msgid "A power-saver or quiet profile is capping system performance while connected to AC power."
+msgstr "En energispar- eller tyst profil begränsar systemets prestanda trots nätströmsanslutning."
+
+msgid "Switch to the Balanced or Performance profile to remove profile throttling."
+msgstr "Växla till profilen Balanserad eller Prestanda för att häva profilstrypningen."
+
+msgid "Elevated latency or degraded wireless link quality"
+msgstr "Förhöjd latens eller försämrad trådlös länkkvalitet"
+
+msgid "Wi-Fi signal strength is low or experiencing packet drops and rate down-negotiation."
+msgstr "Wi-Fi-signalstyrkan är låg eller drabbas av paketförluster och nedförhandlad bithastighet."
+
+msgid "Move closer to the access point or switch to 5/6 GHz."
+msgstr "Flytta närmare accesspunkten eller växla till 5/6 GHz."
+
+msgid "ZRAM swap space exhaustion"
+msgstr "ZRAM-växlingsutrymmet är nästan fullt"
+
+msgid "Compressed RAM device is near capacity with heavy memory pressure."
+msgstr "Den komprimerade RAM-enheten är nära sin kapacitetsgräns under hög minnesbelastning."
+
+msgid "Close memory-heavy processes to prevent OOM stalls."
+msgstr "Stäng minneskrävande processer för att förhindra minnesstopp och frysningar."
+
+msgid "ZRAM capacity"
+msgstr "ZRAM-kapacitet"
+
+msgid "ZRAM efficiency"
+msgstr "ZRAM-effektivitet"
+
+msgid "cgroup v2 slices"
+msgstr "cgroup v2-skivor"
+
+msgid "User slice"
+msgstr "Användarskiva (user.slice)"
+
+msgid "System slice"
+msgstr "Systemskiva (system.slice)"
+
+msgid "Machine slice"
+msgstr "Maskinskiva (machine.slice)"
+
+msgid "Mark Incident"
+msgstr "Bokmärk incident"
+
+msgid "Mark incident now and launch timeline"
+msgstr "Bokmärk incident nu och öppna tidslinje"

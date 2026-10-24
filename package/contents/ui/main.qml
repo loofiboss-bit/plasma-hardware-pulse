@@ -27,10 +27,23 @@ PlasmoidItem {
         lines.push(KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "GPU activity: ") + (pulse.gpuBusyAvailable ? Math.round(pulse.gpuBusyPercent) + "%" : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable")))
         lines.push(KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Memory use: ") + (pulse.memoryAvailable ? Math.round(pulse.ramUsedPercent) + "%" : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable")))
         lines.push(KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Responsiveness index: ") + (pulse.psiAvailable ? Math.round(pulse.responsivenessScore) + "/100 (higher is better)" : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable")))
+        lines.push(KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Power profile: ") + (pulse.powerProfileServiceAvailable ? pulse.activePowerProfile : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable")))
         lines.push(KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "CPU package power: ") + (pulse.packagePowerAvailable ? pulse.packageWatts.toFixed(1) + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " W") + (pulse.packagePowerEstimated ? KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " (estimated)") : "") : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable")))
-        lines.push(KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Battery discharge: ") + (pulse.batteryPowerAvailable && pulse.batteryStatus === "Discharging" ? pulse.batteryWatts.toFixed(1) + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " W") : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable or not discharging")))
+        if (pulse.batteryPresent) {
+            lines.push(KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Battery: ") + Math.round(pulse.batteryPercent) + "% · " + pulse.batteryTimeRemainingText)
+        } else {
+            lines.push(KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Battery discharge: ") + (pulse.batteryPowerAvailable && pulse.batteryStatus === "Discharging" ? pulse.batteryWatts.toFixed(1) + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " W") : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable or not discharging")))
+        }
         lines.push(KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Disk: ") + (pulse.diskThroughputAvailable ? (pulse.diskReadMibPerSec + pulse.diskWriteMibPerSec).toFixed(1) + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " MiB/s") : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable")))
-        lines.push(KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Network: ") + (pulse.netThroughputAvailable ? (pulse.netRxMibPerSec + pulse.netTxMibPerSec).toFixed(1) + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " MiB/s") : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable")))
+        if (pulse.hasActiveWifi) {
+            let wifiStr = pulse.activeWifiSsid + " (" + pulse.activeWifiSignalPercent + "%"
+            if (pulse.activeWifiFrequencyGhz > 0) wifiStr += ", " + pulse.activeWifiFrequencyGhz.toFixed(1) + " GHz"
+            if (pulse.activeWifiBitrateMbps > 0) wifiStr += ", " + Math.round(pulse.activeWifiBitrateMbps) + " Mbps"
+            wifiStr += ")"
+            lines.push(KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Wi-Fi: ") + wifiStr)
+        } else {
+            lines.push(KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Network: ") + (pulse.netThroughputAvailable ? (pulse.netRxMibPerSec + pulse.netTxMibPerSec).toFixed(1) + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " MiB/s") : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable")))
+        }
         return lines.join("\n")
     }
 

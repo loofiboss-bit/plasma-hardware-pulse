@@ -275,11 +275,20 @@ private Q_SLOTS:
         cpu.totalLoadPercent = 72.0;
         gpu.busyPercent = 15.0;
         gpu.tempCelsius = 52.0;
+        power.onAcPower = false;
         power.activePowerProfile = QStringLiteral("power-saver");
         const CausalVerdict powerSaverMismatch = CausalDiagnosisEngine::evaluate(cpu, gpu, psi, power, domains, culprit);
         QCOMPARE(powerSaverMismatch.severity, VerdictSeverity::Elevated);
         QCOMPARE(powerSaverMismatch.primaryBottleneckDomain, QStringLiteral("Power & Cooling"));
         QVERIFY(powerSaverMismatch.headline.contains(QStringLiteral("power-saver")));
+
+        // 4b. Power-saver throttling on AC power under severe CPU load
+        power.onAcPower = true;
+        cpu.totalLoadPercent = 86.0;
+        const CausalVerdict powerThrottling = CausalDiagnosisEngine::evaluate(cpu, gpu, psi, power, domains, culprit);
+        QCOMPARE(powerThrottling.severity, VerdictSeverity::Bottleneck);
+        QCOMPARE(powerThrottling.ruleId, QStringLiteral("power.profile-throttling"));
+        QVERIFY(powerThrottling.recommendation.contains(QStringLiteral("header profile toggle")));
 
         // 5. PL1 Power Limit Capping
         power.activePowerProfile = QStringLiteral("balanced");
@@ -326,6 +335,67 @@ private Q_SLOTS:
         QCOMPARE(singleCoreVerdict.ruleId, QStringLiteral("cpu.single-core-saturation"));
         QCOMPARE(singleCoreVerdict.severity, VerdictSeverity::Elevated);
         QVERIFY(singleCoreVerdict.evidence.first().contains(QStringLiteral("Core 2 is saturated")));
+
+        // 8. NVMe Hardware Critical Warning (CriticalThrottle / Severity 3)
+        cpu.cores.clear();
+        psi.cpuPsi.someAvg10 = 0.0;
+        NvmeControllerTelemetry nvmeCtrl;
+        nvmeCtrl.id = QStringLiteral("nvme0");
+        nvmeCtrl.model = QStringLiteral("Samsung SSD 980 PRO 1TB");
+        nvmeCtrl.warningAvailable = true;
+        nvmeCtrl.criticalWarning = 0x05; // bit 0 (spare) + bit 2 (reliability)
+        nvmeCtrl.compositeTempAvailable = true;
+        nvmeCtrl.compositeTempCelsius = 45.0;
+        psi.nvmeControllers.append(nvmeCtrl);
+
+        const CausalVerdict nvmeCritical = CausalDiagnosisEngine::evaluate(cpu, gpu, psi, power, domains, culprit);
+        QCOMPARE(nvmeCritical.ruleId, QStringLiteral("storage.nvme-critical-warning"));
+        QCOMPARE(nvmeCritical.severity, VerdictSeverity::CriticalThrottle);
+        QCOMPARE(nvmeCritical.primaryBottleneckDomain, QStringLiteral("Storage"));
+        QVERIFY(nvmeCritical.headline.contains(QStringLiteral("NVMe storage hardware critical warning")));
+        QVERIFY(nvmeCritical.causalChain.contains(QStringLiteral("available spare below threshold")));
+
+        // 9. NVMe Thermal Threshold Exceeded (Elevated / Severity 1, or Bottleneck with PSI)
+        psi.nvmeControllers.first().criticalWarning = 0x02; // bit 1 only (temperature threshold exceeded)
+        psi.nvmeControllers.first().compositeTempCelsius = 82.0;
+        const CausalVerdict nvmeThermal = CausalDiagnosisEngine::evaluate(cpu, gpu, psi, power, domains, culprit);
+        QCOMPARE(nvmeThermal.ruleId, QStringLiteral("storage.nvme-thermal-threshold"));
+        QCOMPARE(nvmeThermal.severity, VerdictSeverity::Elevated);
+        QCOMPARE(nvmeThermal.primaryBottleneckDomain, QStringLiteral("Storage"));
+        QVERIFY(nvmeThermal.headline.contains(QStringLiteral("thermal threshold exceeded")));
+
+        // 10. Wi-Fi Link Degradation verdict (Elevated / Severity 1)
+        psi.nvmeControllers.clear();
+        psi.wifiQualityAvailable = true;
+        psi.primaryWifiSignalPercent = 18;
+        psi.primaryWifiSignalDbm = -82;
+        psi.primaryWifiSsid = QStringLiteral("Home-WiFi");
+        psi.netThroughputAvailable = true;
+        psi.netRxMibPerSec = 4.5;
+        psi.netTxMibPerSec = 0.8;
+        const CausalVerdict wifiDegraded = CausalDiagnosisEngine::evaluate(cpu, gpu, psi, power, domains, culprit);
+        QCOMPARE(wifiDegraded.ruleId, QStringLiteral("network.wifi-link-degradation"));
+        QCOMPARE(wifiDegraded.severity, VerdictSeverity::Elevated);
+        QCOMPARE(wifiDegraded.primaryBottleneckDomain, QStringLiteral("Storage & Network"));
+        QVERIFY(wifiDegraded.causalChain.contains(QStringLiteral("Home-WiFi")));
+        QVERIFY(wifiDegraded.causalChain.contains(QStringLiteral("18%")));
+
+        // 11. ZRAM Memory Exhaustion verdict (Bottleneck / Severity 2)
+        psi.wifiQualityAvailable = false;
+        psi.zramActive = true;
+        psi.zramDiskSizeBytes = 8ULL * 1024ULL * 1024ULL * 1024ULL;
+        psi.zramOrigBytes = 7ULL * 1024ULL * 1024ULL * 1024ULL;
+        psi.zramCompressedBytes = 3ULL * 1024ULL * 1024ULL * 1024ULL;
+        psi.zramMemUsedTotalBytes = 3ULL * 1024ULL * 1024ULL * 1024ULL;
+        psi.zramCompressionRatio = 2.33;
+        psi.memoryPsi.someAvailable = true;
+        psi.memoryPsi.someAvg10 = 5.5;
+        const CausalVerdict zramExhausted = CausalDiagnosisEngine::evaluate(cpu, gpu, psi, power, domains, culprit);
+        QCOMPARE(zramExhausted.ruleId, QStringLiteral("memory.zram-exhaustion"));
+        QCOMPARE(zramExhausted.severity, VerdictSeverity::Bottleneck);
+        QCOMPARE(zramExhausted.primaryBottleneckDomain, QStringLiteral("Memory"));
+        QVERIFY(zramExhausted.headline.contains(QStringLiteral("ZRAM compressed swap")));
+        QVERIFY(zramExhausted.causalChain.contains(QStringLiteral("88% filled")));
     }
 
     void testBatteryEtaAndHealthCalculation()
@@ -942,6 +1012,7 @@ private Q_SLOTS:
         const QString md = recorder.exportSummaryMarkdown();
         QVERIFY(md.contains(QStringLiteral("## Data quality at latest sample")));
         QVERIFY(md.contains(QStringLiteral("**cpuTemperature**: available")));
+        QVERIFY(md.contains(QStringLiteral("**NVMe Storage Temperature**: 44.0°C")));
     }
 
     void testVerdictStabilityAndImmediateUnknown()
@@ -1375,6 +1446,39 @@ private Q_SLOTS:
         QVERIFY(object.contains(QStringLiteral("powerSources")));
         QVERIFY(recorder.exportSamplesJson(true).contains(QStringLiteral("private-worker")));
         QVERIFY(recorder.exportSummaryMarkdown(true).contains(QStringLiteral("private-worker")));
+    }
+
+    void testAutoIncidentMarkersAndHtmlReport()
+    {
+        FlightRecorder recorder(50);
+        FlightSample s1;
+        s1.sampleId = 1;
+        s1.timestampMs = 100000;
+        s1.cpuLoadPercent = 95.0;
+        s1.cpuTempCelsius = 98.0;
+        s1.severity = VerdictSeverity::CriticalThrottle;
+        s1.verdictRuleId = QStringLiteral("cpu.thermal-throttle");
+        s1.verdictHeadline = QStringLiteral("CPU thermal throttling observed");
+
+        recorder.appendSample(s1);
+        QCOMPARE(recorder.markers().size(), 1);
+        const auto m1 = recorder.markers().first().toMap();
+        QCOMPARE(m1.value(QStringLiteral("isAutomated")).toBool(), true);
+        QVERIFY(m1.value(QStringLiteral("label")).toString().contains(QStringLiteral("[Auto]")));
+
+        // Sample within 60s cooldown should not add a duplicate marker
+        FlightSample s2 = s1;
+        s2.sampleId = 2;
+        s2.timestampMs = 120000; // 20s later
+        recorder.appendSample(s2);
+        QCOMPARE(recorder.markers().size(), 1);
+
+        // Sample after 60s cooldown adds a new auto marker
+        FlightSample s3 = s1;
+        s3.sampleId = 3;
+        s3.timestampMs = 170000; // 70s later
+        recorder.appendSample(s3);
+        QCOMPARE(recorder.markers().size(), 2);
     }
 
     void testLiveHostTelemetrySanity()

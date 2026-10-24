@@ -688,11 +688,85 @@ Kirigami.ScrollablePage {
                         Layout.fillWidth: true
                         text: !psiPage.controller.zramAvailable ? KI18n.i18n("ZRAM details: Unavailable")
                               : (KI18n.i18n("ZRAM data: ") + Math.round(psiPage.controller.zramOrigMib) + KI18n.i18n(" MiB before compression, ")
-                                 + Math.round(psiPage.controller.zramComprMib) + KI18n.i18n(" MiB compressed payload and ")
-                                 + Math.round(psiPage.controller.zramMemUsedMib) + KI18n.i18n(" MiB allocator memory."))
+                                 + Math.round(psiPage.controller.zramComprMib) + KI18n.i18n(" MiB compressed payload, ")
+                                 + (psiPage.controller.zramSavedGib > 0 ? (KI18n.i18n("saving ") + psiPage.controller.zramSavedGib.toFixed(2) + KI18n.i18n(" GiB RAM")) : "")
+                                 + (psiPage.controller.zramDiskSizeGib > 0 ? (KI18n.i18n(" (limit: ") + psiPage.controller.zramDiskSizeGib.toFixed(1) + KI18n.i18n(" GiB)")) : ""))
                         color: Kirigami.Theme.disabledTextColor
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                         wrapMode: Text.WordWrap
+                    }
+                }
+
+                // cgroup v2 Slice Memory Allocation Breakdown
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 6
+                    visible: psiPage.controller.cgroupsAvailable
+
+                    QQC2.Label {
+                        text: KI18n.i18n("cgroup v2 memory distribution")
+                        font.bold: true
+                        color: theme.psiAccent
+                        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                    }
+
+                    GridLayout {
+                        Layout.fillWidth: true
+                        columns: psiPage.width < 660 ? 1 : 3
+                        columnSpacing: Kirigami.Units.smallSpacing
+                        rowSpacing: Kirigami.Units.smallSpacing
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            implicitHeight: userSliceCol.implicitHeight + 12
+                            radius: theme.innerRadius
+                            color: theme.subtleSurfaceColor
+                            border.width: 1
+                            border.color: theme.subtleBorderColor
+                            ColumnLayout {
+                                id: userSliceCol
+                                anchors.fill: parent
+                                anchors.margins: 6
+                                spacing: 2
+                                QQC2.Label { text: KI18n.i18n("User Apps (user.slice)"); font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 1); color: Kirigami.Theme.disabledTextColor }
+                                QQC2.Label { text: psiPage.controller.userSliceMemoryGib.toFixed(2) + " GiB"; font.bold: true; color: theme.cpuAccent }
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            implicitHeight: sysSliceCol.implicitHeight + 12
+                            radius: theme.innerRadius
+                            color: theme.subtleSurfaceColor
+                            border.width: 1
+                            border.color: theme.subtleBorderColor
+                            ColumnLayout {
+                                id: sysSliceCol
+                                anchors.fill: parent
+                                anchors.margins: 6
+                                spacing: 2
+                                QQC2.Label { text: KI18n.i18n("System (system.slice)"); font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 1); color: Kirigami.Theme.disabledTextColor }
+                                QQC2.Label { text: psiPage.controller.systemSliceMemoryGib.toFixed(2) + " GiB"; font.bold: true; color: theme.psiAccent }
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            visible: psiPage.controller.machineSliceMemoryGib > 0.05
+                            implicitHeight: machSliceCol.implicitHeight + 12
+                            radius: theme.innerRadius
+                            color: theme.subtleSurfaceColor
+                            border.width: 1
+                            border.color: theme.subtleBorderColor
+                            ColumnLayout {
+                                id: machSliceCol
+                                anchors.fill: parent
+                                anchors.margins: 6
+                                spacing: 2
+                                QQC2.Label { text: KI18n.i18n("Containers / VMs"); font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 1); color: Kirigami.Theme.disabledTextColor }
+                                QQC2.Label { text: psiPage.controller.machineSliceMemoryGib.toFixed(2) + " GiB"; font.bold: true; color: theme.neutralColor }
+                            }
+                        }
                     }
                 }
             }

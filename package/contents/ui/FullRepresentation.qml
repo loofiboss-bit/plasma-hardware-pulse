@@ -156,6 +156,13 @@ Item {
                         Layout.fillWidth: true
                     }
 
+                    PlasmaComponents3.Button {
+                        icon.name: "bookmark-new"
+                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Mark Incident")
+                        Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Mark incident now and launch timeline")
+                        onClicked: fullRoot.controller.markProblemAndLaunch()
+                    }
+
                     Rectangle {
                         radius: 5
                         color: fullRoot.cardSurface
@@ -259,6 +266,120 @@ Item {
                         text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Copy report")
                         Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Copy current incident report")
                         onClicked: fullRoot.controller.copyIncidentReportToClipboard()
+                    }
+                }
+
+                // Power Profile Interactive Switcher Row
+                RowLayout {
+                    visible: fullRoot.controller.powerProfileServiceAvailable && fullRoot.controller.availablePowerProfiles.length > 0
+                    Layout.fillWidth: true
+                    spacing: 6
+
+                    PlasmaComponents3.Label {
+                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Power profile:")
+                        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                        font.bold: true
+                        opacity: 0.85
+                    }
+
+                    Repeater {
+                        model: fullRoot.controller.availablePowerProfiles
+                        delegate: PlasmaComponents3.Button {
+                            id: pBtn
+                            required property string modelData
+                            text: pBtn.modelData
+                            checkable: true
+                            checked: fullRoot.controller.activePowerProfile === pBtn.modelData
+                            enabled: !fullRoot.controller.powerProfileChangePending
+                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                            onClicked: fullRoot.controller.setPowerProfile(pBtn.modelData)
+                        }
+                    }
+
+                    Item { Layout.fillWidth: true }
+                }
+
+                // Telemetry Quick Status Chips (Wi-Fi, NVMe, Battery)
+                Flow {
+                    Layout.fillWidth: true
+                    spacing: Kirigami.Units.smallSpacing
+
+                    // Wi-Fi Chip
+                    Rectangle {
+                        visible: fullRoot.controller.wifiAvailable && fullRoot.controller.wifiSsid.length > 0
+                        radius: 5
+                        color: fullRoot.cardSurface
+                        border.width: 1
+                        border.color: fullRoot.cardBorder
+                        implicitWidth: wifiChipRow.implicitWidth + 10
+                        implicitHeight: wifiChipRow.implicitHeight + 4
+
+                        RowLayout {
+                            id: wifiChipRow
+                            anchors.centerIn: parent
+                            spacing: 5
+                            Kirigami.Icon {
+                                source: "network-wireless-connected-100"
+                                Layout.preferredWidth: 12
+                                Layout.preferredHeight: 12
+                            }
+                            PlasmaComponents3.Label {
+                                text: fullRoot.controller.wifiSsid + " (" + fullRoot.controller.wifiSignalPercent + "%)"
+                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                            }
+                        }
+                    }
+
+                    // NVMe Temp Chip
+                    Rectangle {
+                        visible: fullRoot.controller.nvmeTempAvailable
+                        radius: 5
+                        color: fullRoot.cardSurface
+                        border.width: 1
+                        border.color: fullRoot.cardBorder
+                        implicitWidth: nvmeChipRow.implicitWidth + 10
+                        implicitHeight: nvmeChipRow.implicitHeight + 4
+
+                        RowLayout {
+                            id: nvmeChipRow
+                            anchors.centerIn: parent
+                            spacing: 5
+                            Kirigami.Icon {
+                                source: "drive-harddisk"
+                                Layout.preferredWidth: 12
+                                Layout.preferredHeight: 12
+                            }
+                            PlasmaComponents3.Label {
+                                text: "NVMe: " + TemperatureLabels.formatTemperature(fullRoot.controller.nvmeTempCelsius, fullRoot.controller.temperatureUnit)
+                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                            }
+                        }
+                    }
+
+                    // Battery Health Chip
+                    Rectangle {
+                        visible: fullRoot.controller.batteryPresent
+                        radius: 5
+                        color: fullRoot.cardSurface
+                        border.width: 1
+                        border.color: fullRoot.cardBorder
+                        implicitWidth: batChipRow.implicitWidth + 10
+                        implicitHeight: batChipRow.implicitHeight + 4
+
+                        RowLayout {
+                            id: batChipRow
+                            anchors.centerIn: parent
+                            spacing: 5
+                            Kirigami.Icon {
+                                source: fullRoot.controller.onAcPower ? "ac-adapter" : "battery-profile-performance"
+                                Layout.preferredWidth: 12
+                                Layout.preferredHeight: 12
+                            }
+                            PlasmaComponents3.Label {
+                                text: Math.round(fullRoot.controller.batteryPercent) + "%" + (fullRoot.controller.batteryHealthAvailable ? " (" + Math.round(fullRoot.controller.batteryHealthPercent) + "% health)" : "")
+                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                            }
+                        }
                     }
                 }
             }

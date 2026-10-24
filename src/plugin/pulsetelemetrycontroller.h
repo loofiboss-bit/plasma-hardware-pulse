@@ -83,7 +83,13 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(double zramOrigMib READ zramOrigMib NOTIFY telemetryUpdated)
     Q_PROPERTY(double zramComprMib READ zramComprMib NOTIFY telemetryUpdated)
     Q_PROPERTY(double zramMemUsedMib READ zramMemUsedMib NOTIFY telemetryUpdated)
+    Q_PROPERTY(double zramDiskSizeGib READ zramDiskSizeGib NOTIFY telemetryUpdated)
+    Q_PROPERTY(double zramSavedGib READ zramSavedGib NOTIFY telemetryUpdated)
     Q_PROPERTY(double zramCompressionRatio READ zramCompressionRatio NOTIFY telemetryUpdated)
+    Q_PROPERTY(bool cgroupsAvailable READ cgroupsAvailable NOTIFY telemetryUpdated)
+    Q_PROPERTY(double userSliceMemoryGib READ userSliceMemoryGib NOTIFY telemetryUpdated)
+    Q_PROPERTY(double systemSliceMemoryGib READ systemSliceMemoryGib NOTIFY telemetryUpdated)
+    Q_PROPERTY(double machineSliceMemoryGib READ machineSliceMemoryGib NOTIFY telemetryUpdated)
     Q_PROPERTY(double swapUsedGib READ swapUsedGib NOTIFY telemetryUpdated)
     Q_PROPERTY(double swapTotalGib READ swapTotalGib NOTIFY telemetryUpdated)
     Q_PROPERTY(bool swapAvailable READ swapAvailable NOTIFY telemetryUpdated)
@@ -120,6 +126,8 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(bool powerLimitsAvailable READ powerLimitsAvailable NOTIFY telemetryUpdated)
     Q_PROPERTY(QString activePowerProfile READ activePowerProfile NOTIFY telemetryUpdated)
     Q_PROPERTY(QStringList availablePowerProfiles READ availablePowerProfiles NOTIFY telemetryUpdated)
+    Q_PROPERTY(QVariantList powerProfileHolds READ powerProfileHolds NOTIFY telemetryUpdated)
+    Q_PROPERTY(QString powerProfileHoldsSummary READ powerProfileHoldsSummary NOTIFY telemetryUpdated)
     Q_PROPERTY(bool powerProfileServiceAvailable READ powerProfileServiceAvailable NOTIFY telemetryUpdated)
     Q_PROPERTY(int primaryFanRpm READ primaryFanRpm NOTIFY telemetryUpdated)
     Q_PROPERTY(bool fanAvailable READ fanAvailable NOTIFY telemetryUpdated)
@@ -130,6 +138,17 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(bool wifiTempAvailable READ wifiTempAvailable NOTIFY telemetryUpdated)
     Q_PROPERTY(QVariantList nvmeControllers READ nvmeControllers NOTIFY telemetryUpdated)
     Q_PROPERTY(bool nvmeWarningActive READ nvmeWarningActive NOTIFY telemetryUpdated)
+    Q_PROPERTY(bool wifiAvailable READ wifiAvailable NOTIFY telemetryUpdated)
+    Q_PROPERTY(QString wifiSsid READ wifiSsid NOTIFY telemetryUpdated)
+    Q_PROPERTY(int wifiSignalPercent READ wifiSignalPercent NOTIFY telemetryUpdated)
+    Q_PROPERTY(int wifiSignalDbm READ wifiSignalDbm NOTIFY telemetryUpdated)
+    Q_PROPERTY(double wifiFrequencyGhz READ wifiFrequencyGhz NOTIFY telemetryUpdated)
+    Q_PROPERTY(int wifiBitrateMbps READ wifiBitrateMbps NOTIFY telemetryUpdated)
+    Q_PROPERTY(bool hasActiveWifi READ wifiAvailable NOTIFY telemetryUpdated)
+    Q_PROPERTY(QString activeWifiSsid READ wifiSsid NOTIFY telemetryUpdated)
+    Q_PROPERTY(int activeWifiSignalPercent READ wifiSignalPercent NOTIFY telemetryUpdated)
+    Q_PROPERTY(double activeWifiFrequencyGhz READ wifiFrequencyGhz NOTIFY telemetryUpdated)
+    Q_PROPERTY(int activeWifiBitrateMbps READ wifiBitrateMbps NOTIFY telemetryUpdated)
 
     // Causal Verdict & Culprit properties
     Q_PROPERTY(int verdictSeverity READ verdictSeverity NOTIFY telemetryUpdated)
@@ -239,7 +258,13 @@ public:
     double zramOrigMib() const { return remoteValue<double>("zramOrigMib", static_cast<double>(m_psiMem.zramOrigBytes) / (1024.0 * 1024.0)); }
     double zramComprMib() const { return remoteValue<double>("zramComprMib", static_cast<double>(m_psiMem.zramCompressedBytes) / (1024.0 * 1024.0)); }
     double zramMemUsedMib() const { return remoteValue<double>("zramMemUsedMib", static_cast<double>(m_psiMem.zramMemUsedTotalBytes) / (1024.0 * 1024.0)); }
+    double zramDiskSizeGib() const { return remoteValue<double>("zramDiskSizeGib", static_cast<double>(m_psiMem.zramDiskSizeBytes) / (1024.0 * 1024.0 * 1024.0)); }
+    double zramSavedGib() const { return remoteValue<double>("zramSavedGib", static_cast<double>(m_psiMem.zramSpaceSavedBytes) / (1024.0 * 1024.0 * 1024.0)); }
     double zramCompressionRatio() const { return remoteValue<double>("zramCompressionRatio", m_psiMem.zramCompressionRatio); }
+    bool cgroupsAvailable() const { return remoteValue<bool>("cgroupsAvailable", m_psiMem.cgroupsAvailable); }
+    double userSliceMemoryGib() const { return remoteValue<double>("userSliceMemoryGib", static_cast<double>(m_psiMem.userSliceMemoryBytes) / (1024.0 * 1024.0 * 1024.0)); }
+    double systemSliceMemoryGib() const { return remoteValue<double>("systemSliceMemoryGib", static_cast<double>(m_psiMem.systemSliceMemoryBytes) / (1024.0 * 1024.0 * 1024.0)); }
+    double machineSliceMemoryGib() const { return remoteValue<double>("machineSliceMemoryGib", static_cast<double>(m_psiMem.machineSliceMemoryBytes) / (1024.0 * 1024.0 * 1024.0)); }
     double swapUsedGib() const
     {
         const quint64 used = (m_psiMem.swapTotalBytes > m_psiMem.swapFreeBytes)
@@ -282,6 +307,8 @@ public:
     bool powerLimitsAvailable() const { return remoteValue<bool>("powerLimitsAvailable", m_power.pl1LimitWatts > 0.0 || m_power.pl2LimitWatts > 0.0); }
     QString activePowerProfile() const { return remoteValue<QString>("activePowerProfile", m_activePowerProfile); }
     QStringList availablePowerProfiles() const { return remoteValue<QStringList>("availablePowerProfiles", m_availablePowerProfiles); }
+    QVariantList powerProfileHolds() const { return remoteValue<QVariantList>("powerProfileHolds", m_powerProfileHoldsVariant); }
+    QString powerProfileHoldsSummary() const { return remoteValue<QString>("powerProfileHoldsSummary", m_powerProfileHoldsSummary); }
     bool powerProfileServiceAvailable() const { return remoteValue<bool>("powerProfileServiceAvailable", m_powerProfileServiceAvailable); }
     int primaryFanRpm() const { return remoteValue<int>("primaryFanRpm", m_power.primaryFanRpm); }
     bool fanAvailable() const { return remoteValue<bool>("fanAvailable", m_power.fanAvailable); }
@@ -292,6 +319,12 @@ public:
     bool wifiTempAvailable() const { return remoteValue<bool>("wifiTempAvailable", m_wifiTempAvailable); }
     QVariantList nvmeControllers() const { return remoteValue<QVariantList>("nvmeControllers", m_nvmeControllersVariant); }
     bool nvmeWarningActive() const { return remoteValue<bool>("nvmeWarningActive", m_nvmeWarningActive); }
+    bool wifiAvailable() const { return remoteValue<bool>("wifiAvailable", m_wifiAvailable); }
+    QString wifiSsid() const { return remoteValue<QString>("wifiSsid", m_wifiSsid); }
+    int wifiSignalPercent() const { return remoteValue<int>("wifiSignalPercent", m_wifiSignalPercent); }
+    int wifiSignalDbm() const { return remoteValue<int>("wifiSignalDbm", m_wifiSignalDbm); }
+    double wifiFrequencyGhz() const { return remoteValue<double>("wifiFrequencyGhz", m_wifiFrequencyGhz); }
+    int wifiBitrateMbps() const { return remoteValue<int>("wifiBitrateMbps", m_wifiBitrateMbps); }
 
     int verdictSeverity() const { return remoteValue<int>("verdictSeverity", static_cast<int>(m_verdict.severity)); }
     QString verdictHeadline() const { return remoteValue<QString>("verdictHeadline", m_verdict.headline); }
@@ -494,6 +527,7 @@ private:
     void setLastActionStatus(const QString &status);
     void setActionResult(bool succeeded, const QString &status, const QString &path = QString());
     void refreshPowerProfileProperties();
+    void refreshWifiProperties();
     static QVariantMap sampleToVariantMap(const FlightSample &s, int index);
 
     QString m_clientId = QUuid::createUuid().toString(QUuid::WithoutBraces);
@@ -564,6 +598,8 @@ private:
     VerdictStabilizer m_verdictStabilizer;
     QString m_activePowerProfile;
     QStringList m_availablePowerProfiles;
+    QVariantList m_powerProfileHoldsVariant;
+    QString m_powerProfileHoldsSummary;
     bool m_powerProfileServiceAvailable = false;
     bool m_powerProfileChangePending = false;
 
@@ -578,6 +614,12 @@ private:
     double m_wifiTemp = 0.0;
     bool m_nvmeTempAvailable = false;
     bool m_wifiTempAvailable = false;
+    bool m_wifiAvailable = false;
+    QString m_wifiSsid;
+    int m_wifiSignalPercent = 0;
+    int m_wifiSignalDbm = 0;
+    double m_wifiFrequencyGhz = 0.0;
+    int m_wifiBitrateMbps = 0;
 
     QVariantList m_domainSensorsVariant;
     QVariantList m_coreItemsVariant;

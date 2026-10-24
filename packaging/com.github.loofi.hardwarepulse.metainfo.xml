@@ -24,6 +24,11 @@
   </developer>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.13.0" date="2026-10-25" type="development">
+      <description>
+        <p>Comprehensive evolution: Power Profiles Daemon (PPD) interactive quick-switcher and throttling diagnosis, Wi-Fi link telemetry and causal degradation rules, ZRAM compression and cgroup v2 slice memory attribution, Smart Flight Recorder automated incident bookmarks with interactive HTML export, KDE 6 Glass and Accent Glows styling across desktop app and widget, and complete Swedish localization.</p>
+      </description>
+    </release>
     <release version="0.12.0" date="2026-10-21" type="development">
       <description>
         <p>Development stabilization of measurement quality, multi-GPU diagnosis, collector recovery, persistent history and session compatibility. Process inspection is read-only, with process management delegated to KDE System Monitor. Physical hardware and desktop qualification remain separate from automated checks.</p>

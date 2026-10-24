@@ -285,6 +285,15 @@ PsiAndMemorySnapshot PsiMemorySampler::sample(qint64 elapsedMs)
             item.countersAvailable = rxErrorOk && txErrorOk && rxDropOk && txDropOk;
         }
         item.isPhysical = QFileInfo::exists(interfaceDir.filePath(QStringLiteral("device")));
+        item.isWireless = QFileInfo::exists(interfaceDir.filePath(QStringLiteral("wireless")))
+                       || QFileInfo::exists(interfaceDir.filePath(QStringLiteral("phy80211")));
+        item.duplexMode = SysfsReader::readTrimmedLine(interfaceDir.filePath(QStringLiteral("duplex")));
+        const QString speedStr = SysfsReader::readTrimmedLine(interfaceDir.filePath(QStringLiteral("speed")));
+        bool speedOk = false;
+        const int speedVal = speedStr.toInt(&speedOk);
+        if (speedOk && speedVal > 0) item.linkSpeedMbps = speedVal;
+        const QString carrierStr = SysfsReader::readTrimmedLine(interfaceDir.filePath(QStringLiteral("carrier")));
+        item.carrier = (carrierStr == QStringLiteral("1"));
         const QString ifindex = SysfsReader::readTrimmedLine(interfaceDir.filePath(QStringLiteral("ifindex")));
         item.identity = name + QLatin1Char(':') + ifindex;
         item.included = m_includedNetworkInterfaces.isEmpty() ? item.isPhysical : m_includedNetworkInterfaces.contains(name);
@@ -371,12 +380,35 @@ PsiAndMemorySnapshot PsiMemorySampler::sample(qint64 elapsedMs)
             snap.zramOrigBytes += orig;
             snap.zramCompressedBytes += compressed;
             snap.zramMemUsedTotalBytes += used;
+            const QString disksizeLine = SysfsReader::readTrimmedLine(blockDir.filePath(zramName + QStringLiteral("/disksize")));
+            bool disksizeOk = false;
+            const quint64 disksizeVal = disksizeLine.toULongLong(&disksizeOk);
+            if (disksizeOk) snap.zramDiskSizeBytes += disksizeVal;
         }
     }
 
     if (snap.zramCompressedBytes > 0 && snap.zramOrigBytes > 0) {
         snap.zramCompressionAvailable = true;
         snap.zramCompressionRatio = static_cast<double>(snap.zramOrigBytes) / static_cast<double>(snap.zramCompressedBytes);
+        if (snap.zramOrigBytes > snap.zramCompressedBytes) {
+            snap.zramSpaceSavedBytes = snap.zramOrigBytes - snap.zramCompressedBytes;
+        }
+    }
+
+    // Parse /sys/fs/cgroup slices
+    const QDir cgroupDir(QDir(m_config.sysRoot).filePath(QStringLiteral("fs/cgroup")));
+    if (cgroupDir.exists()) {
+        const auto readSlice = [&](const QString &sliceName) -> quint64 {
+            const QString path = cgroupDir.filePath(sliceName + QStringLiteral("/memory.current"));
+            const QString text = SysfsReader::readTrimmedLine(path);
+            bool ok = false;
+            const quint64 bytes = text.toULongLong(&ok);
+            return ok ? bytes : 0ULL;
+        };
+        snap.userSliceMemoryBytes = readSlice(QStringLiteral("user.slice"));
+        snap.systemSliceMemoryBytes = readSlice(QStringLiteral("system.slice"));
+        snap.machineSliceMemoryBytes = readSlice(QStringLiteral("machine.slice"));
+        snap.cgroupsAvailable = (snap.userSliceMemoryBytes > 0 || snap.systemSliceMemoryBytes > 0);
     }
 
     // Calculate System Responsiveness Index (0 - 100%)
