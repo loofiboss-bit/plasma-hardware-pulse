@@ -647,3 +647,21 @@ msgstr "Minignistlinje"
 
 msgid "Ring Gauge"
 msgstr "Cirkelmätare"
+
+msgid "Mark Incident"
+msgstr "Bokmärk incident"
+
+msgid "Mark incident now and launch timeline"
+msgstr "Bokmärk incident nu och öppna tidslinje"
+
+msgid "Power profile:"
+msgstr "Energiprofil:"
+
+msgid "Profile:"
+msgstr "Profil:"
+
+msgid "Wi-Fi: "
+msgstr "Wi-Fi: "
+
+msgid "Battery: "
+msgstr "Batteri: "

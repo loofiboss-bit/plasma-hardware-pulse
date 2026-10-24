@@ -1,9 +1,15 @@
 # Changelog
 
-## 0.13.0 — Development candidate (2026-10-25)
+## 0.13.0 — Comprehensive Evolution (2026-10-25)
 
 ### Added
 
+- **Power Profiles Daemon (PPD) Integration**: Interactive quick switcher pill in header and widget, active profile holds inspection (`net.hadess.PowerProfiles`), and causal diagnosis rule `power.profile-throttling` (Bottleneck severity) when power-saver caps performance on AC power.
+- **Hardware Link Quality & Wi-Fi Telemetry**: Active SSID, frequency band (2.4/5/6 GHz), signal strength (% and dBm), bitrate, and Ethernet duplex mode via sysfs and NetworkManager D-Bus; causal rule `network.wifi-link-degradation`.
+- **Memory Compression & Cgroup v2 Attribution**: ZRAM capacity, compression ratio, space-saved statistics, and cgroup v2 slice memory breakdown (`user.slice`, `system.slice`, `machine.slice`) with causal rule `memory.zram-exhaustion`.
+- **Smart Flight Recorder & Interactive HTML Reports**: Automated incident bookmarks with 60s cooldown, SQLite v3 schema extensions (`batteryHealth`, `zramRatio`, `wifiSignal`), and self-contained interactive HTML incident report generation with embedded SVG trend charts.
+- **Modern KDE 6 Glass & Accent Glows UI/UX**: Translucent glass surfaces, dynamic border glows, sparkline scrub inspection lines, animated rotating cooling fan indicators, and pulsating Plasmoid alert glows.
+- **Complete Swedish Localization**: Full `sv` translations across all v13 telemetry channels, causal diagnosis rules, and technical evidence strings.
 - Multi-fan telemetry discovery and RPM progress indicators across all detected sysfs hwmon fans.
 - NVMe controller discovery via `/sys/class/nvme/nvme*`, decoding critical warning bitmasks and composite temperature.
 - Causal diagnosis rule `cpu.single-core-saturation` for identifying asymmetric thread bottlenecking under moderate overall CPU load.
@@ -12,8 +18,7 @@
 - Privacy-redacted kernel log correlation (`±15s` window around incidents) from `journalctl`/`dmesg` with IP, MAC, and path masking.
 - Interactive side-by-side incident comparison in Flight Recorder with delta metrics calculation (peak temperature, average CPU load, worst responsiveness, culprit process).
 - Three selectable panel representation styles in Plasmoid: Text Pill (0), Mini Sparkline (1), and Ring Gauge (2).
-- Enriched Markdown and JSON report exports including correlated kernel events, NVMe health observations, and incident comparison deltas.
-- Gradient sparklines and direct action buttons on Overview domain cards.
+- Enriched Markdown, HTML and JSON report exports including correlated kernel events, NVMe health observations, and incident comparison deltas.
 
 ### Changed
 

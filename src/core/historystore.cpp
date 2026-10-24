@@ -122,7 +122,7 @@ qint64 HistoryStore::retentionMs() const
 
 void HistoryStore::setMaxBytes(qint64 bytes)
 {
-    m_maxBytes = std::clamp<qint64>(bytes, 256LL * 1024LL, 16LL * 1024LL * 1024LL * 1024LL);
+    m_maxBytes = std::clamp<qint64>(bytes, 512LL * 1024LL, 16LL * 1024LL * 1024LL * 1024LL);
 }
 
 qint64 HistoryStore::maxBytes() const

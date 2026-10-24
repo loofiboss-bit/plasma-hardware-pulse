@@ -77,6 +77,12 @@ QT_QPA_PLATFORM=offscreen QML_IMPORT_PATH="%{_vpath_builddir}/bin" ctest --test-
 
 %changelog
 * Sun Oct 25 2026 Loofi <loofi@github.com> - 0.13.0-1
+- Power Profiles Daemon (PPD) control, active holds tracking, and profile-throttling causal rule
+- Wi-Fi link telemetry (SSID, 2.4/5/6 GHz, dBm, bitrate, duplex) and wireless degradation causal rule
+- ZRAM capacity, space saved metrics, and cgroup v2 slice memory attribution (user, system, machine)
+- Smart Flight Recorder auto-bookmarks, SQLite v3 schema extensions, and interactive HTML report export
+- Modern KDE 6 Glass and Accent Glows UI styling, rotating fan indicators, and Plasmoid alert glows
+- Complete Swedish localization (po/sv) and 100% CTest coverage
 - Add multi-fan telemetry discovery and RPM progress in Power & Thermal
 - Add NVMe controller discovery, critical warning bitmask decoding and composite temperature
 - Implement causal diagnosis verdicts for single-core CPU saturation and NVMe critical warnings with KNotification integration
@@ -84,7 +90,7 @@ QT_QPA_PLATFORM=offscreen QML_IMPORT_PATH="%{_vpath_builddir}/bin" ctest --test-
 - Add side-by-side incident comparison and delta metrics in Flight Recorder
 - Add gradient sparklines and direct action buttons on OverviewPage cards
 - Add 3 panel display styles in Plasmoid: Text Pill, Mini Sparkline, and Ring Gauge
-- Enrich Markdown and JSON report exports with kernel logs, NVMe health and comparison analysis
+- Enrich Markdown, HTML and JSON report exports with kernel logs, NVMe health and comparison analysis
 * Wed Oct 21 2026 Loofi <loofi@github.com> - 0.12.0-1
 - Development stabilization: honest telemetry quality, multi-GPU diagnosis, collector lifecycle and bounded persistent history
 - Keep process inspection read-only and delegate process management to KDE System Monitor
