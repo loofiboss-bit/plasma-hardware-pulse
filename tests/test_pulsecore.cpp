@@ -275,11 +275,20 @@ private Q_SLOTS:
         cpu.totalLoadPercent = 72.0;
         gpu.busyPercent = 15.0;
         gpu.tempCelsius = 52.0;
+        power.onAcPower = false;
         power.activePowerProfile = QStringLiteral("power-saver");
         const CausalVerdict powerSaverMismatch = CausalDiagnosisEngine::evaluate(cpu, gpu, psi, power, domains, culprit);
         QCOMPARE(powerSaverMismatch.severity, VerdictSeverity::Elevated);
         QCOMPARE(powerSaverMismatch.primaryBottleneckDomain, QStringLiteral("Power & Cooling"));
         QVERIFY(powerSaverMismatch.headline.contains(QStringLiteral("power-saver")));
+
+        // 4b. Power-saver throttling on AC power under severe CPU load
+        power.onAcPower = true;
+        cpu.totalLoadPercent = 86.0;
+        const CausalVerdict powerThrottling = CausalDiagnosisEngine::evaluate(cpu, gpu, psi, power, domains, culprit);
+        QCOMPARE(powerThrottling.severity, VerdictSeverity::Bottleneck);
+        QCOMPARE(powerThrottling.ruleId, QStringLiteral("power.profile-throttling"));
+        QVERIFY(powerThrottling.recommendation.contains(QStringLiteral("header profile toggle")));
 
         // 5. PL1 Power Limit Capping
         power.activePowerProfile = QStringLiteral("balanced");

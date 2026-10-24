@@ -193,7 +193,12 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
         }
     }
 
-    if (power.activePowerProfile == QStringLiteral("power-saver")
+    const bool isPowerSaverThrottlingCandidate = power.activePowerProfile == QStringLiteral("power-saver")
+        && power.onAcPower
+        && ((cpuLoadValid && cpu.totalLoadPercent >= 80.0)
+            || (psiMem.cpuPsi.someAvailable && psiMem.cpuPsi.someAvg10 >= 12.0));
+
+    if (!isPowerSaverThrottlingCandidate && power.activePowerProfile == QStringLiteral("power-saver")
         && ((cpuLoadValid && cpu.totalLoadPercent >= 65.0)
             || (busyGpu && busyGpu->busyPercent >= 75.0)
             || (psiMem.cpuPsi.someAvailable && psiMem.cpuPsi.someAvg10 >= 10.0))) {
@@ -254,6 +259,29 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
         }
     }
 
+    if (power.activePowerProfile == QStringLiteral("power-saver") && power.onAcPower) {
+        const bool cpuThrottledUnderPowerSaver = (cpuLoadValid && cpu.totalLoadPercent >= 80.0)
+            || (saturatedCoreId >= 0 && cpu.cores.size() >= 2 && cpuLoadValid && maxCoreLoad >= 90.0)
+            || (psiMem.cpuPsi.someAvailable && psiMem.cpuPsi.someAvg10 >= 12.0);
+        if (cpuThrottledUnderPowerSaver) {
+            QString details = QStringLiteral("Active power profile is 'power-saver' while on AC power");
+            if (cpuLoadValid) {
+                details += QStringLiteral("; CPU load is %1%").arg(cpu.totalLoadPercent, 0, 'f', 0);
+            }
+            if (saturatedCoreId >= 0 && maxCoreLoad >= 90.0) {
+                details += QStringLiteral(" (Core %1 saturated at %2%)").arg(saturatedCoreId).arg(maxCoreLoad, 0, 'f', 0);
+            }
+            if (psiMem.cpuPsi.someAvailable) {
+                details += QStringLiteral("; CPU pressure is %1%").arg(psiMem.cpuPsi.someAvg10, 0, 'f', 1);
+            }
+            addCandidate(QStringLiteral("power.profile-throttling"), VerdictSeverity::Bottleneck,
+                         QStringLiteral("Power & Cooling"),
+                         QStringLiteral("CPU performance throttled by power-saver profile"),
+                         details,
+                         QStringLiteral("Switch to 'balanced' or 'performance' mode using the header profile toggle."));
+        }
+    }
+
     if ((psiMem.cpuPsi.someAvailable && psiMem.cpuPsi.someAvg10 >= 10.0)
         || (cpu.temperatureAvailable && cpu.thermalLimitAvailable && cpu.thermalHeadroomCelsius < 20.0)) {
         QString details;
@@ -290,6 +318,9 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
     }
 
     if (!matches.isEmpty()) {
+        std::stable_sort(matches.begin(), matches.end(), [](const CausalVerdict &a, const CausalVerdict &b) {
+            return static_cast<int>(a.severity) > static_cast<int>(b.severity);
+        });
         verdict = matches.first();
         for (int i = 1; i < matches.size(); ++i) {
             const CausalVerdict &secondary = matches.at(i);

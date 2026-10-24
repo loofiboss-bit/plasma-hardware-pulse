@@ -920,6 +920,44 @@ void PulseTelemetryController::refreshPowerProfileProperties()
         m_availablePowerProfiles = profiles;
         Q_EMIT telemetryUpdated();
     });
+
+    requestProperty(QStringLiteral("ActiveProfileHolds"), [this](const QDBusPendingReply<QDBusVariant> &reply) {
+        if (reply.isError()) {
+            m_powerProfileHoldsVariant.clear();
+            m_powerProfileHoldsSummary.clear();
+            Q_EMIT telemetryUpdated();
+            return;
+        }
+        QVariantList holds;
+        QStringList summaries;
+        const QVariant value = reply.value().variant();
+        if (value.canConvert<QVariantList>()) {
+            holds = value.toList();
+        } else if (value.canConvert<QDBusArgument>()) {
+            const QDBusArgument argument = value.value<QDBusArgument>();
+            if (argument.currentSignature() == QStringLiteral("aa{sv}")) {
+                argument.beginArray();
+                while (!argument.atEnd()) {
+                    QVariantMap properties;
+                    argument >> properties;
+                    holds.append(properties);
+                }
+                argument.endArray();
+            }
+        }
+        for (const QVariant &item : holds) {
+            const QVariantMap map = item.toMap();
+            const QString app = map.value(QStringLiteral("ApplicationId")).toString();
+            const QString reason = map.value(QStringLiteral("Reason")).toString();
+            const QString profile = map.value(QStringLiteral("Profile")).toString();
+            if (!app.isEmpty() || !reason.isEmpty()) {
+                summaries.append(QStringLiteral("%1 (%2)").arg(app.isEmpty() ? QStringLiteral("System") : app, reason.isEmpty() ? profile : reason));
+            }
+        }
+        m_powerProfileHoldsVariant = holds;
+        m_powerProfileHoldsSummary = summaries.join(QStringLiteral(", "));
+        Q_EMIT telemetryUpdated();
+    });
 }
 
 bool PulseTelemetryController::openSystemMonitor()

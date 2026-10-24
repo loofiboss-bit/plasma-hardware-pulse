@@ -120,6 +120,8 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(bool powerLimitsAvailable READ powerLimitsAvailable NOTIFY telemetryUpdated)
     Q_PROPERTY(QString activePowerProfile READ activePowerProfile NOTIFY telemetryUpdated)
     Q_PROPERTY(QStringList availablePowerProfiles READ availablePowerProfiles NOTIFY telemetryUpdated)
+    Q_PROPERTY(QVariantList powerProfileHolds READ powerProfileHolds NOTIFY telemetryUpdated)
+    Q_PROPERTY(QString powerProfileHoldsSummary READ powerProfileHoldsSummary NOTIFY telemetryUpdated)
     Q_PROPERTY(bool powerProfileServiceAvailable READ powerProfileServiceAvailable NOTIFY telemetryUpdated)
     Q_PROPERTY(int primaryFanRpm READ primaryFanRpm NOTIFY telemetryUpdated)
     Q_PROPERTY(bool fanAvailable READ fanAvailable NOTIFY telemetryUpdated)
@@ -282,6 +284,8 @@ public:
     bool powerLimitsAvailable() const { return remoteValue<bool>("powerLimitsAvailable", m_power.pl1LimitWatts > 0.0 || m_power.pl2LimitWatts > 0.0); }
     QString activePowerProfile() const { return remoteValue<QString>("activePowerProfile", m_activePowerProfile); }
     QStringList availablePowerProfiles() const { return remoteValue<QStringList>("availablePowerProfiles", m_availablePowerProfiles); }
+    QVariantList powerProfileHolds() const { return remoteValue<QVariantList>("powerProfileHolds", m_powerProfileHoldsVariant); }
+    QString powerProfileHoldsSummary() const { return remoteValue<QString>("powerProfileHoldsSummary", m_powerProfileHoldsSummary); }
     bool powerProfileServiceAvailable() const { return remoteValue<bool>("powerProfileServiceAvailable", m_powerProfileServiceAvailable); }
     int primaryFanRpm() const { return remoteValue<int>("primaryFanRpm", m_power.primaryFanRpm); }
     bool fanAvailable() const { return remoteValue<bool>("fanAvailable", m_power.fanAvailable); }
@@ -564,6 +568,8 @@ private:
     VerdictStabilizer m_verdictStabilizer;
     QString m_activePowerProfile;
     QStringList m_availablePowerProfiles;
+    QVariantList m_powerProfileHoldsVariant;
+    QString m_powerProfileHoldsSummary;
     bool m_powerProfileServiceAvailable = false;
     bool m_powerProfileChangePending = false;
 
