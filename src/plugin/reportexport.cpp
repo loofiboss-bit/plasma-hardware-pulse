@@ -35,7 +35,7 @@ void PulseTelemetryController::exportRecorderAsync(const FlightRecorder &recorde
     const bool include = m_exportIncludeProcessDetails;
     const auto filters = QVariantMap{{QStringLiteral("gpuId"), m_selectedGpuId}, {QStringLiteral("storageId"), m_selectedStorageId},
         {QStringLiteral("networkInterfaces"), m_selectedNetworkInterfaces}};
-    const QVariantList kernelLogs = fetchIncidentKernelLogs(QString());
+    const QVariantList kernelLogs = incidentKernelLogs(QString());
     QPointer<PulseTelemetryController> guard(this);
     m_actionPending = true; Q_EMIT telemetryUpdated();
     m_filePool.start(QRunnable::create([guard, recorder, selection = safeSelection, filters, base, include, kernelLogs] {
