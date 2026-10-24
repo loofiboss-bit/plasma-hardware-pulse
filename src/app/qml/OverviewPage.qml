@@ -80,7 +80,7 @@ Kirigami.ScrollablePage {
             Layout.fillWidth: true
             implicitHeight: verdictMainRow.implicitHeight + Kirigami.Units.largeSpacing * 2
             radius: theme.cardRadius
-            color: theme.surfaceColor
+            color: theme.glassCardBg
             border.width: page.controller.verdictSeverity >= 2 ? 2 : 1.5
             border.color: theme.severityBorderColor(page.controller.verdictSeverity)
 
@@ -558,6 +558,9 @@ Kirigami.ScrollablePage {
                             + (page.controller.netThroughputAvailable
                                ? KI18n.i18n("Net ↓") + page.controller.netRxMibPerSec.toFixed(1) + " ↑" + page.controller.netTxMibPerSec.toFixed(1) + KI18n.i18n(" MiB/s · ")
                                 : "")
+                            + (page.controller.hasActiveWifi && page.controller.activeWifiSsid.length > 0
+                               ? KI18n.i18n("Wi-Fi ") + page.controller.activeWifiSsid + (page.controller.activeWifiFrequencyGhz > 0 ? " (" + page.controller.activeWifiFrequencyGhz.toFixed(1) + " GHz) · " : " · ")
+                               : "")
                             + (page.controller.nvmeTempAvailable ? KI18n.i18n("NVMe ") + MeasurementLabels.formatTemperature(page.controller.nvmeTempCelsius, page.controller.temperatureUnit) : KI18n.i18n("NVMe temp N/A")),
                         ratio: page.controller.diskThroughputAvailable
                             ? Math.min(1.0, Math.max(0.0, (page.controller.diskReadMibPerSec + page.controller.diskWriteMibPerSec) / 500.0))
@@ -592,13 +595,14 @@ Kirigami.ScrollablePage {
                     required property var modelData
                     readonly property color cardAccent: theme.channelColor(metricCard.modelData.accentKey)
                     property bool cardHovered: false
+                    property real scrubX: -1
                     Layout.fillWidth: true
                     Layout.minimumWidth: 140
                     implicitHeight: cardInnerCol.implicitHeight + Kirigami.Units.largeSpacing * 2
                     radius: theme.cardRadius
-                    color: metricCard.cardHovered ? theme.elevatedSurfaceColor : theme.surfaceColor
+                    color: metricCard.cardHovered ? theme.glassElevatedBg : theme.glassCardBg
                     border.width: metricCard.cardHovered ? 1.5 : 1
-                    border.color: metricCard.cardHovered ? metricCard.cardAccent : theme.cardBorderColor
+                    border.color: metricCard.cardHovered ? metricCard.cardAccent : theme.glassBorder
 
                     // Subtle top accent bar
                     Rectangle {
@@ -685,12 +689,29 @@ Kirigami.ScrollablePage {
                         }
                     }
 
+                    // Interactive hover/scrub indicator guide line
+                    Rectangle {
+                        visible: metricCard.cardHovered && metricCard.scrubX >= 0
+                        x: Math.max(cardSparkCanvas.x, Math.min(cardSparkCanvas.x + cardSparkCanvas.width - 2, metricCard.scrubX))
+                        y: cardSparkCanvas.y
+                        width: 1.5
+                        height: cardSparkCanvas.height
+                        color: metricCard.cardAccent
+                        opacity: 0.75
+                    }
+
                     MouseArea {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onEntered: metricCard.cardHovered = true
-                        onExited: metricCard.cardHovered = false
+                        onExited: {
+                            metricCard.cardHovered = false
+                            metricCard.scrubX = -1
+                        }
+                        onPositionChanged: mouse => {
+                            metricCard.scrubX = mouse.x
+                        }
                         onClicked: page.navigateRequested(metricCard.modelData.targetPage, metricCard.modelData.section)
                     }
 

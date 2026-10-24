@@ -144,6 +144,11 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(int wifiSignalDbm READ wifiSignalDbm NOTIFY telemetryUpdated)
     Q_PROPERTY(double wifiFrequencyGhz READ wifiFrequencyGhz NOTIFY telemetryUpdated)
     Q_PROPERTY(int wifiBitrateMbps READ wifiBitrateMbps NOTIFY telemetryUpdated)
+    Q_PROPERTY(bool hasActiveWifi READ wifiAvailable NOTIFY telemetryUpdated)
+    Q_PROPERTY(QString activeWifiSsid READ wifiSsid NOTIFY telemetryUpdated)
+    Q_PROPERTY(int activeWifiSignalPercent READ wifiSignalPercent NOTIFY telemetryUpdated)
+    Q_PROPERTY(double activeWifiFrequencyGhz READ wifiFrequencyGhz NOTIFY telemetryUpdated)
+    Q_PROPERTY(int activeWifiBitrateMbps READ wifiBitrateMbps NOTIFY telemetryUpdated)
 
     // Causal Verdict & Culprit properties
     Q_PROPERTY(int verdictSeverity READ verdictSeverity NOTIFY telemetryUpdated)
