@@ -11,3 +11,8 @@ Action=Popup
 Name=System Pressure Bottleneck
 Comment=Triggered when Linux PSI (CPU, Memory, or I/O stall) exceeds critical threshold
 Action=Popup
+
+[Event/hardwareCritical]
+Name=Hardware Critical Warning
+Comment=Triggered when NVMe hardware critical warning or emergency condition occurs
+Action=Popup

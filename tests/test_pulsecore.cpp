@@ -326,6 +326,34 @@ private Q_SLOTS:
         QCOMPARE(singleCoreVerdict.ruleId, QStringLiteral("cpu.single-core-saturation"));
         QCOMPARE(singleCoreVerdict.severity, VerdictSeverity::Elevated);
         QVERIFY(singleCoreVerdict.evidence.first().contains(QStringLiteral("Core 2 is saturated")));
+
+        // 8. NVMe Hardware Critical Warning (CriticalThrottle / Severity 3)
+        cpu.cores.clear();
+        psi.cpuPsi.someAvg10 = 0.0;
+        NvmeControllerTelemetry nvmeCtrl;
+        nvmeCtrl.id = QStringLiteral("nvme0");
+        nvmeCtrl.model = QStringLiteral("Samsung SSD 980 PRO 1TB");
+        nvmeCtrl.warningAvailable = true;
+        nvmeCtrl.criticalWarning = 0x05; // bit 0 (spare) + bit 2 (reliability)
+        nvmeCtrl.compositeTempAvailable = true;
+        nvmeCtrl.compositeTempCelsius = 45.0;
+        psi.nvmeControllers.append(nvmeCtrl);
+
+        const CausalVerdict nvmeCritical = CausalDiagnosisEngine::evaluate(cpu, gpu, psi, power, domains, culprit);
+        QCOMPARE(nvmeCritical.ruleId, QStringLiteral("storage.nvme-critical-warning"));
+        QCOMPARE(nvmeCritical.severity, VerdictSeverity::CriticalThrottle);
+        QCOMPARE(nvmeCritical.primaryBottleneckDomain, QStringLiteral("Storage"));
+        QVERIFY(nvmeCritical.headline.contains(QStringLiteral("NVMe storage hardware critical warning")));
+        QVERIFY(nvmeCritical.causalChain.contains(QStringLiteral("available spare below threshold")));
+
+        // 9. NVMe Thermal Threshold Exceeded (Elevated / Severity 1, or Bottleneck with PSI)
+        psi.nvmeControllers.first().criticalWarning = 0x02; // bit 1 only (temperature threshold exceeded)
+        psi.nvmeControllers.first().compositeTempCelsius = 82.0;
+        const CausalVerdict nvmeThermal = CausalDiagnosisEngine::evaluate(cpu, gpu, psi, power, domains, culprit);
+        QCOMPARE(nvmeThermal.ruleId, QStringLiteral("storage.nvme-thermal-threshold"));
+        QCOMPARE(nvmeThermal.severity, VerdictSeverity::Elevated);
+        QCOMPARE(nvmeThermal.primaryBottleneckDomain, QStringLiteral("Storage"));
+        QVERIFY(nvmeThermal.headline.contains(QStringLiteral("thermal threshold exceeded")));
     }
 
     void testBatteryEtaAndHealthCalculation()

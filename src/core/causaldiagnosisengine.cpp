@@ -101,6 +101,39 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
                      QStringLiteral("Check for background indexing, updates, or other heavy disk activity."));
     }
 
+    for (const NvmeControllerTelemetry &ctrl : psiMem.nvmeControllers) {
+        if (!ctrl.warningAvailable || ctrl.criticalWarning == 0) continue;
+        const quint8 mask = ctrl.criticalWarning;
+        const bool isHardwareFault = (mask & 0x1D) != 0; // bits 0, 2, 3, 4
+        const bool isTempThreshold = (mask & 0x02) != 0; // bit 1
+
+        QStringList issues;
+        if (mask & 0x01) issues << QStringLiteral("available spare below threshold");
+        if (mask & 0x02) issues << QStringLiteral("temperature threshold exceeded (%1°C)").arg(ctrl.compositeTempCelsius, 0, 'f', 1);
+        if (mask & 0x04) issues << QStringLiteral("NVM subsystem reliability degraded");
+        if (mask & 0x08) issues << QStringLiteral("media placed in read-only mode");
+        if (mask & 0x10) issues << QStringLiteral("volatile memory backup device failed");
+
+        if (isHardwareFault) {
+            addCandidate(QStringLiteral("storage.nvme-critical-warning"), VerdictSeverity::CriticalThrottle,
+                         QStringLiteral("Storage"),
+                         QStringLiteral("NVMe storage hardware critical warning"),
+                         QStringLiteral("Controller '%1' (%2) reported critical warning (0x%3): %4")
+                             .arg(ctrl.id, ctrl.model, QString::number(mask, 16).toUpper(), issues.join(QStringLiteral(", "))),
+                         QStringLiteral("Backup critical data immediately and check NVMe SMART attributes for drive replacement."));
+        } else if (isTempThreshold) {
+            const bool ioPsiElevated = psiMem.ioPsi.fullAvailable && psiMem.ioPsi.fullAvg10 >= 5.0;
+            const VerdictSeverity sev = ioPsiElevated ? VerdictSeverity::Bottleneck : VerdictSeverity::Elevated;
+            addCandidate(QStringLiteral("storage.nvme-thermal-threshold"), sev,
+                         QStringLiteral("Storage"),
+                         QStringLiteral("NVMe controller thermal threshold exceeded"),
+                         QStringLiteral("Controller '%1' composite temperature is %2°C; %3")
+                             .arg(ctrl.id).arg(ctrl.compositeTempCelsius, 0, 'f', 1)
+                             .arg(ioPsiElevated ? QStringLiteral("I/O stall observed") : QStringLiteral("no active I/O stall observed")),
+                         QStringLiteral("Improve NVMe heatsink thermal pad contact or case airflow."));
+        }
+    }
+
     // Stable device ordering keeps equal-priority diagnoses independent of DRM enumeration.
     auto orderedGpus = gpus;
     std::sort(orderedGpus.begin(), orderedGpus.end(), [](const auto &a, const auto &b) { return a.identity < b.identity; });

@@ -477,7 +477,11 @@ void CollectorService::notify(const QVariantMap &packet)
     m_notified[id] = severity;
     // Bound deduplication state; completed episodes outside retention cannot reappear.
     if (m_notified.size() > 256) { QSet<QString> retained; for (const auto &entry : incidents) retained.insert(entry.toMap().value(QStringLiteral("incidentId")).toString()); for (auto it = m_notified.begin(); it != m_notified.end();) { if (!retained.contains(it.key())) it = m_notified.erase(it); else ++it; } }
-    auto *notification = new KNotification(severity == 3 ? QStringLiteral("thermalThrottle") : QStringLiteral("psiBottleneck"), KNotification::CloseOnTimeout, this);
+    const QString ruleId = live.value(QStringLiteral("verdictRuleId")).toString();
+    const QString eventId = (ruleId.contains(QStringLiteral("hardware-critical")) || ruleId.contains(QStringLiteral("nvme-critical")))
+        ? QStringLiteral("hardwareCritical")
+        : (severity == 3 ? QStringLiteral("thermalThrottle") : QStringLiteral("psiBottleneck"));
+    auto *notification = new KNotification(eventId, KNotification::CloseOnTimeout, this);
     notification->setComponentName(QStringLiteral("plasma_applet_com.github.loofi.hardwarepulse"));
     notification->setTitle(live.value(QStringLiteral("verdictHeadline")).toString());
     notification->setText(live.value(QStringLiteral("verdictCausalChain")).toString());
