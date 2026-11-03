@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import org.kde.ki18n
+import org.kde.kirigami as Kirigami
 
 QtObject {
     id: theme
@@ -17,6 +18,7 @@ QtObject {
         var luma = 0.299 * c.r + 0.587 * c.g + 0.114 * c.b
         return luma < 0.5
     }
+    readonly property bool motionAllowed: Kirigami.Units.shortDuration > 0 && Kirigami.Units.longDuration > 0
 
     // Surface & border tokens
     readonly property color windowBg: bgColor

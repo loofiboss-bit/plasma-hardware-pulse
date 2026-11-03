@@ -7,10 +7,12 @@
 #include "sysfsreader.h"
 
 #include <QDir>
+#include <QDateTime>
 #include <QFile>
 #include <QTemporaryDir>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QJsonObject>
 #include <QtTest>
 
 using namespace LoofiPulse;
@@ -70,6 +72,7 @@ private Q_SLOTS:
         hot.busyAvailable = true;
         PowerFlowSnapshot power;
         power.activePowerProfile = QStringLiteral("power-saver");
+        power.activePowerProfileAvailable = true;
         const auto saver = CausalDiagnosisEngine::evaluateDevices(cpu, {idle, hot}, psi, power, {}, {});
         QCOMPARE(saver.ruleId, QStringLiteral("power.saver-workload"));
         QVERIFY(saver.causalChain.contains(hot.identity));
@@ -217,6 +220,7 @@ private Q_SLOTS:
         PowerFlowSnapshot power;
         power.packageWatts = 8.5;
         power.activePowerProfile = QStringLiteral("balanced");
+        power.activePowerProfileAvailable = true;
 
         QList<DomainSensorReading> domains;
         CulpritProcess culprit;
@@ -264,6 +268,7 @@ private Q_SLOTS:
         cpu.throttleCountersAvailable = true;
         const CausalVerdict throttleVerdict = CausalDiagnosisEngine::evaluate(cpu, gpu, psi, power, domains, culprit);
         QCOMPARE(throttleVerdict.severity, VerdictSeverity::CriticalThrottle);
+        QCOMPARE(throttleVerdict.diagnosisState, DiagnosisState::ConfirmedProblem);
         QCOMPARE(throttleVerdict.topProcess.name, QStringLiteral("cc1plus"));
         QVERIFY(!throttleVerdict.causalChain.contains(QStringLiteral("cc1plus")));
         QVERIFY(throttleVerdict.causalChain.contains(QStringLiteral("19 new throttle events")));
@@ -286,9 +291,12 @@ private Q_SLOTS:
         power.onAcPower = true;
         cpu.totalLoadPercent = 86.0;
         const CausalVerdict powerThrottling = CausalDiagnosisEngine::evaluate(cpu, gpu, psi, power, domains, culprit);
-        QCOMPARE(powerThrottling.severity, VerdictSeverity::Bottleneck);
+        QCOMPARE(powerThrottling.severity, VerdictSeverity::Elevated);
         QCOMPARE(powerThrottling.ruleId, QStringLiteral("power.profile-throttling"));
-        QVERIFY(powerThrottling.recommendation.contains(QStringLiteral("header profile toggle")));
+        QCOMPARE(powerThrottling.diagnosisState, DiagnosisState::Observation);
+        QVERIFY(powerThrottling.headline.contains(QStringLiteral("High CPU demand")));
+        QVERIFY(!powerThrottling.headline.contains(QStringLiteral("throttled")));
+        QVERIFY(!powerThrottling.missingEvidence.isEmpty());
 
         // 5. PL1 Power Limit Capping
         power.activePowerProfile = QStringLiteral("balanced");
@@ -301,6 +309,8 @@ private Q_SLOTS:
         QCOMPARE(pl1Capped.severity, VerdictSeverity::Elevated);
         QCOMPARE(pl1Capped.primaryBottleneckDomain, QStringLiteral("Power & Cooling"));
         QVERIFY(pl1Capped.headline.contains(QStringLiteral("PL1")));
+        QCOMPARE(pl1Capped.diagnosisState, DiagnosisState::Observation);
+        QVERIFY(!pl1Capped.recommendation.contains(QStringLiteral("performance is capped")));
 
         // 6. High battery discharge rate
         cpu.totalLoadPercent = 30.0;
@@ -379,6 +389,9 @@ private Q_SLOTS:
         QCOMPARE(wifiDegraded.primaryBottleneckDomain, QStringLiteral("Storage & Network"));
         QVERIFY(wifiDegraded.causalChain.contains(QStringLiteral("Home-WiFi")));
         QVERIFY(wifiDegraded.causalChain.contains(QStringLiteral("18%")));
+        QCOMPARE(wifiDegraded.diagnosisState, DiagnosisState::Observation);
+        QVERIFY(!wifiDegraded.causalChain.contains(QStringLiteral("dBm")));
+        QVERIFY(!wifiDegraded.missingEvidence.isEmpty());
 
         // 11. ZRAM Memory Exhaustion verdict (Bottleneck / Severity 2)
         psi.wifiQualityAvailable = false;
@@ -394,8 +407,52 @@ private Q_SLOTS:
         QCOMPARE(zramExhausted.ruleId, QStringLiteral("memory.zram-exhaustion"));
         QCOMPARE(zramExhausted.severity, VerdictSeverity::Bottleneck);
         QCOMPARE(zramExhausted.primaryBottleneckDomain, QStringLiteral("Memory"));
-        QVERIFY(zramExhausted.headline.contains(QStringLiteral("ZRAM compressed swap")));
+        QVERIFY(zramExhausted.headline.contains(QStringLiteral("ZRAM use is high")));
         QVERIFY(zramExhausted.causalChain.contains(QStringLiteral("88% filled")));
+    }
+
+    void testUnavailablePowerProfileDoesNotCreateDiagnosis()
+    {
+        CpuSocSnapshot cpu;
+        cpu.loadAvailable = true;
+        cpu.loadWarmedUp = true;
+        cpu.totalLoadPercent = 90.0;
+        cpu.temperatureAvailable = true;
+        cpu.packageTempCelsius = 60.0;
+        cpu.thermalLimitAvailable = true;
+        cpu.thermalHeadroomCelsius = 40.0;
+        PsiAndMemorySnapshot psi;
+        psi.responsivenessAvailable = true;
+        PowerFlowSnapshot power;
+        power.onAcPower = true;
+        power.activePowerProfile = QStringLiteral("power-saver");
+        power.activePowerProfileAvailable = false;
+
+        const CausalVerdict verdict = CausalDiagnosisEngine::evaluate(cpu, {}, psi, power, {}, {});
+        QCOMPARE(verdict.severity, VerdictSeverity::Nominal);
+        QCOMPARE(verdict.ruleId, QStringLiteral("system.nominal"));
+    }
+
+    void testZeroWifiSignalRemainsAnAvailableObservation()
+    {
+        CpuSocSnapshot cpu;
+        cpu.loadAvailable = true;
+        cpu.loadWarmedUp = true;
+        cpu.totalLoadPercent = 30.0;
+        cpu.temperatureAvailable = true;
+        cpu.packageTempCelsius = 55.0;
+        cpu.thermalLimitAvailable = true;
+        cpu.thermalHeadroomCelsius = 40.0;
+        PsiAndMemorySnapshot psi;
+        psi.responsivenessAvailable = true;
+        psi.wifiQualityAvailable = true;
+        psi.primaryWifiSignalPercent = 0;
+
+        const CausalVerdict verdict = CausalDiagnosisEngine::evaluate(cpu, {}, psi, {}, {}, {});
+        QCOMPARE(verdict.ruleId, QStringLiteral("network.wifi-link-degradation"));
+        QCOMPARE(verdict.diagnosisState, DiagnosisState::Observation);
+        QVERIFY(verdict.causalChain.contains(QStringLiteral("0%")));
+        QVERIFY(verdict.causalChain.contains(QStringLiteral("NetworkManager")));
     }
 
     void testBatteryEtaAndHealthCalculation()
@@ -482,20 +539,25 @@ private Q_SLOTS:
             "2026-10-24T21:38:42+02:00 myhost kernel: Bluetooth: hci0: unexpected packet received\n"
             "2026-10-24T21:38:45+02:00 myhost kernel: amdgpu 0000:03:00.0: [drm:amdgpu_job_timedout] *ERROR* ring gfx_0.0.0 timeout for /home/johndoe/projects/game\n"
             "2026-10-24T21:38:50+02:00 myhost kernel: oom-killer: gfp_mask=0x100cca(GFP_HIGHUSER_MOVABLE), order=0, oom_score_adj=0 from 192.168.1.100 with dev 00:1a:2b:3c:4d:5e\n"
+            "2026-10-24T21:38:52+02:00 myhost kernel: private-app invoked oom-killer: gfp_mask=0x0\n"
+            "2026-10-24T21:38:54+02:00 myhost kernel: oom-kill:constraint=CONSTRAINT_NONE,task=another-private-app,pid=4321,uid=1000\n"
         );
 
         const QList<KernelLogEntry> entries = KernelLogReader::parseJournalLines(mockJournal);
-        QCOMPARE(entries.size(), 3); // Bluetooth should be filtered out
+        QCOMPARE(entries.size(), 5); // Bluetooth should be filtered out
 
         // 1. Thermal
         QCOMPARE(entries.at(0).subsystem, QStringLiteral("Thermal"));
         QCOMPARE(entries.at(0).severity, QStringLiteral("error"));
         QVERIFY(entries.at(0).message.contains(QStringLiteral("critical temperature reached")));
+        QCOMPARE(entries.at(0).epochMs,
+                 QDateTime::fromString(QStringLiteral("2026-10-24T21:38:40+02:00"), Qt::ISODate).toMSecsSinceEpoch());
 
         // 2. GPU DRM error with path redaction
         QCOMPARE(entries.at(1).subsystem, QStringLiteral("Graphics"));
         QCOMPARE(entries.at(1).severity, QStringLiteral("error"));
         QVERIFY(entries.at(1).message.contains(QStringLiteral("/home/[user]/projects/game")));
+        QVERIFY(entries.at(1).message.contains(QStringLiteral("0000:03:00.0")));
         QVERIFY(!entries.at(1).message.contains(QStringLiteral("johndoe")));
 
         // 3. OOM Killer with IP and MAC redaction
@@ -505,6 +567,145 @@ private Q_SLOTS:
         QVERIFY(entries.at(2).message.contains(QStringLiteral("[mac-redacted]")));
         QVERIFY(!entries.at(2).message.contains(QStringLiteral("192.168.1.100")));
         QVERIFY(!entries.at(2).message.contains(QStringLiteral("00:1a:2b:3c:4d:5e")));
+        QVERIFY(entries.at(3).message.contains(QStringLiteral("[process-redacted] invoked oom-killer")));
+        QVERIFY(!entries.at(3).message.contains(QStringLiteral("private-app")));
+        QVERIFY(entries.at(4).message.contains(QStringLiteral("task=[redacted]")));
+        QVERIFY(entries.at(4).message.contains(QStringLiteral("pid=[redacted]")));
+        QVERIFY(!entries.at(4).message.contains(QStringLiteral("another-private-app")));
+        QVERIFY(!entries.at(4).message.contains(QStringLiteral("4321")));
+    }
+
+    void testKernelLogJsonTimestampFieldsAndIpv6Privacy()
+    {
+        const qint64 expectedMs = QDateTime::fromString(QStringLiteral("2026-11-02T12:34:56Z"), Qt::ISODate).toMSecsSinceEpoch();
+        const QJsonObject journalEntry{{QStringLiteral("MESSAGE"), QStringLiteral("amdgpu 0000:03:00.0: thermal reset reported for 2001:db8::1 and ::1234")},
+            {QStringLiteral("__REALTIME_TIMESTAMP"), QString::number(expectedMs * 1000)},
+            {QStringLiteral("PRIORITY"), QStringLiteral("3")}};
+        const QString raw = QString::fromUtf8(QJsonDocument(journalEntry).toJson(QJsonDocument::Compact));
+        const auto entries = KernelLogReader::parseJournalLines(raw);
+        QCOMPARE(entries.size(), 1);
+        QCOMPARE(entries.first().epochMs, expectedMs);
+        QCOMPARE(entries.first().severity, QStringLiteral("error"));
+        QVERIFY(entries.first().message.contains(QStringLiteral("[ip-redacted]")));
+        QVERIFY(!entries.first().message.contains(QStringLiteral("2001:db8::1")));
+        QVERIFY(!entries.first().message.contains(QStringLiteral("::1234")));
+        QVERIFY(entries.first().message.contains(QStringLiteral("0000:03:00.0")));
+
+        const QVariantList mapped = KernelLogReader::fetchIncidentLogsVariant(expectedMs, expectedMs, 0, raw);
+        QCOMPARE(mapped.size(), 1);
+        const QVariantMap event = mapped.first().toMap();
+        QCOMPARE(event.value(QStringLiteral("epochMs")).toLongLong(), expectedMs);
+        QCOMPARE(event.value(QStringLiteral("timestampMs")).toLongLong(), expectedMs);
+        QVERIFY(!event.contains(QStringLiteral("incidentId")));
+    }
+
+    void testKernelJournalQueryIncludesAllBoots()
+    {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        const QString argsPath = directory.filePath(QStringLiteral("journal-args.txt"));
+        const QString journalPath = directory.filePath(QStringLiteral("journalctl"));
+        QFile executable(journalPath);
+        QVERIFY(executable.open(QIODevice::WriteOnly | QIODevice::Text));
+        const QByteArray script = QStringLiteral(
+            "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$PULSE_TEST_JOURNAL_ARGS\"\nprintf '%s\\n' '{\"MESSAGE\":\"thermal sample\"}'\n").toUtf8();
+        QCOMPARE(executable.write(script), script.size());
+        executable.close();
+        QVERIFY(executable.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner));
+
+        const QByteArray oldPath = qgetenv("PATH");
+        const QByteArray oldArgsPath = qgetenv("PULSE_TEST_JOURNAL_ARGS");
+        qputenv("PATH", QFile::encodeName(directory.path()) + QDir::listSeparator().toLatin1() + oldPath);
+        qputenv("PULSE_TEST_JOURNAL_ARGS", QFile::encodeName(argsPath));
+        const auto entries = KernelLogReader::fetchIncidentLogs(1700000000000LL, 1700000000000LL, 0);
+        qputenv("PATH", oldPath);
+        if (oldArgsPath.isNull()) qunsetenv("PULSE_TEST_JOURNAL_ARGS"); else qputenv("PULSE_TEST_JOURNAL_ARGS", oldArgsPath);
+
+        QCOMPARE(entries.size(), 1);
+        QFile capturedArgs(argsPath);
+        QVERIFY(capturedArgs.open(QIODevice::ReadOnly | QIODevice::Text));
+        const QStringList arguments = QString::fromUtf8(capturedArgs.readAll()).split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+        QVERIFY(arguments.contains(QStringLiteral("_TRANSPORT=kernel")));
+        QVERIFY(!arguments.contains(QStringLiteral("-k")));
+        QVERIFY(arguments.contains(QStringLiteral("--since")));
+        QVERIFY(arguments.contains(QStringLiteral("--until")));
+    }
+
+    void testJsonReportPreservesDiagnosisAndPowerProfileAvailability()
+    {
+        FlightRecorder recorder;
+        FlightSample staleProfile;
+        staleProfile.sampleId = 1;
+        staleProfile.timestampMs = 1700000000000LL;
+        staleProfile.diagnosisState = DiagnosisState::SuspectedCause;
+        staleProfile.verdictMissingEvidence = {QStringLiteral("No frame-time measurement is available.")};
+        staleProfile.activePowerProfile = QStringLiteral("power-saver");
+        staleProfile.metricQuality.insert(QStringLiteral("powerProfileAvailable"), false);
+        recorder.appendSample(staleProfile);
+
+        FlightSample currentProfile;
+        currentProfile.sampleId = 2;
+        currentProfile.timestampMs = staleProfile.timestampMs + 1000;
+        currentProfile.diagnosisState = DiagnosisState::ConfirmedProblem;
+        currentProfile.activePowerProfile = QStringLiteral("balanced");
+        currentProfile.metricQuality.insert(QStringLiteral("powerProfileAvailable"), true);
+        recorder.appendSample(currentProfile);
+
+        const QJsonArray samples = QJsonDocument::fromJson(recorder.exportSamplesJson(true).toUtf8()).array();
+        QCOMPARE(samples.size(), 2);
+        QCOMPARE(samples.at(0).toObject().value(QStringLiteral("diagnosisState")).toString(), diagnosisStateLabel(DiagnosisState::SuspectedCause));
+        QCOMPARE(samples.at(0).toObject().value(QStringLiteral("verdictMissingEvidence")).toArray().first().toString(),
+            QStringLiteral("No frame-time measurement is available."));
+        QVERIFY(samples.at(0).toObject().value(QStringLiteral("activePowerProfile")).isNull());
+        QCOMPARE(samples.at(1).toObject().value(QStringLiteral("activePowerProfile")).toString(), QStringLiteral("balanced"));
+    }
+
+    void testIncidentWallTimeRangeUsesWallClockSamples()
+    {
+        FlightRecorder recorder;
+        FlightSample first;
+        first.sampleId = 1;
+        first.monotonicMs = 1000;
+        first.timestampMs = 1700000000000LL;
+        first.severity = VerdictSeverity::Elevated;
+        first.verdictHeadline = QStringLiteral("Observed issue");
+        recorder.appendSample(first);
+        FlightSample last = first;
+        last.sampleId = 2;
+        last.monotonicMs = 3000;
+        last.timestampMs += 2000;
+        recorder.appendSample(last);
+
+        const auto episodes = recorder.incidentEpisodes();
+        QCOMPARE(episodes.size(), 1);
+        const QString incidentId = episodes.first().toMap().value(QStringLiteral("incidentId")).toString();
+        const auto range = recorder.incidentWallTimeRange(incidentId);
+        QCOMPARE(range.first, first.timestampMs);
+        QCOMPARE(range.second, last.timestampMs);
+        QVERIFY(range.first > 1000000000000LL);
+    }
+
+    void testReportRedactsNetworkIdentifiersEvenWhenProcessDetailsAreIncluded()
+    {
+        FlightRecorder recorder;
+        FlightSample sample;
+        sample.sampleId = 1;
+        sample.timestampMs = 1700000000000LL;
+        sample.networkDevices = {QVariantMap{{QStringLiteral("wirelessSsid"), QStringLiteral("private-wifi-name")},
+            {QStringLiteral("bssid"), QStringLiteral("00:11:22:33:44:55")},
+            {QStringLiteral("ipv4"), QStringLiteral("192.0.2.10")}}};
+        sample.verdictHeadline = QStringLiteral("Weak signal observed");
+        sample.verdictCausalChain = QStringLiteral("Active Wi-Fi private-wifi-name at 18 percent");
+        sample.verdictEvidence = {QStringLiteral("Network private-wifi-name reported a weak signal")};
+        recorder.appendSample(sample);
+
+        const QByteArray json = recorder.exportSamplesJson(true).toUtf8();
+        const QString markdown = recorder.exportSummaryMarkdown(true);
+        for (const QByteArray &identifier : {QByteArray("private-wifi-name"), QByteArray("00:11:22:33:44:55"), QByteArray("192.0.2.10")}) {
+            QVERIFY(!json.contains(identifier));
+            QVERIFY(!markdown.toUtf8().contains(identifier));
+        }
+        QVERIFY(json.contains("[network-redacted]"));
     }
 
     void testFlightRecorderCompareIncidents()

@@ -665,3 +665,15 @@ msgstr "Wi-Fi: "
 
 msgid "Battery: "
 msgstr "Batteri: "
+
+msgid "Observed condition"
+msgstr "Observerat tillstånd"
+
+msgid "Possible contributing cause"
+msgstr "Möjlig bidragande orsak"
+
+msgid "Confirmed event"
+msgstr "Bekräftad händelse"
+
+msgid "Incomplete evidence"
+msgstr "Ofullständigt underlag"

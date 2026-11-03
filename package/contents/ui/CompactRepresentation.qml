@@ -22,6 +22,7 @@ Item {
     property bool showWattsInPanel: true
     property bool alwaysShowStatusInPanel: false
     signal activationRequested()
+    readonly property bool motionAllowed: Kirigami.Units.shortDuration > 0 && Kirigami.Units.longDuration > 0
 
     readonly property string temperatureText: controller.cpuTempAvailable
         ? TemperatureLabels.formatTemperature(controller.cpuPackageTemp, controller.temperatureUnit) : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Temp N/A")
@@ -89,7 +90,7 @@ Item {
 
                     Rectangle {
                         id: pulseGlow
-                        visible: compactRoot.controller.verdictSeverity >= 2
+                        visible: compactRoot.motionAllowed && compactRoot.controller.verdictSeverity >= 2
                         anchors.centerIn: parent
                         width: 13
                         height: 13
@@ -98,7 +99,7 @@ Item {
                         opacity: 0.0
 
                         SequentialAnimation on opacity {
-                            running: compactRoot.controller.verdictSeverity >= 2
+                            running: compactRoot.motionAllowed && compactRoot.visible && compactRoot.controller.verdictSeverity >= 2
                             loops: Animation.Infinite
                             NumberAnimation { to: 0.65; duration: 800; easing.type: Easing.InOutQuad }
                             NumberAnimation { to: 0.10; duration: 800; easing.type: Easing.InOutQuad }

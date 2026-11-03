@@ -8,6 +8,12 @@
 
 #include <QDBusConnection>
 #include <QDBusMessage>
+#include <QDBusObjectPath>
+#include <QDBusVariant>
+#include <QDBusVirtualObject>
+#include <QDir>
+#include <QFile>
+#include <QJSEngine>
 #include <QFile>
 #include <QTemporaryDir>
 #include <QtTest>
@@ -26,6 +32,100 @@ public:
     explicit FakePowerProfiles(QObject *parent = nullptr) : QObject(parent) {}
     QString activeProfile() const { return QStringLiteral("balanced"); }
     QStringList profiles() const { return {QStringLiteral("balanced"), QStringLiteral("power-saver")}; }
+};
+
+class FakeMutablePowerProfiles : public QObject
+{
+    Q_OBJECT
+    Q_CLASSINFO("D-Bus Interface", "net.hadess.PowerProfiles")
+    Q_PROPERTY(QString ActiveProfile READ activeProfile WRITE setActiveProfile)
+    Q_PROPERTY(QStringList Profiles READ profiles)
+
+public:
+    explicit FakeMutablePowerProfiles(QObject *parent = nullptr) : QObject(parent) {}
+    QString activeProfile() const { return m_activeProfile; }
+    void setActiveProfile(const QString &profile) { m_activeProfile = profile; }
+    QStringList profiles() const { return {QStringLiteral("balanced"), QStringLiteral("power-saver")}; }
+
+private:
+    QString m_activeProfile = QStringLiteral("balanced");
+};
+
+class FakeNetworkManager : public QDBusVirtualObject
+{
+    Q_OBJECT
+
+public:
+    explicit FakeNetworkManager(QObject *parent = nullptr) : QDBusVirtualObject(parent) {}
+
+    QString introspect(const QString &) const override
+    {
+        return QStringLiteral("<node><interface name='org.freedesktop.DBus.Properties'/></node>");
+    }
+
+    bool handleMessage(const QDBusMessage &message, const QDBusConnection &connection) override
+    {
+        if (message.interface() != QStringLiteral("org.freedesktop.DBus.Properties")) return false;
+        const QString path = message.path();
+        const QVariantList args = message.arguments();
+        QVariantMap accessPoint;
+        int delayMs = 1;
+
+        if (message.member() == QStringLiteral("Get") && args.size() >= 2) {
+            const QString property = args.at(1).toString();
+            QVariant value;
+            if (path == QStringLiteral("/org/freedesktop/NetworkManager")
+                && property == QStringLiteral("Devices")) {
+                value = QVariant::fromValue(QList<QDBusObjectPath>{
+                    QDBusObjectPath(QStringLiteral("/org/freedesktop/NetworkManager/Devices/0")),
+                    QDBusObjectPath(QStringLiteral("/org/freedesktop/NetworkManager/Devices/1"))});
+            } else if (path.endsWith(QStringLiteral("/Devices/0"))) {
+                if (property == QStringLiteral("ActiveAccessPoint"))
+                    value = QVariant::fromValue(QDBusObjectPath(QStringLiteral("/org/freedesktop/NetworkManager/AccessPoints/0")));
+                else if (property == QStringLiteral("Interface")) {
+                    value = QStringLiteral("wlan0");
+                    delayMs = 90;
+                } else if (property == QStringLiteral("Bitrate")) {
+                    value = 54000U;
+                    delayMs = 10;
+                }
+            } else if (path.endsWith(QStringLiteral("/Devices/1"))) {
+                if (property == QStringLiteral("ActiveAccessPoint"))
+                    value = QVariant::fromValue(QDBusObjectPath(QStringLiteral("/org/freedesktop/NetworkManager/AccessPoints/1")));
+                else if (property == QStringLiteral("Interface")) {
+                    value = QStringLiteral("wlan1");
+                    delayMs = 5;
+                } else if (property == QStringLiteral("Bitrate")) {
+                    value = 433000U;
+                    delayMs = 70;
+                }
+            }
+            if (!value.isValid()) return false;
+            const QDBusMessage reply = message.createReply({QVariant::fromValue(QDBusVariant(value))});
+            QTimer::singleShot(delayMs, this, [connection, reply] { connection.send(reply); });
+            return true;
+        }
+
+        if (message.member() == QStringLiteral("GetAll") && args.size() == 1) {
+            if (path.endsWith(QStringLiteral("/AccessPoints/0"))) {
+                accessPoint = {{QStringLiteral("Ssid"), QByteArrayLiteral("zero-signal")},
+                    {QStringLiteral("Strength"), QVariant::fromValue<uchar>(0)},
+                    {QStringLiteral("Frequency"), 2412U}};
+                delayMs = 5;
+            } else if (path.endsWith(QStringLiteral("/AccessPoints/1"))) {
+                accessPoint = {{QStringLiteral("Ssid"), QByteArrayLiteral("fast-link")},
+                    {QStringLiteral("Strength"), QVariant::fromValue<uchar>(73)},
+                    {QStringLiteral("Frequency"), 5180U}};
+                delayMs = 100;
+            } else {
+                return false;
+            }
+            const QDBusMessage reply = message.createReply({QVariant::fromValue(accessPoint)});
+            QTimer::singleShot(delayMs, this, [connection, reply] { connection.send(reply); });
+            return true;
+        }
+        return false;
+    }
 };
 
 class FakeTrendsCollector : public QObject, protected QDBusContext
@@ -80,6 +180,95 @@ class TestControllerActions : public QObject
     Q_OBJECT
 
 private Q_SLOTS:
+    void testWifiSignalVisibilityHonorsAvailabilityAtZero()
+    {
+        QFile source(QStringLiteral(PULSE_QML_SOURCE_DIR "/MeasurementLabels.js"));
+        QVERIFY(source.open(QIODevice::ReadOnly | QIODevice::Text));
+        QString code = QString::fromUtf8(source.readAll());
+        const qsizetype pragmaEnd = code.indexOf(QLatin1Char('\n'));
+        QVERIFY(pragmaEnd >= 0);
+        code.remove(0, pragmaEnd + 1);
+
+        QJSEngine engine;
+        QVERIFY(!engine.evaluate(code).isError());
+        const QJSValue visible = engine.globalObject().property(QStringLiteral("wifiSignalVisible"));
+        QVERIFY(visible.isCallable());
+        const auto evaluate = [&engine, &visible](const QVariantMap &row) {
+            return visible.call({engine.toScriptValue(row)}).toBool();
+        };
+        QVERIFY(evaluate({{QStringLiteral("isWireless"), true},
+            {QStringLiteral("wirelessSignalAvailable"), true}, {QStringLiteral("wirelessSignalPercent"), 0}}));
+        QVERIFY(!evaluate({{QStringLiteral("isWireless"), true},
+            {QStringLiteral("wirelessSignalAvailable"), false}, {QStringLiteral("wirelessSignalPercent"), 65}}));
+        QVERIFY(evaluate({{QStringLiteral("isWireless"), true}, {QStringLiteral("wirelessSignalPercent"), 65}}));
+        QVERIFY(!evaluate({{QStringLiteral("isWireless"), false},
+            {QStringLiteral("wirelessSignalAvailable"), true}, {QStringLiteral("wirelessSignalPercent"), 0}}));
+    }
+
+    void testWifiTelemetryRemainsAssociatedWithEachAdapter()
+    {
+        QDBusConnection bus = QDBusConnection::sessionBus();
+        QVERIFY(bus.isConnected());
+        FakeNetworkManager fake;
+        const QString service = QStringLiteral("org.freedesktop.NetworkManager");
+        const QString objectPath = QStringLiteral("/org/freedesktop/NetworkManager");
+        QVERIFY(bus.registerService(service));
+        QVERIFY(bus.registerVirtualObject(objectPath, &fake, QDBusConnection::SubPath));
+
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString sysRoot = fixture.filePath(QStringLiteral("sys"));
+        const QString procRoot = fixture.filePath(QStringLiteral("proc"));
+        for (const QString &name : {QStringLiteral("wlan0"), QStringLiteral("wlan1")}) {
+            QVERIFY(QDir().mkpath(QDir(sysRoot).filePath(QStringLiteral("class/net/") + name + QStringLiteral("/wireless"))));
+            QFile ifindex(QDir(sysRoot).filePath(QStringLiteral("class/net/") + name + QStringLiteral("/ifindex")));
+            QVERIFY(ifindex.open(QIODevice::WriteOnly | QIODevice::Text));
+            QCOMPARE(ifindex.write(name == QStringLiteral("wlan0") ? "3\n" : "4\n"), qint64(2));
+            ifindex.close();
+        }
+        QVERIFY(QDir().mkpath(QDir(procRoot).filePath(QStringLiteral("net"))));
+        QFile netDev(QDir(procRoot).filePath(QStringLiteral("net/dev")));
+        QVERIFY(netDev.open(QIODevice::WriteOnly | QIODevice::Text));
+        const QByteArray netDevContents = "Inter-| Receive | Transmit\n face |bytes packets errs drop fifo frame compressed multicast|bytes packets errs drop fifo colls carrier compressed\n wlan0: 1000 0 0 0 0 0 0 0 2000 0 0 0 0 0 0 0\n wlan1: 3000 0 0 0 0 0 0 0 4000 0 0 0 0 0 0 0\n";
+        QCOMPARE(netDev.write(netDevContents), static_cast<qint64>(netDevContents.size()));
+        netDev.close();
+
+        const QByteArray oldSysRoot = qgetenv("LOOFI_PULSE_SYS_ROOT");
+        const QByteArray oldProcRoot = qgetenv("LOOFI_PULSE_PROC_ROOT");
+        qputenv("LOOFI_PULSE_SYS_ROOT", QFile::encodeName(sysRoot));
+        qputenv("LOOFI_PULSE_PROC_ROOT", QFile::encodeName(procRoot));
+        {
+            PulseTelemetryController controller(bus);
+            const auto rowFor = [&controller](const QString &name) {
+                for (const QVariant &item : controller.networkInterfaces()) {
+                    const QVariantMap row = item.toMap();
+                    if (row.value(QStringLiteral("name")).toString() == name) return row;
+                }
+                return QVariantMap{};
+            };
+            QTRY_VERIFY_WITH_TIMEOUT(rowFor(QStringLiteral("wlan0")).value(QStringLiteral("wirelessSignalAvailable")).toBool(), 3000);
+            QTRY_VERIFY_WITH_TIMEOUT(rowFor(QStringLiteral("wlan1")).value(QStringLiteral("wirelessSignalAvailable")).toBool(), 3000);
+
+            const QVariantMap first = rowFor(QStringLiteral("wlan0"));
+            QCOMPARE(first.value(QStringLiteral("wirelessSsid")).toString(), QStringLiteral("zero-signal"));
+            QCOMPARE(first.value(QStringLiteral("wirelessSignalPercent")).toInt(), 0);
+            QCOMPARE(first.value(QStringLiteral("wirelessFrequencyGhz")).toDouble(), 2.412);
+            QCOMPARE(first.value(QStringLiteral("wirelessBitrateMbps")).toInt(), 54);
+
+            const QVariantMap second = rowFor(QStringLiteral("wlan1"));
+            QCOMPARE(second.value(QStringLiteral("wirelessSsid")).toString(), QStringLiteral("fast-link"));
+            QCOMPARE(second.value(QStringLiteral("wirelessSignalPercent")).toInt(), 73);
+            QCOMPARE(second.value(QStringLiteral("wirelessFrequencyGhz")).toDouble(), 5.18);
+            QCOMPARE(second.value(QStringLiteral("wirelessBitrateMbps")).toInt(), 433);
+        }
+        if (oldSysRoot.isEmpty()) qunsetenv("LOOFI_PULSE_SYS_ROOT");
+        else qputenv("LOOFI_PULSE_SYS_ROOT", oldSysRoot);
+        if (oldProcRoot.isEmpty()) qunsetenv("LOOFI_PULSE_PROC_ROOT");
+        else qputenv("LOOFI_PULSE_PROC_ROOT", oldProcRoot);
+        bus.unregisterObject(objectPath);
+        bus.unregisterService(service);
+    }
+
     void testNavigationValidationAndPrivacyDefaults()
     {
         QCOMPARE(PulseTelemetryController::normalizedPageName(QStringLiteral(" power ")), QStringLiteral("power"));
@@ -179,6 +368,33 @@ private Q_SLOTS:
         bus.unregisterService(QStringLiteral("net.hadess.PowerProfiles"));
     }
 
+    void testAsyncProfileSetUpdatesCurrentSampleImmediately()
+    {
+        QDBusConnection bus = QDBusConnection::sessionBus();
+        QVERIFY(bus.isConnected());
+        FakeMutablePowerProfiles fake;
+        QVERIFY(bus.registerService(QStringLiteral("net.hadess.PowerProfiles")));
+        QVERIFY(bus.registerObject(QStringLiteral("/net/hadess/PowerProfiles"), &fake, QDBusConnection::ExportAllProperties));
+
+        PulseTelemetryController controller(bus);
+        QTRY_VERIFY_WITH_TIMEOUT(controller.powerProfileServiceAvailable(), 2000);
+        QTRY_COMPARE_WITH_TIMEOUT(controller.activePowerProfile(), QStringLiteral("balanced"), 2000);
+        QVERIFY(controller.activePowerProfileAvailable());
+        QVERIFY(controller.setPowerProfile(QStringLiteral("power-saver")));
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.powerProfileChangePending(), 2000);
+        QVERIFY(controller.lastActionSucceeded());
+        QCOMPARE(controller.activePowerProfile(), QStringLiteral("power-saver"));
+        QVERIFY(controller.activePowerProfileAvailable());
+
+        controller.refreshNow();
+        const QVariantMap latest = controller.historySamples().last().toMap();
+        QCOMPARE(latest.value(QStringLiteral("activePowerProfile")).toString(), QStringLiteral("power-saver"));
+        QVERIFY(latest.value(QStringLiteral("metricQuality")).toMap().value(QStringLiteral("powerProfileAvailable")).toBool());
+
+        bus.unregisterObject(QStringLiteral("/net/hadess/PowerProfiles"));
+        bus.unregisterService(QStringLiteral("net.hadess.PowerProfiles"));
+    }
+
     void testUnwritableReportLocationReportsFailure()
     {
         QTemporaryDir tempDir;
@@ -192,9 +408,27 @@ private Q_SLOTS:
         qputenv("XDG_DATA_HOME", QFile::encodeName(blockedPath));
         PulseTelemetryController controller(QDBusConnection::systemBus());
         QCOMPARE(controller.exportIncidentReportToFile(), QString());
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.actionPending(), 5000);
         QVERIFY(!controller.lastActionSucceeded());
         QVERIFY(controller.lastActionStatus().contains(QStringLiteral("could not be created")));
         qputenv("XDG_DATA_HOME", previousDataHome);
+    }
+
+    void testIncidentKernelLogLoadingDoesNotBlock()
+    {
+        PulseTelemetryController controller(QDBusConnection::systemBus());
+        SessionSnapshot marked;
+        QString error;
+        QVERIFY2(SessionStore::decode(controller.collectorMarkProblem(), &marked, &error), qPrintable(error));
+        const QString markerId = marked.metadata.value(QStringLiteral("markerId")).toString();
+        QVERIFY(!markerId.isEmpty());
+
+        QElapsedTimer elapsed;
+        elapsed.start();
+        controller.loadIncidentKernelLogs(markerId);
+        QVERIFY2(elapsed.elapsed() < 200, "Kernel journal retrieval must be scheduled away from the UI thread.");
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.incidentKernelLogsLoading(), 5000);
+        QCOMPARE(controller.incidentKernelLogs(markerId), controller.incidentKernelLogEntries());
     }
 
     void testHistoryRetentionAndClearHistory()

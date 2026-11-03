@@ -68,7 +68,7 @@ QVariantList PulseTelemetryController::remoteCollection(const char *key) const
 {
     auto rows = m_remoteValues.value(QString::fromLatin1(key)).toList();
     if (m_receivedAt.isValid() && !m_connectionState.startsWith(QStringLiteral("Disconnected"))
-        && m_receivedAt.elapsed() <= std::max(5000, m_timer.interval() * 3)) return rows;
+        && m_receivedAt.elapsed() <= collectorStaleTimeoutMs()) return rows;
     for (auto &value : rows) {
         auto row = value.toMap();
         for (auto it = row.begin(); it != row.end(); ++it)
@@ -79,11 +79,17 @@ QVariantList PulseTelemetryController::remoteCollection(const char *key) const
     return rows;
 }
 
+int PulseTelemetryController::collectorStaleTimeoutMs() const
+{
+    const int expectedInterval = m_remoteValues.value(QStringLiteral("effectivePollIntervalMs")).toInt();
+    return std::max(5000, (expectedInterval > 0 ? expectedInterval : m_timer.interval()) * 3);
+}
+
 QVariant PulseTelemetryController::remoteTelemetryValue(const char *name) const
 {
     const QString key = QString::fromLatin1(name);
     const bool disconnected = !m_receivedAt.isValid() || m_connectionState.startsWith(QStringLiteral("Disconnected"));
-    const bool stale = m_receivedAt.isValid() && m_receivedAt.elapsed() > std::max(5000, m_timer.interval() * 3);
+    const bool stale = m_receivedAt.isValid() && m_receivedAt.elapsed() > collectorStaleTimeoutMs();
     if (disconnected || stale) {
         if (key == QStringLiteral("verdictSeverity")) return static_cast<int>(VerdictSeverity::Unknown);
         if (key == QStringLiteral("verdictHeadline")) return stale ? QStringLiteral("Readings are stale") : QStringLiteral("Waiting for the collector");

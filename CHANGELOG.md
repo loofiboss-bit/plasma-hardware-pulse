@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.14.0 — Diagnostic Intelligence & Reliability (2026-11-03)
+
+### Added
+
+- Structured diagnostic assessments distinguish observations, suspected causes, and confirmed problems, with explicit missing evidence and actionable recommendations.
+- Flight Recorder incident summaries include wall-clock timestamps, evidence, uncertainty, and before/during/after coverage details.
+- Kernel event exports include real journal timestamps and incident correlation identifiers while retaining report schema 2.
+- Collector clients can declare UI activity so inactive desktop windows no longer force the fastest shared polling interval; retention requests remain honored.
+
+### Fixed
+
+- Do not infer CPU throttling from high load and a power-saver profile, or sustained capping from a single PL1 sample.
+- Do not report NetworkManager signal percentage as measured dBm or infer Wi-Fi throughput degradation without throughput evidence.
+- Keep asynchronous SSID, signal, frequency, and bitrate readings associated with their own adapter when several Wi-Fi devices are active.
+- Expire unavailable or stale Wi-Fi and power-profile observations instead of carrying them into new diagnoses.
+- Fetch incident kernel logs asynchronously; correlate them using wall-clock sample timestamps rather than monotonic uptime.
+- Redact network identifiers and additional address forms from default report exports.
+- Respect KDE's reduced-motion setting and stop decorative animations on hidden pages.
+
+### Compatibility
+
+- Keep `.pulse-session` format 1, JSON report schema 2, Collector1, existing settings, and existing diagnostic rule identifiers. New session evidence fields are optional.
+- Routine collection remains local and uses the current user permissions. Background monitoring, login startup, and persistent history remain separate opt-ins.
+
+Automated and manual qualification results are recorded in [docs/validation-v0.14.0.md](docs/validation-v0.14.0.md).
+
 ## 0.13.0 — Comprehensive Evolution (2026-10-25)
 
 ### Added

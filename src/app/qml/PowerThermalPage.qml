@@ -488,7 +488,7 @@ Kirigami.ScrollablePage {
                                         color: fanRow.modelData.rpm > 0 ? theme.tempAccent : Kirigami.Theme.disabledTextColor
                                         rotation: 0
                                         NumberAnimation on rotation {
-                                            running: fanRow.modelData.rpm > 0
+                                            running: theme.motionAllowed && powerPage.visible && fanRow.modelData.rpm > 0
                                             from: 0
                                             to: 360
                                             loops: Animation.Infinite
@@ -545,7 +545,8 @@ Kirigami.ScrollablePage {
                                        ? theme.tempAccent : Kirigami.Theme.disabledTextColor
                                 rotation: 0
                                 NumberAnimation on rotation {
-                                    running: powerPage.controller.fanAvailable && powerPage.controller.primaryFanRpm > 0
+                                    running: theme.motionAllowed && powerPage.visible
+                                             && powerPage.controller.fanAvailable && powerPage.controller.primaryFanRpm > 0
                                     from: 0
                                     to: 360
                                     loops: Animation.Infinite

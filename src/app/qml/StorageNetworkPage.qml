@@ -4,6 +4,7 @@ import org.kde.ki18n
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
+import "MeasurementLabels.js" as MeasurementLabels
 
 Kirigami.ScrollablePage {
     id: page
@@ -479,7 +480,7 @@ Kirigami.ScrollablePage {
 
                             // Wi-Fi SSID & Signal
                             Rectangle {
-                                visible: netCard.modelData.isWireless && netCard.modelData.wirelessSignalPercent > 0
+                                visible: MeasurementLabels.wifiSignalVisible(netCard.modelData)
                                 radius: theme.pillRadius
                                 color: theme.cardNestedBg
                                 border.width: 1
@@ -497,7 +498,7 @@ Kirigami.ScrollablePage {
                                     }
                                     QQC2.Label {
                                         text: (netCard.modelData.wirelessSsid ? (netCard.modelData.wirelessSsid + " · ") : "")
-                                              + netCard.modelData.wirelessSignalPercent + "% (" + netCard.modelData.wirelessSignalDbm + " dBm)"
+                                              + netCard.modelData.wirelessSignalPercent + "% · " + KI18n.i18n("NetworkManager signal strength")
                                         font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 2)
                                         font.bold: true
                                         color: netCard.modelData.wirelessSignalPercent < 25 ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.positiveTextColor

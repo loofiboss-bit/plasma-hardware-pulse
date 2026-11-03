@@ -135,6 +135,23 @@ Kirigami.ScrollablePage {
                             color: theme.subtleSurfaceColor
                             border.width: 1
                             border.color: theme.subtleBorderColor
+                            implicitWidth: assessmentLabel.implicitWidth + 14
+                            implicitHeight: assessmentLabel.implicitHeight + 6
+                            QQC2.Label {
+                                id: assessmentLabel
+                                anchors.centerIn: parent
+                                text: KI18n.i18n(page.controller.verdictAssessment)
+                                color: Kirigami.Theme.textColor
+                                font.bold: true
+                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                            }
+                        }
+
+                        Rectangle {
+                            radius: theme.pillRadius
+                            color: theme.subtleSurfaceColor
+                            border.width: 1
+                            border.color: theme.subtleBorderColor
                             implicitWidth: domLabel.implicitWidth + 12
                             implicitHeight: domLabel.implicitHeight + 6
                             QQC2.Label {

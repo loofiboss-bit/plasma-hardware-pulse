@@ -6,6 +6,7 @@
 #include <QJsonArray>
 #include <QSet>
 #include <QRegularExpression>
+#include <algorithm>
 #include <cmath>
 #include <limits>
 namespace LoofiPulse {
@@ -45,7 +46,27 @@ void collectProcessNames(const QVariant &value, QSet<QString> &names, QSet<QStri
         for (const auto &item : value.toList()) collectProcessNames(item, names, pids, processContext);
     }
 }
-QVariant redactValue(const QVariant &value, const QSet<QString> &names, const QSet<QString> &pids, bool removeIdentityFields = true)
+void collectNetworkIdentifiers(const QVariant &value, QSet<QString> &identifiers)
+{
+    static const QSet<QString> sensitiveKeys{
+        QStringLiteral("wirelessssid"), QStringLiteral("ssid"), QStringLiteral("bssid"),
+        QStringLiteral("mac"), QStringLiteral("macaddress"), QStringLiteral("hardwareaddress"),
+        QStringLiteral("ip"), QStringLiteral("ipaddress"), QStringLiteral("ipv4"), QStringLiteral("ipv6")};
+    if (value.metaType().id() == QMetaType::QVariantMap) {
+        const auto map = value.toMap();
+        for (auto it = map.cbegin(); it != map.cend(); ++it) {
+            if (sensitiveKeys.contains(it.key().toLower())) {
+                const QString identifier = it.value().toString().trimmed();
+                if (!identifier.isEmpty()) identifiers.insert(identifier);
+            }
+            collectNetworkIdentifiers(it.value(), identifiers);
+        }
+    } else if (value.metaType().id() == QMetaType::QVariantList) {
+        for (const auto &item : value.toList()) collectNetworkIdentifiers(item, identifiers);
+    }
+}
+QVariant redactValue(const QVariant &value, const QSet<QString> &names, const QSet<QString> &pids,
+                     bool removeIdentityFields, const QSet<QString> &networkIdentifiers)
 {
     if (value.metaType().id() == QMetaType::QVariantMap) {
         QVariantMap result;
@@ -57,24 +78,30 @@ QVariant redactValue(const QVariant &value, const QSet<QString> &names, const QS
                 || key.contains(QStringLiteral("command")) || key.contains(QStringLiteral("executable"))
                 || key.startsWith(QStringLiteral("owner")) || key == QStringLiteral("username")
                 || key.contains(QStringLiteral("starttime")))) continue;
-            result.insert(it.key(), redactValue(it.value(), names, pids, removeIdentityFields));
+            result.insert(it.key(), redactValue(it.value(), names, pids, removeIdentityFields, networkIdentifiers));
         }
         return result;
     }
     if (value.metaType().id() == QMetaType::QVariantList) {
         QVariantList result;
-        for (const auto &item : value.toList()) result.append(redactValue(item, names, pids, removeIdentityFields));
+        for (const auto &item : value.toList()) result.append(redactValue(item, names, pids, removeIdentityFields, networkIdentifiers));
         return result;
     }
     if (value.metaType().id() == QMetaType::QStringList) {
         QStringList result;
-        for (const auto &item : value.toStringList()) result.append(redactValue(item, names, pids, removeIdentityFields).toString());
+        for (const auto &item : value.toStringList()) result.append(redactValue(item, names, pids, removeIdentityFields, networkIdentifiers).toString());
         return result;
     }
     if (value.metaType().id() == QMetaType::QString) {
         QString text = value.toString();
         for (const auto &name : names) text.replace(QRegularExpression(QStringLiteral("(?<![\\w])%1(?![\\w])").arg(QRegularExpression::escape(name))), QStringLiteral("[process]"));
         for (const auto &pid : pids) text.replace(QRegularExpression(QStringLiteral("\\bPID[ :=#]*%1\\b").arg(QRegularExpression::escape(pid)), QRegularExpression::CaseInsensitiveOption), QStringLiteral("PID [redacted]"));
+        QStringList identifiers = networkIdentifiers.values();
+        std::sort(identifiers.begin(), identifiers.end(), [](const QString &left, const QString &right) { return left.size() > right.size(); });
+        for (const QString &identifier : identifiers) {
+            const QString pattern = QStringLiteral("(?<![\\w])%1(?![\\w])").arg(QRegularExpression::escape(identifier));
+            text.replace(QRegularExpression(pattern), QStringLiteral("[network-redacted]"));
+        }
         return text;
     }
     return value;
@@ -84,14 +111,19 @@ QVariant SessionStore::redactProcessDetails(const QVariant &value)
 {
     QSet<QString> names, pids;
     collectProcessNames(value, names, pids);
-    return redactValue(value, names, pids);
+    return redactValue(value, names, pids, true, {});
 }
-QVariant SessionStore::redactReportText(const QVariant &value, const QList<FlightSample> &recording)
+QVariant SessionStore::redactReportText(const QVariant &value, const QList<FlightSample> &recording, bool includeProcessDetails)
 {
     QSet<QString> names, pids;
-    for (const auto &sample : recording) collectProcessNames(sampleToMap(sample, true), names, pids);
+    QSet<QString> networkIdentifiers;
+    for (const auto &sample : recording) {
+        const QVariantMap sampleMap = sampleToMap(sample, true);
+        if (!includeProcessDetails) collectProcessNames(sampleMap, names, pids);
+        collectNetworkIdentifiers(sampleMap.value(QStringLiteral("networkDevices")), networkIdentifiers);
+    }
     // The report has already removed identities. Preserve its schema and null fields.
-    return redactValue(value, names, pids, false);
+    return redactValue(value, names, pids, false, networkIdentifiers);
 }
 QVariantMap SessionStore::sampleToMap(const FlightSample &s, bool includeProcessDetails) {
     QVariantMap map;
@@ -153,9 +185,11 @@ QVariantMap SessionStore::sampleToMap(const FlightSample &s, bool includeProcess
     map.insert(QStringLiteral("activePowerProfile"), QVariant::fromValue(s.activePowerProfile));
     map.insert(QStringLiteral("throttled"), QVariant::fromValue(s.throttled));
     map.insert(QStringLiteral("severity"), static_cast<int>(s.severity));
+    map.insert(QStringLiteral("diagnosisState"), static_cast<int>(s.diagnosisState));
     map.insert(QStringLiteral("verdictHeadline"), QVariant::fromValue(s.verdictHeadline));
     map.insert(QStringLiteral("verdictRuleId"), QVariant::fromValue(s.verdictRuleId));
     map.insert(QStringLiteral("verdictEvidence"), QVariant::fromValue(s.verdictEvidence));
+    map.insert(QStringLiteral("verdictMissingEvidence"), QVariant::fromValue(s.verdictMissingEvidence));
     map.insert(QStringLiteral("verdictDurationMs"), QString::number(s.verdictDurationMs));
     map.insert(QStringLiteral("culpritName"), QVariant::fromValue(s.culpritName));
     map.insert(QStringLiteral("culpritPid"), QVariant::fromValue(s.culpritPid));
@@ -474,6 +508,11 @@ bool SessionStore::sampleFromMap(const QVariantMap &map, FlightSample *sample, Q
         if (!(integerValue(v, false) && v.toInt() <= static_cast<int>(VerdictSeverity::Unknown))) return fail(error, QStringLiteral("Invalid sample field: severity."));
         s.severity = static_cast<VerdictSeverity>(v.toInt());
     }
+    if (map.contains(QStringLiteral("diagnosisState"))) {
+        const QVariant v = map.value(QStringLiteral("diagnosisState"));
+        if (!(integerValue(v, false) && v.toInt() <= static_cast<int>(DiagnosisState::ConfirmedProblem))) return fail(error, QStringLiteral("Invalid sample field: diagnosisState."));
+        s.diagnosisState = static_cast<DiagnosisState>(v.toInt());
+    }
     if (map.contains(QStringLiteral("verdictHeadline"))) {
         const QVariant v = map.value(QStringLiteral("verdictHeadline"));
         if (!(v.metaType().id() == QMetaType::QString)) return fail(error, QStringLiteral("Invalid sample field: verdictHeadline."));
@@ -489,6 +528,12 @@ bool SessionStore::sampleFromMap(const QVariantMap &map, FlightSample *sample, Q
         if (!(v.metaType().id() == QMetaType::QStringList || v.metaType().id() == QMetaType::QVariantList)) return fail(error, QStringLiteral("Invalid sample field: verdictEvidence."));
         for (const auto &item : v.toList()) if (item.metaType().id() != QMetaType::QString) return fail(error, QStringLiteral("Invalid diagnosis evidence."));
         s.verdictEvidence = v.toStringList();
+    }
+    if (map.contains(QStringLiteral("verdictMissingEvidence"))) {
+        const QVariant v = map.value(QStringLiteral("verdictMissingEvidence"));
+        if (!(v.metaType().id() == QMetaType::QStringList || v.metaType().id() == QMetaType::QVariantList)) return fail(error, QStringLiteral("Invalid sample field: verdictMissingEvidence."));
+        for (const auto &item : v.toList()) if (item.metaType().id() != QMetaType::QString) return fail(error, QStringLiteral("Invalid missing-evidence entry."));
+        s.verdictMissingEvidence = v.toStringList();
     }
     if (map.contains(QStringLiteral("verdictDurationMs"))) {
         const QVariant v = map.value(QStringLiteral("verdictDurationMs"));

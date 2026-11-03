@@ -1,5 +1,17 @@
 # Loofi Pulse roadmap
 
+## v0.14.0 — Diagnostic Intelligence & Reliability
+
+- Separate observations, suspected causes, and confirmed problems; show evidence, missing evidence, freshness, and uncertainty.
+- Prevent unsupported throttling and Wi-Fi performance conclusions while keeping prior rule identifiers and report/session compatibility.
+- Correlate kernel logs to incidents with correct wall-clock timestamps and privacy filtering; perform journal queries off the UI thread.
+- Improve incident reports with readable summaries, report-context identifiers, and honest before/during/after coverage.
+- Adapt shared collector polling to active clients while preserving requested history retention.
+- Clear stale Wi-Fi and power-profile readings, label measured signal values accurately, and honor Plasma reduced-motion preferences.
+- Continue using existing app/widget navigation, compact panel modes, semantic KDE colors, and separate background, login, and history opt-ins.
+
+Validation evidence and outstanding physical qualification are recorded in [validation-v0.14.0.md](docs/validation-v0.14.0.md).
+
 ## v0.13.0 — Telemetry, Diagnostics & Flight Recorder Enhancements
 
 This development release adds expanded hardware telemetry, causal diagnostic verdicts, and rich incident analysis:
@@ -17,9 +29,9 @@ The evidence and qualification gates live in [validation-v0.13.0.md](docs/valida
 
 ## Next development iteration
 
-- Power profiles daemon integration (power-profiles-daemon / tuneD) with active switching and policy correlation.
-- Detailed Wi-Fi link quality, signal strength, and network interface duplex telemetry.
-- Long-term trend correlation against power profile history in SQLite persistent store.
+- Improve hardware-specific, repeatable performance qualification across supported Fedora KDE configurations.
+- Expand regression coverage for telemetry source loss, device replacement, resume gaps, and saved-report privacy.
+- Review whether compact panel presentation needs additional user-configurable summary density based on usability feedback.
 
 ## v1.0 — Stable daily-use qualification
 

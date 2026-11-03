@@ -3,6 +3,7 @@
 #include "sessionstore.h"
 
 #include <QList>
+#include <QPair>
 
 namespace LoofiPulse
 {
@@ -33,6 +34,7 @@ public:
     QString markAutomatedIncident(const QString &ruleId, const QString &headline, qint64 timestampMs);
     SessionSnapshot freezeRange(quint64 startSampleId, quint64 endSampleId) const;
     SessionSnapshot freezeIncident(const QString &incidentId) const;
+    QPair<qint64, qint64> incidentWallTimeRange(const QString &incidentId) const;
     QVariantMap compareRange(quint64 startSampleId, quint64 endSampleId) const;
     QVariantMap compareIncidents(const QString &incidentIdA, const QString &incidentIdB) const;
     QVariantList markers() const;

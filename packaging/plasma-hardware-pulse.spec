@@ -1,5 +1,5 @@
 Name:           plasma-hardware-pulse
-Version:        0.13.0
+Version:        0.14.0
 Release:        1%{?dist}
 Summary:        Hardware, temperature, memory pressure, and power monitor for KDE Plasma 6
 
@@ -76,6 +76,12 @@ QT_QPA_PLATFORM=offscreen QML_IMPORT_PATH="%{_vpath_builddir}/bin" ctest --test-
 %{_kf6_metainfodir}/com.github.loofi.hardwarepulse.metainfo.xml
 
 %changelog
+* Tue Nov 03 2026 Loofi <loofi@github.com> - 0.14.0-1
+- Separate diagnostic observations, suspected causes, and confirmed problems with explicit missing evidence
+- Prevent unsupported CPU throttling and Wi-Fi throughput conclusions; expire stale power and Wi-Fi telemetry
+- Correct asynchronous, wall-clock kernel event correlation and improve private report exports
+- Adapt collector polling to active UI clients while preserving retention and Collector1 compatibility
+- Honor Plasma reduced-motion settings and avoid fan animations on hidden pages
 * Sun Oct 25 2026 Loofi <loofi@github.com> - 0.13.0-1
 - Power Profiles Daemon (PPD) control, active holds tracking, and profile-throttling causal rule
 - Wi-Fi link telemetry (SSID, 2.4/5/6 GHz, dBm, bitrate, duplex) and wireless degradation causal rule

@@ -73,6 +73,13 @@ Kirigami.ApplicationWindow {
         onTemperatureUnitChanged: appSettings.savedTemperatureUnit = temperatureUnit
     }
 
+    function updateCollectorActivity() {
+        telemetry.setCollectorClientActive(appWindow.visible && appWindow.visibility !== Window.Minimized)
+    }
+    Component.onCompleted: updateCollectorActivity()
+    onVisibleChanged: updateCollectorActivity()
+    onVisibilityChanged: updateCollectorActivity()
+
     Shortcut {
         sequences: ["Ctrl+1", "Alt+1"]
         onActivated: appWindow.switchToPage("overview")

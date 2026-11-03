@@ -80,9 +80,32 @@ private Q_SLOTS:
         // Recover the isolated helper if a preceding restart test failed halfway through.
         if (helper.state() == QProcess::NotRunning) startHelper();
     }
+    void clientActivityAdaptsPollingAndKeepsRequestedRetention() {
+        const auto subscribed = object(request(QStringLiteral("Subscribe"),
+            {QStringLiteral("activity-probe"), 250, 900, false}));
+        QCOMPARE(subscribed.value(QStringLiteral("live")).toMap().value(QStringLiteral("effectivePollIntervalMs")).toInt(), 250);
+        const auto inactive = object(request(QStringLiteral("SetClientActive"), {QStringLiteral("activity-probe"), false}));
+        QCOMPARE(inactive.value(QStringLiteral("live")).toMap().value(QStringLiteral("effectivePollIntervalMs")).toInt(), 10000);
+        QCOMPARE(inactive.value(QStringLiteral("live")).toMap().value(QStringLiteral("effectiveProcessScanIntervalMs")).toInt(), 10000);
+        QCOMPARE(inactive.value(QStringLiteral("live")).toMap().value(QStringLiteral("effectiveRetentionSeconds")).toInt(), 900);
+        const auto active = object(request(QStringLiteral("SetClientActive"), {QStringLiteral("activity-probe"), true}));
+        QCOMPARE(active.value(QStringLiteral("live")).toMap().value(QStringLiteral("effectivePollIntervalMs")).toInt(), 250);
+        QCOMPARE(active.value(QStringLiteral("live")).toMap().value(QStringLiteral("effectiveProcessScanIntervalMs")).toInt(), 2000);
+        request(QStringLiteral("Unsubscribe"), {QStringLiteral("activity-probe")});
+
+        PulseTelemetryController hiddenClient;
+        QTRY_VERIFY_WITH_TIMEOUT(hiddenClient.collectorConnected(), 5000);
+        QSignalSpy updates(&hiddenClient, &PulseTelemetryController::telemetryUpdated);
+        hiddenClient.setCollectorClientActive(false);
+        QTRY_VERIFY_WITH_TIMEOUT(updates.count() > 0, 3000);
+        QTest::qWait(6500);
+        QVERIFY(hiddenClient.collectorConnected());
+        QVERIFY(!hiddenClient.collectorState().startsWith(QStringLiteral("Stale")));
+    }
     void cleanup() {
         if (helper.state() == QProcess::Running) {
             request(QStringLiteral("Unsubscribe"), {QStringLiteral("probe")});
+            request(QStringLiteral("Unsubscribe"), {QStringLiteral("activity-probe")});
             request(QStringLiteral("SetBackground"), {false});
             request(QStringLiteral("SetStartAtLogin"), {false});
         }
@@ -177,6 +200,9 @@ private Q_SLOTS:
             sample.verdictHeadline = QStringLiteral("CPU pressure observed");
             sample.verdictEvidence = {QStringLiteral("CPU pressure remained elevated"), privateName};
             sample.metricQuality = {{QStringLiteral("cpuLoadAvailable"), true}};
+            sample.networkDevices = {QVariantMap{{QStringLiteral("wirelessSsid"), QStringLiteral("private-wifi-name")},
+                {QStringLiteral("bssid"), QStringLiteral("00:11:22:33:44:55")},
+                {QStringLiteral("wirelessSignalPercent"), 16}}};
             imported.samples.append(sample);
         }
         imported.metadata = {
@@ -216,6 +242,8 @@ private Q_SLOTS:
         QVERIFY(!bytes.contains(privateName.toUtf8()));
         QVERIFY(!bytes.contains(QByteArray::number(privatePid)));
         QVERIFY(!bytes.contains("private-metadata-only"));
+        QVERIFY(!bytes.contains("private-wifi-name"));
+        QVERIFY(!bytes.contains("00:11:22:33:44:55"));
         QVERIFY(!bytes.contains("commandLine"));
         QVERIFY(bytes.contains("CPU pressure remained elevated"));
         const auto samples = QJsonDocument::fromJson(bytes).array();
@@ -229,6 +257,17 @@ private Q_SLOTS:
         QCOMPARE(before.value(QStringLiteral("sampleCount")).toInt(), 2);
         QVERIFY(!before.contains(QStringLiteral("pid")));
         QVERIFY(!before.contains(QStringLiteral("note")));
+        const auto reportContext = samples.first().toObject().value(QStringLiteral("reportContext")).toObject();
+        QVERIFY(reportContext.contains(QStringLiteral("kernelEventsAvailable")));
+        QVERIFY(!reportContext.contains(QStringLiteral("incidentId")));
+        QVERIFY(!samples.first().toObject().value(QStringLiteral("correlatedKernelEvents")).toArray().isEmpty()
+                || !reportContext.value(QStringLiteral("kernelEventsAvailable")).toBool());
+        QFile html(client.lastActionPath());
+        QVERIFY2(html.open(QIODevice::ReadOnly), qPrintable(client.lastActionPath()));
+        const QByteArray htmlBytes = html.readAll();
+        QVERIFY(htmlBytes.contains("Loofi Pulse v" LOOFI_PULSE_VERSION));
+        QVERIFY(htmlBytes.contains("Unavailable samples are omitted."));
+        QVERIFY(!htmlBytes.contains("Unavailable%"));
     }
     void rejectsOldCaptureSampleThroughActualReceiveSlot() {
         PulseTelemetryController client;
@@ -449,8 +488,29 @@ private Q_SLOTS:
             retained = retained || entry.toMap().value(QStringLiteral("incidentId")).toString() == originalId;
         QVERIFY(retained); // Flight recorder and its active investigation remain untouched.
         QVERIFY(QFile::remove(pressurePath));
-        QTest::qWait(500); // Missing pressure makes the prior episode end immediately.
+        const auto oldEpisodeEnded = [&] {
+            const auto rows = object(request(QStringLiteral("Subscribe"), {QStringLiteral("probe"), 250, 300, false}))
+                .value(QStringLiteral("incidents")).toList();
+            for (const auto &value : rows) {
+                const auto episode = value.toMap();
+                if (episode.value(QStringLiteral("incidentId")).toString() == originalId)
+                    return !episode.value(QStringLiteral("active")).toBool();
+            }
+            return false;
+        };
+        QTRY_VERIFY_WITH_TIMEOUT(oldEpisodeEnded(), 5000); // Wait for telemetry to close the pre-clear episode.
         QVERIFY(setPressure());
+        const auto newEpisodeStarted = [&] {
+            const auto rows = object(request(QStringLiteral("Subscribe"), {QStringLiteral("probe"), 250, 300, false}))
+                .value(QStringLiteral("incidents")).toList();
+            for (const auto &value : rows) {
+                const auto episode = value.toMap();
+                if (episode.value(QStringLiteral("incidentId")).toString() != originalId
+                    && episode.value(QStringLiteral("active")).toBool()) return true;
+            }
+            return false;
+        };
+        QTRY_VERIFY_WITH_TIMEOUT(newEpisodeStarted(), 7000);
         QTRY_VERIFY_WITH_TIMEOUT(!persisted().isEmpty(), 7000);
         for (const auto &entry : persisted())
             QVERIFY(entry.toObject().value(QStringLiteral("incidentId")).toString() != originalId);
