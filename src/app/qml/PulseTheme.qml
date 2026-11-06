@@ -80,9 +80,56 @@ QtObject {
     readonly property color storageAccent: isDark ? "#2dd4bf" : "#0d9488"
 
     // Standard radius tokens
-    readonly property int cardRadius: 10
-    readonly property int innerRadius: 7
+    readonly property int cardRadius: 12
+    readonly property int innerRadius: 8
     readonly property int pillRadius: 6
+
+    // v0.15 design tokens. Spacing and type derive from Kirigami so the
+    // layout scales with the user's font and DPI settings.
+    property color textColor: "#fcfcfc"
+    property color highlightColor: "#3daee9"
+    readonly property color mutedTextColor: Qt.rgba(textColor.r, textColor.g, textColor.b, 0.68)
+    readonly property color faintTextColor: Qt.rgba(textColor.r, textColor.g, textColor.b, 0.48)
+    readonly property color cardColor: isDark
+        ? Qt.tint(bgColor, Qt.rgba(1, 1, 1, 0.035))
+        : Qt.lighter(bgColor, 1.04)
+    readonly property color cardShadowColor: isDark ? Qt.rgba(0, 0, 0, 0.32) : Qt.rgba(0, 0, 0, 0.07)
+    readonly property color selectionColor: Qt.rgba(highlightColor.r, highlightColor.g, highlightColor.b, isDark ? 0.18 : 0.14)
+
+    readonly property real spacingXs: Kirigami.Units.smallSpacing
+    readonly property real spacingS: Kirigami.Units.smallSpacing * 2
+    readonly property real spacingM: Kirigami.Units.largeSpacing * 1.5
+    readonly property real spacingL: Kirigami.Units.largeSpacing * 2
+    readonly property real spacingXl: Kirigami.Units.largeSpacing * 3
+
+    readonly property real fontDisplay: Kirigami.Theme.defaultFont.pointSize * 2.1
+    readonly property real fontHeadline: Kirigami.Theme.defaultFont.pointSize * 1.4
+    readonly property real fontTitle: Kirigami.Theme.defaultFont.pointSize * 1.1
+    readonly property real fontBody: Kirigami.Theme.defaultFont.pointSize
+    readonly property real fontCaption: Kirigami.Theme.smallFont.pointSize
+
+    readonly property int durationShort: motionAllowed ? Kirigami.Units.shortDuration : 0
+    readonly property int durationLong: motionAllowed ? Kirigami.Units.longDuration : 0
+
+    function severityTint(sev, alphaValue) {
+        var base = severityColor(sev)
+        return Qt.rgba(base.r, base.g, base.b, alphaValue)
+    }
+
+    function severityShortLabel(sev) {
+        if (sev === 4) return KI18n.i18nd("loofi-pulse", "Warming up")
+        if (sev >= 2) return KI18n.i18nd("loofi-pulse", "Critical")
+        if (sev === 1) return KI18n.i18nd("loofi-pulse", "Warning")
+        return KI18n.i18nd("loofi-pulse", "OK")
+    }
+
+    function severityDescription(sev) {
+        if (sev === 4) return KI18n.i18nd("loofi-pulse", "Warming up")
+        if (sev === 3) return KI18n.i18nd("loofi-pulse", "Critical Throttle")
+        if (sev === 2) return KI18n.i18nd("loofi-pulse", "Bottleneck")
+        if (sev === 1) return KI18n.i18nd("loofi-pulse", "Elevated")
+        return KI18n.i18nd("loofi-pulse", "Nominal")
+    }
 
     function severityColor(sev) {
         if (sev === 4) return disabledColor
@@ -109,11 +156,11 @@ QtObject {
     }
 
     function severityBadgeText(sev) {
-        if (sev === 4) return KI18n.i18n("WARMING UP")
-        if (sev === 3) return KI18n.i18n("THROTTLING")
-        if (sev === 2) return KI18n.i18n("BOTTLENECK")
-        if (sev === 1) return KI18n.i18n("ELEVATED")
-        return KI18n.i18n("NOMINAL")
+        if (sev === 4) return KI18n.i18nd("loofi-pulse", "WARMING UP")
+        if (sev === 3) return KI18n.i18nd("loofi-pulse", "THROTTLING")
+        if (sev === 2) return KI18n.i18nd("loofi-pulse", "BOTTLENECK")
+        if (sev === 1) return KI18n.i18nd("loofi-pulse", "ELEVATED")
+        return KI18n.i18nd("loofi-pulse", "NOMINAL")
     }
 
     function severityIcon(sev) {

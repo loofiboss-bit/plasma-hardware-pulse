@@ -9,12 +9,27 @@ set(hardwarepulseplugin_HDRS
     pulsetelemetrycontroller.h
 )
 
+set(hardwarepulseplugin_QML_FILES
+    qml/PulseTheme.qml
+    qml/PulseCard.qml
+    qml/StatusPill.qml
+    qml/PulseSparkline.qml
+    qml/PulseAreaChart.qml
+    qml/PulseRingGauge.qml
+    qml/MetricCard.qml
+    qml/HealthHero.qml
+    qml/FindingRow.qml
+    qml/PulsePageHeader.qml
+    qml/DeviceCard.qml
+)
+
 qt_add_qml_module(hardwarepulseplugin
     URI com.github.loofi.hardwarepulse
     VERSION 1.0
     PLUGIN_TARGET hardwarepulseplugin
     OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/com/github/loofi/hardwarepulse
     SOURCES ${hardwarepulseplugin_SRCS} ${hardwarepulseplugin_HDRS}
+    QML_FILES ${hardwarepulseplugin_QML_FILES}
 )
 
 set_target_properties(hardwarepulseplugin PROPERTIES PREFIX "lib")
@@ -38,4 +53,6 @@ install(TARGETS hardwarepulseplugin
         DESTINATION ${KDE_INSTALL_QMLDIR}/com/github/loofi/hardwarepulse)
 install(FILES ${CMAKE_BINARY_DIR}/bin/com/github/loofi/hardwarepulse/qmldir
               ${CMAKE_BINARY_DIR}/bin/com/github/loofi/hardwarepulse/hardwarepulseplugin.qmltypes
+        DESTINATION ${KDE_INSTALL_QMLDIR}/com/github/loofi/hardwarepulse)
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/src/plugin/qml
         DESTINATION ${KDE_INSTALL_QMLDIR}/com/github/loofi/hardwarepulse)

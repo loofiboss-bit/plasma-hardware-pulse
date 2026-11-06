@@ -6,6 +6,7 @@ import "TemperatureLabels.js" as TemperatureLabels
 import QtQuick.Layouts
 import org.kde.plasma.components as PlasmaComponents3
 import org.kde.kirigami as Kirigami
+import com.github.loofi.hardwarepulse 1.0
 
 Item {
     id: fullRoot
@@ -20,6 +21,16 @@ Item {
     readonly property bool isDark: {
         var c = Kirigami.Theme.backgroundColor
         return (0.299 * c.r + 0.587 * c.g + 0.114 * c.b) < 0.5
+    }
+
+    readonly property PulseTheme theme: PulseTheme {
+        bgColor: Kirigami.Theme.backgroundColor
+        textColor: Kirigami.Theme.textColor
+        highlightColor: Kirigami.Theme.highlightColor
+        disabledColor: Kirigami.Theme.disabledTextColor
+        negativeColor: Kirigami.Theme.negativeTextColor
+        neutralColor: Kirigami.Theme.neutralTextColor
+        positiveColor: Kirigami.Theme.positiveTextColor
     }
 
     readonly property color cardSurface: isDark
@@ -216,7 +227,7 @@ Item {
                         Layout.fillWidth: true
                         icon.name: "window-new"
                         text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Open App")
-                        Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Open Loofi Pulse app")
+                        Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Open Loofi Pulse")
                         onClicked: fullRoot.controller.launchStudioApp("overview")
                     }
 
@@ -249,7 +260,7 @@ Item {
                     PlasmaComponents3.Button {
                         Layout.fillWidth: true
                         icon.name: "bookmark-new"
-                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Mark problem now")
+                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Mark Problem Now")
                         Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Mark problem and open history")
                         onClicked: fullRoot.controller.markProblemAndLaunch()
                     }
@@ -415,24 +426,16 @@ Item {
             }
 
             // 1. Causal Diagnosis Card
-            Rectangle {
+            PulseCard {
                 Layout.fillWidth: true
-                implicitHeight: verdictCol.implicitHeight + Kirigami.Units.largeSpacing * 2
-                radius: 10
-                color: fullRoot.cardSurface
-                border.width: 1.5
-                border.color: fullRoot.severityColor(fullRoot.controller.verdictSeverity)
-
-                Rectangle {
-                    anchors.fill: parent
-                    radius: 10
-                    color: fullRoot.severityBgColor(fullRoot.controller.verdictSeverity)
-                }
+                implicitHeight: verdictCol.implicitHeight + padding * 2
+                padding: theme.spacingL
+                accentColor: fullRoot.severityColor(fullRoot.controller.verdictSeverity)
+                accentStrength: 0.12
 
                 ColumnLayout {
                     id: verdictCol
-                    anchors.fill: parent
-                    anchors.margins: Kirigami.Units.largeSpacing
+                    width: parent.width
                     spacing: 5
 
                     RowLayout {
@@ -725,18 +728,14 @@ Item {
             }
 
             // 3. Collision-Free Mini Live Sparkline (Dedicated header above Canvas)
-            Rectangle {
+            PulseCard {
                 Layout.fillWidth: true
-                implicitHeight: sparkCol.implicitHeight + 16
-                radius: 10
-                color: fullRoot.cardSurface
-                border.width: 1
-                border.color: fullRoot.cardBorder
+                implicitHeight: sparkCol.implicitHeight + padding * 2
+                padding: theme.spacingM
 
                 ColumnLayout {
                     id: sparkCol
-                    anchors.fill: parent
-                    anchors.margins: 8
+                    width: parent.width
                     spacing: 4
 
                     RowLayout {

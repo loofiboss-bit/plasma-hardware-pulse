@@ -4,6 +4,7 @@ import org.kde.ki18n
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
+import com.github.loofi.hardwarepulse 1.0
 import "MeasurementLabels.js" as MeasurementLabels
 
 Kirigami.ScrollablePage {
@@ -66,9 +67,107 @@ Kirigami.ScrollablePage {
         return "battery-profile-performance"
     }
 
+    function historyWattValues() {
+        var list = (powerPage.controller && powerPage.controller.historySamples) || []
+        var res = []
+        for (var i = 0; i < list.length; ++i) {
+            res.push(Number(list[i].packageWatts) || 0)
+        }
+        return res
+    }
+
+    function historyTempValues() {
+        var list = (powerPage.controller && powerPage.controller.historySamples) || []
+        var res = []
+        for (var i = 0; i < list.length; ++i) {
+            res.push(Number(list[i].cpuTemp) || 0)
+        }
+        return res
+    }
+
     ColumnLayout {
         Layout.fillWidth: true
         spacing: Kirigami.Units.largeSpacing
+
+        PulsePageHeader {
+            id: pageHeader
+            Layout.fillWidth: true
+            title: KI18n.i18n("Power & Cooling")
+            subtitle: KI18n.i18n("CPU power envelope, GPU state, battery levels, cooling fans and thermal sensors")
+            selectedMinutes: Math.max(5, Math.round(powerPage.controller.historyRetentionSeconds / 60))
+            onTimeWindowSelected: function(minutes) {
+                powerPage.controller.historyRetentionSeconds = minutes * 60
+            }
+        }
+
+        PulseCard {
+            id: powerChartCard
+            Layout.fillWidth: true
+            visible: (powerPage.controller.historySamples || []).length > 2
+            padding: theme.spacingM
+
+            ColumnLayout {
+                width: parent.width
+                spacing: theme.spacingS
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: theme.spacingS
+
+                    Rectangle {
+                        implicitWidth: 8; implicitHeight: 8; radius: 2.5
+                        color: theme.powerAccent
+                    }
+                    QQC2.Label {
+                        text: KI18n.i18n("CPU Package Power (W)")
+                        font.pointSize: theme.fontCaption
+                        font.weight: Font.DemiBold
+                        color: theme.textColor
+                    }
+
+                    Rectangle {
+                        implicitWidth: 8; implicitHeight: 8; radius: 2.5
+                        color: theme.tempAccent
+                    }
+                    QQC2.Label {
+                        text: KI18n.i18n("CPU Temp (°C)")
+                        font.pointSize: theme.fontCaption
+                        font.weight: Font.DemiBold
+                        color: theme.textColor
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    QQC2.Label {
+                        text: powerPage.controller.packagePowerAvailable
+                              ? Number(powerPage.controller.packageWatts).toFixed(1) + " W · " + powerPage.formatTemp(powerPage.controller.cpuTempCelsius)
+                              : powerPage.formatTemp(powerPage.controller.cpuTempCelsius)
+                        font.pointSize: theme.fontCaption
+                        font.weight: Font.Bold
+                        color: theme.mutedTextColor
+                    }
+                }
+
+                PulseAreaChart {
+                    Layout.fillWidth: true
+                    implicitHeight: Kirigami.Units.gridUnit * 7
+                    theme: powerPage.theme
+                    series: [
+                        {
+                            values: powerPage.historyWattValues(),
+                            color: theme.powerAccent,
+                            label: KI18n.i18n("Package Power")
+                        },
+                        {
+                            values: powerPage.historyTempValues(),
+                            color: theme.tempAccent,
+                            label: KI18n.i18n("CPU Temp")
+                        }
+                    ]
+                }
+            }
+        }
+
         // 1. Four Primary Power & Thermal Envelope Cards
         GridLayout {
             Layout.fillWidth: true
@@ -77,33 +176,19 @@ Kirigami.ScrollablePage {
             rowSpacing: Kirigami.Units.mediumSpacing
 
             // Card 1: CPU Package & Power Limits
-            Rectangle {
+            PulseCard {
                 Layout.fillWidth: true
-                implicitHeight: pkgCol.implicitHeight + Kirigami.Units.largeSpacing * 2
-                radius: theme.cardRadius
-                color: theme.surfaceColor
-                border.width: 1
-                border.color: theme.cardBorderColor
-
-                Rectangle {
-                    anchors.top: parent.top
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 12
-                    height: 2
-                    radius: 1
-                    color: theme.powerAccent
-                    opacity: 0.7
-                }
+                implicitHeight: pkgCol.implicitHeight + padding * 2
+                padding: theme.spacingL
+                accentColor: theme.powerAccent
+                accentStrength: 0.08
 
                 ColumnLayout {
                     id: pkgCol
                     objectName: "section_cpu"
                     focus: true
                     Accessible.name: KI18n.i18n("cpu section")
-                    anchors.fill: parent
-                    anchors.margins: Kirigami.Units.largeSpacing
+                    width: parent.width
                     spacing: Kirigami.Units.smallSpacing
 
                     RowLayout {
@@ -181,33 +266,19 @@ Kirigami.ScrollablePage {
             }
 
             // Card 2: Graphics (GPU)
-            Rectangle {
+            PulseCard {
                 Layout.fillWidth: true
-                implicitHeight: gpuCol.implicitHeight + Kirigami.Units.largeSpacing * 2
-                radius: theme.cardRadius
-                color: theme.surfaceColor
-                border.width: 1
-                border.color: theme.cardBorderColor
-
-                Rectangle {
-                    anchors.top: parent.top
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 12
-                    height: 2
-                    radius: 1
-                    color: theme.gpuAccent
-                    opacity: 0.7
-                }
+                implicitHeight: gpuCol.implicitHeight + padding * 2
+                padding: theme.spacingL
+                accentColor: theme.gpuAccent
+                accentStrength: 0.08
 
                 ColumnLayout {
                     id: gpuCol
                     objectName: "section_gpu"
                     focus: true
                     Accessible.name: KI18n.i18n("gpu section")
-                    anchors.fill: parent
-                    anchors.margins: Kirigami.Units.largeSpacing
+                    width: parent.width
                     spacing: Kirigami.Units.smallSpacing
 
                     RowLayout {
@@ -296,33 +367,19 @@ Kirigami.ScrollablePage {
             }
 
             // Card 3: Battery & Power Source
-            Rectangle {
+            PulseCard {
                 Layout.fillWidth: true
-                implicitHeight: batCol.implicitHeight + Kirigami.Units.largeSpacing * 2
-                radius: theme.cardRadius
-                color: theme.surfaceColor
-                border.width: 1
-                border.color: theme.cardBorderColor
-
-                Rectangle {
-                    anchors.top: parent.top
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 12
-                    height: 2
-                    radius: 1
-                    color: theme.psiAccent
-                    opacity: 0.7
-                }
+                implicitHeight: batCol.implicitHeight + padding * 2
+                padding: theme.spacingL
+                accentColor: theme.psiAccent
+                accentStrength: 0.08
 
                 ColumnLayout {
                     id: batCol
                     objectName: "section_battery"
                     focus: true
                     Accessible.name: KI18n.i18n("battery section")
-                    anchors.fill: parent
-                    anchors.margins: Kirigami.Units.largeSpacing
+                    width: parent.width
                     spacing: Kirigami.Units.smallSpacing
 
                     RowLayout {
@@ -410,33 +467,19 @@ Kirigami.ScrollablePage {
             }
 
             // Card 4: Cooling & Device Thermal
-            Rectangle {
+            PulseCard {
                 Layout.fillWidth: true
-                implicitHeight: coolCol.implicitHeight + Kirigami.Units.largeSpacing * 2
-                radius: theme.cardRadius
-                color: theme.surfaceColor
-                border.width: 1
-                border.color: theme.cardBorderColor
-
-                Rectangle {
-                    anchors.top: parent.top
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 12
-                    height: 2
-                    radius: 1
-                    color: theme.tempAccent
-                    opacity: 0.7
-                }
+                implicitHeight: coolCol.implicitHeight + padding * 2
+                padding: theme.spacingL
+                accentColor: theme.tempAccent
+                accentStrength: 0.08
 
                 ColumnLayout {
                     id: coolCol
                     objectName: "section_cooling"
                     focus: true
                     Accessible.name: KI18n.i18n("cooling section")
-                    anchors.fill: parent
-                    anchors.margins: Kirigami.Units.largeSpacing
+                    width: parent.width
                     spacing: Kirigami.Units.smallSpacing
 
                     RowLayout {
@@ -599,21 +642,17 @@ Kirigami.ScrollablePage {
         }
 
         // 2. Segmented Power Profile Selector Card
-        Rectangle {
+        PulseCard {
             Layout.fillWidth: true
-            implicitHeight: profCol.implicitHeight + Kirigami.Units.largeSpacing * 2
-            radius: theme.cardRadius
-            color: theme.surfaceColor
-            border.width: 1
-            border.color: theme.cardBorderColor
+            implicitHeight: profCol.implicitHeight + padding * 2
+            padding: theme.spacingL
 
             ColumnLayout {
                 id: profCol
                 objectName: "section_profile"
                 focus: true
                 Accessible.name: KI18n.i18n("profile section")
-                anchors.fill: parent
-                anchors.margins: Kirigami.Units.largeSpacing
+                width: parent.width
                 spacing: Kirigami.Units.smallSpacing
 
                 RowLayout {
@@ -697,18 +736,14 @@ Kirigami.ScrollablePage {
             rowSpacing: Kirigami.Units.mediumSpacing
 
             // Graphics Devices Card
-            Rectangle {
+            PulseCard {
                 Layout.fillWidth: true
-                implicitHeight: gpuDevCol.implicitHeight + Kirigami.Units.largeSpacing * 2
-                radius: theme.cardRadius
-                color: theme.surfaceColor
-                border.width: 1
-                border.color: theme.cardBorderColor
+                implicitHeight: gpuDevCol.implicitHeight + padding * 2
+                padding: theme.spacingL
 
                 ColumnLayout {
                     id: gpuDevCol
-                    anchors.fill: parent
-                    anchors.margins: Kirigami.Units.largeSpacing
+                    width: parent.width
                     spacing: Kirigami.Units.smallSpacing
 
                     RowLayout {
@@ -760,18 +795,14 @@ Kirigami.ScrollablePage {
             }
 
             // Individual Batteries Card
-            Rectangle {
+            PulseCard {
                 Layout.fillWidth: true
-                implicitHeight: batDevCol.implicitHeight + Kirigami.Units.largeSpacing * 2
-                radius: theme.cardRadius
-                color: theme.surfaceColor
-                border.width: 1
-                border.color: theme.cardBorderColor
+                implicitHeight: batDevCol.implicitHeight + padding * 2
+                padding: theme.spacingL
 
                 ColumnLayout {
                     id: batDevCol
-                    anchors.fill: parent
-                    anchors.margins: Kirigami.Units.largeSpacing
+                    width: parent.width
                     spacing: Kirigami.Units.smallSpacing
 
                     RowLayout {
@@ -958,21 +989,17 @@ Kirigami.ScrollablePage {
         }
 
         // 4. Detected Hardware Sensors Grid
-        Rectangle {
+        PulseCard {
             Layout.fillWidth: true
-            implicitHeight: sensorsCol.implicitHeight + Kirigami.Units.largeSpacing * 2
-            radius: theme.cardRadius
-            color: theme.surfaceColor
-            border.width: 1
-            border.color: theme.cardBorderColor
+            implicitHeight: sensorsCol.implicitHeight + padding * 2
+            padding: theme.spacingL
 
             ColumnLayout {
                 id: sensorsCol
                 objectName: "section_sensors"
                 focus: true
                 Accessible.name: KI18n.i18n("sensors section")
-                anchors.fill: parent
-                anchors.margins: Kirigami.Units.largeSpacing
+                width: parent.width
                 spacing: Kirigami.Units.mediumSpacing
 
                 Kirigami.Heading {

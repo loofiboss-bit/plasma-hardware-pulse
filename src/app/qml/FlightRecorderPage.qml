@@ -6,6 +6,7 @@ import QtQuick.Layouts
 import "MeasurementLabels.js" as MeasurementLabels
 import org.kde.kirigami as Kirigami
 import QtCore as QtCore
+import com.github.loofi.hardwarepulse 1.0
 
 Kirigami.ScrollablePage {
     id: flightPage
@@ -156,6 +157,21 @@ Kirigami.ScrollablePage {
         Layout.fillWidth: true
         spacing: Kirigami.Units.largeSpacing
 
+        PulsePageHeader {
+            id: pageHeader
+            Layout.fillWidth: true
+            title: KI18n.i18n("History")
+            subtitle: KI18n.i18n("Blackbox telemetry recorder, incident timelines, and long-term trends")
+            selectedMinutes: Math.max(5, Math.round(flightPage.controller.historyRetentionSeconds / 60))
+            showSaveButton: true
+            showIncidentButton: true
+            onTimeWindowSelected: function(minutes) {
+                flightPage.controller.historyRetentionSeconds = minutes * 60
+            }
+            onSaveRequested: flightPage.saveSessionRequested()
+            onIncidentRequested: flightPage.controller.recordManualIncident()
+        }
+
         // Mode Selector: Flight Recorder vs Long-Term Trends
         RowLayout {
             Layout.fillWidth: true
@@ -199,19 +215,15 @@ Kirigami.ScrollablePage {
             spacing: Kirigami.Units.largeSpacing
 
             // 1. Telemetry Controls & Export Toolbar Card
-            Rectangle {
-            Layout.fillWidth: true
-            implicitHeight: toolbarCol.implicitHeight + Kirigami.Units.largeSpacing * 2
-            radius: theme.cardRadius
-            color: theme.surfaceColor
-            border.width: 1
-            border.color: theme.cardBorderColor
+            PulseCard {
+                Layout.fillWidth: true
+                implicitHeight: toolbarCol.implicitHeight + padding * 2
+                padding: theme.spacingL
 
-            ColumnLayout {
-                id: toolbarCol
-                anchors.fill: parent
-                anchors.margins: Kirigami.Units.largeSpacing
-                spacing: Kirigami.Units.mediumSpacing
+                ColumnLayout {
+                    id: toolbarCol
+                    width: parent.width
+                    spacing: Kirigami.Units.mediumSpacing
 
                 // Logical Toolbar Groups
                 Flow {

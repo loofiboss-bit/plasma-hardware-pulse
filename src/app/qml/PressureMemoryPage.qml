@@ -4,6 +4,7 @@ import org.kde.ki18n
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
+import com.github.loofi.hardwarepulse 1.0
 
 Kirigami.ScrollablePage {
     id: psiPage
@@ -58,6 +59,27 @@ Kirigami.ScrollablePage {
         return list
     }
 
+    function historyCpuStallValues() {
+        var list = (psiPage.controller && psiPage.controller.historySamples) || []
+        var res = []
+        for (var i = 0; i < list.length; ++i) res.push(Number(list[i].psiCpuStallMs) || 0)
+        return res
+    }
+
+    function historyMemStallValues() {
+        var list = (psiPage.controller && psiPage.controller.historySamples) || []
+        var res = []
+        for (var i = 0; i < list.length; ++i) res.push(Number(list[i].psiMemStallMs) || 0)
+        return res
+    }
+
+    function historyIoStallValues() {
+        var list = (psiPage.controller && psiPage.controller.historySamples) || []
+        var res = []
+        for (var i = 0; i < list.length; ++i) res.push(Number(list[i].psiIoStallMs) || 0)
+        return res
+    }
+
     readonly property PulseTheme theme: PulseTheme {
         id: theme
         bgColor: psiPage.Kirigami.Theme.backgroundColor
@@ -71,27 +93,109 @@ Kirigami.ScrollablePage {
         Layout.fillWidth: true
         spacing: Kirigami.Units.largeSpacing
 
-        // 1. Hero PSI Explanation & Circular Responsiveness Score Banner
-        Rectangle {
+        PulsePageHeader {
+            id: pageHeader
             Layout.fillWidth: true
-            implicitHeight: expRow.implicitHeight + Kirigami.Units.largeSpacing * 2
-            radius: theme.cardRadius
-            color: theme.surfaceColor
-            border.width: 1.5
-            border.color: !psiPage.controller.psiAvailable
-                          ? theme.cardBorderColor
-                          : (psiPage.controller.responsivenessScore < 85
-                             ? Kirigami.Theme.negativeTextColor
-                             : (psiPage.controller.responsivenessScore < 94 ? Kirigami.Theme.neutralTextColor : theme.psiAccent))
+            title: KI18n.i18n("Memory & Pressure")
+            subtitle: KI18n.i18n("Linux Pressure Stall Information (PSI), responsiveness score and ZRAM compression")
+            selectedMinutes: Math.max(5, Math.round(psiPage.controller.historyRetentionSeconds / 60))
+            onTimeWindowSelected: function(minutes) {
+                psiPage.controller.historyRetentionSeconds = minutes * 60
+            }
+        }
+
+        PulseCard {
+            id: psiChartCard
+            Layout.fillWidth: true
+            visible: (psiPage.controller.historySamples || []).length > 2
+            padding: theme.spacingM
+
+            ColumnLayout {
+                width: parent.width
+                spacing: theme.spacingS
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: theme.spacingS
+
+                    Rectangle { implicitWidth: 8; implicitHeight: 8; radius: 2.5; color: theme.cpuAccent }
+                    QQC2.Label {
+                        text: KI18n.i18n("CPU Stall (ms/s)")
+                        font.pointSize: theme.fontCaption
+                        font.weight: Font.DemiBold
+                        color: theme.textColor
+                    }
+
+                    Rectangle { implicitWidth: 8; implicitHeight: 8; radius: 2.5; color: theme.psiAccent }
+                    QQC2.Label {
+                        text: KI18n.i18n("Memory Stall (ms/s)")
+                        font.pointSize: theme.fontCaption
+                        font.weight: Font.DemiBold
+                        color: theme.textColor
+                    }
+
+                    Rectangle { implicitWidth: 8; implicitHeight: 8; radius: 2.5; color: theme.storageAccent }
+                    QQC2.Label {
+                        text: KI18n.i18n("I/O Stall (ms/s)")
+                        font.pointSize: theme.fontCaption
+                        font.weight: Font.DemiBold
+                        color: theme.textColor
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    QQC2.Label {
+                        text: KI18n.i18n("Responsiveness: ") + (psiPage.controller.psiAvailable ? psiPage.controller.responsivenessScore.toFixed(1) + "/100" : "N/A")
+                        font.pointSize: theme.fontCaption
+                        font.weight: Font.Bold
+                        color: theme.mutedTextColor
+                    }
+                }
+
+                PulseAreaChart {
+                    Layout.fillWidth: true
+                    implicitHeight: Kirigami.Units.gridUnit * 7
+                    theme: psiPage.theme
+                    series: [
+                        {
+                            values: psiPage.historyCpuStallValues(),
+                            color: theme.cpuAccent,
+                            label: KI18n.i18n("CPU Stall")
+                        },
+                        {
+                            values: psiPage.historyMemStallValues(),
+                            color: theme.psiAccent,
+                            label: KI18n.i18n("Memory Stall")
+                        },
+                        {
+                            values: psiPage.historyIoStallValues(),
+                            color: theme.storageAccent,
+                            label: KI18n.i18n("I/O Stall")
+                        }
+                    ]
+                }
+            }
+        }
+
+        // 1. Hero PSI Explanation & Circular Responsiveness Score Banner
+        PulseCard {
+            Layout.fillWidth: true
+            implicitHeight: expRow.implicitHeight + padding * 2
+            padding: theme.spacingL
+            accentColor: !psiPage.controller.psiAvailable
+                         ? theme.cardBorderColor
+                         : (psiPage.controller.responsivenessScore < 85
+                            ? Kirigami.Theme.negativeTextColor
+                            : (psiPage.controller.responsivenessScore < 94 ? Kirigami.Theme.neutralTextColor : theme.psiAccent))
+            accentStrength: 0.10
 
             RowLayout {
                 id: expRow
                 objectName: "section_overview"
                 focus: true
                 Accessible.name: KI18n.i18n("overview section")
-                anchors.fill: parent
-                anchors.margins: Kirigami.Units.largeSpacing
-                spacing: Kirigami.Units.largeSpacing
+                width: parent.width
+                spacing: theme.spacingL
 
                 ColumnLayout {
                     Layout.fillWidth: true
@@ -257,23 +361,19 @@ Kirigami.ScrollablePage {
             rowSpacing: Kirigami.Units.mediumSpacing
 
             // CPU PSI Card
-            Rectangle {
+            PulseCard {
                 Layout.fillWidth: true
-                implicitHeight: cpuPressureColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
-                radius: theme.cardRadius
-                color: theme.surfaceColor
-                border.width: psiPage.controller.psiCpuSome10 > 10 ? 1.5 : 1
-                border.color: !psiPage.controller.psiCpuAvailable
-                              ? theme.cardBorderColor
-                              : (psiPage.controller.psiCpuSome10 > 10 ? Kirigami.Theme.neutralTextColor : theme.cardBorderColor)
+                implicitHeight: cpuPressureColumn.implicitHeight + padding * 2
+                padding: theme.spacingL
+                accentColor: theme.cpuAccent
+                accentStrength: psiPage.controller.psiCpuSome10 > 10 ? 0.12 : 0.05
 
                 ColumnLayout {
                     id: cpuPressureColumn
                     objectName: "section_cpu"
                     focus: true
                     Accessible.name: KI18n.i18n("cpu section")
-                    anchors.fill: parent
-                    anchors.margins: Kirigami.Units.largeSpacing
+                    width: parent.width
                     spacing: 8
 
                     RowLayout {
@@ -337,21 +437,19 @@ Kirigami.ScrollablePage {
             }
 
             // Memory PSI Card
-            Rectangle {
+            PulseCard {
                 Layout.fillWidth: true
-                implicitHeight: memoryPressureColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
-                radius: theme.cardRadius
-                color: theme.surfaceColor
-                border.width: psiPage.controller.psiMemSome10 > 2 ? 1.5 : 1
-                border.color: psiPage.controller.psiMemSome10 > 2 ? Kirigami.Theme.negativeTextColor : theme.cardBorderColor
+                implicitHeight: memoryPressureColumn.implicitHeight + padding * 2
+                padding: theme.spacingL
+                accentColor: theme.psiAccent
+                accentStrength: psiPage.controller.psiMemSome10 > 2 ? 0.14 : 0.05
 
                 ColumnLayout {
                     id: memoryPressureColumn
                     objectName: "section_memory"
                     focus: true
                     Accessible.name: KI18n.i18n("memory section")
-                    anchors.fill: parent
-                    anchors.margins: Kirigami.Units.largeSpacing
+                    width: parent.width
                     spacing: 8
 
                     RowLayout {
@@ -434,21 +532,19 @@ Kirigami.ScrollablePage {
             }
 
             // Storage & I/O PSI Card
-            Rectangle {
+            PulseCard {
                 Layout.fillWidth: true
-                implicitHeight: ioPressureColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
-                radius: theme.cardRadius
-                color: theme.surfaceColor
-                border.width: psiPage.controller.psiIoFull10 > 5 ? 1.5 : 1
-                border.color: psiPage.controller.psiIoFull10 > 5 ? Kirigami.Theme.neutralTextColor : theme.cardBorderColor
+                implicitHeight: ioPressureColumn.implicitHeight + padding * 2
+                padding: theme.spacingL
+                accentColor: theme.storageAccent
+                accentStrength: psiPage.controller.psiIoFull10 > 5 ? 0.14 : 0.05
 
                 ColumnLayout {
                     id: ioPressureColumn
                     objectName: "section_storage"
                     focus: true
                     Accessible.name: KI18n.i18n("storage section")
-                    anchors.fill: parent
-                    anchors.margins: Kirigami.Units.largeSpacing
+                    width: parent.width
                     spacing: 8
 
                     RowLayout {
@@ -548,21 +644,17 @@ Kirigami.ScrollablePage {
             text: KI18n.i18n("Memory use, compression and swap")
         }
 
-        Rectangle {
+        PulseCard {
             Layout.fillWidth: true
-            implicitHeight: zramCol.implicitHeight + Kirigami.Units.largeSpacing * 2
-            radius: theme.cardRadius
-            color: theme.surfaceColor
-            border.width: 1
-            border.color: theme.cardBorderColor
+            implicitHeight: zramCol.implicitHeight + padding * 2
+            padding: theme.spacingL
 
             ColumnLayout {
                 id: zramCol
                 objectName: "section_allocation"
                 focus: true
                 Accessible.name: KI18n.i18n("allocation section")
-                anchors.fill: parent
-                anchors.margins: Kirigami.Units.largeSpacing
+                width: parent.width
                 spacing: Kirigami.Units.mediumSpacing
 
                 GridLayout {

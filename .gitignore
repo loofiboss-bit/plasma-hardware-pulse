@@ -6,3 +6,5 @@ build-*/
 *.user
 *.plasmoid
 *.tar.gz
+po/*.pot
+*.po~

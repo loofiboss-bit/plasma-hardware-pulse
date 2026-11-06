@@ -4,6 +4,7 @@ import org.kde.ki18n
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
+import com.github.loofi.hardwarepulse 1.0
 
 Kirigami.Page {
     id: page
@@ -68,19 +69,15 @@ Kirigami.Page {
         spacing: Kirigami.Units.smallSpacing
 
         // Search, Sort & Summary Control Strip
-        Rectangle {
+        PulseCard {
             Layout.fillWidth: true
-            implicitHeight: controlsRow.implicitHeight + Kirigami.Units.smallSpacing * 2
-            radius: theme.innerRadius
-            color: theme.surfaceColor
-            border.width: 1
-            border.color: theme.cardBorderColor
+            implicitHeight: controlsRow.implicitHeight + padding * 2
+            padding: theme.spacingS
 
             RowLayout {
                 id: controlsRow
-                anchors.fill: parent
-                anchors.margins: Kirigami.Units.smallSpacing
-                spacing: Kirigami.Units.smallSpacing
+                width: parent.width
+                spacing: theme.spacingS
 
                 Kirigami.Icon {
                     source: "system-search"
@@ -111,22 +108,12 @@ Kirigami.Page {
                     Accessible.name: KI18n.i18n("Sort processes")
                 }
 
-                Rectangle {
-                    radius: theme.pillRadius
-                    color: theme.subtleSurfaceColor
-                    border.width: 1
-                    border.color: theme.subtleBorderColor
-                    implicitWidth: countLbl.implicitWidth + 14
-                    implicitHeight: countLbl.implicitHeight + 6
-
-                    QQC2.Label {
-                        id: countLbl
-                        anchors.centerIn: parent
-                        text: page.visibleProcesses.length + KI18n.i18n(" processes")
-                        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                        font.bold: true
-                        color: Kirigami.Theme.disabledTextColor
-                    }
+                StatusPill {
+                    id: countPill
+                    text: page.visibleProcesses.length + KI18n.i18n(" processes")
+                    showDot: false
+                    compact: true
+                    theme: page.theme
                 }
             }
         }
@@ -359,19 +346,17 @@ Kirigami.Page {
         }
 
         // Selected Process Inspector Card
-        Rectangle {
+        PulseCard {
             Layout.fillWidth: true
             visible: page.selectedIdentity.length > 0
-            implicitHeight: selCardCol.implicitHeight + Kirigami.Units.mediumSpacing * 2
-            radius: theme.cardRadius
-            color: theme.surfaceColor
-            border.width: 1
-            border.color: theme.cardBorderColor
+            implicitHeight: selCardCol.implicitHeight + padding * 2
+            padding: theme.spacingM
+            accentColor: theme.highlightColor
+            accentStrength: 0.08
 
             ColumnLayout {
                 id: selCardCol
-                anchors.fill: parent
-                anchors.margins: Kirigami.Units.mediumSpacing
+                width: parent.width
                 spacing: 6
                 readonly property var row: page.selectedProcess || page.lastSelection || ({})
                 readonly property var ioStats: page.selectedProcess ? page.controller.processIoStats(Number(selCardCol.row.pid) || 0) : ({available: false})

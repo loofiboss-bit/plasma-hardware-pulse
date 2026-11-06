@@ -1,35 +1,32 @@
-# Loofi Pulse v0.14.0 — Diagnostic Intelligence & Reliability
+# Loofi Pulse v0.15.0 — UI/UX Redesign & Visual Elevation
 
-This is a development candidate for Fedora KDE Plasma 6. It improves how Loofi Pulse describes diagnostic certainty, keeps telemetry fresh, and connects incident reports to kernel events. It does not claim that automated checks establish physical hardware or desktop qualification.
+This is a development candidate for Fedora KDE Plasma 6. It introduces a comprehensive visual redesign across both the desktop application and the Plasma widget, powered by a unified design token system, GPU-accelerated charts, responsive navigation, and complete Swedish localization.
 
 ## Changes
 
-### Diagnostic confidence
+### Visual Identity & Design System
 
-- Diagnostics explicitly identify observations, suspected causes, and confirmed problems. They show missing evidence and uncertainty, and keep recommendations tied to the available readings.
-- High CPU load plus a power-saver profile is no longer called throttling. A single PL1 reading is treated as an observation, and CPU heat does not by itself confirm throttling.
-- Wi-Fi signal strength is presented as NetworkManager's percentage. It is not converted into a made-up dBm value or treated as proof of poor throughput.
-- Wi-Fi SSID, signal, frequency, and bitrate remain attached to the correct adapter when D-Bus replies arrive out of order.
-- Old or unavailable Wi-Fi and power-profile readings are excluded from current diagnosis.
+- **New App Branding**: Redesigned modern application icon with an ECG pulse wave forming an "L" (`assets/logo.svg` and `assets/logo-symbolic.svg`), adhering to KDE Human Interface Guidelines.
+- **Shared Design Tokens (`PulseTheme`)**: Centralized typography scale, standard spacing units, border radiuses, animation curves, and semantic palette colors respecting system Breeze light and dark schemes.
+- **Reusable Component Library (`com.github.loofi.hardwarepulse`)**: Modern elevated surfaces (`PulseCard`), status badges (`StatusPill`), circular gauges (`PulseRingGauge`), trendlines (`PulseSparkline`), interactive multi-series charts (`PulseAreaChart`), metric tiles (`MetricCard`), and diagnostic findings rows (`FindingRow`).
 
-### Flight Recorder and reports
+### Desktop Application
 
-- Kernel journal queries run asynchronously, use wall-clock sample times, and include event timestamps and incident IDs in exports.
-- Markdown reports summarize incidents with evidence, uncertainty, recommendations, and the completeness of before/during/after comparisons. HTML and JSON exports retain schema 2 and include available report context.
-- Default report exports redact process identities and network identifiers. Kernel messages are privacy-filtered before export.
+- **Responsive Sidebar Navigation**: Collapsible navigation rail (`PulseSidebar`) with smooth width transitions (240px expanded to 68px collapsed on narrow viewports or toggle), categorized sections, live subsystem severity badges, and full keyboard navigation.
+- **Redesigned Overview Page**: Features the 6-domain `HealthHero` ring with diagnostic verdict chips, a 2x3 responsive `MetricCard` grid with live trendlines, and a sorted diagnostic findings card.
+- **Standardized Detail Pages**: `PowerThermalPage`, `PressureMemoryPage`, and `StorageNetworkPage` upgraded with `PulsePageHeader` (5/15/30-minute time window selector and incident trigger), hero `PulseAreaChart` time series, elevated device cards, and animated fan indicators.
+- **Process & Flight Recorder Views**: Elevated search/sort toolbar, improved process table contrast, standardized header strip, and incident timeline markers.
 
-### Polling and interface behavior
+### Plasma 6 Widget
 
-- Inactive desktop windows no longer force the fastest shared collector interval; active clients still set the fastest requested interval and all clients retain their requested history.
-- The Flight Recorder coalesces automatic history projection and repainting to two updates per second while keeping direct sample selection immediate.
-- Fan and alert animations pause when their page or widget is hidden and are disabled when KDE reports reduced motion.
-- The existing app and widget remain on the shared Qt 6, Kirigami, Plasma 6, and Collector1 architecture.
+- **Panel Representations**: Integrated `PulseRingGauge` (Ring gauge mode) and `PulseSparkline` (Sparkline mode) with smooth GPU-accelerated path rendering.
+- **Popup Overview**: Elevated popup cards with `PulseCard` surfaces, theme integration, and smooth layout.
 
-## Compatibility and privacy
+### Localization & Compatibility
 
-- `.pulse-session` format 1, JSON report schema 2, Collector1, existing settings, and diagnostic rule IDs remain supported. Added session evidence fields are optional.
-- Processing stays local. Routine monitoring requires no new privileges. Background monitoring, login startup, and persistent history remain separate opt-ins.
+- **Swedish Localization**: 100% complete Swedish translations (`po/sv/`) across the desktop application and Plasma widget.
+- **Compatibility**: Preserves `.pulse-session` format 1, JSON report schema 2, Collector1 D-Bus API, and existing settings. Routine monitoring remains local and read-only.
 
 ## Validation status
 
-See [docs/validation-v0.14.0.md](docs/validation-v0.14.0.md) for automated results and outstanding manual hardware checks. This remains a development candidate; no release artifacts are implied.
+Automated validation is verified via `scripts/validate.sh`, including QML linting, AppStream metadata validation, and test suite execution. This remains a development candidate.

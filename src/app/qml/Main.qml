@@ -29,6 +29,22 @@ Kirigami.ApplicationWindow {
         negativeColor: appWindow.Kirigami.Theme.negativeTextColor
         neutralColor: appWindow.Kirigami.Theme.neutralTextColor
         positiveColor: appWindow.Kirigami.Theme.positiveTextColor
+        textColor: appWindow.Kirigami.Theme.textColor
+        highlightColor: appWindow.Kirigami.Theme.highlightColor
+    }
+
+    PulseSidebar {
+        id: sidebar
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        z: 20
+        visible: appWindow.width >= 640
+        collapsed: appWindow.width < 900
+        theme: appWindow.theme
+        controller: telemetry
+        currentPage: appWindow.currentPageName
+        onPageSelected: pageId => appWindow.switchToPage(pageId)
     }
 
     QtCore.Settings {
@@ -76,7 +92,14 @@ Kirigami.ApplicationWindow {
     function updateCollectorActivity() {
         telemetry.setCollectorClientActive(appWindow.visible && appWindow.visibility !== Window.Minimized)
     }
-    Component.onCompleted: updateCollectorActivity()
+    Component.onCompleted: {
+        updateCollectorActivity()
+        if (appWindow.pageStack) {
+            appWindow.pageStack.anchors.leftMargin = Qt.binding(function() {
+                return sidebar.visible ? sidebar.width : 0
+            })
+        }
+    }
     onVisibleChanged: updateCollectorActivity()
     onVisibilityChanged: updateCollectorActivity()
 
@@ -475,12 +498,11 @@ Kirigami.ApplicationWindow {
         }
     }
 
-    globalDrawer: Kirigami.GlobalDrawer {
-        title: KI18n.i18n("Loofi Pulse")
-        titleIcon: "utilities-system-monitor"
-        isMenu: false
+    Item {
+        id: appActionsContainer
+        visible: false
 
-        actions: [
+        data: [
             Kirigami.Action {
                 objectName: "navigateOverview"
                 text: KI18n.i18n("Overview")
@@ -581,7 +603,8 @@ Kirigami.ApplicationWindow {
     }
 
     menuBar: Rectangle {
-        width: appWindow.width
+        x: sidebar.visible ? sidebar.width : 0
+        width: appWindow.width - x
         implicitHeight: topBarCol.implicitHeight + Kirigami.Units.smallSpacing * 2
         color: theme.surfaceColor
         border.width: 0
@@ -834,7 +857,8 @@ Kirigami.ApplicationWindow {
             // Segmented View Switcher Row (Recessed track container with elevated active tab)
             Rectangle {
                 Layout.fillWidth: true
-                implicitHeight: appWindow.width < 900 ? pageSelector.implicitHeight + 8 : navTabsRow.implicitHeight + 8
+                visible: appWindow.width < 900
+                implicitHeight: visible ? (pageSelector.implicitHeight + 8) : 0
                 radius: theme.innerRadius + 2
                 color: theme.cardNestedBg
                 border.width: 1

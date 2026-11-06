@@ -6,6 +6,7 @@ import "TemperatureLabels.js" as TemperatureLabels
 import QtQuick.Layouts
 import org.kde.plasma.components as PlasmaComponents3
 import org.kde.kirigami as Kirigami
+import com.github.loofi.hardwarepulse 1.0
 
 Item {
     id: compactRoot
@@ -23,6 +24,32 @@ Item {
     property bool alwaysShowStatusInPanel: false
     signal activationRequested()
     readonly property bool motionAllowed: Kirigami.Units.shortDuration > 0 && Kirigami.Units.longDuration > 0
+
+    readonly property PulseTheme theme: PulseTheme {
+        id: pulseTheme
+        bgColor: Kirigami.Theme.backgroundColor
+        textColor: Kirigami.Theme.textColor
+        highlightColor: Kirigami.Theme.highlightColor
+        disabledColor: Kirigami.Theme.disabledTextColor
+        negativeColor: Kirigami.Theme.negativeTextColor
+        neutralColor: Kirigami.Theme.neutralTextColor
+        positiveColor: Kirigami.Theme.positiveTextColor
+    }
+
+    function recentCpuValues() {
+        var rawJson = compactRoot.controller.historyRecentSeriesJson("cpuLoadPercent", "cpuLoadAvailable", 16)
+        if (!rawJson) return []
+        try {
+            var samples = JSON.parse(rawJson)
+            var res = []
+            for (var i = 0; i < samples.length; ++i) {
+                res.push(samples[i].available && isFinite(samples[i].value) ? samples[i].value : 0)
+            }
+            return res
+        } catch (e) {
+            return []
+        }
+    }
 
     readonly property string temperatureText: controller.cpuTempAvailable
         ? TemperatureLabels.formatTemperature(controller.cpuPackageTemp, controller.temperatureUnit) : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Temp N/A")
@@ -123,44 +150,11 @@ Item {
                     Layout.preferredWidth: 16
                     Layout.preferredHeight: 16
 
-                    Canvas {
-                        id: ringCanvas
+                    PulseRingGauge {
                         anchors.fill: parent
-                        renderTarget: Canvas.Image
-                        onPaint: {
-                            var ctx = getContext("2d")
-                            ctx.clearRect(0, 0, width, height)
-                            var cx = width / 2
-                            var cy = height / 2
-                            var r = Math.min(cx, cy) - 2
-                            if (r <= 0) return
-
-                            // Track
-                            ctx.beginPath()
-                            ctx.arc(cx, cy, r, 0, 2 * Math.PI)
-                            ctx.lineWidth = 2.5
-                            ctx.strokeStyle = Kirigami.Theme.disabledTextColor
-                            ctx.globalAlpha = 0.3
-                            ctx.stroke()
-                            ctx.globalAlpha = 1.0
-
-                            // Value arc (CPU load)
-                            var load = compactRoot.controller.cpuLoadAvailable ? (compactRoot.controller.cpuLoadPercent / 100.0) : 0.0
-                            var fraction = Math.min(1.0, Math.max(0.0, load))
-                            if (fraction > 0.02) {
-                                ctx.beginPath()
-                                ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + fraction * 2 * Math.PI)
-                                ctx.lineWidth = 2.5
-                                ctx.strokeStyle = compactRoot.badgeColor(compactRoot.controller.verdictSeverity)
-                                ctx.stroke()
-                            }
-                        }
-                        Connections {
-                            target: compactRoot.controller
-                            function onTelemetryUpdated() {
-                                if (compactRoot.panelDisplayStyle === 2) ringCanvas.requestPaint()
-                            }
-                        }
+                        theme: pulseTheme
+                        value: compactRoot.controller.cpuLoadAvailable ? (compactRoot.controller.cpuLoadPercent / 100.0) : 0.0
+                        color: compactRoot.badgeColor(compactRoot.controller.verdictSeverity)
                     }
                 }
 
@@ -172,57 +166,12 @@ Item {
                     Layout.preferredWidth: compactRoot.verticalPanel ? 26 : 38
                     Layout.preferredHeight: 14
 
-                    Canvas {
-                        id: sparkCanvas
+                    PulseSparkline {
                         anchors.fill: parent
-                        renderTarget: Canvas.Image
-                        onPaint: {
-                            var ctx = getContext("2d")
-                            ctx.clearRect(0, 0, width, height)
-                            var rawJson = compactRoot.controller.historyRecentSeriesJson("cpuLoadPercent", "cpuLoadAvailable", 16)
-                            if (!rawJson) return
-                            var samples = []
-                            try {
-                                samples = JSON.parse(rawJson)
-                            } catch (e) {
-                                return
-                            }
-                            var count = samples.length
-                            if (count < 2) return
-
-                            var pts = []
-                            for (var i = 0; i < count; ++i) {
-                                var s = samples[i]
-                                if (!s.available || !isFinite(s.value)) { pts.push(null); continue }
-                                var px = (i / Math.max(1, count - 1)) * width
-                                var norm = Math.min(1.0, Math.max(0.0, s.value / 100.0))
-                                var py = height - norm * (height - 3) - 1.5
-                                pts.push({ x: px, y: py })
-                            }
-
-                            var strokeColor = compactRoot.badgeColor(compactRoot.controller.verdictSeverity)
-                            ctx.strokeStyle = strokeColor
-                            ctx.lineWidth = 1.5
-                            ctx.beginPath()
-                            var active = false
-                            for (var j = 0; j < pts.length; ++j) {
-                                var pt = pts[j]
-                                if (!pt) { active = false; continue }
-                                if (!active) {
-                                    ctx.moveTo(pt.x, pt.y)
-                                    active = true
-                                } else {
-                                    ctx.lineTo(pt.x, pt.y)
-                                }
-                            }
-                            ctx.stroke()
-                        }
-                        Connections {
-                            target: compactRoot.controller
-                            function onTelemetryUpdated() {
-                                if (compactRoot.panelDisplayStyle === 1) sparkCanvas.requestPaint()
-                            }
-                        }
+                        values: compactRoot.recentCpuValues()
+                        color: compactRoot.badgeColor(compactRoot.controller.verdictSeverity)
+                        minValue: 0
+                        maxValue: 100
                     }
                 }
 

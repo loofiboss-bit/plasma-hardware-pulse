@@ -2,7 +2,7 @@
 
 Loofi Pulse is a local hardware monitor and incident investigation tool for KDE Plasma 6. The Qt 6/Kirigami desktop app and Plasma widget share a user-session collector. **Fedora 44 KDE is the primary development target.**
 
-**v0.14.0 is under development.** Automated tests, package builds, and physical desktop qualification are separate evidence. See [the v0.14.0 validation record](docs/validation-v0.14.0.md) for verified results and pending checks; this README does not certify every GPU, battery, driver, or Plasma setup. No v0.14.0 release artifacts are implied by the version metadata in this branch.
+**v0.15.0 is under development.** Automated tests, package builds, and physical desktop qualification are separate evidence. See the validation records for verified results and pending checks; this README does not certify every GPU, battery, driver, or Plasma setup. No v0.15.0 release artifacts are implied by the version metadata in this branch.
 
 ## What it does
 
