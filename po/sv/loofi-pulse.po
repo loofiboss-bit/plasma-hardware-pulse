@@ -6,8 +6,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: loofi-pulse 0.11.0\n"
-"Report-Msgid-Bugs-To: https://github.com/loofiboss-bit/plasma-hardware-pulse\n"
-"POT-Creation-Date: 2026-10-19 01:00+0200\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-11-03 12:09+0100\n"
 "PO-Revision-Date: 2026-10-19 01:00+0200\n"
 "Last-Translator: Loofi <loofi@github.com>\n"
 "Language-Team: Swedish <kde-i18n-doc@kde.org>\n"
@@ -17,2043 +17,3195 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-
-msgid "\nCPU average: "
-msgstr "\nCPU-medel: "
-
-msgid "\nCollector: "
-msgstr "\nInsamlare: "
-
-msgid "\nCoverage: "
-msgstr "\nTäckning: "
-
-msgid "   |   Drops: ↓ "
-msgstr "   |   Bortfall: ↓ "
-
-msgid "  ·  Click or drag on the timeline (or press Left/Right arrow keys) to inspect any sample."
-msgstr "  ·  Klicka eller dra på tidslinjen (eller tryck vänster/höger piltangent) för att granska en mätpunkt."
-
-msgid " (Latest)"
-msgstr " (senaste)"
-
-msgid " (PID "
-msgstr " (PID "
-
-msgid " (est.)"
-msgstr " (uppsk.)"
-
-msgid " (physical)"
-msgstr " (fysiskt)"
-
-msgid " (virtual)"
-msgstr " (virtuellt)"
-
-msgid " B"
-msgstr " B"
-
-msgid " GiB"
-msgstr " GiB"
-
-msgid " GiB ("
-msgstr " GiB ("
-
-msgid " GiB / "
-msgstr " GiB / "
-
-msgid " KiB"
-msgstr " KiB"
-
-msgid " MHz"
-msgstr " MHz"
-
-msgid " MHz avg · "
-msgstr " MHz medel · "
-
-msgid " MHz peak"
-msgstr " MHz topp"
-
-msgid " MiB"
-msgstr " MiB"
-
-msgid " MiB RSS"
-msgstr " MiB RSS"
-
-msgid " MiB VRAM"
-msgstr " MiB VRAM"
-
-msgid " MiB allocator memory."
-msgstr " MiB allokeringsminne."
-
-msgid " MiB before compression, "
-msgstr " MiB före komprimering, "
-
-msgid " MiB compressed payload and "
-msgstr " MiB komprimerade data och "
-
-msgid " MiB · Write "
-msgstr " MiB · Skrivning "
-
-msgid " MiB/s"
-msgstr " MiB/s"
-
-msgid " MiB/s read · "
-msgstr " MiB/s läsning · "
-
-msgid " MiB/s write"
-msgstr " MiB/s skrivning"
-
-msgid " MiB/s · "
-msgstr " MiB/s · "
-
-msgid " MiB/s · ↑"
-msgstr " MiB/s · ↑"
-
-msgid " MiB/s)"
-msgstr " MiB/s)"
-
-msgid " RPM"
-msgstr " RPM"
-
-msgid " W"
-msgstr " W"
-
-msgid " W · "
-msgstr " W · "
-
-msgid " W · PL2 "
-msgstr " W · PL2 "
-
-msgid " W)"
-msgstr " W)"
-
-msgid " buckets"
-msgstr " intervall"
-
-msgid " details"
-msgstr " detaljer"
-
-msgid " gaps"
-msgstr " luckor"
-
-msgid " h recorded"
-msgstr " timmar inspelade"
-
-msgid " headroom"
-msgstr " marginal"
-
-msgid " incidents recorded"
-msgstr " incidenter registrerade"
-
-msgid " min"
-msgstr " min"
-
-msgid " ms"
-msgstr " ms"
-
-msgid " ms/s"
-msgstr " ms/s"
-
-msgid " ms/s)"
-msgstr " ms/s)"
-
-msgid " observations · "
-msgstr " observationer · "
-
-msgid " out of 100; higher is better"
-msgstr " av 100; högre är bättre"
-
-msgid " process(es) currently in uninterruptible disk wait (state D)."
-msgstr " processer i oavbrytbar diskväntan (tillstånd D)."
-
-msgid " processes"
-msgstr " processer"
-
-msgid " s"
-msgstr " s"
-
-msgid " s / "
-msgstr " s / "
-
-msgid " s coverage"
-msgstr " s täckning"
-
-msgid " s · "
-msgstr " s · "
-
-msgid " samples"
-msgstr " mätpunkter"
-
-msgid " samples · "
-msgstr " mätpunkter · "
-
-msgid " tab"
-msgstr " flik"
-
-msgid " · Complete"
-msgstr " · Fullständigt"
-
-msgid " · DISK WAIT (D)"
-msgstr " · DISKVÄNTAN (D)"
-
-msgid " · Disconnected or unsupported"
-msgstr " · Frånkopplad eller saknar stöd"
-
-msgid " · Frequency: "
-msgstr " · Frekvens: "
-
-msgid " · GPU power: "
-msgstr " · GPU-effekt: "
-
-msgid " · GPU temperature: "
-msgstr " · GPU-temperatur: "
-
-msgid " · HISTORICAL investigation (live monitoring continues separately)"
-msgstr " · HISTORISK undersökning (realtidsövervakning fortsätter separat)"
-
-msgid " · KDE Plasma 6"
-msgstr " · KDE Plasma 6"
-
-msgid " · Live recording"
-msgstr " · Realtidsinspelning"
-
-msgid " · New this interval: "
-msgstr " · Nya detta intervall: "
-
-msgid " · Observed "
-msgstr " · Observerat "
-
-msgid " · PID "
-msgstr " · PID "
-
-msgid " · Partial coverage"
-msgstr " · Ofullständig täckning"
-
-msgid " · Reason: "
-msgstr " · Orsak: "
-
-msgid " · Recording paused in this window"
-msgstr " · Inspelning pausad i det här fönstret"
-
-msgid " · Responsiveness: "
-msgstr " · Responsivitet: "
-
-msgid " · Rule: "
-msgstr " · Regel: "
-
-msgid " · Sampled: "
-msgstr " · Insamlat: "
-
-msgid " · Unsaved"
-msgstr " · Osparad"
-
-msgid " · W "
-msgstr " · W "
-
-msgid " · ZRAM "
-msgstr " · ZRAM "
-
-msgid " · observed "
-msgstr " · observerat "
-
-msgid " · start ticks "
-msgstr " · starttick "
-
-msgid " · unavailable"
-msgstr " · otillgängligt"
-
-msgid "% CPU"
-msgstr "% CPU"
-
-msgid "% CPU · "
-msgstr "% CPU · "
-
-msgid "% I/O wait"
-msgstr "% I/O-väntan"
-
-msgid "% activity"
-msgstr "% aktivitet"
-
-msgid "% charge"
-msgstr "% laddning"
-
-msgid "% load"
-msgstr "% belastning"
-
-msgid "% time waiting"
-msgstr "% väntetid"
-
-msgid "% | full wait: "
-msgstr "% | full väntan: "
-
-msgid "). Real-time telemetry is paused."
-msgstr "). Realtidsmätningen är pausad."
-
-msgid ", active profile"
-msgstr ", aktiv profil"
-
-msgid ", change power profile"
-msgstr ", ändra energiprofil"
-
-msgid ". Collapse process details"
-msgstr ". Dölj processdetaljer"
-
-msgid ". Concurrent resource use does not establish causation."
-msgstr ". Samtidig resursanvändning bevisar inte orsakssamband."
-
-msgid ". Expand process details"
-msgstr ". Visa processdetaljer"
-
-msgid ". Open pressure details"
-msgstr ". Öppna belastningsdetaljer"
-
-msgid ". Open status explanation"
-msgstr ". Öppna statusförklaring"
-
-msgid ". Responsiveness index "
-msgstr ". Responsivitetsindex "
-
-msgid "08:00"
-msgstr "08:00"
-
-msgid "1 Day"
-msgstr "1 dag"
-
-msgid "1000 ms (Standard balanced)"
-msgstr "1000 ms (balanserad standard)"
-
-msgid "14 Days"
-msgstr "14 dagar"
-
-msgid "15 minutes"
-msgstr "15 minuter"
-
-msgid "15 minutes (Extended)"
-msgstr "15 minuter (utökad)"
-
-msgid "1h"
-msgstr "1h"
-
-msgid "2000 ms (Low overhead)"
-msgstr "2000 ms (låg belastning)"
-
-msgid "20–100 °C"
-msgstr "20–100 °C"
-
-msgid "22:00"
-msgstr "22:00"
-
-msgid "24h"
-msgstr "24h"
-
-msgid "250 ms (High responsiveness)"
-msgstr "250 ms (hög tidsupplösning)"
-
-msgid "30 Days"
-msgstr "30 dagar"
-
-msgid "30 minutes"
-msgstr "30 minuter"
-
-msgid "30 minutes (Deep investigation)"
-msgstr "30 minuter (djupgående undersökning)"
-
-msgid "30d"
-msgstr "30d"
-
-msgid "5 minutes"
-msgstr "5 minuter"
-
-msgid "5 minutes (Default)"
-msgstr "5 minuter (standard)"
-
-msgid "500 ms (Fast)"
-msgstr "500 ms (snabb)"
-
-msgid "5000 ms (Minimal CPU)"
-msgstr "5000 ms (minimal CPU-belastning)"
-
-msgid "68–212 °F"
-msgstr "68–212 °F"
-
-msgid "6h"
-msgstr "6h"
-
-msgid "7 Days (Recommended)"
-msgstr "7 dagar (rekommenderas)"
-
-msgid "7d"
-msgstr "7d"
-
-msgid "AC power"
-msgstr "Nätström"
-
-msgid "AC power · No battery"
-msgstr "Nätström · Inget batteri"
-
-msgid "About & Documentation"
-msgstr "Om och dokumentation"
-
-msgid "About Loofi Pulse"
-msgstr "Om Loofi Pulse"
-
-msgid "Active observation"
-msgstr "Aktiv observation"
-
-msgid "Active power profile: "
-msgstr "Aktiv energiprofil: "
-
-msgid "Active profile: "
-msgstr "Aktiv profil: "
-
-msgid "Activity unavailable"
-msgstr "Aktivitet otillgänglig"
-
-msgid "Alert Notifications"
-msgstr "Varningsaviseringar"
-
-msgid "All alerts (Including informational)"
-msgstr "Alla aviseringar (även information)"
-
-msgid "Also active: "
-msgstr "Även aktivt: "
-
-msgid "An empty selection uses physical interfaces automatically. Reports include process details only when explicitly enabled."
-msgstr "Ett tomt urval använder fysiska gränssnitt automatiskt. Rapporter innehåller processuppgifter endast om detta aktiveras uttryckligen."
-
-msgid "Author: Loofi Boss"
-msgstr "Författare: Loofi Boss"
-
-msgid "Auto physical totals"
-msgstr "Automatiska fysiska totalvärden"
-
-msgid "Automatic totals use physical interfaces. You can change selected interfaces in Settings. Cumulative packet statistics track drops and error rates."
-msgstr "Automatiska totalvärden använder fysiska gränssnitt. Ändra urvalet i inställningarna. Kumulativ paketstatistik visar bortfall och fel."
-
-msgid "Automatically use physical interfaces"
-msgstr "Använd fysiska gränssnitt automatiskt"
-
-msgid "Automatically use physical network interfaces"
-msgstr "Använd fysiska nätverksgränssnitt automatiskt"
-
-msgid "Available"
-msgstr "Tillgänglig"
-
-msgid "Avg Latency:"
-msgstr "Genomsnittlig fördröjning:"
-
-msgid "BOTTLENECK"
-msgstr "FLASKHALS"
-
-msgid "Background & Startup"
-msgstr "Bakgrund och uppstart"
-
-msgid "Background monitoring and login startup are separate opt-ins. Recordings stay in memory until you save a session. The process-detail privacy setting also applies to sessions."
-msgstr "Bakgrundsövervakning och start vid inloggning väljs separat. Inspelningar finns i minnet tills en session sparas. Integritetsinställningen för processuppgifter gäller även sessioner."
-
-msgid "Background monitoring toggle"
-msgstr "Bakgrundsövervakning"
-
-msgid "Battery"
-msgstr "Batteri"
-
-msgid "Battery & Power (High discharge)"
-msgstr "Batteri och effekt (hög urladdning)"
-
-msgid "Battery & power source"
-msgstr "Batteri och strömkälla"
-
-msgid "Battery (0–"
-msgstr "Batteri (0–"
-
-msgid "Battery discharge"
-msgstr "Batteriurladdning"
-
-msgid "Battery discharge "
-msgstr "Batteriurladdning "
-
-msgid "Battery discharge channel; separate from CPU package power"
-msgstr "Batteriurladdning, separat från CPU-paketeffekt"
-
-msgid "Battery health: "
-msgstr "Batterihälsa: "
-
-msgid "Battery health: Unavailable"
-msgstr "Batterihälsa: Otillgänglig"
-
-msgid "Battery totals combine compatible energy readings only. Power-source status and battery charging are independent, including USB-C supplies."
-msgstr "Batteritotaler kombinerar endast kompatibla energivärden. Strömkällans status och batteriladdning är separata, även för USB-C."
-
-msgid "Battery: "
-msgstr "Batteri: "
-
-msgid "Battery: Not present · "
-msgstr "Batteri: Saknas · "
-
-msgid "Battery: Unavailable"
-msgstr "Batteri: Otillgängligt"
-
-msgid "Bottleneck"
-msgstr "Flaskhals"
-
-msgid "Bucket duration: "
-msgstr "Intervallängd: "
-
-msgid "CPU "
-msgstr "CPU "
-
-msgid "CPU %"
-msgstr "CPU %"
-
-msgid "CPU & NVMe thermals"
-msgstr "CPU- och NVMe-temperaturer"
-
-msgid "CPU & SoC"
-msgstr "CPU och SoC"
-
-msgid "CPU & SoC (Load, frequencies)"
-msgstr "CPU och SoC (belastning, frekvenser)"
-
-msgid "CPU Load & Package Temperature Trends"
-msgstr "Trender för CPU-belastning och temperatur"
-
-msgid "CPU N/A"
-msgstr "CPU otillgänglig"
-
-msgid "CPU PSI wait"
-msgstr "CPU-väntetid (PSI)"
-
-msgid "CPU avg: "
-msgstr "CPU medel: "
-
-msgid "CPU cores and sensors"
-msgstr "CPU-kärnor och sensorer"
-
-msgid "CPU is close to its reported thermal limit"
-msgstr "CPU är nära sin rapporterade temperaturgräns"
-
-msgid "CPU is operating at its sustained power limit (PL1)"
-msgstr "CPU arbetar vid sin uthålliga effektgräns (PL1)"
-
-msgid "CPU load"
-msgstr "CPU-belastning"
-
-msgid "CPU load & frequency"
-msgstr "CPU-belastning och frekvens"
-
-msgid "CPU load (0–100%)"
-msgstr "CPU-belastning (0–100%)"
-
-msgid "CPU load and temperature trends"
-msgstr "Trender för CPU-belastning och temperatur"
-
-msgid "CPU load: 0–100% · Temperature: "
-msgstr "CPU-belastning: 0–100 % · Temperatur: "
-
-msgid "CPU package & power limits"
-msgstr "CPU-paket och effektgränser"
-
-msgid "CPU package power: Unavailable"
-msgstr "CPU-paketeffekt: Otillgänglig"
-
-msgid "CPU pressure or thermal risk is elevated"
-msgstr "CPU-belastning eller temperaturrisk är förhöjd"
-
-msgid "CPU temp (25–100 °C)"
-msgstr "CPU-temp (25–100 °C)"
-
-msgid "CPU temperature"
-msgstr "CPU-temperatur"
-
-msgid "CPU thermal throttling observed"
-msgstr "CPU-temperaturstrypning observerad"
-
-msgid "CPU use"
-msgstr "CPU-användning"
-
-msgid "CPU warming up"
-msgstr "CPU-mätningen förbereds"
-
-msgid "CPU: "
-msgstr "CPU: "
-
-msgid "Cancel"
-msgstr "Avbryt"
-
-msgid "Celsius (°C)"
-msgstr "Celsius (°C)"
-
-msgid "Charge unavailable"
-msgstr "Laddning otillgänglig"
-
-msgid "Check for background indexing, updates, or other heavy disk activity."
-msgstr "Kontrollera bakgrundsindexering, uppdateringar och annan tung diskaktivitet."
-
-msgid "Check whether the current workload is expected."
-msgstr "Kontrollera om den aktuella belastningen är förväntad."
-
-msgid "Clear Database"
-msgstr "Rensa databasen"
-
-msgid "Clear Recorded History"
-msgstr "Rensa inspelad historik"
-
-msgid "Clear persistent history?"
-msgstr "Rensa långtidshistoriken?"
-
-msgid "Clear recorded history"
-msgstr "Rensa inspelad historik"
-
-msgid "Clear recorded history?"
-msgstr "Rensa den inspelade historiken?"
-
-msgid "Click to freeze moment"
-msgstr "Klicka för att frysa ögonblicket"
-
-msgid "Collecting initial readings"
-msgstr "Samlar in inledande mätvärden"
-
-msgid "Collector disconnected"
-msgstr "Insamlaren är frånkopplad"
-
-msgid "Collector service is disconnected ("
-msgstr "Insamlingstjänsten är frånkopplad ("
-
-msgid "Collector: "
-msgstr "Insamlare: "
-
-msgid "Completed: "
-msgstr "Klart: "
-
-msgid "Concurrent process"
-msgstr "Samtidigt observerad process"
-
-msgid "Concurrent resource use"
-msgstr "Samtidig resursanvändning"
-
-msgid "Confirming system readings"
-msgstr "Bekräftar systemmätningar"
-
-msgid "Continue monitoring when all windows close"
-msgstr "Fortsätt övervakning i bakgrunden när alla fönster stängs"
-
-msgid "Cooling & device thermal"
-msgstr "Kylning och enhetstemperatur"
-
-msgid "Copy incident report"
-msgstr "Kopiera incidentrapport"
-
-msgid "Copy report"
-msgstr "Kopiera rapport"
-
-msgid "Copy report to clipboard"
-msgstr "Kopiera rapport till urklipp"
-
-msgid "Could not complete: "
-msgstr "Kunde inte slutföra: "
-
-msgid "Critical Throttle"
-msgstr "Kritisk strypning"
-
-msgid "Critical only (Severe throttling)"
-msgstr "Endast kritiska incidenter (kraftig strypning)"
-
-msgid "D (wait)"
-msgstr "D (väntar)"
-
-msgid "DATA POINTS"
-msgstr "MÄTPUNKTER"
-
-msgid "DISCONNECTED"
-msgstr "FRÅNKOPPLAD"
-
-msgid "DISK WAIT (D)"
-msgstr "DISKVÄNTAN (D)"
-
-msgid "Data quality and sources"
-msgstr "Datakvalitet och källor"
-
-msgid "Detected sensors"
-msgstr "Identifierade sensorer"
-
-msgid "Devices & network interfaces"
-msgstr "Enheter och nätverksgränssnitt"
-
-msgid "Disabled (Mute all notifications)"
-msgstr "Avstängt (tysta alla aviseringar)"
-
-msgid "Discard investigation and close"
-msgstr "Kasta utredning och stäng"
-
-msgid "Discard investigation and quit"
-msgstr "Kasta undersökningen och avsluta"
-
-msgid "Disk"
-msgstr "Disk"
-
-msgid "Disk "
-msgstr "Disk "
-
-msgid "Disk I/O (0–"
-msgstr "Disk-I/O (0–"
-
-msgid "Disk I/O throughput: Unavailable"
-msgstr "Disktrafik: Otillgänglig"
-
-msgid "Disk I/O:"
-msgstr "Disk-I/O:"
-
-msgid "Disk I/O: "
-msgstr "Disk-I/O: "
-
-msgid "Disk R "
-msgstr "Disk läsning "
-
-msgid "Disk throughput: "
-msgstr "Disktrafik: "
-
-msgid "Display & Units"
-msgstr "Visning och enheter"
-
-msgid "Domain: "
-msgstr "Område: "
-
-msgid "Driver: "
-msgstr "Drivrutin: "
-
-msgid "ELEVATED"
-msgstr "FÖRHÖJD"
-
-msgid "Elevated"
-msgstr "Förhöjd"
-
-msgid "Enable in Settings…"
-msgstr "Aktivera i inställningarna…"
-
-msgid "Enable incident notifications"
-msgstr "Aktivera incidentaviseringar"
-
-msgid "Enable incident notifications in this window"
-msgstr "Aktivera incidentaviseringar i det här fönstret"
-
-msgid "Enable long-term history to record 1-minute system hardware trends across restarts (up to 30 days)."
-msgstr "Aktivera långtidshistorik för att spara minutvärden mellan omstarter (upp till 30 dagar)."
-
-msgid "Enable persistent long-term metrics history"
-msgstr "Aktivera beständig långtidshistorik"
-
-msgid "Enable persistent metrics history across restarts (opt-in)"
-msgstr "Spara mäthistorik mellan omstarter (frivilligt)"
-
-msgid "End process"
-msgstr "Avsluta process"
-
-msgid "End process?"
-msgstr "Avsluta process?"
-
-msgid "End process…"
-msgstr "Avsluta process…"
-
-msgid "End unset"
-msgstr "Slut ej valt"
-
-msgid "Enter a valid time in HH:mm format (00:00–23:59). The last valid schedule remains active."
-msgstr "Ange en giltig tid i formatet HH:mm (00:00–23:59). Det senaste giltiga schemat gäller tills vidare."
-
-msgid "Error and drop counters unavailable for this interface."
-msgstr "Fel- och bortfallsräknare är otillgängliga för gränssnittet."
-
-msgid "Errors: ↓ "
-msgstr "Fel: ↓ "
-
-msgid "Estimated power"
-msgstr "Uppskattad effekt"
-
-msgid "Export incident"
-msgstr "Exportera incident"
-
-msgid "Export incident report"
-msgstr "Exportera incidentrapport"
-
-msgid "Export recording"
-msgstr "Exportera inspelning"
-
-msgid "FROZEN (EXPIRED)"
-msgstr "FRYST (UTGÅNGEN)"
-
-msgid "FROZEN SAMPLE"
-msgstr "FRYST MÄTPUNKT"
-
-msgid "Fahrenheit (°F)"
-msgstr "Fahrenheit (°F)"
-
-msgid "Fan speed: "
-msgstr "Fläkthastighet: "
-
-msgid "Fan: "
-msgstr "Fläkt: "
-
-msgid "Filter processes by name, PID or owner…"
-msgstr "Filtrera processer på namn, PID eller ägare…"
-
-msgid "Flight Recorder"
-msgstr "Färdskrivare"
-
-msgid "Flight recorder:"
-msgstr "Inspelning:"
-
-msgid "Follow Live"
-msgstr "Följ realtid"
-
-msgid "Force kill process"
-msgstr "Tvinga avslut"
-
-msgid "Force terminate immediately (SIGKILL)"
-msgstr "Tvinga omedelbar avslutning (SIGKILL)"
-
-msgid "Freeze selected range"
-msgstr "Frys valt intervall"
-
-msgid "Frequency unavailable"
-msgstr "Frekvens otillgänglig"
-
-msgid "Frozen investigation session"
-msgstr "Fryst undersökningssession"
-
-msgid "GPU (Busy, VRAM, thermals)"
-msgstr "GPU (belastning, VRAM, temperaturer)"
-
-msgid "GPU driver: "
-msgstr "GPU-drivrutin: "
-
-msgid "GPU load (0–100%)"
-msgstr "GPU-belastning (0–100%)"
-
-msgid "GPU load and temperature are high"
-msgstr "GPU-belastning och temperatur är höga"
-
-msgid "GPU load: "
-msgstr "GPU-belastning: "
-
-msgid "GPU telemetry at sample"
-msgstr "GPU-värden vid mätpunkten"
-
-msgid "GPU temperature is high"
-msgstr "GPU-temperaturen är hög"
-
-msgid "GPU temperature: "
-msgstr "GPU-temperatur: "
-
-msgid "GitHub: https://github.com/loofiboss-bit/plasma-hardware-pulse"
-msgstr "GitHub: https://github.com/loofiboss-bit/plasma-hardware-pulse"
-
-msgid "Graphics (GPU)"
-msgstr "Grafik (GPU)"
-
-msgid "Graphics devices"
-msgstr "Grafikenheter"
-
-msgid "HISTORICAL SESSION"
-msgstr "HISTORISK SESSION"
-
-msgid "Hardware Health Monitor"
-msgstr "Hårdvaruövervakare"
-
-msgid "Hardware history timeline. Select a sample with left and right arrow keys."
-msgstr "Tidslinje för hårdvaruhistorik. Välj en mätpunkt med vänster och höger piltangent."
-
-msgid "Help & Diagnostics:"
-msgstr "Hjälp och diagnostik:"
-
-msgid "Hide Loofi Pulse"
-msgstr "Dölj Loofi Pulse"
-
-msgid "Hide measurement details"
-msgstr "Dölj mätdetaljer"
-
-msgid "Hide status explanation"
-msgstr "Dölj statusförklaring"
-
-msgid "High battery power draw"
-msgstr "Hög batteriförbrukning"
-
-msgid "High workload while power-saver profile is active"
-msgstr "Hög belastning med energisparprofil aktiverad"
-
-msgid "History"
-msgstr "Historik"
-
-msgid "History & Flight Recorder"
-msgstr "Historik och inspelning"
-
-msgid "History retention"
-msgstr "Inspelningslängd"
-
-msgid "History retention:"
-msgstr "Inspelningslängd:"
-
-msgid "Hover @ "
-msgstr "Pekare vid "
-
-msgid "IOPS:"
-msgstr "IOPS:"
-
-msgid "Identity omitted"
-msgstr "Identitet utelämnad"
-
-msgid "In-memory history retention duration"
-msgstr "Hur länge historik sparas i minnet"
-
-msgid "In-memory investigation"
-msgstr "Undersökning i minnet"
-
-msgid "Include process details in exports"
-msgstr "Ta med processuppgifter i export"
-
-msgid "Include process names and IDs in reports"
-msgstr "Ta med processnamn och ID i rapporter"
-
-msgid "Include process names and PIDs in exported session reports"
-msgstr "Ta med processnamn och PID i sparade sessioner och rapporter"
-
-msgid "Index unavailable"
-msgstr "Index otillgängligt"
-
-msgid "Indicates when threads are blocked waiting for synchronous NVMe/disk transactions."
-msgstr "Visar när trådar blockeras i väntan på synkrona NVMe-/disktransaktioner."
-
-msgid "Individual batteries"
-msgstr "Enskilda batterier"
-
-msgid "Inspect "
-msgstr "Granska "
-
-msgid "Inspected moment: "
-msgstr "Granskat ögonblick: "
-
-msgid "Inspected sample "
-msgstr "Granskad mätpunkt "
-
-msgid "Interface selection:"
-msgstr "Val av gränssnitt:"
-
-msgid "Investigation range"
-msgstr "Undersökningsintervall"
-
+#: src/app/main.cpp:99
 msgid "KDE Plasma 6 hardware health and pressure monitor"
 msgstr "KDE Plasma 6 hårdvaruhälso- och tryckövervakare"
 
-msgid "Keep Loofi Pulse open while readings stabilize."
-msgstr "Låt Loofi Pulse vara öppet medan mätvärdena stabiliseras."
-
-msgid "Keep an eye on storage temperature during long transfers."
-msgstr "Följ lagringstemperaturen under långa överföringar."
-
-msgid "Keep detailed historical metrics up to:"
-msgstr "Spara detaljerade historiska mått i upp till:"
-
-msgid "Keyboard Shortcuts"
-msgstr "Kortkommandon"
-
-msgid "LIVE STREAM"
-msgstr "REALTID"
-
-msgid "Level unavailable"
-msgstr "Nivå otillgänglig"
-
-msgid "License: GNU General Public License v3.0"
-msgstr "Licens: GNU General Public License v3.0"
-
-msgid "Linux Pressure Stall Information (PSI) measures time tasks spend waiting for CPU, memory, or storage. High RAM use alone does not mean the system is under pressure. The Responsiveness index runs from 0 to 100; higher is better, with 100 meaning little observed pressure. Raw PSI wait percentages increase with stalled work."
-msgstr "Linux Pressure Stall Information (PSI) mäter hur länge uppgifter väntar på CPU, minne eller lagring. Hög RAM-användning innebär inte i sig att systemet är belastat. Responsivitetsindex går från 0 till 100; högre är bättre och 100 innebär låg observerad belastning. Råa PSI-väntetider ökar när arbete blockeras."
-
-msgid "Live (RAM)"
-msgstr "Realtid (RAM)"
-
-msgid "Live Flight Recorder"
-msgstr "Inspelning i realtid"
-
-msgid "Live device readings. Physical and virtual devices are monitored individually. Aggregated totals use physical interfaces by default to avoid double-counting virtual tunnel or container traffic."
-msgstr "Realtidsvärden per enhet. Fysiska och virtuella enheter övervakas var för sig. Totalvärden använder normalt fysiska gränssnitt för att undvika dubbelräkning av tunnel- eller containertrafik."
-
-msgid "Load "
-msgstr "Belastning "
-
-msgid "Load N/A"
-msgstr "Belastning otillgänglig"
-
-msgid "Load: "
-msgstr "Belastning: "
-
-msgid "Loading history…"
-msgstr "Läser in historik…"
-
-msgid "Local hardware monitoring and incident investigation for KDE Plasma."
-msgstr "Lokal hårdvaruövervakning och incidentundersökning för KDE Plasma."
-
-msgid "Long term history retention period"
-msgstr "Lagringstid för långtidshistorik"
-
-msgid "Long-Term Metrics History is Disabled"
-msgstr "Långtidshistorik är avstängd"
-
-msgid "Long-Term Trends & Incident History"
-msgstr "Långtidstrender och incidenthistorik"
-
-msgid "Long-Term Trends (1h – 30d)"
-msgstr "Långtidstrender (1 timme–30 dagar)"
-
-msgid "Long-term history:"
-msgstr "Långtidshistorik:"
-
-msgid "Loofi Pulse"
-msgstr "Loofi Pulse"
-
-msgid "Loofi Pulse is still running in the system tray. Right-click the tray icon to quit."
-msgstr "Loofi Pulse körs fortfarande i systemfältet. Högerklicka på ikonen för att avsluta."
-
-msgid "Loofi Pulse — %1\nCPU: %2 · Temperature: %3 · Memory: %4"
-msgstr "Loofi Pulse — %1\nCPU: %2 · Temperatur: %3 · Minne: %4"
-
-msgid "MONITORING COVERAGE"
-msgstr "MÄTTÄCKNING"
-
-msgid "Margin "
-msgstr "Marginal "
-
-msgid "Mark Problem Now"
-msgstr "Markera problem nu"
-
-msgid "Mark problem now"
-msgstr "Markera problem nu"
-
-msgid "Measured hardware power"
-msgstr "Uppmätt hårdvarueffekt"
-
-msgid "Measurement capabilities"
-msgstr "Mätmöjligheter"
-
-msgid "Measurement details"
-msgstr "Mätdetaljer"
-
-msgid "Measures actual thread stall time spent on ZRAM compression, page reclaim, and allocation."
-msgstr "Mäter faktisk väntetid för trådar vid ZRAM-komprimering, sidåtervinning och allokering."
-
-msgid "Mem"
-msgstr "Minne"
-
-msgid "Memory & PSI"
-msgstr "Minne och PSI"
-
-msgid "Memory & PSI (RAM, Swap, Stalls)"
-msgstr "Minne och PSI (RAM, växling, väntetid)"
-
-msgid "Memory & PSI Pressure"
-msgstr "Minne och PSI-belastning"
-
-msgid "Memory & Pressure"
-msgstr "Minne och belastning"
-
-msgid "Memory & system pressure (PSI)"
-msgstr "Minne och systembelastning (PSI)"
-
-msgid "Memory PSI wait"
-msgstr "Minnesväntetid (PSI)"
-
-msgid "Memory pressure"
-msgstr "Minnesbelastning"
-
-msgid "Memory pressure is slowing the system"
-msgstr "Minnesbelastning saktar ned systemet"
-
-msgid "Memory use"
-msgstr "Minnesanvändning"
-
-msgid "Memory use, compression and swap"
-msgstr "Minnesanvändning, komprimering och växlingsutrymme"
-
-msgid "Minimize to system tray when closing window"
-msgstr "Minimera till systemfältet när fönstret stängs"
-
-msgid "Minimize to tray on close toggle"
-msgstr "Minimera till systemfältet vid stängning"
-
-msgid "Minimum alert severity threshold"
-msgstr "Lägsta allvarlighetsgrad för aviseringar"
-
-msgid "Minimum alert severity:"
-msgstr "Lägsta allvarlighetsgrad för avisering:"
-
-msgid "Missing: "
-msgstr "Saknas: "
-
-msgid "Monitor interface "
-msgstr "Övervaka gränssnitt "
-
-msgid "Monitoring & Sampling"
-msgstr "Övervakning och insamling"
-
-msgid "More"
-msgstr "Mer"
-
-msgid "Mute alerts for "
-msgstr "Tysta aviseringar för "
-
-msgid "Muted alert domains:"
-msgstr "Tysta aviseringar för:"
-
-msgid "NOMINAL"
-msgstr "NORMAL"
-
-msgid "NVMe "
-msgstr "NVMe "
-
-msgid "NVMe temp N/A"
-msgstr "NVMe-temp otillgänglig"
-
-msgid "NVMe temperature is elevated"
-msgstr "NVMe-temperaturen är förhöjd"
-
-msgid "NVMe temperature: "
-msgstr "NVMe-temperatur: "
-
-msgid "NVMe: "
-msgstr "NVMe: "
-
-msgid "Name"
-msgstr "Namn"
-
-msgid "Navigation & Actions"
-msgstr "Navigering och åtgärder"
-
-msgid "Net"
-msgstr "Nätverk"
-
-msgid "Net ↓"
-msgstr "Net ↓"
-
-msgid "Network (Throughput spikes)"
-msgstr "Nätverk (trafiktoppar)"
-
-msgid "Network I/O: "
-msgstr "Nätverks-I/O: "
-
-msgid "Network Interfaces"
-msgstr "Nätverksgränssnitt"
-
-msgid "Network interfaces"
-msgstr "Nätverksgränssnitt"
-
-msgid "Network throughput: Unavailable"
-msgstr "Nätverkstrafik: Otillgänglig"
-
-msgid "Network throughput: ↓"
-msgstr "Nätverkstrafik: ↓"
-
-msgid "New throttle events: "
-msgstr "Nya strypningshändelser: "
-
-msgid "Next step: "
-msgstr "Nästa steg: "
-
-msgid "No GPU detected"
-msgstr "Ingen GPU identifierad"
-
-msgid "No action is needed."
-msgstr "Ingen åtgärd behövs."
-
-msgid "No additional detail"
-msgstr "Inga ytterligare uppgifter"
-
-msgid "No battery"
-msgstr "Inget batteri"
-
-msgid "No battery detected"
-msgstr "Inget batteri identifierat"
-
-msgid "No contributing signal is currently available."
-msgstr "Ingen bidragande signal finns tillgänglig just nu."
-
-msgid "No current system pressure detected"
-msgstr "Ingen aktuell systembelastning upptäckt"
-
-msgid "No history has been recorded yet"
-msgstr "Ingen historik har spelats in ännu"
-
-msgid "No history yet. Measurements appear here after the next sample."
-msgstr "Ingen historik ännu. Mätvärden visas efter nästa insamling."
-
-msgid "No incident summaries were recorded in this time range. Missing coverage does not establish that no incidents occurred."
-msgstr "Inga incidentsammanfattningar registrerades i det här tidsintervallet. Saknad mättäckning bevisar inte att inga incidenter inträffade."
-
-msgid "No matching processes found"
-msgstr "Inga matchande processer"
-
+#: src/app/qml/FlightRecorderPage.qml:14 src/app/qml/FlightRecorderPage.qml:163
+#: src/app/qml/Main.qml:515 src/app/qml/Main.qml:878 src/app/qml/Main.qml:903
+msgid "History"
+msgstr "Historik"
+
+#: src/app/qml/FlightRecorderPage.qml:54 src/app/qml/FlightRecorderPage.qml:627
 msgid "No observations available"
 msgstr "Inga observationer tillgängliga"
 
-msgid "No persisted history samples for this time window yet."
-msgstr "Inga sparade historikvärden för det här tidsintervallet ännu."
-
-msgid "No power channel"
-msgstr "Ingen effektkälla för mätning"
-
-msgid "No process identities recorded at this moment"
-msgstr "Inga processidentiteter inspelade vid den här tidpunkten"
-
-msgid "No readable batteries present"
-msgstr "Inga läsbara batterier finns"
-
-msgid "No readable storage devices found"
-msgstr "Inga läsbara lagringsenheter hittades"
-
-msgid "No recorded gaps"
-msgstr "Inga registrerade luckor"
-
-msgid "No recorded sample"
-msgstr "Inget inspelat mätvärde"
-
-msgid "No supported GPU telemetry interface found"
-msgstr "Inget GPU-gränssnitt för mätning hittades"
-
-msgid "No supported temperature sensors were found."
-msgstr "Inga temperaturgivare med stöd hittades."
-
-msgid "No sustained pressure or thermal risk was observed in the available readings."
-msgstr "Ingen ihållande belastning eller temperaturrisk observerades i de tillgängliga mätvärdena."
-
-msgid "Nominal"
-msgstr "Nominell"
-
-msgid "None / Unavailable"
-msgstr "Ingen/otillgänglig"
-
-msgid "None observed"
-msgstr "Inga observerade"
-
-msgid "Not sampled"
-msgstr "Ej insamlat"
-
-msgid "Observed"
-msgstr "Observerat"
-
-msgid "Observed CPU and resident memory describe resource use; a busy process alone does not establish causation."
-msgstr "Observerad CPU- och minnesanvändning beskriver resursförbrukning. En aktiv process bevisar inte i sig orsakssamband."
-
-msgid "Observed every 2 seconds: the union of the top 8 CPU, memory and disk-wait processes. This is a bounded sample, not a complete historical process list. Process identities are excluded from saved files unless enabled in Settings."
-msgstr "Observeras varannan sekund: de åtta främsta processerna för CPU, minne respektive diskväntan. Urvalet är begränsat och utgör ingen fullständig historisk processlista. Processidentiteter utelämnas i sparade filer om de inte aktiveras i inställningarna."
-
-msgid "Observed for "
-msgstr "Observerat i "
-
-msgid "Observed process use: Unavailable"
-msgstr "Observerad processanvändning: Otillgänglig"
-
-msgid "Observed: "
-msgstr "Observerat: "
-
-msgid "Observing"
-msgstr "Observerar"
-
-msgid "Older incident summaries have no calendar timestamp and cannot be placed in this time range."
-msgstr "Äldre incidentsammanfattningar saknar kalenderdatum och kan inte placeras i det här tidsintervallet."
-
-msgid "Open"
-msgstr "Öppna"
-
-msgid "Open "
-msgstr "Öppna "
-
-msgid "Open / Save session file"
-msgstr "Öppna/spara sessionsfil"
-
-msgid "Open About Loofi Pulse dialog"
-msgstr "Öppna Om Loofi Pulse"
-
-msgid "Open History"
-msgstr "Öppna historik"
-
-msgid "Open Keyboard Shortcuts cheat sheet"
-msgstr "Visa kortkommandon"
-
-msgid "Open Pulse session"
-msgstr "Öppna Pulse-session"
-
-msgid "Open System Monitor"
-msgstr "Öppna Systemövervakaren"
-
-msgid "Open folder"
-msgstr "Öppna mapp"
-
-msgid "Open reports folder"
-msgstr "Öppna rapportmapp"
-
-msgid "Open session…"
-msgstr "Öppna session…"
-
-msgid "Original observations are frozen. Live monitoring continues separately. "
-msgstr "Ursprungliga observationer är frysta. Realtidsövervakning fortsätter separat. "
-
-msgid "Original technical evidence (preserved language):"
-msgstr "Ursprungligt tekniskt underlag (bevarat språk):"
-
-msgid "Overview"
-msgstr "Översikt"
-
-msgid "Overview page"
-msgstr "Översiktssidan"
-
-msgid "Owner: "
-msgstr "Ägare: "
-
-msgid "PID"
-msgstr "PID"
-
-msgid "PID "
-msgstr "PID "
-
-msgid "PROCESS"
-msgstr "PROCESS"
-
-msgid "PSI wait some: "
-msgstr "PSI-väntan, någon: "
-
-msgid "Package "
-msgstr "Paket "
-
-msgid "Package power"
-msgstr "Paketeffekt"
-
-msgid "Pause"
-msgstr "Pausa"
-
-msgid "Pause / Resume Flight Recorder"
-msgstr "Pausa/återuppta inspelning"
-
-msgid "Pause Flight Recorder"
-msgstr "Pausa inspelningen"
-
-msgid "Pause Recording"
-msgstr "Pausa inspelning"
-
-msgid "Pause recording in this window"
-msgstr "Pausa inspelning i det här fönstret"
-
-msgid "Peak thermal spike"
-msgstr "Högsta temperaturtopp"
-
-msgid "Percentage of time at least one runnable thread is delayed waiting for CPU time."
-msgstr "Andel tid då minst en körbar tråd fördröjs i väntan på CPU-tid."
-
-msgid "Physical Drive"
-msgstr "Fysisk disk"
-
-msgid "Physical RAM"
-msgstr "Fysiskt RAM"
-
-msgid "Power & Cooling"
-msgstr "Effekt & Kylning"
-
-msgid "Power & Fan"
-msgstr "Effekt och fläkt"
-
-msgid "Power (0–"
-msgstr "Effekt (0–"
-
-msgid "Power limits: PL1 "
-msgstr "Effektgränser: PL1 "
-
-msgid "Power limits: Unavailable"
-msgstr "Effektgränser: Otillgängliga"
-
-msgid "Power profile"
-msgstr "Energiprofil"
-
-msgid "Power profile service unavailable"
-msgstr "Energiprofiltjänsten är otillgänglig"
-
-msgid "Power source: "
-msgstr "Strömkälla: "
-
-msgid "Power unavailable"
-msgstr "Effekt otillgänglig"
-
-msgid "Pressure & Disk I/O"
-msgstr "Belastning och disk-I/O"
-
-msgid "Pressure & Memory"
-msgstr "Tryck & Minne"
-
-msgid "Privacy & Data Storage"
-msgstr "Integritet och datalagring"
-
-msgid "Process details:"
-msgstr "Processuppgifter:"
-
-msgid "Processes"
-msgstr "Processer"
-
-msgid "Profile: "
-msgstr "Profil: "
-
-msgid "Pulse sessions (*.pulse-session)"
-msgstr "Pulse-sessioner (*.pulse-session)"
-
-msgid "Quick Settings…"
-msgstr "Snabbinställningar…"
-
-msgid "Quiet Hours"
-msgstr "Tysta timmar"
-
-msgid "Quiet hours end time (HH:mm)"
-msgstr "Tysta timmar slutar (HH:mm)"
-
-msgid "Quiet hours schedule:"
-msgstr "Schema för tysta timmar:"
-
-msgid "Quiet hours start time (HH:mm)"
-msgstr "Tysta timmar börjar (HH:mm)"
-
-msgid "Quiet hours toggle"
-msgstr "Aktivera tysta timmar"
-
-msgid "Quiet hours:"
-msgstr "Tysta timmar:"
-
-msgid "Quit Loofi Pulse"
-msgstr "Avsluta Loofi Pulse"
-
-msgid "R "
-msgstr "R "
-
-msgid "RAM reading unavailable"
-msgstr "RAM-mätning otillgänglig"
-
-msgid "RAM: "
-msgstr "RAM: "
-
-msgid "RECORDED GAPS"
-msgstr "REGISTRERADE LUCKOR"
-
-msgid "RECORDING PAUSED"
-msgstr "INSPELNING PAUSAD"
-
-msgid "RESIDENT RAM"
-msgstr "RESIDENT RAM"
-
-msgid "RESPONSIVENESS"
-msgstr "RESPONSIVITET"
-
-msgid "RSS: "
-msgstr "RSS: "
-
-msgid "Range: "
-msgstr "Intervall: "
-
-msgid "Read "
-msgstr "Läsning "
-
-msgid "Read:"
-msgstr "Läsning:"
-
-msgid "Recommendation: "
-msgstr "Rekommendation: "
-
-msgid "Reconnect"
-msgstr "Återanslut"
-
-msgid "Recorded Incidents & Hardware Events"
-msgstr "Registrerade incidenter och hårdvaruhändelser"
-
-msgid "Recorded data quality"
-msgstr "Inspelad datakvalitet"
-
-msgid "Recorded incidents (open original evidence and comparison):"
-msgstr "Inspelade incidenter (öppna ursprungligt underlag och jämförelse):"
-
-msgid "Recorded process observations"
-msgstr "Inspelade processobservationer"
-
-msgid "Recorded window: "
-msgstr "Inspelat intervall: "
-
-msgid "Recording paused"
-msgstr "Inspelning pausad"
-
-msgid "Reduce graphics work or lower the frame-rate limit if display performance is affected."
-msgstr "Minska grafikbelastningen eller bildfrekvensgränsen om bildskärmens prestanda påverkas."
-
-msgid "Reduce sustained CPU load or choose a lower power profile."
-msgstr "Minska den långvariga CPU-belastningen eller välj en lägre energiprofil."
-
-msgid "Refresh"
-msgstr "Uppdatera"
-
-msgid "Required measurements are available. Waiting for a consistent status before confirming the result."
-msgstr "Nödvändiga mätningar är tillgängliga. Väntar på en konsekvent status innan resultatet bekräftas."
-
-msgid "Responsiveness "
-msgstr "Responsivitet "
-
-msgid "Responsiveness (0–100)"
-msgstr "Responsivitet (0–100)"
-
-msgid "Responsiveness index "
-msgstr "Responsivitetsindex "
-
-msgid "Responsiveness index: "
-msgstr "Responsivitetsindex: "
-
-msgid "Resume"
-msgstr "Återuppta"
-
-msgid "Resume Flight Recorder"
-msgstr "Återuppta inspelningen"
-
-msgid "Resume Recording"
-msgstr "Återuppta inspelning"
-
-msgid "Retention period:"
-msgstr "Lagringstid:"
-
-msgid "Retry"
-msgstr "Försök igen"
-
-msgid "Review memory use in System Monitor and close work you no longer need."
-msgstr "Granska minnesanvändningen i Systemövervakaren och stäng arbete du inte längre behöver."
-
-msgid "Review the available measurements below."
-msgstr "Granska de tillgängliga mätningarna nedan."
-
-msgid "Review the data quality details for missing sensors and interfaces."
-msgstr "Granska datakvaliteten för saknade sensorer och gränssnitt."
-
-msgid "Rule: "
-msgstr "Regel: "
-
-msgid "STATE"
-msgstr "STATUS"
-
-msgid "Sampling interval (ms)"
-msgstr "Mätintervall (ms)"
-
-msgid "Sampling interval in milliseconds"
-msgstr "Mätintervall i millisekunder"
-
-msgid "Save Pulse session"
-msgstr "Spara Pulse-session"
-
-msgid "Save report + JSON"
-msgstr "Spara rapport och JSON"
-
-msgid "Save session…"
-msgstr "Spara session…"
-
-msgid "Save this investigation?"
-msgstr "Vill du spara den här utredningen?"
-
-msgid "Saved session"
-msgstr "Sparad session"
-
-msgid "Search processes"
-msgstr "Sök processer"
-
-msgid "Select a GPU for the live summary and recorded history. Availability depends on the driver."
-msgstr "Välj GPU för realtidssammanfattningen och inspelad historik. Tillgänglighet beror på drivrutinen."
-
-msgid "Select a sample in the timeline, set the beginning and end, then freeze the range. Comparisons use up to 30 seconds on either side."
-msgstr "Välj en mätpunkt i tidslinjen, ange början och slut och frys sedan intervallet. Jämförelser använder upp till 30 sekunder på vardera sidan."
-
-msgid "Service execution:"
-msgstr "Tjänstekörning:"
-
-msgid "Set beginning"
-msgstr "Ange början"
-
-msgid "Set end"
-msgstr "Ange slut"
-
-msgid "Settings"
-msgstr "Inställningar"
-
-msgid "Settings page"
-msgstr "Inställningssidan"
-
-msgid "Show"
-msgstr "Visa"
-
-msgid "Show Loofi Pulse"
-msgstr "Visa Loofi Pulse"
-
-msgid "Show measurement details"
-msgstr "Visa mätdetaljer"
-
-msgid "Show system tray icon with live status"
-msgstr "Visa ikon i systemfältet med realtidsstatus"
-
-msgid "Show this cheat sheet"
-msgstr "Visa kortkommandon"
-
-msgid "Snooze Notifications (15 min)"
-msgstr "Snooza aviseringar (15 min)"
-
-msgid "Snooze notifications for 15 minutes"
-msgstr "Tysta aviseringar i 15 minuter"
-
-msgid "Some system readings are unavailable"
-msgstr "Vissa systemmätningar är otillgängliga"
-
-msgid "Sort by load"
-msgstr "Sortera efter belastning"
-
-msgid "Sort processes"
-msgstr "Sortera processer"
-
-msgid "Sort:"
-msgstr "Sortera:"
-
-msgid "Sort: CPU %"
-msgstr "Sortera: CPU %"
-
-msgid "Sort: Combined"
-msgstr "Sortera: kombinerat"
-
-msgid "Sort: Disk Wait"
-msgstr "Sortera: diskväntan"
-
-msgid "Sort: Memory RSS"
-msgstr "Sortera: minne (RSS)"
-
-msgid "Sorted by load"
-msgstr "Sorterad efter belastning"
-
-msgid "Source: "
-msgstr "Källa: "
-
-msgid "Start monitoring at login"
-msgstr "Starta övervakning vid inloggning"
-
-msgid "Start monitoring at login toggle"
-msgstr "Starta övervakning vid inloggning"
-
-msgid "Start monitoring automatically at login"
-msgstr "Starta övervakning automatiskt vid inloggning"
-
-msgid "Start unset"
-msgstr "Början ej vald"
-
-msgid "State: "
-msgstr "Tillstånd: "
-
-msgid "Status at this time: "
-msgstr "Status vid denna tidpunkt: "
-
-msgid "Storage & I/O"
-msgstr "Lagring och I/O"
-
-msgid "Storage & NVMe (Disk I/O, temps)"
-msgstr "Lagring och NVMe (disk-I/O, temperaturer)"
-
-msgid "Storage & Net"
-msgstr "Lagring och nätverk"
-
-msgid "Storage & Network"
-msgstr "Lagring & Nätverk"
-
-msgid "Storage and I/O PSI wait"
-msgstr "Lagrings- och I/O-väntetid (PSI)"
-
-msgid "Storage devices"
-msgstr "Lagringsenheter"
-
-msgid "Storage pressure is blocking work"
-msgstr "Lagringsbelastning blockerar arbete"
-
-msgid "Storage usage:"
-msgstr "Lagringsutrymme:"
-
-msgid "Suppress alert notifications during quiet hours"
-msgstr "Tysta aviseringar under tysta timmar"
-
-msgid "Sustained performance is capped by the power envelope. Use 'performance' profile if higher limits are supported."
-msgstr "Uthållig prestanda begränsas av effektgränsen. Använd profilen 'performance' om högre gränser stöds."
-
-msgid "Swap Allocation"
-msgstr "Växlingsutrymme"
-
-msgid "Swap used: "
-msgstr "Använt växlingsutrymme: "
-
-msgid "Swap: Unavailable"
-msgstr "Växlingsutrymme: Otillgängligt"
-
-msgid "Switch to Balanced profile"
-msgstr "Byt till balanserad profil"
-
-msgid "Switch to the 'balanced' or 'performance' power profile for higher responsiveness."
-msgstr "Välj energiprofilen 'balanced' eller 'performance' för högre responsivitet."
-
-msgid "Switch to the 'balanced' or 'power-saver' profile to extend battery runtime."
-msgstr "Välj profilen 'balanced' eller 'power-saver' för längre batteritid."
-
-msgid "System Monitor"
-msgstr "Systemövervakare"
-
-msgid "System Tray:"
-msgstr "Systemfält:"
-
-msgid "System tray icon toggle"
-msgstr "Visa ikon i systemfältet"
-
-msgid "THROTTLING"
-msgstr "STRYPNING"
-
-msgid "Telemetry interval:"
-msgstr "Mätintervall:"
-
-msgid "Telemetry sampling interval"
-msgstr "Intervall för mätinsamling"
-
-msgid "Temp"
-msgstr "Temp"
-
-msgid "Temp N/A"
-msgstr "Temp otillgänglig"
-
-msgid "Temperature Unit"
-msgstr "Temperaturskala"
-
-msgid "Temperature unavailable"
-msgstr "Temperatur otillgänglig"
-
-msgid "Temperature unit preference"
-msgstr "Val av temperaturenhet"
-
-msgid "Temperature unit:"
-msgstr "Temperaturenhet:"
-
-msgid "Terminated / No longer observed"
-msgstr "Avslutad / observeras ej längre"
-
-msgid "The history database only records 1-minute numerical performance aggregates (min, avg, max) for CPU, GPU, memory, disks, and thermals. Process identities, command lines, window titles, and user PIDs are not stored in this database. Session files may include process identities when the export option above is enabled."
-msgstr "Historikdatabasen sparar endast numeriska minutvärden (minimum, medel, maximum) för CPU, GPU, minne, diskar och temperaturer. Processidentiteter, kommandorader, fönstertitlar och PID sparas inte i databasen. Sessionsfiler kan innehålla processidentiteter när exportalternativet ovan är aktiverat."
-
-msgid "Thermal headroom: "
-msgstr "Temperaturmarginal: "
-
-msgid "Thermal limit unavailable"
-msgstr "Temperaturgräns otillgänglig"
-
-msgid "Thermals & Throttling"
-msgstr "Temperaturer och strypning"
-
-msgid "This clears the current in-memory recording and incidents."
-msgstr "Detta rensar aktuell inspelning och incidenter i minnet."
-
-msgid "This investigation has not been saved. Save a session to keep the original evidence before quitting."
-msgstr "Undersökningen är inte sparad. Spara en session för att behålla det ursprungliga underlaget innan du avslutar."
-
-msgid "This permanently removes stored trends and incident summaries. Saved session files are kept."
-msgstr "Detta tar bort sparade trender och incidentsammanfattningar permanent. Sparade sessionsfiler behålls."
-
-msgid "Throttle count: "
-msgstr "Antal strypningar: "
-
-msgid "Throttle event counters: Unavailable"
-msgstr "Strypningsräknare: Otillgängliga"
-
-msgid "Throttle events since boot: "
-msgstr "Strypningshändelser sedan start: "
-
-msgid "Time-based chart. Missing observations and offline intervals are gaps. Numerical coverage and bucket duration are displayed above."
-msgstr "Tidsbaserat diagram. Saknade mätningar och frånkopplade perioder visas som luckor. Mättäckning och intervallängd visas ovan."
-
-msgid "Top process (concurrent CPU load):"
-msgstr "Främsta process (samtidig CPU-belastning):"
-
-msgid "Total stall rate: "
-msgstr "Total väntetid: "
-
-msgid "Trends"
-msgstr "Trender"
-
-msgid "USER"
-msgstr "ANVÄNDARE"
-
+#: src/app/qml/FlightRecorderPage.qml:55
+msgid " observations · "
+msgstr " observationer · "
+
+#: src/app/qml/FlightRecorderPage.qml:55
+msgid " s coverage"
+msgstr " s täckning"
+
+#: src/app/qml/FlightRecorderPage.qml:56
+msgid " · Complete"
+msgstr " · Fullständigt"
+
+#: src/app/qml/FlightRecorderPage.qml:56
+msgid " · Partial coverage"
+msgstr " · Ofullständig täckning"
+
+#: src/app/qml/FlightRecorderPage.qml:57 src/app/qml/FlightRecorderPage.qml:626
+msgid " gaps"
+msgstr " luckor"
+
+#: src/app/qml/FlightRecorderPage.qml:58
+msgid ""
+"\n"
+"CPU average: "
+msgstr ""
+"\n"
+"CPU-medel: "
+
+#: src/app/qml/FlightRecorderPage.qml:58 src/app/qml/FlightRecorderPage.qml:59
+#: src/app/qml/FlightRecorderPage.qml:1190
+#: src/app/qml/FlightRecorderPage.qml:1192
+#: src/app/qml/FlightRecorderPage.qml:1198
+#: src/app/qml/FlightRecorderPage.qml:1200
+#: src/app/qml/FlightRecorderPage.qml:1207
+#: src/app/qml/FlightRecorderPage.qml:1216
+#: src/app/qml/FlightRecorderPage.qml:1232
+#: src/app/qml/FlightRecorderPage.qml:1241
+#: src/app/qml/FlightRecorderPage.qml:1479
+#: src/app/qml/MeasurementDetails.qml:33 src/app/qml/OverviewPage.qml:421
+#: src/app/qml/PowerThermalPage.qml:321 src/app/qml/PowerThermalPage.qml:323
+#: src/app/qml/PowerThermalPage.qml:347 src/app/qml/PowerThermalPage.qml:351
+#: src/app/qml/PowerThermalPage.qml:362 src/app/qml/PowerThermalPage.qml:364
+#: src/app/qml/PowerThermalPage.qml:424 src/app/qml/PowerThermalPage.qml:463
+#: src/app/qml/PowerThermalPage.qml:605 src/app/qml/PowerThermalPage.qml:629
+#: src/app/qml/PowerThermalPage.qml:638 src/app/qml/PowerThermalPage.qml:668
+#: src/app/qml/PowerThermalPage.qml:973 src/app/qml/PowerThermalPage.qml:975
+#: src/app/qml/PowerThermalPage.qml:984 src/app/qml/PowerThermalPage.qml:1045
+#: src/app/qml/PressureMemoryPage.qml:254
+#: src/app/qml/PressureMemoryPage.qml:408
+#: src/app/qml/PressureMemoryPage.qml:483
+#: src/app/qml/PressureMemoryPage.qml:485
+#: src/app/qml/PressureMemoryPage.qml:578
+#: src/app/qml/PressureMemoryPage.qml:580
+#: src/app/qml/PressureMemoryPage.qml:689
+#: src/app/qml/PressureMemoryPage.qml:1000 src/app/qml/ProcessesPage.qml:65
+#: src/app/qml/ProcessesPage.qml:414 src/app/qml/ProcessesPage.qml:423
+#: src/app/qml/ProcessesPage.qml:481 src/app/qml/StorageNetworkPage.qml:31
+#: src/app/qml/StorageNetworkPage.qml:448
+#: src/app/qml/StorageNetworkPage.qml:763 src/app/trayicon.cpp:123
+#: src/plugin/qml/MetricCard.qml:24
 msgid "Unavailable"
 msgstr "Otillgänglig"
 
-msgid "Use automatic physical device totals for storage history"
-msgstr "Använd automatiska fysiska totalvärden för lagringshistorik"
+#: src/app/qml/FlightRecorderPage.qml:59 src/app/qml/FlightRecorderPage.qml:625
+msgid " · Responsiveness: "
+msgstr " · Responsivitet: "
 
-msgid "Use this device for storage history"
-msgstr "Använd den här enheten för lagringshistorik"
+#: src/app/qml/FlightRecorderPage.qml:145
+msgid "Hover @ "
+msgstr "Pekare vid "
 
-msgid "VRAM: "
-msgstr "VRAM: "
+#: src/app/qml/FlightRecorderPage.qml:146
+#: src/app/qml/FlightRecorderPage.qml:1197 src/app/qml/PowerThermalPage.qml:931
+msgid "CPU "
+msgstr "CPU "
 
-msgid "Version "
-msgstr "Version "
+#: src/app/qml/FlightRecorderPage.qml:147
+msgid "Load "
+msgstr "Belastning "
 
-msgid "View: Current recording"
-msgstr "Vy: Aktuell inspelning"
+#: src/app/qml/FlightRecorderPage.qml:148
+msgid "Responsiveness index "
+msgstr "Responsivitetsindex "
 
-msgid "View: Historical investigation"
-msgstr "Vy: Historisk undersökning"
+#: src/app/qml/FlightRecorderPage.qml:149
+msgid "Package "
+msgstr "Paket "
 
-msgid "WARMING UP"
-msgstr "VÄRMER UPP"
+#: src/app/qml/FlightRecorderPage.qml:149
+#: src/app/qml/FlightRecorderPage.qml:150
+#: src/app/qml/FlightRecorderPage.qml:1206
+#: src/app/qml/FlightRecorderPage.qml:1216 src/app/qml/Main.qml:799
+#: src/app/qml/PowerThermalPage.qml:249 src/app/qml/PowerThermalPage.qml:364
+#: src/app/qml/PowerThermalPage.qml:452 src/app/qml/PowerThermalPage.qml:863
+msgid " W"
+msgstr " W"
 
-msgid "Waiting for readable process observations…"
-msgstr "Väntar på läsbara processobservationer…"
+#: src/app/qml/FlightRecorderPage.qml:150
+msgid "Battery discharge "
+msgstr "Batteriurladdning "
 
-msgid "Waiting for stable measurements before confirming system status."
-msgstr "Väntar på stabila mätningar innan systemstatus bekräftas."
+#: src/app/qml/FlightRecorderPage.qml:151
+msgid "Disk "
+msgstr "Disk "
 
-msgid "Warming up"
-msgstr "Förbereder mätning"
+#: src/app/qml/FlightRecorderPage.qml:151
+#: src/app/qml/FlightRecorderPage.qml:1235
+#: src/app/qml/PressureMemoryPage.qml:618
+#: src/app/qml/StorageNetworkPage.qml:263
+#: src/app/qml/StorageNetworkPage.qml:282
+#: src/app/qml/StorageNetworkPage.qml:660
+#: src/app/qml/StorageNetworkPage.qml:679
+msgid " MiB/s"
+msgstr " MiB/s"
 
-msgid "Warnings & Critical (Recommended)"
-msgstr "Varningar och kritiska incidenter (rekommenderas)"
+#: src/app/qml/FlightRecorderPage.qml:152
+msgid "Click to freeze moment"
+msgstr "Klicka för att frysa ögonblicket"
 
-msgid "Watch GPU temperature during graphics-intensive workloads."
-msgstr "Följ GPU-temperaturen vid grafikintensivt arbete."
+#: src/app/qml/FlightRecorderPage.qml:164
+msgid "Blackbox telemetry recorder, incident timelines, and long-term trends"
+msgstr ""
+"Svartalådan-telemetriinspelare, incidenttidslinjer och långsiktiga trender"
 
-msgid "Watch the temperature during sustained work. A lower power profile can reduce heat."
-msgstr "Följ temperaturen vid långvarigt arbete. En lägre energiprofil kan minska värmen."
+#: src/app/qml/FlightRecorderPage.qml:181
+msgid "Live Flight Recorder"
+msgstr "Inspelning i realtid"
 
-msgid "When background monitoring is active, the collector continues to detect hardware bottlenecks and power spikes quietly in the background without keeping the full window open."
-msgstr "Med bakgrundsövervakning fortsätter insamlaren att upptäcka hårdvaruproblem när appfönstret är stängt."
+#: src/app/qml/FlightRecorderPage.qml:189
+msgid "Long-Term Trends (1h – 30d)"
+msgstr "Långtidstrender (1 timme–30 dagar)"
 
-msgid "Why this status?"
-msgstr "Varför denna status?"
+#: src/app/qml/FlightRecorderPage.qml:238
+msgid "Follow Live"
+msgstr "Följ realtid"
 
-msgid "Wireless temperature: "
-msgstr "Trådlös temperatur: "
+#: src/app/qml/FlightRecorderPage.qml:245
+msgid "Resume"
+msgstr "Återuppta"
 
-msgid "Working: "
-msgstr "Arbetar: "
+#: src/app/qml/FlightRecorderPage.qml:245
+msgid "Pause"
+msgstr "Pausa"
 
+#: src/app/qml/FlightRecorderPage.qml:257
+msgid "Mark problem now"
+msgstr "Markera problem nu"
+
+#: src/app/qml/FlightRecorderPage.qml:270 src/app/qml/Main.qml:223
+#: src/app/qml/Main.qml:561
+msgid "Save session…"
+msgstr "Spara session…"
+
+#: src/app/qml/FlightRecorderPage.qml:275 src/app/qml/Main.qml:556
+msgid "Open session…"
+msgstr "Öppna session…"
+
+#: src/app/qml/FlightRecorderPage.qml:281
+msgid "Export incident"
+msgstr "Exportera incident"
+
+#: src/app/qml/FlightRecorderPage.qml:281
+msgid "Export recording"
+msgstr "Exportera inspelning"
+
+#: src/app/qml/FlightRecorderPage.qml:288
+msgid "More"
+msgstr "Mer"
+
+#: src/app/qml/FlightRecorderPage.qml:294
+msgid "Peak thermal spike"
+msgstr "Högsta temperaturtopp"
+
+#: src/app/qml/FlightRecorderPage.qml:299
 msgid "Worst PSI wait"
 msgstr "Längsta PSI-väntetid"
 
-msgid "Write:"
-msgstr "Skrivning:"
+#: src/app/qml/FlightRecorderPage.qml:304
+msgid "Copy incident report"
+msgstr "Kopiera incidentrapport"
 
-msgid "ZRAM Compression"
-msgstr "ZRAM-komprimering"
+#: src/app/qml/FlightRecorderPage.qml:309
+msgid "Open reports folder"
+msgstr "Öppna rapportmapp"
 
-msgid "ZRAM data: "
-msgstr "ZRAM-data: "
+#: src/app/qml/FlightRecorderPage.qml:317
+msgid "Clear recorded history"
+msgstr "Rensa inspelad historik"
 
-msgid "ZRAM details: Unavailable"
-msgstr "ZRAM-detaljer: Otillgängliga"
+#: src/app/qml/FlightRecorderPage.qml:328
+msgid "Clear recorded history?"
+msgstr "Rensa den inspelade historiken?"
 
-msgid "ZRAM: "
-msgstr "ZRAM: "
+#: src/app/qml/FlightRecorderPage.qml:332
+msgid "This clears the current in-memory recording and incidents."
+msgstr "Detta rensar aktuell inspelning och incidenter i minnet."
 
-msgid "ZRAM: No compressed pages in use"
-msgstr "ZRAM: Inga komprimerade sidor används"
+#: src/app/qml/FlightRecorderPage.qml:347
+msgid " samples · "
+msgstr " mätpunkter · "
 
-msgid "ZRAM: Unavailable"
-msgstr "ZRAM: Otillgängligt"
+#: src/app/qml/FlightRecorderPage.qml:348
+msgid " s / "
+msgstr " s / "
 
-msgid "allocation section"
-msgstr "avsnitt för allokering"
+#: src/app/qml/FlightRecorderPage.qml:349 src/app/qml/TrendsView.qml:254
+msgid " min"
+msgstr " min"
 
-msgid "battery section"
-msgstr "batteriavsnitt"
-
-msgid "cooling section"
-msgstr "kylningsavsnitt"
-
-msgid "cpu section"
-msgstr "CPU-avsnitt"
-
-msgid "gpu section"
-msgstr "GPU-avsnitt"
-
-msgid "incidents section"
-msgstr "incidentavsnitt"
-
-msgid "inspector section"
-msgstr "granskningsavsnitt"
-
-msgid "measurements section"
-msgstr "mätavsnitt"
-
-msgid "memory section"
-msgstr "minnesavsnitt"
-
-msgid "observed"
-msgstr "observerat"
-
-msgid "overview section"
-msgstr "översiktsavsnitt"
-
-msgid "processes"
-msgstr "processer"
-
-msgid "profile section"
-msgstr "profilavsnitt"
-
-msgid "sensors section"
-msgstr "sensoravsnitt"
-
-msgid "storage section"
-msgstr "lagringsavsnitt"
-
-msgid "to"
-msgstr "till"
-
-msgid "·"
-msgstr "·"
-
-msgid "· "
-msgstr "· "
-
-msgid "· CPU package "
-msgstr "· CPU-paket "
-
-msgid "× compression"
-msgstr "× komprimering"
-
-msgid "↑ Send:"
-msgstr "↑ Skicka:"
-
-msgid "↓ Receive:"
-msgstr "↓ Ta emot:"
-
-msgid "🔒 Privacy: Persistent history is stored in a private SQLite database with strict 64 MB storage limits. Only numerical hardware aggregates (CPU, thermals, GPU, RAM, disk throughput) are recorded. Process names, commands, window titles, and user PIDs are never stored."
-msgstr "Integritet: Beständig historik sparas i en privat SQLite-databas med en lagringsgräns på 64 MB. Endast numeriska hårdvaruvärden (CPU, temperaturer, GPU, RAM, disktrafik) registreras. Processnamn, kommandon, fönstertitlar och PID sparas inte i databasen."
-
-msgid "Older incident summaries without calendar timestamps are retained but excluded from time-based trends."
-msgstr "Äldre incidentsammanfattningar utan kalenderdatum behålls men utelämnas från tidsbaserade trender."
-
+#: src/app/qml/FlightRecorderPage.qml:366
 msgid "CPU temp (77–212 °F)"
 msgstr "CPU-temp (77–212 °F)"
 
-msgid "Navigate to page"
-msgstr "Gå till sida"
+#: src/app/qml/FlightRecorderPage.qml:366
+msgid "CPU temp (25–100 °C)"
+msgstr "CPU-temp (25–100 °C)"
 
+#: src/app/qml/FlightRecorderPage.qml:372
+msgid "CPU load (0–100%)"
+msgstr "CPU-belastning (0–100%)"
+
+#: src/app/qml/FlightRecorderPage.qml:378
+msgid "Responsiveness (0–100)"
+msgstr "Responsivitet (0–100)"
+
+#: src/app/qml/FlightRecorderPage.qml:384
+msgid "Power (0–"
+msgstr "Effekt (0–"
+
+#: src/app/qml/FlightRecorderPage.qml:384
+#: src/app/qml/FlightRecorderPage.qml:390
+msgid " W)"
+msgstr " W)"
+
+#: src/app/qml/FlightRecorderPage.qml:390
+msgid "Battery (0–"
+msgstr "Batteri (0–"
+
+#: src/app/qml/FlightRecorderPage.qml:396
+msgid "GPU load (0–100%)"
+msgstr "GPU-belastning (0–100%)"
+
+#: src/app/qml/FlightRecorderPage.qml:402
+msgid "Disk I/O (0–"
+msgstr "Disk-I/O (0–"
+
+#: src/app/qml/FlightRecorderPage.qml:402
+msgid " MiB/s)"
+msgstr " MiB/s)"
+
+#: src/app/qml/FlightRecorderPage.qml:486
+msgid "Frozen investigation session"
+msgstr "Fryst undersökningssession"
+
+#: src/app/qml/FlightRecorderPage.qml:486
+msgid "Investigation range"
+msgstr "Undersökningsintervall"
+
+#: src/app/qml/FlightRecorderPage.qml:501
+msgid "Saved session"
+msgstr "Sparad session"
+
+#: src/app/qml/FlightRecorderPage.qml:501
+msgid "In-memory investigation"
+msgstr "Undersökning i minnet"
+
+#: src/app/qml/FlightRecorderPage.qml:515
+msgid ""
+"Original observations are frozen. Live monitoring continues separately. "
+msgstr ""
+"Ursprungliga observationer är frysta. Realtidsövervakning fortsätter "
+"separat. "
+
+#: src/app/qml/FlightRecorderPage.qml:516
+msgid ""
+"Select a sample in the timeline, set the beginning and end, then freeze the "
+"range. Comparisons use up to 30 seconds on either side."
+msgstr ""
+"Välj en mätpunkt i tidslinjen, ange början och slut och frys sedan "
+"intervallet. Jämförelser använder upp till 30 sekunder på vardera sidan."
+
+#: src/app/qml/FlightRecorderPage.qml:526
+msgid "Set beginning"
+msgstr "Ange början"
+
+#: src/app/qml/FlightRecorderPage.qml:532
+msgid "Set end"
+msgstr "Ange slut"
+
+#: src/app/qml/FlightRecorderPage.qml:539
+msgid "Freeze selected range"
+msgstr "Frys valt intervall"
+
+#: src/app/qml/FlightRecorderPage.qml:557
+msgid "Range: "
+msgstr "Intervall: "
+
+#: src/app/qml/FlightRecorderPage.qml:557
+msgid "Start unset"
+msgstr "Början ej vald"
+
+#: src/app/qml/FlightRecorderPage.qml:558
+msgid "End unset"
+msgstr "Slut ej valt"
+
+#: src/app/qml/FlightRecorderPage.qml:612
+msgid " samples"
+msgstr " mätpunkter"
+
+#: src/app/qml/FlightRecorderPage.qml:624
+msgid "CPU avg: "
+msgstr "CPU medel: "
+
+#: src/app/qml/FlightRecorderPage.qml:626
+msgid ""
+"\n"
+"Coverage: "
+msgstr ""
+"\n"
+"Täckning: "
+
+#: src/app/qml/FlightRecorderPage.qml:626
+msgid " s · "
+msgstr " s · "
+
+#: src/app/qml/FlightRecorderPage.qml:716
+msgid " (Latest)"
+msgstr " (senaste)"
+
+#: src/app/qml/FlightRecorderPage.qml:758
+msgid ""
+"Hardware history timeline. Select a sample with left and right arrow keys."
+msgstr ""
+"Tidslinje för hårdvaruhistorik. Välj en mätpunkt med vänster och höger "
+"piltangent."
+
+#: src/app/qml/FlightRecorderPage.qml:759
+msgid "Inspected sample "
+msgstr "Granskad mätpunkt "
+
+#: src/app/qml/FlightRecorderPage.qml:760
+msgid ". Responsiveness index "
+msgstr ". Responsivitetsindex "
+
+#: src/app/qml/FlightRecorderPage.qml:761
+msgid " out of 100; higher is better"
+msgstr " av 100; högre är bättre"
+
+#: src/app/qml/FlightRecorderPage.qml:992
+msgid "No history has been recorded yet"
+msgstr "Ingen historik har spelats in ännu"
+
+#: src/app/qml/FlightRecorderPage.qml:1016
+msgid "Recorded window: "
+msgstr "Inspelat intervall: "
+
+#: src/app/qml/FlightRecorderPage.qml:1018
+msgid ""
+"  ·  Click or drag on the timeline (or press Left/Right arrow keys) to "
+"inspect any sample."
+msgstr ""
+"  ·  Klicka eller dra på tidslinjen (eller tryck vänster/höger piltangent) "
+"för att granska en mätpunkt."
+
+#: src/app/qml/FlightRecorderPage.qml:1019
+msgid "No history yet. Measurements appear here after the next sample."
+msgstr "Ingen historik ännu. Mätvärden visas efter nästa insamling."
+
+#: src/app/qml/FlightRecorderPage.qml:1040
+msgid "incidents section"
+msgstr "incidentavsnitt"
+
+#: src/app/qml/FlightRecorderPage.qml:1049
+msgid "Recorded incidents (open original evidence and comparison):"
+msgstr "Inspelade incidenter (öppna ursprungligt underlag och jämförelse):"
+
+#: src/app/qml/FlightRecorderPage.qml:1057
 msgid "Compare incidents…"
 msgstr "Jämför incidenter…"
 
-msgid "Compare Recorded Incidents"
-msgstr "Jämför registrerade incidenter"
+#: src/app/qml/FlightRecorderPage.qml:1103
+msgid "inspector section"
+msgstr "granskningsavsnitt"
 
-msgid "Baseline incident (A):"
-msgstr "Referensincident (A):"
+#: src/app/qml/FlightRecorderPage.qml:1127
+msgid "HISTORICAL SESSION"
+msgstr "HISTORISK SESSION"
 
-msgid "Comparison incident (B):"
-msgstr "Jämförelseincident (B):"
+#: src/app/qml/FlightRecorderPage.qml:1128
+msgid "DISCONNECTED"
+msgstr "FRÅNKOPPLAD"
 
-msgid "Incident A"
-msgstr "Incident A"
+#: src/app/qml/FlightRecorderPage.qml:1129
+msgid "RECORDING PAUSED"
+msgstr "INSPELNING PAUSAD"
 
-msgid "Incident B"
-msgstr "Incident B"
+#: src/app/qml/FlightRecorderPage.qml:1130
+msgid "LIVE STREAM"
+msgstr "REALTID"
 
-msgid "Delta (B − A)"
-msgstr "Skillnad (B − A)"
+#: src/app/qml/FlightRecorderPage.qml:1131
+msgid "FROZEN (EXPIRED)"
+msgstr "FRYST (UTGÅNGEN)"
 
-msgid "Incident Duration"
-msgstr "Incidentens varaktighet"
+#: src/app/qml/FlightRecorderPage.qml:1131
+msgid "FROZEN SAMPLE"
+msgstr "FRYST MÄTPUNKT"
 
-msgid "Top Culprit Process"
-msgstr "Främsta orsakande process"
+#: src/app/qml/FlightRecorderPage.qml:1142
+msgid "Inspected moment: "
+msgstr "Granskat ögonblick: "
 
-msgid "None / Unobserved"
-msgstr "Ingen / ej observerad"
+#: src/app/qml/FlightRecorderPage.qml:1149 src/app/qml/OverviewPage.qml:337
+#: src/app/qml/PressureMemoryPage.qml:899
+msgid "Open System Monitor"
+msgstr "Öppna Systemövervakaren"
 
+#: src/app/qml/FlightRecorderPage.qml:1167
+msgid "Status at this time: "
+msgstr "Status vid denna tidpunkt: "
+
+#: src/app/qml/FlightRecorderPage.qml:1167
+msgid "No recorded sample"
+msgstr "Inget inspelat mätvärde"
+
+#: src/app/qml/FlightRecorderPage.qml:1184
+msgid "CPU load & frequency"
+msgstr "CPU-belastning och frekvens"
+
+#: src/app/qml/FlightRecorderPage.qml:1189 src/app/qml/PowerThermalPage.qml:350
+#: src/app/qml/PowerThermalPage.qml:975
+msgid " MHz"
+msgstr " MHz"
+
+#: src/app/qml/FlightRecorderPage.qml:1191
+msgid "New throttle events: "
+msgstr "Nya strypningshändelser: "
+
+#: src/app/qml/FlightRecorderPage.qml:1192
+msgid "Observed"
+msgstr "Observerat"
+
+#: src/app/qml/FlightRecorderPage.qml:1192
+msgid "None observed"
+msgstr "Inga observerade"
+
+#: src/app/qml/FlightRecorderPage.qml:1195
+msgid "CPU & NVMe thermals"
+msgstr "CPU- och NVMe-temperaturer"
+
+#: src/app/qml/FlightRecorderPage.qml:1199
+msgid "NVMe: "
+msgstr "NVMe: "
+
+#: src/app/qml/FlightRecorderPage.qml:1203
+msgid "Package power"
+msgstr "Paketeffekt"
+
+#: src/app/qml/FlightRecorderPage.qml:1209
+msgid "Estimated power"
+msgstr "Uppskattad effekt"
+
+#: src/app/qml/FlightRecorderPage.qml:1209
+msgid "Measured hardware power"
+msgstr "Uppmätt hårdvarueffekt"
+
+#: src/app/qml/FlightRecorderPage.qml:1210
+msgid "No power channel"
+msgstr "Ingen effektkälla för mätning"
+
+#: src/app/qml/FlightRecorderPage.qml:1213
+msgid "Battery discharge"
+msgstr "Batteriurladdning"
+
+#: src/app/qml/FlightRecorderPage.qml:1217
+msgid "Battery discharge channel; separate from CPU package power"
+msgstr "Batteriurladdning, separat från CPU-paketeffekt"
+
+#: src/app/qml/FlightRecorderPage.qml:1220 src/app/qml/OverviewPage.qml:155
+#: src/app/qml/PowerThermalPage.qml:301
+msgid "Graphics (GPU)"
+msgstr "Grafik (GPU)"
+
+#: src/app/qml/FlightRecorderPage.qml:1223
+msgid "% load"
+msgstr "% belastning"
+
+#: src/app/qml/FlightRecorderPage.qml:1223
+msgid "Load N/A"
+msgstr "Belastning otillgänglig"
+
+#: src/app/qml/FlightRecorderPage.qml:1225 src/app/qml/Main.qml:763
+msgid "Temp N/A"
+msgstr "Temp otillgänglig"
+
+#: src/app/qml/FlightRecorderPage.qml:1226
+msgid "GPU telemetry at sample"
+msgstr "GPU-värden vid mätpunkten"
+
+#: src/app/qml/FlightRecorderPage.qml:1229
+msgid "Pressure & Disk I/O"
+msgstr "Belastning och disk-I/O"
+
+#: src/app/qml/FlightRecorderPage.qml:1231
+#: src/app/qml/PressureMemoryPage.qml:253
+msgid "Responsiveness index: "
+msgstr "Responsivitetsindex: "
+
+#: src/app/qml/FlightRecorderPage.qml:1234
+msgid "Disk R "
+msgstr "Disk läsning "
+
+#: src/app/qml/FlightRecorderPage.qml:1235
+msgid " · W "
+msgstr " · W "
+
+#: src/app/qml/FlightRecorderPage.qml:1236
+msgid "Disk I/O throughput: Unavailable"
+msgstr "Disktrafik: Otillgänglig"
+
+#: src/app/qml/FlightRecorderPage.qml:1239
+msgid "Concurrent process"
+msgstr "Samtidigt observerad process"
+
+#: src/app/qml/FlightRecorderPage.qml:1243 src/app/qml/ProcessesPage.qml:384
+msgid " (PID "
+msgstr " (PID "
+
+#: src/app/qml/FlightRecorderPage.qml:1246
+#: src/app/qml/PressureMemoryPage.qml:929
+msgid "% CPU · "
+msgstr "% CPU · "
+
+#: src/app/qml/FlightRecorderPage.qml:1246
+msgid " MiB RSS"
+msgstr " MiB RSS"
+
+#: src/app/qml/FlightRecorderPage.qml:1247
+msgid "Observed process use: Unavailable"
+msgstr "Observerad processanvändning: Otillgänglig"
+
+#: src/app/qml/FlightRecorderPage.qml:1298
+msgid "Recorded process observations"
+msgstr "Inspelade processobservationer"
+
+#: src/app/qml/FlightRecorderPage.qml:1303
+msgid ""
+"Observed every 2 seconds: the union of the top 8 CPU, memory and disk-wait "
+"processes. This is a bounded sample, not a complete historical process list. "
+"Process identities are excluded from saved files unless enabled in Settings."
+msgstr ""
+"Observeras varannan sekund: de åtta främsta processerna för CPU, minne "
+"respektive diskväntan. Urvalet är begränsat och utgör ingen fullständig "
+"historisk processlista. Processidentiteter utelämnas i sparade filer om de "
+"inte aktiveras i inställningarna."
+
+#: src/app/qml/FlightRecorderPage.qml:1307
+msgid "No process identities recorded at this moment"
+msgstr "Inga processidentiteter inspelade vid den här tidpunkten"
+
+#: src/app/qml/FlightRecorderPage.qml:1314
+msgid "Identity omitted"
+msgstr "Identitet utelämnad"
+
+#: src/app/qml/FlightRecorderPage.qml:1314 src/app/qml/ProcessesPage.qml:207
+msgid " · PID "
+msgstr " · PID "
+
+#: src/app/qml/FlightRecorderPage.qml:1315 src/app/qml/ProcessesPage.qml:208
+msgid "CPU warming up"
+msgstr "CPU-mätningen förbereds"
+
+#: src/app/qml/FlightRecorderPage.qml:1315 src/app/qml/Main.qml:776
+#: src/app/qml/PressureMemoryPage.qml:968 src/app/qml/ProcessesPage.qml:208
+msgid "% CPU"
+msgstr "% CPU"
+
+#: src/app/qml/FlightRecorderPage.qml:1316 src/app/qml/PowerThermalPage.qml:361
+#: src/app/qml/PressureMemoryPage.qml:929
+#: src/app/qml/PressureMemoryPage.qml:977 src/app/qml/ProcessesPage.qml:209
+#: src/app/qml/ProcessesPage.qml:305 src/app/qml/ProcessesPage.qml:450
+#: src/app/qml/ProcessesPage.qml:480 src/app/qml/SettingsPage.qml:356
+msgid " MiB"
+msgstr " MiB"
+
+#: src/app/qml/FlightRecorderPage.qml:1317
+msgid " · Observed "
+msgstr " · Observerat "
+
+#: src/app/qml/FlightRecorderPage.qml:1325
 msgid "Correlated kernel events (dmesg / journald)"
 msgstr "Korrelerade kärnhändelser (dmesg / journald)"
 
-msgid "Hardware-relevant kernel logs captured within ±15s of incident. Network identifiers and private paths are redacted."
-msgstr "Hårdvarurelaterade kärnloggar infångade inom ±15 s från incidenten. Nätverksidentifierare och privata sökvägar har maskerats."
+#: src/app/qml/FlightRecorderPage.qml:1340
+msgid ""
+"Hardware-relevant kernel logs captured within ±15s of incident. Network "
+"identifiers and private paths are redacted."
+msgstr ""
+"Hårdvarurelaterade kärnloggar infångade inom ±15 s från incidenten. "
+"Nätverksidentifierare och privata sökvägar har maskerats."
 
+#: src/app/qml/FlightRecorderPage.qml:1346
 msgid "Refresh logs"
 msgstr "Uppdatera loggar"
 
-msgid "No hardware-related kernel messages recorded within ±15s of this incident."
-msgstr "Inga hårdvarurelaterade kärnmeddelanden registrerades inom ±15 s från denna incident."
+#: src/app/qml/FlightRecorderPage.qml:1355
+msgid "Reading nearby kernel events…"
+msgstr "Läser in närliggande kärnhändelser…"
 
+#: src/app/qml/FlightRecorderPage.qml:1371
+msgid ""
+"No hardware-related kernel messages recorded within ±15s of this incident."
+msgstr ""
+"Inga hårdvarurelaterade kärnmeddelanden registrerades inom ±15 s från denna "
+"incident."
+
+#: src/app/qml/FlightRecorderPage.qml:1463
+msgid "Recorded data quality"
+msgstr "Inspelad datakvalitet"
+
+#: src/app/qml/FlightRecorderPage.qml:1490
+msgid "Compare Recorded Incidents"
+msgstr "Jämför registrerade incidenter"
+
+#: src/app/qml/FlightRecorderPage.qml:1525
+msgid "Baseline incident (A):"
+msgstr "Referensincident (A):"
+
+#: src/app/qml/FlightRecorderPage.qml:1539
+msgid "Comparison incident (B):"
+msgstr "Jämförelseincident (B):"
+
+#: src/app/qml/FlightRecorderPage.qml:1570
+msgid "Metric"
+msgstr "Mätvärde"
+
+#: src/app/qml/FlightRecorderPage.qml:1571
+msgid "Incident A"
+msgstr "Incident A"
+
+#: src/app/qml/FlightRecorderPage.qml:1572
+msgid "Incident B"
+msgstr "Incident B"
+
+#: src/app/qml/FlightRecorderPage.qml:1573
+msgid "Delta (B − A)"
+msgstr "Skillnad (B − A)"
+
+#: src/app/qml/FlightRecorderPage.qml:1576
+msgid "Peak Temperature"
+msgstr "Högsta temperatur"
+
+#: src/app/qml/FlightRecorderPage.qml:1596
+msgid "Average CPU Load"
+msgstr "Genomsnittlig CPU-belastning"
+
+#: src/app/qml/FlightRecorderPage.qml:1616
+msgid "Worst Responsiveness"
+msgstr "Sämsta responsivitet"
+
+#: src/app/qml/FlightRecorderPage.qml:1636
+msgid "Incident Duration"
+msgstr "Incidentens varaktighet"
+
+#: src/app/qml/FlightRecorderPage.qml:1652
+msgid "Top Culprit Process"
+msgstr "Främsta orsakande process"
+
+#: src/app/qml/FlightRecorderPage.qml:1655
+#: src/app/qml/FlightRecorderPage.qml:1660
+msgid "None / Unobserved"
+msgstr "Ingen / ej observerad"
+
+#: src/app/qml/Main.qml:15 src/app/qml/Main.qml:186 src/app/qml/Main.qml:403
+msgid "Loofi Pulse"
+msgstr "Loofi Pulse"
+
+#: src/app/qml/Main.qml:146
+msgid "Open Pulse session"
+msgstr "Öppna Pulse-session"
+
+#: src/app/qml/Main.qml:147 src/app/qml/Main.qml:155
+msgid "Pulse sessions (*.pulse-session)"
+msgstr "Pulse-sessioner (*.pulse-session)"
+
+#: src/app/qml/Main.qml:154
+msgid "Save Pulse session"
+msgstr "Spara Pulse-session"
+
+#: src/app/qml/Main.qml:186
+msgid ""
+"Loofi Pulse is still running in the system tray. Right-click the tray icon "
+"to quit."
+msgstr ""
+"Loofi Pulse körs fortfarande i systemfältet. Högerklicka på ikonen för att "
+"avsluta."
+
+#: src/app/qml/Main.qml:214
+msgid "Save this investigation?"
+msgstr "Vill du spara den här utredningen?"
+
+#: src/app/qml/Main.qml:222
+msgid ""
+"This investigation has not been saved. Save a session to keep the original "
+"evidence before quitting."
+msgstr ""
+"Undersökningen är inte sparad. Spara en session för att behålla det "
+"ursprungliga underlaget innan du avslutar."
+
+#: src/app/qml/Main.qml:224
+msgid "Discard investigation and quit"
+msgstr "Kasta undersökningen och avsluta"
+
+#: src/app/qml/Main.qml:278 src/app/qml/Main.qml:550 src/app/qml/Main.qml:883
+#: src/app/qml/PulseSidebar.qml:189 src/app/qml/SettingsPage.qml:13
+msgid "Settings"
+msgstr "Inställningar"
+
+#: src/app/qml/Main.qml:292
+msgid "Sampling interval (ms)"
+msgstr "Mätintervall (ms)"
+
+#: src/app/qml/Main.qml:298
+msgid "Sampling interval in milliseconds"
+msgstr "Mätintervall i millisekunder"
+
+#: src/app/qml/Main.qml:300 src/app/qml/Main.qml:306
+msgid "History retention"
+msgstr "Inspelningslängd"
+
+#: src/app/qml/Main.qml:303
+msgid "5 minutes"
+msgstr "5 minuter"
+
+#: src/app/qml/Main.qml:303
+msgid "15 minutes"
+msgstr "15 minuter"
+
+#: src/app/qml/Main.qml:303
+msgid "30 minutes"
+msgstr "30 minuter"
+
+#: src/app/qml/Main.qml:309
+msgid "Enable incident notifications"
+msgstr "Aktivera incidentaviseringar"
+
+#: src/app/qml/Main.qml:314
+msgid "Include process names and IDs in reports"
+msgstr "Ta med processnamn och ID i rapporter"
+
+#: src/app/qml/Main.qml:319 src/app/qml/SettingsPage.qml:114
+msgid "Continue monitoring when all windows close"
+msgstr "Fortsätt övervakning i bakgrunden när alla fönster stängs"
+
+#: src/app/qml/Main.qml:324
+msgid "Start monitoring at login"
+msgstr "Starta övervakning vid inloggning"
+
+#: src/app/qml/Main.qml:331
+msgid ""
+"Background monitoring and login startup are separate opt-ins. Recordings "
+"stay in memory until you save a session. The process-detail privacy setting "
+"also applies to sessions."
+msgstr ""
+"Bakgrundsövervakning och start vid inloggning väljs separat. Inspelningar "
+"finns i minnet tills en session sparas. Integritetsinställningen för "
+"processuppgifter gäller även sessioner."
+
+#: src/app/qml/Main.qml:333 src/app/qml/StorageNetworkPage.qml:481
+msgid "Network interfaces"
+msgstr "Nätverksgränssnitt"
+
+#: src/app/qml/Main.qml:335 src/app/qml/SettingsPage.qml:382
+msgid "Automatically use physical interfaces"
+msgstr "Använd fysiska gränssnitt automatiskt"
+
+#: src/app/qml/Main.qml:353 src/app/qml/SettingsPage.qml:405
+msgid " (physical)"
+msgstr " (fysiskt)"
+
+#: src/app/qml/Main.qml:353 src/app/qml/SettingsPage.qml:405
+msgid " (virtual)"
+msgstr " (virtuellt)"
+
+#: src/app/qml/Main.qml:354 src/app/qml/SettingsPage.qml:406
+msgid " · unavailable"
+msgstr " · otillgängligt"
+
+#: src/app/qml/Main.qml:374
+msgid ""
+"An empty selection uses physical interfaces automatically. Reports include "
+"process details only when explicitly enabled."
+msgstr ""
+"Ett tomt urval använder fysiska gränssnitt automatiskt. Rapporter innehåller "
+"processuppgifter endast om detta aktiveras uttryckligen."
+
+#: src/app/qml/Main.qml:383 src/app/qml/Main.qml:580
+#: src/app/qml/SettingsPage.qml:437
+msgid "About Loofi Pulse"
+msgstr "Om Loofi Pulse"
+
+#: src/app/qml/Main.qml:408
+msgid "Version "
+msgstr "Version "
+
+#: src/app/qml/Main.qml:408
+msgid " · KDE Plasma 6"
+msgstr " · KDE Plasma 6"
+
+#: src/app/qml/Main.qml:412
+msgid "Local hardware monitoring and incident investigation for KDE Plasma."
+msgstr "Lokal hårdvaruövervakning och incidentundersökning för KDE Plasma."
+
+#: src/app/qml/Main.qml:424
+msgid "License: GNU General Public License v3.0"
+msgstr "Licens: GNU General Public License v3.0"
+
+#: src/app/qml/Main.qml:428
+msgid "Author: Loofi Boss"
+msgstr "Författare: Loofi Boss"
+
+#: src/app/qml/Main.qml:432
+msgid "GitHub: https://github.com/loofiboss-bit/plasma-hardware-pulse"
+msgstr "GitHub: https://github.com/loofiboss-bit/plasma-hardware-pulse"
+
+#: src/app/qml/Main.qml:442 src/app/qml/Main.qml:586
+#: src/app/qml/SettingsPage.qml:448
+msgid "Keyboard Shortcuts"
+msgstr "Kortkommandon"
+
+#: src/app/qml/Main.qml:453
+msgid "Navigation & Actions"
+msgstr "Navigering och åtgärder"
+
+#: src/app/qml/Main.qml:463
+msgid "Overview page"
+msgstr "Översiktssidan"
+
+#: src/app/qml/Main.qml:466
+msgid "History & Flight Recorder"
+msgstr "Historik och inspelning"
+
+#: src/app/qml/Main.qml:469
+msgid "Memory & PSI Pressure"
+msgstr "Minne och PSI-belastning"
+
+#: src/app/qml/Main.qml:472 src/app/qml/Main.qml:529 src/app/qml/Main.qml:880
+#: src/app/qml/Main.qml:905 src/app/qml/PowerThermalPage.qml:13
+#: src/app/qml/PowerThermalPage.qml:95
+msgid "Power & Cooling"
+msgstr "Effekt & Kylning"
+
+#: src/app/qml/Main.qml:475 src/app/qml/Main.qml:536 src/app/qml/Main.qml:881
+#: src/app/qml/Main.qml:906 src/app/qml/ProcessesPage.qml:12
+#: src/app/qml/PulseSidebar.qml:155
+msgid "Processes"
+msgstr "Processer"
+
+#: src/app/qml/Main.qml:478 src/app/qml/Main.qml:543 src/app/qml/Main.qml:882
+#: src/app/qml/Main.qml:907 src/app/qml/PulseSidebar.qml:138
+#: src/app/qml/StorageNetworkPage.qml:13 src/app/qml/StorageNetworkPage.qml:55
+msgid "Storage & Network"
+msgstr "Lagring & Nätverk"
+
+#: src/app/qml/Main.qml:481
+msgid "Settings page"
+msgstr "Inställningssidan"
+
+#: src/app/qml/Main.qml:484
+msgid "Pause / Resume Flight Recorder"
+msgstr "Pausa/återuppta inspelning"
+
+#: src/app/qml/Main.qml:487
+msgid "Export incident report"
+msgstr "Exportera incidentrapport"
+
+#: src/app/qml/Main.qml:490
+msgid "Copy report to clipboard"
+msgstr "Kopiera rapport till urklipp"
+
+#: src/app/qml/Main.qml:493
+msgid "Open / Save session file"
+msgstr "Öppna/spara sessionsfil"
+
+#: src/app/qml/Main.qml:496
+msgid "Show this cheat sheet"
+msgstr "Visa kortkommandon"
+
+#: src/app/qml/Main.qml:508 src/app/qml/Main.qml:877 src/app/qml/Main.qml:902
+#: src/app/qml/OverviewPage.qml:15 src/app/qml/OverviewPage.qml:85
+#: src/app/qml/PulseSidebar.qml:99
+msgid "Overview"
+msgstr "Översikt"
+
+#: src/app/qml/Main.qml:522 src/app/qml/Main.qml:879 src/app/qml/Main.qml:904
+#: src/app/qml/PressureMemoryPage.qml:12 src/app/qml/PressureMemoryPage.qml:99
+#: src/app/qml/PulseSidebar.qml:128
+msgid "Memory & Pressure"
+msgstr "Minne och belastning"
+
+#: src/app/qml/Main.qml:566
+msgid "Snooze notifications for 15 minutes"
+msgstr "Tysta aviseringar i 15 minuter"
+
+#: src/app/qml/Main.qml:574 src/app/qml/Main.qml:813
+msgid "Resume Flight Recorder"
+msgstr "Återuppta inspelningen"
+
+#: src/app/qml/Main.qml:574 src/app/qml/Main.qml:813
+#: src/app/qml/SettingsPage.qml:101
+msgid "Pause Flight Recorder"
+msgstr "Pausa inspelningen"
+
+#: src/app/qml/Main.qml:591 src/app/trayicon.cpp:83
+msgid "Quit Loofi Pulse"
+msgstr "Avsluta Loofi Pulse"
+
+#: src/app/qml/Main.qml:597
+msgid "Quick Settings…"
+msgstr "Snabbinställningar…"
+
+#: src/app/qml/Main.qml:635
+msgid "Collector service is disconnected ("
+msgstr "Insamlingstjänsten är frånkopplad ("
+
+#: src/app/qml/Main.qml:635
+msgid "). Real-time telemetry is paused."
+msgstr "). Realtidsmätningen är pausad."
+
+#: src/app/qml/Main.qml:638
+msgid "Reconnect"
+msgstr "Återanslut"
+
+#: src/app/qml/Main.qml:681
+msgid "· "
+msgstr "· "
+
+#: src/app/qml/Main.qml:692
+msgid ". Open status explanation"
+msgstr ". Öppna statusförklaring"
+
+#: src/app/qml/Main.qml:725
+msgid "Saver"
+msgstr "Sparläge"
+
+#: src/app/qml/Main.qml:726
+msgid "Perf"
+msgstr "Prestanda"
+
+#: src/app/qml/Main.qml:726
+msgid "Bal"
+msgstr "Balanserat"
+
+#: src/app/qml/Main.qml:734
+msgid "Power profile "
+msgstr "Strömprofil "
+
+#: src/app/qml/Main.qml:770 src/app/qml/Main.qml:784
+msgid "·"
+msgstr "·"
+
+#: src/app/qml/Main.qml:777
+msgid "CPU N/A"
+msgstr "CPU otillgänglig"
+
+#: src/app/qml/Main.qml:790
+msgid "Responsiveness "
+msgstr "Responsivitet "
+
+#: src/app/qml/Main.qml:791
+msgid "Index unavailable"
+msgstr "Index otillgängligt"
+
+#: src/app/qml/Main.qml:799
+msgid "· CPU package "
+msgstr "· CPU-paket "
+
+#: src/app/qml/Main.qml:800
+msgid " (est.)"
+msgstr " (uppsk.)"
+
+#: src/app/qml/Main.qml:811
+msgid "Recording paused"
+msgstr "Inspelning pausad"
+
+#: src/app/qml/Main.qml:811 src/app/qml/Main.qml:1014
+#: src/app/qml/StorageNetworkPage.qml:319
+msgid " ms"
+msgstr " ms"
+
+#: src/app/qml/Main.qml:844
+msgid "Collector: "
+msgstr "Insamlare: "
+
+#: src/app/qml/Main.qml:845
+msgid " · HISTORICAL investigation (live monitoring continues separately)"
+msgstr " · HISTORISK undersökning (realtidsövervakning fortsätter separat)"
+
+#: src/app/qml/Main.qml:845
+msgid " · Live recording"
+msgstr " · Realtidsinspelning"
+
+#: src/app/qml/Main.qml:846
+msgid " · Unsaved"
+msgstr " · Osparad"
+
+#: src/app/qml/Main.qml:873
+msgid "Navigate to page"
+msgstr "Gå till sida"
+
+#: src/app/qml/Main.qml:904
+msgid "Memory & PSI"
+msgstr "Minne och PSI"
+
+#: src/app/qml/Main.qml:905
+msgid "Power & Fan"
+msgstr "Effekt och fläkt"
+
+#: src/app/qml/Main.qml:907
+msgid "Storage & Net"
+msgstr "Lagring och nätverk"
+
+#: src/app/qml/Main.qml:916
+msgid " tab"
+msgstr " flik"
+
+#: src/app/qml/Main.qml:993
+msgid "Working: "
+msgstr "Arbetar: "
+
+#: src/app/qml/Main.qml:994
+msgid "Completed: "
+msgstr "Klart: "
+
+#: src/app/qml/Main.qml:994
+msgid "Could not complete: "
+msgstr "Kunde inte slutföra: "
+
+#: src/app/qml/Main.qml:1005
+msgid "Open folder"
+msgstr "Öppna mapp"
+
+#: src/app/qml/Main.qml:1013
+msgid "View: Historical investigation"
+msgstr "Vy: Historisk undersökning"
+
+#: src/app/qml/Main.qml:1013
+msgid "View: Current recording"
+msgstr "Vy: Aktuell inspelning"
+
+#: src/app/qml/Main.qml:1014
+msgid ""
+"\n"
+"Collector: "
+msgstr ""
+"\n"
+"Insamlare: "
+
+#: src/app/qml/Main.qml:1015
+msgid " · Recording paused in this window"
+msgstr " · Inspelning pausad i det här fönstret"
+
+#: src/app/qml/MeasurementDetails.qml:14 src/app/qml/OverviewPage.qml:327
+msgid "Hide measurement details"
+msgstr "Dölj mätdetaljer"
+
+#: src/app/qml/MeasurementDetails.qml:14 src/app/qml/OverviewPage.qml:327
+msgid "Show measurement details"
+msgstr "Visa mätdetaljer"
+
+#: src/app/qml/MeasurementDetails.qml:33
+msgid "Source: "
+msgstr "Källa: "
+
+#: src/app/qml/MeasurementDetails.qml:33
+msgid " · Sampled: "
+msgstr " · Insamlat: "
+
+#: src/app/qml/MeasurementDetails.qml:34 src/app/qml/OverviewPage.qml:419
+msgid "Not sampled"
+msgstr "Ej insamlat"
+
+#: src/app/qml/MeasurementDetails.qml:35
+msgid " · Reason: "
+msgstr " · Orsak: "
+
+#: src/app/qml/MeasurementDetails.qml:35
+msgid "No additional detail"
+msgstr "Inga ytterligare uppgifter"
+
+#: src/app/qml/OverviewPage.qml:86
+msgid "Hardware Health & System Pressure"
+msgstr "Hårdvaruhälsa och systemtryck"
+
+#: src/app/qml/OverviewPage.qml:117
+msgid "CPU Load"
+msgstr "CPU-belastning"
+
+#: src/app/qml/OverviewPage.qml:123
+msgid "8 cores"
+msgstr "8 kärnor"
+
+#: src/app/qml/OverviewPage.qml:136
+msgid "CPU Temperature"
+msgstr "CPU-temperatur"
+
+#: src/app/qml/OverviewPage.qml:141
+msgid "headroom"
+msgstr "marginal"
+
+#: src/app/qml/OverviewPage.qml:161
+msgid "GPU Active"
+msgstr "GPU aktiv"
+
+#: src/app/qml/OverviewPage.qml:174
+msgid "Memory Pressure"
+msgstr "Minnestryck"
+
+#: src/app/qml/OverviewPage.qml:180
+msgid "PSI some"
+msgstr "PSI some"
+
+#: src/app/qml/OverviewPage.qml:193
+msgid "Storage & I/O"
+msgstr "Lagring och I/O"
+
+#: src/app/qml/OverviewPage.qml:210 src/app/qml/PowerThermalPage.qml:159
+msgid "Package Power"
+msgstr "Kretseffekt"
+
+#: src/app/qml/OverviewPage.qml:215
+msgid "Profile: "
+msgstr "Profil: "
+
+#: src/app/qml/OverviewPage.qml:216
+msgid "AC Power"
+msgstr "Nätström"
+
+#: src/app/qml/OverviewPage.qml:239
+msgid "Findings"
+msgstr "Observationer och fynd"
+
+#: src/app/qml/OverviewPage.qml:247
+msgid "sorted by severity"
+msgstr "sorterade efter allvarlighetsgrad"
+
+#: src/app/qml/OverviewPage.qml:267
+msgid "Hardware Pressure Observed"
+msgstr "Hårdvarutryck observerat"
+
+#: src/app/qml/OverviewPage.qml:269
+msgid "Investigate →"
+msgstr "Undersök →"
+
+#: src/app/qml/OverviewPage.qml:282
+msgid "Top process: "
+msgstr "Främsta process: "
+
+#: src/app/qml/OverviewPage.qml:284
+msgid "View processes →"
+msgstr "Visa processer →"
+
+#: src/app/qml/OverviewPage.qml:298
+msgid "Hardware Telemetry Warming Up"
+msgstr "Hårdvarutelemetri värms upp"
+
+#: src/app/qml/OverviewPage.qml:299
+msgid "All hardware domains nominal"
+msgstr "Alla hårdvarudomäner fungerar nominellt"
+
+#: src/app/qml/OverviewPage.qml:301
+msgid "Collecting initial sensor readings..."
+msgstr "Samlar in inledande sensoravläsningar..."
+
+#: src/app/qml/OverviewPage.qml:302
+msgid "No current system pressure detected"
+msgstr "Ingen aktuell systembelastning upptäckt"
+
+#: src/app/qml/OverviewPage.qml:343
+msgid "Copy Report"
+msgstr "Kopiera rapport"
+
+#: src/app/qml/OverviewPage.qml:356
+msgid "Data Quality & Telemetry Sources"
+msgstr "Datakvalitet och telemetrikällor"
+
+#: src/app/qml/PowerThermalPage.qml:96
+msgid ""
+"CPU power envelope, GPU state, battery levels, cooling fans and thermal "
+"sensors"
+msgstr ""
+"CPU-effektram, GPU-status, batterinivåer, kylfläktar och termiska sensorer"
+
+#: src/app/qml/PowerThermalPage.qml:122
+msgid "CPU Package Power (W)"
+msgstr "CPU-kretseffekt (W)"
+
+#: src/app/qml/PowerThermalPage.qml:133
+msgid "CPU Temp (°C)"
+msgstr "CPU-temp (°C)"
+
+#: src/app/qml/PowerThermalPage.qml:164
+msgid "CPU Temp"
+msgstr "CPU-temp"
+
+#: src/app/qml/PowerThermalPage.qml:190 src/app/qml/PressureMemoryPage.qml:375
+msgid "cpu section"
+msgstr "CPU-avsnitt"
+
+#: src/app/qml/PowerThermalPage.qml:211
+msgid "CPU package & power limits"
+msgstr "CPU-paket och effektgränser"
+
+#: src/app/qml/PowerThermalPage.qml:224
+msgid " W · "
+msgstr " W · "
+
+#: src/app/qml/PowerThermalPage.qml:226
+msgid "CPU package power: Unavailable"
+msgstr "CPU-paketeffekt: Otillgänglig"
+
+#: src/app/qml/PowerThermalPage.qml:248
+msgid "Power limits: PL1 "
+msgstr "Effektgränser: PL1 "
+
+#: src/app/qml/PowerThermalPage.qml:248
+msgid " W · PL2 "
+msgstr " W · PL2 "
+
+#: src/app/qml/PowerThermalPage.qml:250
+msgid "Power limits: Unavailable"
+msgstr "Effektgränser: Otillgängliga"
+
+#: src/app/qml/PowerThermalPage.qml:261
+msgid "Throttle events since boot: "
+msgstr "Strypningshändelser sedan start: "
+
+#: src/app/qml/PowerThermalPage.qml:262
+msgid " · New this interval: "
+msgstr " · Nya detta intervall: "
+
+#: src/app/qml/PowerThermalPage.qml:263
+msgid "Throttle event counters: Unavailable"
+msgstr "Strypningsräknare: Otillgängliga"
+
+#: src/app/qml/PowerThermalPage.qml:280
+msgid "gpu section"
+msgstr "GPU-avsnitt"
+
+#: src/app/qml/PowerThermalPage.qml:309
+msgid "No GPU detected"
+msgstr "Ingen GPU identifierad"
+
+#: src/app/qml/PowerThermalPage.qml:320
+msgid "GPU load: "
+msgstr "GPU-belastning: "
+
+#: src/app/qml/PowerThermalPage.qml:322
+msgid " · GPU temperature: "
+msgstr " · GPU-temperatur: "
+
+#: src/app/qml/PowerThermalPage.qml:346
+msgid "Driver: "
+msgstr "Drivrutin: "
+
+#: src/app/qml/PowerThermalPage.qml:348
+msgid " · Frequency: "
+msgstr " · Frekvens: "
+
+#: src/app/qml/PowerThermalPage.qml:360
+msgid "VRAM: "
+msgstr "VRAM: "
+
+#: src/app/qml/PowerThermalPage.qml:363
+msgid " · GPU power: "
+msgstr " · GPU-effekt: "
+
+#: src/app/qml/PowerThermalPage.qml:381
+msgid "battery section"
+msgstr "batteriavsnitt"
+
+#: src/app/qml/PowerThermalPage.qml:402
+msgid "Battery & power source"
+msgstr "Batteri och strömkälla"
+
+#: src/app/qml/PowerThermalPage.qml:411
+msgid "AC power · No battery"
+msgstr "Nätström · Inget batteri"
+
+#: src/app/qml/PowerThermalPage.qml:411
+msgid "No battery"
+msgstr "Inget batteri"
+
+#: src/app/qml/PowerThermalPage.qml:412
+msgid "No battery detected"
+msgstr "Inget batteri identifierat"
+
+#: src/app/qml/PowerThermalPage.qml:423
+msgid "Power source: "
+msgstr "Strömkälla: "
+
+#: src/app/qml/PowerThermalPage.qml:424
+msgid "AC power"
+msgstr "Nätström"
+
+#: src/app/qml/PowerThermalPage.qml:424
+msgid "Battery"
+msgstr "Batteri"
+
+#: src/app/qml/PowerThermalPage.qml:447
+msgid "Battery: Unavailable"
+msgstr "Batteri: Otillgängligt"
+
+#: src/app/qml/PowerThermalPage.qml:448
+msgid "Battery: Not present · "
+msgstr "Batteri: Saknas · "
+
+#: src/app/qml/PowerThermalPage.qml:449
+msgid "Battery: "
+msgstr "Batteri: "
+
+#: src/app/qml/PowerThermalPage.qml:450
+msgid "Level unavailable"
+msgstr "Nivå otillgänglig"
+
+#: src/app/qml/PowerThermalPage.qml:462
+msgid "Battery health: "
+msgstr "Batterihälsa: "
+
+#: src/app/qml/PowerThermalPage.qml:464
+msgid "Battery health: Unavailable"
+msgstr "Batterihälsa: Otillgänglig"
+
+#: src/app/qml/PowerThermalPage.qml:481
+msgid "cooling section"
+msgstr "kylningsavsnitt"
+
+#: src/app/qml/PowerThermalPage.qml:502
+msgid "Cooling & device thermal"
+msgstr "Kylning och enhetstemperatur"
+
+#: src/app/qml/PowerThermalPage.qml:545
 msgid "Fan "
 msgstr "Fläkt "
 
+#: src/app/qml/PowerThermalPage.qml:551 src/app/qml/PowerThermalPage.qml:605
+msgid " RPM"
+msgstr " RPM"
+
+#: src/app/qml/PowerThermalPage.qml:551
 msgid "Stopped / 0 RPM"
 msgstr "Stoppad / 0 RPM"
 
-msgid "NVMe controllers & hardware health"
-msgstr "NVMe-kontroller och hårdvaruhälsa"
+#: src/app/qml/PowerThermalPage.qml:604
+msgid "Fan speed: "
+msgstr "Fläkthastighet: "
 
-msgid "CRITICAL HARDWARE WARNING"
-msgstr "KRITISK HÅRDVARUVARNING"
+#: src/app/qml/PowerThermalPage.qml:628
+msgid "NVMe temperature: "
+msgstr "NVMe-temperatur: "
 
-msgid "WARNING (0x%1)"
-msgstr "VARNING (0x%1)"
+#: src/app/qml/PowerThermalPage.qml:637
+msgid "Wireless temperature: "
+msgstr "Trådlös temperatur: "
 
-msgid "Healthy (0x0)"
-msgstr "Felfri (0x0)"
+#: src/app/qml/PowerThermalPage.qml:654
+msgid "profile section"
+msgstr "profilavsnitt"
 
-msgid "Composite temp:"
-msgstr "Kombinerad temp:"
+#: src/app/qml/PowerThermalPage.qml:662 src/plugin/qml/HealthHero.qml:289
+msgid "Power profile"
+msgstr "Energiprofil"
 
-msgid "Controller state:"
-msgstr "Kontrollerstatus:"
+#: src/app/qml/PowerThermalPage.qml:667
+msgid "Power profile service unavailable"
+msgstr "Energiprofiltjänsten är otillgänglig"
 
+#: src/app/qml/PowerThermalPage.qml:668
+msgid "Active profile: "
+msgstr "Aktiv profil: "
+
+#: src/app/qml/PowerThermalPage.qml:701
 msgid "Active holds: "
 msgstr "Aktiva låsningar: "
 
-msgid "Active profile holds: "
-msgstr "Aktiva profillåsningar: "
+#: src/app/qml/PowerThermalPage.qml:723
+msgid ", active profile"
+msgstr ", aktiv profil"
 
-msgid "Power profile throttling workload"
-msgstr "Energiprofil stryper arbetsbelastning"
+#: src/app/qml/PowerThermalPage.qml:723
+msgid ", change power profile"
+msgstr ", ändra energiprofil"
 
-msgid "A power-saver or quiet profile is capping system performance while connected to AC power."
-msgstr "En energispar- eller tyst profil begränsar systemets prestanda trots nätströmsanslutning."
+#: src/app/qml/PowerThermalPage.qml:760
+msgid "Graphics devices"
+msgstr "Grafikenheter"
 
-msgid "Switch to the Balanced or Performance profile to remove profile throttling."
-msgstr "Växla till profilen Balanserad eller Prestanda för att häva profilstrypningen."
+#: src/app/qml/PowerThermalPage.qml:767
+msgid "No supported GPU telemetry interface found"
+msgstr "Inget GPU-gränssnitt för mätning hittades"
 
-msgid "Elevated latency or degraded wireless link quality"
-msgstr "Förhöjd latens eller försämrad trådlös länkkvalitet"
+#: src/app/qml/PowerThermalPage.qml:778
+msgid "% activity"
+msgstr "% aktivitet"
 
-msgid "Wi-Fi signal strength is low or experiencing packet drops and rate down-negotiation."
-msgstr "Wi-Fi-signalstyrkan är låg eller drabbas av paketförluster och nedförhandlad bithastighet."
+#: src/app/qml/PowerThermalPage.qml:778
+msgid "Activity unavailable"
+msgstr "Aktivitet otillgänglig"
 
-msgid "Move closer to the access point or switch to 5/6 GHz."
-msgstr "Flytta närmare accesspunkten eller växla till 5/6 GHz."
+#: src/app/qml/PowerThermalPage.qml:779
+msgid "Temperature unavailable"
+msgstr "Temperatur otillgänglig"
 
-msgid "ZRAM swap space exhaustion"
-msgstr "ZRAM-växlingsutrymmet är nästan fullt"
+#: src/app/qml/PowerThermalPage.qml:780
+msgid " · Disconnected or unsupported"
+msgstr " · Frånkopplad eller saknar stöd"
 
-msgid "Compressed RAM device is near capacity with heavy memory pressure."
-msgstr "Den komprimerade RAM-enheten är nära sin kapacitetsgräns under hög minnesbelastning."
+#: src/app/qml/PowerThermalPage.qml:792
+msgid ""
+"Select a GPU for the live summary and recorded history. Availability depends "
+"on the driver."
+msgstr ""
+"Välj GPU för realtidssammanfattningen och inspelad historik. Tillgänglighet "
+"beror på drivrutinen."
 
-msgid "Close memory-heavy processes to prevent OOM stalls."
-msgstr "Stäng minneskrävande processer för att förhindra minnesstopp och frysningar."
+#: src/app/qml/PowerThermalPage.qml:819
+msgid "Individual batteries"
+msgstr "Enskilda batterier"
 
-msgid "ZRAM capacity"
-msgstr "ZRAM-kapacitet"
+#: src/app/qml/PowerThermalPage.qml:826
+msgid "No readable batteries present"
+msgstr "Inga läsbara batterier finns"
 
-msgid "ZRAM efficiency"
-msgstr "ZRAM-effektivitet"
+#: src/app/qml/PowerThermalPage.qml:862
+msgid "% charge"
+msgstr "% laddning"
 
-msgid "cgroup v2 slices"
-msgstr "cgroup v2-skivor"
+#: src/app/qml/PowerThermalPage.qml:862
+msgid "Charge unavailable"
+msgstr "Laddning otillgänglig"
 
-msgid "User slice"
-msgstr "Användarskiva (user.slice)"
+#: src/app/qml/PowerThermalPage.qml:863
+msgid "Power unavailable"
+msgstr "Effekt otillgänglig"
 
-msgid "System slice"
-msgstr "Systemskiva (system.slice)"
+#: src/app/qml/PowerThermalPage.qml:874
+msgid ""
+"Battery totals combine compatible energy readings only. Power-source status "
+"and battery charging are independent, including USB-C supplies."
+msgstr ""
+"Batteritotaler kombinerar endast kompatibla energivärden. Strömkällans "
+"status och batteriladdning är separata, även för USB-C."
 
-msgid "Machine slice"
-msgstr "Maskinskiva (machine.slice)"
+#: src/app/qml/PowerThermalPage.qml:889
+msgid "CPU cores and sensors"
+msgstr "CPU-kärnor och sensorer"
 
-msgid "Mark Incident"
-msgstr "Bokmärk incident"
+#: src/app/qml/PowerThermalPage.qml:893
+msgid "Sorted by load"
+msgstr "Sorterad efter belastning"
 
-msgid "Mark incident now and launch timeline"
-msgstr "Bokmärk incident nu och öppna tidslinje"
+#: src/app/qml/PowerThermalPage.qml:893
+msgid "Sort by load"
+msgstr "Sortera efter belastning"
+
+#: src/app/qml/PowerThermalPage.qml:972
+msgid "Load: "
+msgstr "Belastning: "
+
+#: src/app/qml/PowerThermalPage.qml:983
+msgid "Throttle count: "
+msgstr "Antal strypningar: "
+
+#: src/app/qml/PowerThermalPage.qml:1001
+msgid "sensors section"
+msgstr "sensoravsnitt"
+
+#: src/app/qml/PowerThermalPage.qml:1007
+msgid "Detected sensors"
+msgstr "Identifierade sensorer"
+
+#: src/app/qml/PowerThermalPage.qml:1050
+msgid "Margin "
+msgstr "Marginal "
+
+#: src/app/qml/PowerThermalPage.qml:1080
+msgid "No supported temperature sensors were found."
+msgstr "Inga temperaturgivare med stöd hittades."
+
+#: src/app/qml/PressureMemoryPage.qml:100
+msgid ""
+"Linux Pressure Stall Information (PSI), responsiveness score and ZRAM "
+"compression"
+msgstr ""
+"Linux Pressure Stall Information (PSI), responsivitetspoäng och ZRAM-"
+"komprimering"
+
+#: src/app/qml/PressureMemoryPage.qml:123
+msgid "CPU Stall (ms/s)"
+msgstr "CPU-stopp (ms/s)"
+
+#: src/app/qml/PressureMemoryPage.qml:131
+msgid "Memory Stall (ms/s)"
+msgstr "Minnesstopp (ms/s)"
+
+#: src/app/qml/PressureMemoryPage.qml:139
+msgid "I/O Stall (ms/s)"
+msgstr "I/O-stopp (ms/s)"
+
+#: src/app/qml/PressureMemoryPage.qml:148
+msgid "Responsiveness: "
+msgstr "Responsivitet: "
+
+#: src/app/qml/PressureMemoryPage.qml:163
+msgid "CPU Stall"
+msgstr "CPU-stopp"
+
+#: src/app/qml/PressureMemoryPage.qml:168
+msgid "Memory Stall"
+msgstr "Minnesstopp"
+
+#: src/app/qml/PressureMemoryPage.qml:173
+msgid "I/O Stall"
+msgstr "I/O-stopp"
+
+#: src/app/qml/PressureMemoryPage.qml:196
+msgid "overview section"
+msgstr "översiktsavsnitt"
+
+#: src/app/qml/PressureMemoryPage.qml:224
+msgid "Memory & system pressure (PSI)"
+msgstr "Minne och systembelastning (PSI)"
+
+#: src/app/qml/PressureMemoryPage.qml:233
+msgid ""
+"Linux Pressure Stall Information (PSI) measures time tasks spend waiting for "
+"CPU, memory, or storage. High RAM use alone does not mean the system is "
+"under pressure. The Responsiveness index runs from 0 to 100; higher is "
+"better, with 100 meaning little observed pressure. Raw PSI wait percentages "
+"increase with stalled work."
+msgstr ""
+"Linux Pressure Stall Information (PSI) mäter hur länge uppgifter väntar på "
+"CPU, minne eller lagring. Hög RAM-användning innebär inte i sig att systemet "
+"är belastat. Responsivitetsindex går från 0 till 100; högre är bättre och "
+"100 innebär låg observerad belastning. Råa PSI-väntetider ökar när arbete "
+"blockeras."
+
+#: src/app/qml/PressureMemoryPage.qml:272
+msgid "Total stall rate: "
+msgstr "Total väntetid: "
+
+#: src/app/qml/PressureMemoryPage.qml:272
+#: src/app/qml/PressureMemoryPage.qml:396
+#: src/app/qml/PressureMemoryPage.qml:472
+#: src/app/qml/PressureMemoryPage.qml:567
+msgid " ms/s"
+msgstr " ms/s"
+
+#: src/app/qml/PressureMemoryPage.qml:346
+msgid "RESPONSIVENESS"
+msgstr "RESPONSIVITET"
+
+#: src/app/qml/PressureMemoryPage.qml:382
+msgid "CPU PSI wait"
+msgstr "CPU-väntetid (PSI)"
+
+#: src/app/qml/PressureMemoryPage.qml:406
+#: src/app/qml/PressureMemoryPage.qml:482
+#: src/app/qml/PressureMemoryPage.qml:577
+msgid "PSI wait some: "
+msgstr "PSI-väntan, någon: "
+
+#: src/app/qml/PressureMemoryPage.qml:407
+#: src/app/qml/PressureMemoryPage.qml:484
+#: src/app/qml/PressureMemoryPage.qml:579
+msgid " ms/s)"
+msgstr " ms/s)"
+
+#: src/app/qml/PressureMemoryPage.qml:430
+msgid ""
+"Percentage of time at least one runnable thread is delayed waiting for CPU "
+"time."
+msgstr "Andel tid då minst en körbar tråd fördröjs i väntan på CPU-tid."
+
+#: src/app/qml/PressureMemoryPage.qml:451
+msgid "memory section"
+msgstr "minnesavsnitt"
+
+#: src/app/qml/PressureMemoryPage.qml:458
+msgid "Memory PSI wait"
+msgstr "Minnesväntetid (PSI)"
+
+#: src/app/qml/PressureMemoryPage.qml:482
+#: src/app/qml/PressureMemoryPage.qml:577
+msgid "% | full wait: "
+msgstr "% | full väntan: "
+
+#: src/app/qml/PressureMemoryPage.qml:525
+msgid ""
+"Measures actual thread stall time spent on ZRAM compression, page reclaim, "
+"and allocation."
+msgstr ""
+"Mäter faktisk väntetid för trådar vid ZRAM-komprimering, sidåtervinning och "
+"allokering."
+
+#: src/app/qml/PressureMemoryPage.qml:546
+msgid "storage section"
+msgstr "lagringsavsnitt"
+
+#: src/app/qml/PressureMemoryPage.qml:553
+msgid "Storage and I/O PSI wait"
+msgstr "Lagrings- och I/O-väntetid (PSI)"
+
+#: src/app/qml/PressureMemoryPage.qml:603
+msgid "Disk throughput: "
+msgstr "Disktrafik: "
+
+#: src/app/qml/PressureMemoryPage.qml:603
+msgid " MiB/s read · "
+msgstr " MiB/s läsning · "
+
+#: src/app/qml/PressureMemoryPage.qml:604
+msgid " MiB/s write"
+msgstr " MiB/s skrivning"
+
+#: src/app/qml/PressureMemoryPage.qml:617
+msgid "Network throughput: ↓"
+msgstr "Nätverkstrafik: ↓"
+
+#: src/app/qml/PressureMemoryPage.qml:617
+msgid " MiB/s · ↑"
+msgstr " MiB/s · ↑"
+
+#: src/app/qml/PressureMemoryPage.qml:619
+msgid "Network throughput: Unavailable"
+msgstr "Nätverkstrafik: Otillgänglig"
+
+#: src/app/qml/PressureMemoryPage.qml:629
+msgid " process(es) currently in uninterruptible disk wait (state D)."
+msgstr " processer i oavbrytbar diskväntan (tillstånd D)."
+
+#: src/app/qml/PressureMemoryPage.qml:630
+msgid ""
+"Indicates when threads are blocked waiting for synchronous NVMe/disk "
+"transactions."
+msgstr ""
+"Visar när trådar blockeras i väntan på synkrona NVMe-/disktransaktioner."
+
+#: src/app/qml/PressureMemoryPage.qml:644
+msgid "Memory use, compression and swap"
+msgstr "Minnesanvändning, komprimering och växlingsutrymme"
+
+#: src/app/qml/PressureMemoryPage.qml:656
+msgid "allocation section"
+msgstr "avsnitt för allokering"
+
+#: src/app/qml/PressureMemoryPage.qml:679
+msgid "Physical RAM"
+msgstr "Fysiskt RAM"
+
+#: src/app/qml/PressureMemoryPage.qml:686
+msgid " GiB / "
+msgstr " GiB / "
+
+#: src/app/qml/PressureMemoryPage.qml:687
+msgid " GiB ("
+msgstr " GiB ("
+
+#: src/app/qml/PressureMemoryPage.qml:710
+msgid "ZRAM Compression"
+msgstr "ZRAM-komprimering"
+
+#: src/app/qml/PressureMemoryPage.qml:716
+msgid "ZRAM: Unavailable"
+msgstr "ZRAM: Otillgängligt"
+
+#: src/app/qml/PressureMemoryPage.qml:718
+msgid "ZRAM: "
+msgstr "ZRAM: "
+
+#: src/app/qml/PressureMemoryPage.qml:718
+msgid "× compression"
+msgstr "× komprimering"
+
+#: src/app/qml/PressureMemoryPage.qml:719
+msgid "ZRAM: No compressed pages in use"
+msgstr "ZRAM: Inga komprimerade sidor används"
+
+#: src/app/qml/PressureMemoryPage.qml:740
+msgid "Swap Allocation"
+msgstr "Växlingsutrymme"
+
+#: src/app/qml/PressureMemoryPage.qml:747
+msgid "Swap used: "
+msgstr "Använt växlingsutrymme: "
+
+#: src/app/qml/PressureMemoryPage.qml:748
+msgid " GiB"
+msgstr " GiB"
+
+#: src/app/qml/PressureMemoryPage.qml:749
+msgid "Swap: Unavailable"
+msgstr "Växlingsutrymme: Otillgängligt"
+
+#: src/app/qml/PressureMemoryPage.qml:781
+msgid "ZRAM details: Unavailable"
+msgstr "ZRAM-detaljer: Otillgängliga"
+
+#: src/app/qml/PressureMemoryPage.qml:782
+msgid "ZRAM data: "
+msgstr "ZRAM-data: "
+
+#: src/app/qml/PressureMemoryPage.qml:782
+msgid " MiB before compression, "
+msgstr " MiB före komprimering, "
+
+#: src/app/qml/PressureMemoryPage.qml:783
+msgid " MiB compressed payload, "
+msgstr " MiB komprimerad data, "
+
+#: src/app/qml/PressureMemoryPage.qml:784
+msgid "saving "
+msgstr "sparar "
+
+#: src/app/qml/PressureMemoryPage.qml:784
+msgid " GiB RAM"
+msgstr " GiB RAM"
+
+#: src/app/qml/PressureMemoryPage.qml:785
+msgid " (limit: "
+msgstr " (gräns: "
+
+#: src/app/qml/PressureMemoryPage.qml:785
+msgid " GiB)"
+msgstr " GiB)"
+
+#: src/app/qml/PressureMemoryPage.qml:799
+msgid "cgroup v2 memory distribution"
+msgstr "cgroup v2-minnesfördelning"
+
+#: src/app/qml/PressureMemoryPage.qml:823
+msgid "User Apps (user.slice)"
+msgstr "Användarprogram (user.slice)"
+
+#: src/app/qml/PressureMemoryPage.qml:840
+msgid "System (system.slice)"
+msgstr "System (system.slice)"
+
+#: src/app/qml/PressureMemoryPage.qml:858
+msgid "Containers / VMs"
+msgstr "Behållare / Virtuella maskiner"
+
+#: src/app/qml/PressureMemoryPage.qml:877
+msgid "Concurrent resource use"
+msgstr "Samtidig resursanvändning"
+
+#: src/app/qml/PressureMemoryPage.qml:882
+msgid "Sort: Combined"
+msgstr "Sortera: kombinerat"
+
+#: src/app/qml/PressureMemoryPage.qml:883
+msgid "Sort: CPU %"
+msgstr "Sortera: CPU %"
+
+#: src/app/qml/PressureMemoryPage.qml:884
+msgid "Sort: Memory RSS"
+msgstr "Sortera: minne (RSS)"
+
+#: src/app/qml/PressureMemoryPage.qml:885
+msgid "Sort: Disk Wait"
+msgstr "Sortera: diskväntan"
+
+#: src/app/qml/PressureMemoryPage.qml:930
+msgid " · DISK WAIT (D)"
+msgstr " · DISKVÄNTAN (D)"
+
+#: src/app/qml/PressureMemoryPage.qml:933
+msgid ". Collapse process details"
+msgstr ". Dölj processdetaljer"
+
+#: src/app/qml/PressureMemoryPage.qml:933
+msgid ". Expand process details"
+msgstr ". Visa processdetaljer"
+
+#: src/app/qml/PressureMemoryPage.qml:959
+msgid "DISK WAIT (D)"
+msgstr "DISKVÄNTAN (D)"
+
+#: src/app/qml/PressureMemoryPage.qml:998
+msgid "PID "
+msgstr "PID "
+
+#: src/app/qml/PressureMemoryPage.qml:998
+msgid " · start ticks "
+msgstr " · starttick "
+
+#: src/app/qml/PressureMemoryPage.qml:999
+msgid " · observed "
+msgstr " · observerat "
+
+#: src/app/qml/PressureMemoryPage.qml:1001
+msgid ". Concurrent resource use does not establish causation."
+msgstr ". Samtidig resursanvändning bevisar inte orsakssamband."
+
+#: src/app/qml/ProcessesPage.qml:93
+msgid "Filter processes by name, PID or owner…"
+msgstr "Filtrera processer på namn, PID eller ägare…"
+
+#: src/app/qml/ProcessesPage.qml:94
+msgid "Search processes"
+msgstr "Sök processer"
+
+#: src/app/qml/ProcessesPage.qml:98
+msgid "Sort:"
+msgstr "Sortera:"
+
+#: src/app/qml/ProcessesPage.qml:107
+msgid "CPU use"
+msgstr "CPU-användning"
+
+#: src/app/qml/ProcessesPage.qml:107
+msgid "Memory use"
+msgstr "Minnesanvändning"
+
+#: src/app/qml/ProcessesPage.qml:108
+msgid "Sort processes"
+msgstr "Sortera processer"
+
+#: src/app/qml/ProcessesPage.qml:113
+msgid " processes"
+msgstr " processer"
+
+#: src/app/qml/ProcessesPage.qml:139
+msgid "PROCESS"
+msgstr "PROCESS"
+
+#: src/app/qml/ProcessesPage.qml:147
+msgid "PID"
+msgstr "PID"
+
+#: src/app/qml/ProcessesPage.qml:155
+msgid "USER"
+msgstr "ANVÄNDARE"
+
+#: src/app/qml/ProcessesPage.qml:163
+msgid "CPU %"
+msgstr "CPU %"
+
+#: src/app/qml/ProcessesPage.qml:171
+msgid "RESIDENT RAM"
+msgstr "RESIDENT RAM"
+
+#: src/app/qml/ProcessesPage.qml:180
+msgid "STATE"
+msgstr "STATUS"
+
+#: src/app/qml/ProcessesPage.qml:328
+msgid "D (wait)"
+msgstr "D (väntar)"
+
+#: src/app/qml/ProcessesPage.qml:342
+msgid "No matching processes found"
+msgstr "Inga matchande processer"
+
+#: src/app/qml/ProcessesPage.qml:342
+msgid "Waiting for readable process observations…"
+msgstr "Väntar på läsbara processobservationer…"
+
+#: src/app/qml/ProcessesPage.qml:390
+msgid "System Monitor"
+msgstr "Systemövervakare"
+
+#: src/app/qml/ProcessesPage.qml:396
+msgid "Active observation"
+msgstr "Aktiv observation"
+
+#: src/app/qml/ProcessesPage.qml:396
+msgid "Terminated / No longer observed"
+msgstr "Avslutad / observeras ej längre"
+
+#: src/app/qml/ProcessesPage.qml:414
+msgid "Owner: "
+msgstr "Ägare: "
+
+#: src/app/qml/ProcessesPage.qml:423
+msgid "State: "
+msgstr "Tillstånd: "
+
+#: src/app/qml/ProcessesPage.qml:435
+msgid "CPU: "
+msgstr "CPU: "
+
+#: src/app/qml/ProcessesPage.qml:435 src/app/qml/PulseTheme.qml:120
+#: src/app/qml/PulseTheme.qml:127 src/plugin/qml/PulseTheme.qml:120
+#: src/plugin/qml/PulseTheme.qml:127
+msgid "Warming up"
+msgstr "Förbereder mätning"
+
+#: src/app/qml/ProcessesPage.qml:450
+msgid "RSS: "
+msgstr "RSS: "
+
+#: src/app/qml/ProcessesPage.qml:465
+msgid "Observed: "
+msgstr "Observerat: "
+
+#: src/app/qml/ProcessesPage.qml:479
+msgid "Disk I/O: "
+msgstr "Disk-I/O: "
+
+#: src/app/qml/ProcessesPage.qml:480
+msgid "Read "
+msgstr "Läsning "
+
+#: src/app/qml/ProcessesPage.qml:480
+msgid " MiB · Write "
+msgstr " MiB · Skrivning "
+
+#: src/app/qml/ProcessesPage.qml:492
+msgid ""
+"Observed CPU and resident memory describe resource use; a busy process alone "
+"does not establish causation."
+msgstr ""
+"Observerad CPU- och minnesanvändning beskriver resursförbrukning. En aktiv "
+"process bevisar inte i sig orsakssamband."
+
+#: src/app/qml/PulseSidebar.qml:111
+msgid "HARDWARE"
+msgstr "HÅRDVARA"
+
+#: src/app/qml/PulseSidebar.qml:118
+msgid "Power & Thermal"
+msgstr "Effekt och temperatur"
+
+#: src/app/qml/PulseSidebar.qml:148
+msgid "SYSTEM"
+msgstr "SYSTEM"
+
+#: src/app/qml/PulseSidebar.qml:165
+msgid "ANALYSIS"
+msgstr "ANALYS"
+
+#: src/app/qml/PulseSidebar.qml:172
+msgid "Flight Recorder"
+msgstr "Färdskrivare"
+
+#: src/app/qml/PulseSidebar.qml:240
+msgid "Paused"
+msgstr "Pausad"
+
+#: src/app/qml/PulseSidebar.qml:241
+msgid "Live"
+msgstr "Realtid"
+
+#: src/app/qml/PulseSidebar.qml:242
+msgid "Connecting…"
+msgstr "Ansluter…"
+
+#: src/app/qml/PulseTheme.qml:121 src/plugin/qml/PulseTheme.qml:121
+msgid "Critical"
+msgstr "Kritisk"
+
+#: src/app/qml/PulseTheme.qml:122 src/plugin/qml/PulseTheme.qml:122
+msgid "Warning"
+msgstr "Varning"
+
+#: src/app/qml/PulseTheme.qml:123 src/plugin/qml/PulseTheme.qml:123
+msgid "OK"
+msgstr "OK"
+
+#: src/app/qml/PulseTheme.qml:128 src/plugin/qml/PulseTheme.qml:128
+msgid "Critical Throttle"
+msgstr "Kritisk strypning"
+
+#: src/app/qml/PulseTheme.qml:129 src/plugin/qml/PulseTheme.qml:129
+msgid "Bottleneck"
+msgstr "Flaskhals"
+
+#: src/app/qml/PulseTheme.qml:130 src/plugin/qml/PulseTheme.qml:130
+msgid "Elevated"
+msgstr "Förhöjd"
+
+#: src/app/qml/PulseTheme.qml:131 src/plugin/qml/PulseTheme.qml:131
+msgid "Nominal"
+msgstr "Nominell"
+
+#: src/app/qml/PulseTheme.qml:159 src/plugin/qml/PulseTheme.qml:159
+msgid "WARMING UP"
+msgstr "VÄRMER UPP"
+
+#: src/app/qml/PulseTheme.qml:160 src/plugin/qml/PulseTheme.qml:160
+msgid "THROTTLING"
+msgstr "STRYPNING"
+
+#: src/app/qml/PulseTheme.qml:161 src/plugin/qml/PulseTheme.qml:161
+msgid "BOTTLENECK"
+msgstr "FLASKHALS"
+
+#: src/app/qml/PulseTheme.qml:162 src/plugin/qml/PulseTheme.qml:162
+msgid "ELEVATED"
+msgstr "FÖRHÖJD"
+
+#: src/app/qml/PulseTheme.qml:163 src/plugin/qml/PulseTheme.qml:163
+msgid "NOMINAL"
+msgstr "NORMAL"
+
+#: src/app/qml/SettingsPage.qml:53
+msgid "Monitoring & Sampling"
+msgstr "Övervakning och insamling"
+
+#: src/app/qml/SettingsPage.qml:58
+msgid "Telemetry interval:"
+msgstr "Mätintervall:"
+
+#: src/app/qml/SettingsPage.qml:59
+msgid "Telemetry sampling interval"
+msgstr "Intervall för mätinsamling"
+
+#: src/app/qml/SettingsPage.qml:61
+msgid "250 ms (High responsiveness)"
+msgstr "250 ms (hög tidsupplösning)"
+
+#: src/app/qml/SettingsPage.qml:62
+msgid "500 ms (Fast)"
+msgstr "500 ms (snabb)"
+
+#: src/app/qml/SettingsPage.qml:63
+msgid "1000 ms (Standard balanced)"
+msgstr "1000 ms (balanserad standard)"
+
+#: src/app/qml/SettingsPage.qml:64
+msgid "2000 ms (Low overhead)"
+msgstr "2000 ms (låg belastning)"
+
+#: src/app/qml/SettingsPage.qml:65
+msgid "5000 ms (Minimal CPU)"
+msgstr "5000 ms (minimal CPU-belastning)"
+
+#: src/app/qml/SettingsPage.qml:80
+msgid "History retention:"
+msgstr "Inspelningslängd:"
+
+#: src/app/qml/SettingsPage.qml:81
+msgid "In-memory history retention duration"
+msgstr "Hur länge historik sparas i minnet"
+
+#: src/app/qml/SettingsPage.qml:83
+msgid "5 minutes (Default)"
+msgstr "5 minuter (standard)"
+
+#: src/app/qml/SettingsPage.qml:84
+msgid "15 minutes (Extended)"
+msgstr "15 minuter (utökad)"
+
+#: src/app/qml/SettingsPage.qml:85
+msgid "30 minutes (Deep investigation)"
+msgstr "30 minuter (djupgående undersökning)"
+
+#: src/app/qml/SettingsPage.qml:99
+msgid "Flight recorder:"
+msgstr "Inspelning:"
+
+#: src/app/qml/SettingsPage.qml:100
+msgid "Pause recording in this window"
+msgstr "Pausa inspelning i det här fönstret"
+
+#: src/app/qml/SettingsPage.qml:109
+msgid "Background & Startup"
+msgstr "Bakgrund och uppstart"
+
+#: src/app/qml/SettingsPage.qml:113
+msgid "Service execution:"
+msgstr "Tjänstekörning:"
+
+#: src/app/qml/SettingsPage.qml:115
+msgid "Background monitoring toggle"
+msgstr "Bakgrundsövervakning"
+
+#: src/app/qml/SettingsPage.qml:121
+msgid "Start monitoring automatically at login"
+msgstr "Starta övervakning automatiskt vid inloggning"
+
+#: src/app/qml/SettingsPage.qml:122
+msgid "Start monitoring at login toggle"
+msgstr "Starta övervakning vid inloggning"
+
+#: src/app/qml/SettingsPage.qml:128
+msgid "System Tray:"
+msgstr "Systemfält:"
+
+#: src/app/qml/SettingsPage.qml:129
+msgid "Show system tray icon with live status"
+msgstr "Visa ikon i systemfältet med realtidsstatus"
+
+#: src/app/qml/SettingsPage.qml:130
+msgid "System tray icon toggle"
+msgstr "Visa ikon i systemfältet"
+
+#: src/app/qml/SettingsPage.qml:141
+msgid "Minimize to system tray when closing window"
+msgstr "Minimera till systemfältet när fönstret stängs"
+
+#: src/app/qml/SettingsPage.qml:142
+msgid "Minimize to tray on close toggle"
+msgstr "Minimera till systemfältet vid stängning"
+
+#: src/app/qml/SettingsPage.qml:158
+msgid ""
+"When background monitoring is active, the collector continues to detect "
+"hardware bottlenecks and power spikes quietly in the background without "
+"keeping the full window open."
+msgstr ""
+"Med bakgrundsövervakning fortsätter insamlaren att upptäcka hårdvaruproblem "
+"när appfönstret är stängt."
+
+#: src/app/qml/SettingsPage.qml:164
+msgid "Alert Notifications"
+msgstr "Varningsaviseringar"
+
+#: src/app/qml/SettingsPage.qml:168
+msgid "Enable incident notifications in this window"
+msgstr "Aktivera incidentaviseringar i det här fönstret"
+
+#: src/app/qml/SettingsPage.qml:175
+msgid "Minimum alert severity:"
+msgstr "Lägsta allvarlighetsgrad för avisering:"
+
+#: src/app/qml/SettingsPage.qml:176
+msgid "Minimum alert severity threshold"
+msgstr "Lägsta allvarlighetsgrad för aviseringar"
+
+#: src/app/qml/SettingsPage.qml:178
+msgid "Warnings & Critical (Recommended)"
+msgstr "Varningar och kritiska incidenter (rekommenderas)"
+
+#: src/app/qml/SettingsPage.qml:179
+msgid "Critical only (Severe throttling)"
+msgstr "Endast kritiska incidenter (kraftig strypning)"
+
+#: src/app/qml/SettingsPage.qml:180
+msgid "All alerts (Including informational)"
+msgstr "Alla aviseringar (även information)"
+
+#: src/app/qml/SettingsPage.qml:181
+msgid "Disabled (Mute all notifications)"
+msgstr "Avstängt (tysta alla aviseringar)"
+
+#: src/app/qml/SettingsPage.qml:196
+msgid "Quiet hours:"
+msgstr "Tysta timmar:"
+
+#: src/app/qml/SettingsPage.qml:197
+msgid "Suppress alert notifications during quiet hours"
+msgstr "Tysta aviseringar under tysta timmar"
+
+#: src/app/qml/SettingsPage.qml:198
+msgid "Quiet hours toggle"
+msgstr "Aktivera tysta timmar"
+
+#: src/app/qml/SettingsPage.qml:204
+msgid "Quiet hours schedule:"
+msgstr "Schema för tysta timmar:"
+
+#: src/app/qml/SettingsPage.qml:215
+msgid "22:00"
+msgstr "22:00"
+
+#: src/app/qml/SettingsPage.qml:216
+msgid "Quiet hours start time (HH:mm)"
+msgstr "Tysta timmar börjar (HH:mm)"
+
+#: src/app/qml/SettingsPage.qml:220
+msgid "to"
+msgstr "till"
+
+#: src/app/qml/SettingsPage.qml:229
+msgid "08:00"
+msgstr "08:00"
+
+#: src/app/qml/SettingsPage.qml:230
+msgid "Quiet hours end time (HH:mm)"
+msgstr "Tysta timmar slutar (HH:mm)"
+
+#: src/app/qml/SettingsPage.qml:237
+msgid ""
+"Enter a valid time in HH:mm format (00:00–23:59). The last valid schedule "
+"remains active."
+msgstr ""
+"Ange en giltig tid i formatet HH:mm (00:00–23:59). Det senaste giltiga "
+"schemat gäller tills vidare."
+
+#: src/app/qml/SettingsPage.qml:244
+msgid "Muted alert domains:"
+msgstr "Tysta aviseringar för:"
+
+#: src/app/qml/SettingsPage.qml:249
+msgid "CPU & SoC (Load, frequencies)"
+msgstr "CPU och SoC (belastning, frekvenser)"
+
+#: src/app/qml/SettingsPage.qml:250
+msgid "Thermals & Throttling"
+msgstr "Temperaturer och strypning"
+
+#: src/app/qml/SettingsPage.qml:251
+msgid "GPU (Busy, VRAM, thermals)"
+msgstr "GPU (belastning, VRAM, temperaturer)"
+
+#: src/app/qml/SettingsPage.qml:252
+msgid "Memory & PSI (RAM, Swap, Stalls)"
+msgstr "Minne och PSI (RAM, växling, väntetid)"
+
+#: src/app/qml/SettingsPage.qml:253
+msgid "Storage & NVMe (Disk I/O, temps)"
+msgstr "Lagring och NVMe (disk-I/O, temperaturer)"
+
+#: src/app/qml/SettingsPage.qml:254
+msgid "Network (Throughput spikes)"
+msgstr "Nätverk (trafiktoppar)"
+
+#: src/app/qml/SettingsPage.qml:255
+msgid "Battery & Power (High discharge)"
+msgstr "Batteri och effekt (hög urladdning)"
+
+#: src/app/qml/SettingsPage.qml:262
+msgid "Mute alerts for "
+msgstr "Tysta aviseringar för "
+
+#: src/app/qml/SettingsPage.qml:271
+msgid "Display & Units"
+msgstr "Visning och enheter"
+
+#: src/app/qml/SettingsPage.qml:276
+msgid "Temperature unit:"
+msgstr "Temperaturenhet:"
+
+#: src/app/qml/SettingsPage.qml:277
+msgid "Temperature unit preference"
+msgstr "Val av temperaturenhet"
+
+#: src/app/qml/SettingsPage.qml:279
+msgid "Celsius (°C)"
+msgstr "Celsius (°C)"
+
+#: src/app/qml/SettingsPage.qml:280
+msgid "Fahrenheit (°F)"
+msgstr "Fahrenheit (°F)"
+
+#: src/app/qml/SettingsPage.qml:291
+msgid "Privacy & Data Storage"
+msgstr "Integritet och datalagring"
+
+#: src/app/qml/SettingsPage.qml:295
+msgid "Process details:"
+msgstr "Processuppgifter:"
+
+#: src/app/qml/SettingsPage.qml:296
+msgid "Include process names and PIDs in exported session reports"
+msgstr "Ta med processnamn och PID i sparade sessioner och rapporter"
+
+#: src/app/qml/SettingsPage.qml:297
+msgid "Include process details in exports"
+msgstr "Ta med processuppgifter i export"
+
+#: src/app/qml/SettingsPage.qml:303
+msgid "Long-term history:"
+msgstr "Långtidshistorik:"
+
+#: src/app/qml/SettingsPage.qml:304
+msgid "Enable persistent metrics history across restarts (opt-in)"
+msgstr "Spara mäthistorik mellan omstarter (frivilligt)"
+
+#: src/app/qml/SettingsPage.qml:305
+msgid "Enable persistent long-term metrics history"
+msgstr "Aktivera beständig långtidshistorik"
+
+#: src/app/qml/SettingsPage.qml:320
+msgid ""
+"Older incident summaries without calendar timestamps are retained but "
+"excluded from time-based trends."
+msgstr ""
+"Äldre incidentsammanfattningar utan kalenderdatum behålls men utelämnas från "
+"tidsbaserade trender."
+
+#: src/app/qml/SettingsPage.qml:326
+msgid "Retention period:"
+msgstr "Lagringstid:"
+
+#: src/app/qml/SettingsPage.qml:327
+msgid "Long term history retention period"
+msgstr "Lagringstid för långtidshistorik"
+
+#: src/app/qml/SettingsPage.qml:329
+msgid "1 Day"
+msgstr "1 dag"
+
+#: src/app/qml/SettingsPage.qml:330
+msgid "7 Days (Recommended)"
+msgstr "7 dagar (rekommenderas)"
+
+#: src/app/qml/SettingsPage.qml:331
+msgid "14 Days"
+msgstr "14 dagar"
+
+#: src/app/qml/SettingsPage.qml:332
+msgid "30 Days"
+msgstr "30 dagar"
+
+#: src/app/qml/SettingsPage.qml:348
+msgid "Storage usage:"
+msgstr "Lagringsutrymme:"
+
+#: src/app/qml/SettingsPage.qml:354
+msgid " B"
+msgstr " B"
+
+#: src/app/qml/SettingsPage.qml:355
+msgid " KiB"
+msgstr " KiB"
+
+#: src/app/qml/SettingsPage.qml:361
+msgid "Clear Database"
+msgstr "Rensa databasen"
+
+#: src/app/qml/SettingsPage.qml:371
+msgid ""
+"The history database only records 1-minute numerical performance aggregates "
+"(min, avg, max) for CPU, GPU, memory, disks, and thermals. Process "
+"identities, command lines, window titles, and user PIDs are not stored in "
+"this database. Session files may include process identities when the export "
+"option above is enabled."
+msgstr ""
+"Historikdatabasen sparar endast numeriska minutvärden (minimum, medel, "
+"maximum) för CPU, GPU, minne, diskar och temperaturer. Processidentiteter, "
+"kommandorader, fönstertitlar och PID sparas inte i databasen. Sessionsfiler "
+"kan innehålla processidentiteter när exportalternativet ovan är aktiverat."
+
+#: src/app/qml/SettingsPage.qml:377
+msgid "Network Interfaces"
+msgstr "Nätverksgränssnitt"
+
+#: src/app/qml/SettingsPage.qml:381
+msgid "Interface selection:"
+msgstr "Val av gränssnitt:"
+
+#: src/app/qml/SettingsPage.qml:384
+msgid "Automatically use physical network interfaces"
+msgstr "Använd fysiska nätverksgränssnitt automatiskt"
+
+#: src/app/qml/SettingsPage.qml:408
+msgid "Monitor interface "
+msgstr "Övervaka gränssnitt "
+
+#: src/app/qml/SettingsPage.qml:429
+msgid "About & Documentation"
+msgstr "Om och dokumentation"
+
+#: src/app/qml/SettingsPage.qml:433
+msgid "Help & Diagnostics:"
+msgstr "Hjälp och diagnostik:"
+
+#: src/app/qml/SettingsPage.qml:439
+msgid "Open About Loofi Pulse dialog"
+msgstr "Öppna Om Loofi Pulse"
+
+#: src/app/qml/SettingsPage.qml:450
+msgid "Open Keyboard Shortcuts cheat sheet"
+msgstr "Visa kortkommandon"
+
+#: src/app/qml/SettingsPage.qml:462
+msgid "Clear persistent history?"
+msgstr "Rensa långtidshistoriken?"
+
+#: src/app/qml/SettingsPage.qml:467
+msgid ""
+"This permanently removes stored trends and incident summaries. Saved session "
+"files are kept."
+msgstr ""
+"Detta tar bort sparade trender och incidentsammanfattningar permanent. "
+"Sparade sessionsfiler behålls."
+
+#: src/app/qml/StorageNetworkPage.qml:56
+msgid "Storage drives, NVMe controller hardware health, and network interfaces"
+msgstr "Lagringsenheter, NVMe-kontrollerhälsa och nätverksgränssnitt"
+
+#: src/app/qml/StorageNetworkPage.qml:79
+msgid "Disk Throughput (MiB/s)"
+msgstr "Diskgenomströmning (MiB/s)"
+
+#: src/app/qml/StorageNetworkPage.qml:87
+msgid "Network Throughput (MiB/s)"
+msgstr "Nätverksgenomströmning (MiB/s)"
+
+#: src/app/qml/StorageNetworkPage.qml:97
+msgid "Disk: "
+msgstr "Disk: "
+
+#: src/app/qml/StorageNetworkPage.qml:113
+msgid "Disk Throughput"
+msgstr "Diskgenomströmning"
+
+#: src/app/qml/StorageNetworkPage.qml:118
+msgid "Network Throughput"
+msgstr "Nätverksgenomströmning"
+
+#: src/app/qml/StorageNetworkPage.qml:149
+msgid "Devices & network interfaces"
+msgstr "Enheter och nätverksgränssnitt"
+
+#: src/app/qml/StorageNetworkPage.qml:159
+msgid ""
+"Live device readings. Physical and virtual devices are monitored "
+"individually. Aggregated totals use physical interfaces by default to avoid "
+"double-counting virtual tunnel or container traffic."
+msgstr ""
+"Realtidsvärden per enhet. Fysiska och virtuella enheter övervakas var för "
+"sig. Totalvärden använder normalt fysiska gränssnitt för att undvika "
+"dubbelräkning av tunnel- eller containertrafik."
+
+#: src/app/qml/StorageNetworkPage.qml:168
+msgid "Storage devices"
+msgstr "Lagringsenheter"
+
+#: src/app/qml/StorageNetworkPage.qml:174
+msgid "Auto physical totals"
+msgstr "Automatiska fysiska totalvärden"
+
+#: src/app/qml/StorageNetworkPage.qml:177
+msgid "Use automatic physical device totals for storage history"
+msgstr "Använd automatiska fysiska totalvärden för lagringshistorik"
+
+#: src/app/qml/StorageNetworkPage.qml:183
+msgid "No readable storage devices found"
+msgstr "Inga läsbara lagringsenheter hittades"
+
+#: src/app/qml/StorageNetworkPage.qml:237
+msgid "Physical Drive"
+msgstr "Fysisk disk"
+
+#: src/app/qml/StorageNetworkPage.qml:261
+msgid "Read:"
+msgstr "Läsning:"
+
+#: src/app/qml/StorageNetworkPage.qml:280
+msgid "Write:"
+msgstr "Skrivning:"
+
+#: src/app/qml/StorageNetworkPage.qml:299
+msgid "IOPS:"
+msgstr "IOPS:"
+
+#: src/app/qml/StorageNetworkPage.qml:317
+msgid "Avg Latency:"
+msgstr "Genomsnittlig fördröjning:"
+
+#: src/app/qml/StorageNetworkPage.qml:330
+msgid "Use this device for storage history"
+msgstr "Använd den här enheten för lagringshistorik"
+
+#: src/app/qml/StorageNetworkPage.qml:345
+msgid "NVMe controllers & hardware health"
+msgstr "NVMe-kontroller och hårdvaruhälsa"
+
+#: src/app/qml/StorageNetworkPage.qml:362
+msgid "CRITICAL HARDWARE WARNING"
+msgstr "KRITISK HÅRDVARUVARNING"
+
+#: src/app/qml/StorageNetworkPage.qml:425
+#, qt-format
+msgid "WARNING (0x%1)"
+msgstr "VARNING (0x%1)"
+
+#: src/app/qml/StorageNetworkPage.qml:425
+msgid "Healthy (0x0)"
+msgstr "Felfri (0x0)"
+
+#: src/app/qml/StorageNetworkPage.qml:446
+msgid "Composite temp:"
+msgstr "Kombinerad temp:"
+
+#: src/app/qml/StorageNetworkPage.qml:465
+msgid "Controller state:"
+msgstr "Kontrollerstatus:"
+
+#: src/app/qml/StorageNetworkPage.qml:467
+msgid "Unknown"
+msgstr "Okänd"
+
+#: src/app/qml/StorageNetworkPage.qml:490
+msgid ""
+"Automatic totals use physical interfaces. You can change selected interfaces "
+"in Settings. Cumulative packet statistics track drops and error rates."
+msgstr ""
+"Automatiska totalvärden använder fysiska gränssnitt. Ändra urvalet i "
+"inställningarna. Kumulativ paketstatistik visar bortfall och fel."
+
+#: src/app/qml/StorageNetworkPage.qml:579
+msgid "NetworkManager signal strength"
+msgstr "NetworkManager-signalstyrka"
+
+#: src/app/qml/StorageNetworkPage.qml:658
+msgid "↓ Receive:"
+msgstr "↓ Ta emot:"
+
+#: src/app/qml/StorageNetworkPage.qml:677
+msgid "↑ Send:"
+msgstr "↑ Skicka:"
+
+#: src/app/qml/StorageNetworkPage.qml:695
+msgid "Errors: ↓ "
+msgstr "Fel: ↓ "
+
+#: src/app/qml/StorageNetworkPage.qml:696
+msgid "   |   Drops: ↓ "
+msgstr "   |   Bortfall: ↓ "
+
+#: src/app/qml/StorageNetworkPage.qml:697
+msgid "Error and drop counters unavailable for this interface."
+msgstr "Fel- och bortfallsräknare är otillgängliga för gränssnittet."
+
+#: src/app/qml/StorageNetworkPage.qml:706
+msgid "Measurement capabilities"
+msgstr "Mätmöjligheter"
+
+#: src/app/qml/StorageNetworkPage.qml:763
+msgid "Available"
+msgstr "Tillgänglig"
+
+#: src/app/qml/TrendsView.qml:65
+msgid "Long-Term Trends & Incident History"
+msgstr "Långtidstrender och incidenthistorik"
+
+#: src/app/qml/TrendsView.qml:76
+msgid "1h"
+msgstr "1h"
+
+#: src/app/qml/TrendsView.qml:77
+msgid "6h"
+msgstr "6h"
+
+#: src/app/qml/TrendsView.qml:78
+msgid "24h"
+msgstr "24h"
+
+#: src/app/qml/TrendsView.qml:79
+msgid "7d"
+msgstr "7d"
+
+#: src/app/qml/TrendsView.qml:80
+msgid "30d"
+msgstr "30d"
+
+#: src/app/qml/TrendsView.qml:94
+msgid "Refresh"
+msgstr "Uppdatera"
+
+#: src/app/qml/TrendsView.qml:135
+msgid "Long-Term Metrics History is Disabled"
+msgstr "Långtidshistorik är avstängd"
+
+#: src/app/qml/TrendsView.qml:142
+msgid ""
+"Enable long-term history to record 1-minute system hardware trends across "
+"restarts (up to 30 days)."
+msgstr ""
+"Aktivera långtidshistorik för att spara minutvärden mellan omstarter (upp "
+"till 30 dagar)."
+
+#: src/app/qml/TrendsView.qml:150
+msgid "Enable in Settings…"
+msgstr "Aktivera i inställningarna…"
+
+#: src/app/qml/TrendsView.qml:160
+msgid ""
+"🔒 Privacy: Persistent history is stored in a private SQLite database with "
+"strict 64 MB storage limits. Only numerical hardware aggregates (CPU, "
+"thermals, GPU, RAM, disk throughput) are recorded. Process names, commands, "
+"window titles, and user PIDs are never stored."
+msgstr ""
+"Integritet: Beständig historik sparas i en privat SQLite-databas med en "
+"lagringsgräns på 64 MB. Endast numeriska hårdvaruvärden (CPU, temperaturer, "
+"GPU, RAM, disktrafik) registreras. Processnamn, kommandon, fönstertitlar och "
+"PID sparas inte i databasen."
+
+#: src/app/qml/TrendsView.qml:170
+msgid "Loading history…"
+msgstr "Läser in historik…"
+
+#: src/app/qml/TrendsView.qml:179
+msgid "Retry"
+msgstr "Försök igen"
+
+#: src/app/qml/TrendsView.qml:184
+msgid ""
+"Older incident summaries have no calendar timestamp and cannot be placed in "
+"this time range."
+msgstr ""
+"Äldre incidentsammanfattningar saknar kalenderdatum och kan inte placeras i "
+"det här tidsintervallet."
+
+#: src/app/qml/TrendsView.qml:211
+msgid "MONITORING COVERAGE"
+msgstr "MÄTTÄCKNING"
+
+#: src/app/qml/TrendsView.qml:223
+msgid " h recorded"
+msgstr " timmar inspelade"
+
+#: src/app/qml/TrendsView.qml:242
+msgid "DATA POINTS"
+msgstr "MÄTPUNKTER"
+
+#: src/app/qml/TrendsView.qml:249
+msgid " buckets"
+msgstr " intervall"
+
+#: src/app/qml/TrendsView.qml:254
+msgid "Bucket duration: "
+msgstr "Intervallängd: "
+
+#: src/app/qml/TrendsView.qml:273
+msgid "RECORDED GAPS"
+msgstr "REGISTRERADE LUCKOR"
+
+#: src/app/qml/TrendsView.qml:285
+msgid "No recorded gaps"
+msgstr "Inga registrerade luckor"
+
+#: src/app/qml/TrendsView.qml:310
+msgid "CPU Load & Package Temperature Trends"
+msgstr "Trender för CPU-belastning och temperatur"
+
+#: src/app/qml/TrendsView.qml:315
+msgid "CPU load: 0–100% · Temperature: "
+msgstr "CPU-belastning: 0–100 % · Temperatur: "
+
+#: src/app/qml/TrendsView.qml:315
+msgid "68–212 °F"
+msgstr "68–212 °F"
+
+#: src/app/qml/TrendsView.qml:315
+msgid "20–100 °C"
+msgstr "20–100 °C"
+
+#: src/app/qml/TrendsView.qml:332
+msgid "CPU load and temperature trends"
+msgstr "Trender för CPU-belastning och temperatur"
+
+#: src/app/qml/TrendsView.qml:333
+msgid ""
+"Time-based chart. Missing observations and offline intervals are gaps. "
+"Numerical coverage and bucket duration are displayed above."
+msgstr ""
+"Tidsbaserat diagram. Saknade mätningar och frånkopplade perioder visas som "
+"luckor. Mättäckning och intervallängd visas ovan."
+
+#: src/app/qml/TrendsView.qml:348
+msgid "No persisted history samples for this time window yet."
+msgstr "Inga sparade historikvärden för det här tidsintervallet ännu."
+
+#: src/app/qml/TrendsView.qml:422
+msgid "Recorded Incidents & Hardware Events"
+msgstr "Registrerade incidenter och hårdvaruhändelser"
+
+#: src/app/qml/TrendsView.qml:427
+msgid " incidents recorded"
+msgstr " incidenter registrerade"
+
+#: src/app/qml/TrendsView.qml:436
+msgid ""
+"No incident summaries were recorded in this time range. Missing coverage "
+"does not establish that no incidents occurred."
+msgstr ""
+"Inga incidentsammanfattningar registrerades i det här tidsintervallet. "
+"Saknad mättäckning bevisar inte att inga incidenter inträffade."
+
+#: src/app/qml/TrendsView.qml:473
+msgid "Domain: "
+msgstr "Område: "
+
+#: src/app/qml/TrendsView.qml:473
+msgid " · Rule: "
+msgstr " · Regel: "
+
+#: src/app/trayicon.cpp:67 src/app/trayicon.cpp:156
+msgid "Show Loofi Pulse"
+msgstr "Visa Loofi Pulse"
+
+#: src/app/trayicon.cpp:70
+msgid "Mark Problem Now"
+msgstr "Markera problem nu"
+
+#: src/app/trayicon.cpp:74 src/app/trayicon.cpp:160
+msgid "Pause Recording"
+msgstr "Pausa inspelning"
+
+#: src/app/trayicon.cpp:78
+msgid "Snooze Notifications (15 min)"
+msgstr "Snooza aviseringar (15 min)"
+
+#: src/app/trayicon.cpp:119
+msgid "Hardware Health Monitor"
+msgstr "Hårdvaruövervakare"
+
+#: src/app/trayicon.cpp:132
+msgid "Collector disconnected"
+msgstr "Insamlaren är frånkopplad"
+
+#: src/app/trayicon.cpp:133
+#, qt-format
+msgid ""
+"Loofi Pulse — %1\n"
+"CPU: %2 · Temperature: %3 · Memory: %4"
+msgstr ""
+"Loofi Pulse — %1\n"
+"CPU: %2 · Temperatur: %3 · Minne: %4"
+
+#: src/app/trayicon.cpp:156
+msgid "Hide Loofi Pulse"
+msgstr "Dölj Loofi Pulse"
+
+#: src/app/trayicon.cpp:160
+msgid "Resume Recording"
+msgstr "Återuppta inspelning"
+
+#: src/plugin/qml/HealthHero.qml:82
+msgid "DOMAINS OK"
+msgstr "DOMÄNER OK"
+
+#: src/plugin/qml/HealthHero.qml:109
+msgid "Hardware Telemetry Initializing"
+msgstr "Hårdvarutelemetri initieras"
+
+#: src/plugin/qml/HealthHero.qml:145
+msgid "Evidence"
+msgstr "Bevis"
+
+#: src/plugin/qml/HealthHero.qml:171
+msgid "Missing"
+msgstr "Saknas"
+
+#: src/plugin/qml/HealthHero.qml:197
+msgid "Freshness"
+msgstr "Färskhet"
+
+#: src/plugin/qml/HealthHero.qml:223
+msgid "Confidence"
+msgstr "Tillförlitlighet"
+
+#: src/plugin/qml/HealthHero.qml:253
+msgid "RECENT ACTIVITY (15M)"
+msgstr "SENASTE AKTIVITET (15 MIN)"
+
+#: src/plugin/qml/HealthHero.qml:271
+msgid "Incidents"
+msgstr "Incidenter"
+
+#: src/plugin/qml/HealthHero.qml:294
+msgid "Balanced"
+msgstr "Balanserad"
+
+#: src/plugin/qml/PulsePageHeader.qml:85
+msgid "5 min"
+msgstr "5 min"
+
+#: src/plugin/qml/PulsePageHeader.qml:86
+msgid "15 min"
+msgstr "15 min"
+
+#: src/plugin/qml/PulsePageHeader.qml:87
+msgid "30 min"
+msgstr "30 min"
+
+#: src/plugin/qml/PulsePageHeader.qml:120
+msgid "Save Session"
+msgstr "Spara session"
+
+#: src/plugin/qml/PulsePageHeader.qml:128
+msgid "● Mark Incident"
+msgstr "● Markera incident"
+
+#~ msgid " MHz avg · "
+#~ msgstr " MHz medel · "
+
+#~ msgid " MHz peak"
+#~ msgstr " MHz topp"
+
+#~ msgid " MiB VRAM"
+#~ msgstr " MiB VRAM"
+
+#~ msgid " MiB allocator memory."
+#~ msgstr " MiB allokeringsminne."
+
+#~ msgid " MiB/s · "
+#~ msgstr " MiB/s · "
+
+#~ msgid " details"
+#~ msgstr " detaljer"
+
+#~ msgid " s"
+#~ msgstr " s"
+
+#~ msgid " · ZRAM "
+#~ msgstr " · ZRAM "
+
+#~ msgid "% I/O wait"
+#~ msgstr "% I/O-väntan"
+
+#~ msgid "% time waiting"
+#~ msgstr "% väntetid"
+
+#~ msgid ". Open pressure details"
+#~ msgstr ". Öppna belastningsdetaljer"
+
+#~ msgid "Active power profile: "
+#~ msgstr "Aktiv energiprofil: "
+
+#~ msgid "Also active: "
+#~ msgstr "Även aktivt: "
+
+#~ msgid "CPU & SoC"
+#~ msgstr "CPU och SoC"
+
+#~ msgid "CPU is close to its reported thermal limit"
+#~ msgstr "CPU är nära sin rapporterade temperaturgräns"
+
+#~ msgid "CPU is operating at its sustained power limit (PL1)"
+#~ msgstr "CPU arbetar vid sin uthålliga effektgräns (PL1)"
+
+#~ msgid "CPU pressure or thermal risk is elevated"
+#~ msgstr "CPU-belastning eller temperaturrisk är förhöjd"
+
+#~ msgid "CPU thermal throttling observed"
+#~ msgstr "CPU-temperaturstrypning observerad"
+
+#~ msgid "Cancel"
+#~ msgstr "Avbryt"
+
+#~ msgid ""
+#~ "Check for background indexing, updates, or other heavy disk activity."
+#~ msgstr ""
+#~ "Kontrollera bakgrundsindexering, uppdateringar och annan tung "
+#~ "diskaktivitet."
+
+#~ msgid "Check whether the current workload is expected."
+#~ msgstr "Kontrollera om den aktuella belastningen är förväntad."
+
+#~ msgid "Clear Recorded History"
+#~ msgstr "Rensa inspelad historik"
+
+#~ msgid "Confirming system readings"
+#~ msgstr "Bekräftar systemmätningar"
+
+#~ msgid "Discard investigation and close"
+#~ msgstr "Kasta utredning och stäng"
+
+#~ msgid "Disk"
+#~ msgstr "Disk"
+
+#~ msgid "Disk I/O:"
+#~ msgstr "Disk-I/O:"
+
+#~ msgid "End process"
+#~ msgstr "Avsluta process"
+
+#~ msgid "End process?"
+#~ msgstr "Avsluta process?"
+
+#~ msgid "End process…"
+#~ msgstr "Avsluta process…"
+
+#~ msgid "Fan: "
+#~ msgstr "Fläkt: "
+
+#~ msgid "Force kill process"
+#~ msgstr "Tvinga avslut"
+
+#~ msgid "Force terminate immediately (SIGKILL)"
+#~ msgstr "Tvinga omedelbar avslutning (SIGKILL)"
+
+#~ msgid "Frequency unavailable"
+#~ msgstr "Frekvens otillgänglig"
+
+#~ msgid "GPU load and temperature are high"
+#~ msgstr "GPU-belastning och temperatur är höga"
+
+#~ msgid "GPU temperature is high"
+#~ msgstr "GPU-temperaturen är hög"
+
+#~ msgid "GPU temperature: "
+#~ msgstr "GPU-temperatur: "
+
+#~ msgid "Hide status explanation"
+#~ msgstr "Dölj statusförklaring"
+
+#~ msgid "High battery power draw"
+#~ msgstr "Hög batteriförbrukning"
+
+#~ msgid "High workload while power-saver profile is active"
+#~ msgstr "Hög belastning med energisparprofil aktiverad"
+
+#~ msgid "Inspect "
+#~ msgstr "Granska "
+
+#~ msgid "Keep Loofi Pulse open while readings stabilize."
+#~ msgstr "Låt Loofi Pulse vara öppet medan mätvärdena stabiliseras."
+
+#~ msgid "Keep an eye on storage temperature during long transfers."
+#~ msgstr "Följ lagringstemperaturen under långa överföringar."
+
+#~ msgid "Keep detailed historical metrics up to:"
+#~ msgstr "Spara detaljerade historiska mått i upp till:"
+
+#~ msgid "Live (RAM)"
+#~ msgstr "Realtid (RAM)"
+
+#~ msgid "Measurement details"
+#~ msgstr "Mätdetaljer"
+
+#~ msgid "Mem"
+#~ msgstr "Minne"
+
+#~ msgid "Memory pressure"
+#~ msgstr "Minnesbelastning"
+
+#~ msgid "Memory pressure is slowing the system"
+#~ msgstr "Minnesbelastning saktar ned systemet"
+
+#~ msgid "NVMe "
+#~ msgstr "NVMe "
+
+#~ msgid "NVMe temp N/A"
+#~ msgstr "NVMe-temp otillgänglig"
+
+#~ msgid "NVMe temperature is elevated"
+#~ msgstr "NVMe-temperaturen är förhöjd"
+
+#~ msgid "Name"
+#~ msgstr "Namn"
+
+#~ msgid "Net"
+#~ msgstr "Nätverk"
+
+#~ msgid "Net ↓"
+#~ msgstr "Net ↓"
+
+#~ msgid "Network I/O: "
+#~ msgstr "Nätverks-I/O: "
+
+#~ msgid "Next step: "
+#~ msgstr "Nästa steg: "
+
+#~ msgid "No action is needed."
+#~ msgstr "Ingen åtgärd behövs."
+
+#~ msgid "No contributing signal is currently available."
+#~ msgstr "Ingen bidragande signal finns tillgänglig just nu."
+
+#~ msgid ""
+#~ "No sustained pressure or thermal risk was observed in the available "
+#~ "readings."
+#~ msgstr ""
+#~ "Ingen ihållande belastning eller temperaturrisk observerades i de "
+#~ "tillgängliga mätvärdena."
+
+#~ msgid "None / Unavailable"
+#~ msgstr "Ingen/otillgänglig"
+
+#~ msgid "Observed for "
+#~ msgstr "Observerat i "
+
+#~ msgid "Open"
+#~ msgstr "Öppna"
+
+#~ msgid "Open "
+#~ msgstr "Öppna "
+
+#~ msgid "Open History"
+#~ msgstr "Öppna historik"
+
+#~ msgid "Original technical evidence (preserved language):"
+#~ msgstr "Ursprungligt tekniskt underlag (bevarat språk):"
+
+#~ msgid "Pressure & Memory"
+#~ msgstr "Tryck & Minne"
+
+#~ msgid "Quiet Hours"
+#~ msgstr "Tysta timmar"
+
+#~ msgid "R "
+#~ msgstr "R "
+
+#~ msgid "RAM reading unavailable"
+#~ msgstr "RAM-mätning otillgänglig"
+
+#~ msgid "RAM: "
+#~ msgstr "RAM: "
+
+#~ msgid "Recommendation: "
+#~ msgstr "Rekommendation: "
+
+#~ msgid ""
+#~ "Reduce graphics work or lower the frame-rate limit if display performance "
+#~ "is affected."
+#~ msgstr ""
+#~ "Minska grafikbelastningen eller bildfrekvensgränsen om bildskärmens "
+#~ "prestanda påverkas."
+
+#~ msgid "Reduce sustained CPU load or choose a lower power profile."
+#~ msgstr ""
+#~ "Minska den långvariga CPU-belastningen eller välj en lägre energiprofil."
+
+#~ msgid ""
+#~ "Required measurements are available. Waiting for a consistent status "
+#~ "before confirming the result."
+#~ msgstr ""
+#~ "Nödvändiga mätningar är tillgängliga. Väntar på en konsekvent status "
+#~ "innan resultatet bekräftas."
+
+#~ msgid ""
+#~ "Review memory use in System Monitor and close work you no longer need."
+#~ msgstr ""
+#~ "Granska minnesanvändningen i Systemövervakaren och stäng arbete du inte "
+#~ "längre behöver."
+
+#~ msgid "Review the available measurements below."
+#~ msgstr "Granska de tillgängliga mätningarna nedan."
+
+#~ msgid "Review the data quality details for missing sensors and interfaces."
+#~ msgstr "Granska datakvaliteten för saknade sensorer och gränssnitt."
+
+#~ msgid "Rule: "
+#~ msgstr "Regel: "
+
+#~ msgid "Save report + JSON"
+#~ msgstr "Spara rapport och JSON"
+
+#~ msgid "Show"
+#~ msgstr "Visa"
+
+#~ msgid "Some system readings are unavailable"
+#~ msgstr "Vissa systemmätningar är otillgängliga"
+
+#~ msgid "Storage pressure is blocking work"
+#~ msgstr "Lagringsbelastning blockerar arbete"
+
+#~ msgid ""
+#~ "Sustained performance is capped by the power envelope. Use 'performance' "
+#~ "profile if higher limits are supported."
+#~ msgstr ""
+#~ "Uthållig prestanda begränsas av effektgränsen. Använd profilen "
+#~ "'performance' om högre gränser stöds."
+
+#~ msgid "Switch to Balanced profile"
+#~ msgstr "Byt till balanserad profil"
+
+#~ msgid ""
+#~ "Switch to the 'balanced' or 'performance' power profile for higher "
+#~ "responsiveness."
+#~ msgstr ""
+#~ "Välj energiprofilen 'balanced' eller 'performance' för högre "
+#~ "responsivitet."
+
+#~ msgid ""
+#~ "Switch to the 'balanced' or 'power-saver' profile to extend battery "
+#~ "runtime."
+#~ msgstr "Välj profilen 'balanced' eller 'power-saver' för längre batteritid."
+
+#~ msgid "Temp"
+#~ msgstr "Temp"
+
+#~ msgid "Temperature Unit"
+#~ msgstr "Temperaturskala"
+
+#~ msgid "Thermal headroom: "
+#~ msgstr "Temperaturmarginal: "
+
+#~ msgid "Thermal limit unavailable"
+#~ msgstr "Temperaturgräns otillgänglig"
+
+#~ msgid "Top process (concurrent CPU load):"
+#~ msgstr "Främsta process (samtidig CPU-belastning):"
+
+#~ msgid "Trends"
+#~ msgstr "Trender"
+
+#~ msgid "Waiting for stable measurements before confirming system status."
+#~ msgstr "Väntar på stabila mätningar innan systemstatus bekräftas."
+
+#~ msgid "Watch GPU temperature during graphics-intensive workloads."
+#~ msgstr "Följ GPU-temperaturen vid grafikintensivt arbete."
+
+#~ msgid ""
+#~ "Watch the temperature during sustained work. A lower power profile can "
+#~ "reduce heat."
+#~ msgstr ""
+#~ "Följ temperaturen vid långvarigt arbete. En lägre energiprofil kan minska "
+#~ "värmen."
+
+#~ msgid "Why this status?"
+#~ msgstr "Varför denna status?"
+
+#~ msgid "measurements section"
+#~ msgstr "mätavsnitt"
+
+#~ msgid "observed"
+#~ msgstr "observerat"
+
+#~ msgid "processes"
+#~ msgstr "processer"
+
+#~ msgid "Active profile holds: "
+#~ msgstr "Aktiva profillåsningar: "
+
+#~ msgid "Power profile throttling workload"
+#~ msgstr "Energiprofil stryper arbetsbelastning"
+
+#~ msgid ""
+#~ "A power-saver or quiet profile is capping system performance while "
+#~ "connected to AC power."
+#~ msgstr ""
+#~ "En energispar- eller tyst profil begränsar systemets prestanda trots "
+#~ "nätströmsanslutning."
+
+#~ msgid ""
+#~ "Switch to the Balanced or Performance profile to remove profile "
+#~ "throttling."
+#~ msgstr ""
+#~ "Växla till profilen Balanserad eller Prestanda för att häva "
+#~ "profilstrypningen."
+
+#~ msgid "Elevated latency or degraded wireless link quality"
+#~ msgstr "Förhöjd latens eller försämrad trådlös länkkvalitet"
+
+#~ msgid ""
+#~ "Wi-Fi signal strength is low or experiencing packet drops and rate down-"
+#~ "negotiation."
+#~ msgstr ""
+#~ "Wi-Fi-signalstyrkan är låg eller drabbas av paketförluster och "
+#~ "nedförhandlad bithastighet."
+
+#~ msgid "Move closer to the access point or switch to 5/6 GHz."
+#~ msgstr "Flytta närmare accesspunkten eller växla till 5/6 GHz."
+
+#~ msgid "ZRAM swap space exhaustion"
+#~ msgstr "ZRAM-växlingsutrymmet är nästan fullt"
+
+#~ msgid "Compressed RAM device is near capacity with heavy memory pressure."
+#~ msgstr ""
+#~ "Den komprimerade RAM-enheten är nära sin kapacitetsgräns under hög "
+#~ "minnesbelastning."
+
+#~ msgid "Close memory-heavy processes to prevent OOM stalls."
+#~ msgstr ""
+#~ "Stäng minneskrävande processer för att förhindra minnesstopp och "
+#~ "frysningar."
+
+#~ msgid "ZRAM capacity"
+#~ msgstr "ZRAM-kapacitet"
+
+#~ msgid "ZRAM efficiency"
+#~ msgstr "ZRAM-effektivitet"
+
+#~ msgid "cgroup v2 slices"
+#~ msgstr "cgroup v2-skivor"
+
+#~ msgid "Machine slice"
+#~ msgstr "Maskinskiva (machine.slice)"
+
+#~ msgid "Mark incident now and launch timeline"
+#~ msgstr "Bokmärk incident nu och öppna tidslinje"
+
+#~ msgid "Observed condition"
+#~ msgstr "Observerat tillstånd"
+
+#~ msgid "Possible contributing cause"
+#~ msgstr "Möjlig bidragande orsak"
+
+#~ msgid "Incomplete evidence"
+#~ msgstr "Ofullständigt underlag"

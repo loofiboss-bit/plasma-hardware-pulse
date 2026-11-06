@@ -113,6 +113,9 @@ void PulseTelemetryController::subscribeCollector()
                 fetchCollectorHistory(newCapture || !m_liveRecorder.count() ? 0 : m_liveRecorder.samples().last().sampleId);
             }
             receiveCollectorFrame(data);
+            callCollector(QStringLiteral("SetClientActive"), {m_clientId, m_clientActive},
+                [this](const QByteArray &updated) { receiveCollectorFrame(updated); },
+                [](const QString &) {});
         });
 }
 
@@ -205,6 +208,7 @@ QByteArray PulseTelemetryController::collectorPacket(bool includeHistory) const
     }
     m_lastPacketProcessMs = m_processRadar.observedAtMs;
     live[QStringLiteral("effectivePollIntervalMs")] = pollIntervalMs();
+    live[QStringLiteral("effectiveProcessScanIntervalMs")] = m_processTimer.interval();
     live[QStringLiteral("effectiveRetentionSeconds")] = historyRetentionSeconds();
     QVariantMap packet{{QStringLiteral("captureId"), m_captureId}, {QStringLiteral("live"), live},
         {QStringLiteral("incidents"), incidentRows(m_recorder)}};
@@ -331,7 +335,7 @@ QVariantList PulseTelemetryController::capabilities() const
 QString PulseTelemetryController::collectorState() const
 {
     if (!m_remoteClient) return m_recordingPaused ? QStringLiteral("Paused") : QStringLiteral("Live");
-    if (m_receivedAt.isValid() && m_receivedAt.elapsed() > std::max(5000, m_timer.interval() * 3)) return QStringLiteral("Stale — last sample is old");
+    if (m_receivedAt.isValid() && m_receivedAt.elapsed() > collectorStaleTimeoutMs()) return QStringLiteral("Stale — last sample is old");
     return m_connectionState;
 }
 
@@ -341,7 +345,7 @@ bool PulseTelemetryController::collectorConnected() const
     if (m_connectionState.startsWith(QStringLiteral("Disconnected")) || m_connectionState.startsWith(QStringLiteral("Connecting"))) {
         return false;
     }
-    return !m_receivedAt.isValid() || m_receivedAt.elapsed() <= std::max(5000, m_timer.interval() * 3);
+    return !m_receivedAt.isValid() || m_receivedAt.elapsed() <= collectorStaleTimeoutMs();
 }
 
 void PulseTelemetryController::reconnectCollector()
@@ -354,6 +358,16 @@ void PulseTelemetryController::reconnectCollector()
     m_connectionState = QStringLiteral("Connecting");
     subscribeCollector();
     Q_EMIT telemetryUpdated();
+}
+
+void PulseTelemetryController::setCollectorClientActive(bool active)
+{
+    if (m_clientActive == active) return;
+    m_clientActive = active;
+    if (!m_remoteClient) return;
+    callCollector(QStringLiteral("SetClientActive"), {m_clientId, m_clientActive},
+        [this](const QByteArray &data) { receiveCollectorFrame(data); },
+        [](const QString &) {});
 }
 
 void PulseTelemetryController::setBackgroundMonitoring(bool value) { callCollector(QStringLiteral("SetBackground"), {value}); }
@@ -541,7 +555,7 @@ QString PulseTelemetryController::exportEntireRecording()
         m_recorder.restoreSnapshot(m_sourceSession);
     } else m_recorder = m_liveRecorder;
     QString path;
-    if (m_remoteClient) exportRecorderAsync(m_recorder);
+    if (m_remoteClient) exportRecorderAsync(m_recorder, m_session.metadata);
     else path = exportIncidentReportToFile();
     m_recorder = frozen;
     return path;

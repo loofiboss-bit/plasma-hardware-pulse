@@ -14,6 +14,7 @@
 #include <QUuid>
 #include <functional>
 #include <QDBusConnection>
+#include <QHash>
 #include <QObject>
 #include <QTimer>
 #include <QVariantList>
@@ -125,6 +126,7 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(double pl2LimitWatts READ pl2LimitWatts NOTIFY telemetryUpdated)
     Q_PROPERTY(bool powerLimitsAvailable READ powerLimitsAvailable NOTIFY telemetryUpdated)
     Q_PROPERTY(QString activePowerProfile READ activePowerProfile NOTIFY telemetryUpdated)
+    Q_PROPERTY(bool activePowerProfileAvailable READ activePowerProfileAvailable NOTIFY telemetryUpdated)
     Q_PROPERTY(QStringList availablePowerProfiles READ availablePowerProfiles NOTIFY telemetryUpdated)
     Q_PROPERTY(QVariantList powerProfileHolds READ powerProfileHolds NOTIFY telemetryUpdated)
     Q_PROPERTY(QString powerProfileHoldsSummary READ powerProfileHoldsSummary NOTIFY telemetryUpdated)
@@ -142,6 +144,7 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(QString wifiSsid READ wifiSsid NOTIFY telemetryUpdated)
     Q_PROPERTY(int wifiSignalPercent READ wifiSignalPercent NOTIFY telemetryUpdated)
     Q_PROPERTY(int wifiSignalDbm READ wifiSignalDbm NOTIFY telemetryUpdated)
+    Q_PROPERTY(bool wifiSignalDbmAvailable READ wifiSignalDbmAvailable NOTIFY telemetryUpdated)
     Q_PROPERTY(double wifiFrequencyGhz READ wifiFrequencyGhz NOTIFY telemetryUpdated)
     Q_PROPERTY(int wifiBitrateMbps READ wifiBitrateMbps NOTIFY telemetryUpdated)
     Q_PROPERTY(bool hasActiveWifi READ wifiAvailable NOTIFY telemetryUpdated)
@@ -159,6 +162,7 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(double verdictDurationSeconds READ verdictDurationSeconds NOTIFY telemetryUpdated)
     Q_PROPERTY(QStringList verdictEvidence READ verdictEvidence NOTIFY telemetryUpdated)
     Q_PROPERTY(QStringList verdictMissingEvidence READ verdictMissingEvidence NOTIFY telemetryUpdated)
+    Q_PROPERTY(QString verdictAssessment READ verdictAssessment NOTIFY telemetryUpdated)
     Q_PROPERTY(QString primaryBottleneckDomain READ primaryBottleneckDomain NOTIFY telemetryUpdated)
     Q_PROPERTY(QStringList verdictContributingSignals READ verdictContributingSignals NOTIFY telemetryUpdated)
     Q_PROPERTY(QString culpritName READ culpritName NOTIFY telemetryUpdated)
@@ -306,6 +310,7 @@ public:
     double pl2LimitWatts() const { return remoteValue<double>("pl2LimitWatts", m_power.pl2LimitWatts); }
     bool powerLimitsAvailable() const { return remoteValue<bool>("powerLimitsAvailable", m_power.pl1LimitWatts > 0.0 || m_power.pl2LimitWatts > 0.0); }
     QString activePowerProfile() const { return remoteValue<QString>("activePowerProfile", m_activePowerProfile); }
+    bool activePowerProfileAvailable() const { return remoteValue<bool>("activePowerProfileAvailable", m_activePowerProfileAvailable); }
     QStringList availablePowerProfiles() const { return remoteValue<QStringList>("availablePowerProfiles", m_availablePowerProfiles); }
     QVariantList powerProfileHolds() const { return remoteValue<QVariantList>("powerProfileHolds", m_powerProfileHoldsVariant); }
     QString powerProfileHoldsSummary() const { return remoteValue<QString>("powerProfileHoldsSummary", m_powerProfileHoldsSummary); }
@@ -323,6 +328,7 @@ public:
     QString wifiSsid() const { return remoteValue<QString>("wifiSsid", m_wifiSsid); }
     int wifiSignalPercent() const { return remoteValue<int>("wifiSignalPercent", m_wifiSignalPercent); }
     int wifiSignalDbm() const { return remoteValue<int>("wifiSignalDbm", m_wifiSignalDbm); }
+    bool wifiSignalDbmAvailable() const { return remoteValue<bool>("wifiSignalDbmAvailable", false); }
     double wifiFrequencyGhz() const { return remoteValue<double>("wifiFrequencyGhz", m_wifiFrequencyGhz); }
     int wifiBitrateMbps() const { return remoteValue<int>("wifiBitrateMbps", m_wifiBitrateMbps); }
 
@@ -334,6 +340,7 @@ public:
     double verdictDurationSeconds() const { return remoteValue<double>("verdictDurationSeconds", m_verdict.durationMs / 1000.0); }
     QStringList verdictEvidence() const { return remoteValue<QStringList>("verdictEvidence", m_verdict.evidence); }
     QStringList verdictMissingEvidence() const;
+    QString verdictAssessment() const;
     QString primaryBottleneckDomain() const { return remoteValue<QString>("primaryBottleneckDomain", m_verdict.primaryBottleneckDomain); }
     QStringList verdictContributingSignals() const { return remoteValue<QStringList>("verdictContributingSignals", m_verdict.contributingSignals); }
     QString culpritName() const { return remoteValue<QString>("culpritName", m_verdict.topProcess.name); }
@@ -406,6 +413,7 @@ public:
     Q_INVOKABLE void clearPersistedHistory();
     Q_INVOKABLE QVariantMap processIoStats(int pid) const;
     Q_INVOKABLE QVariantList incidentKernelLogs(const QString &incidentId) const;
+    Q_INVOKABLE void loadIncidentKernelLogs(const QString &incidentId);
     Q_INVOKABLE QVariantMap compareIncidents(const QString &incidentIdA, const QString &incidentIdB) const;
 
 Q_SIGNALS:
@@ -427,6 +435,7 @@ Q_SIGNALS:
     void trendsLoadingChanged();
     void trendsRangeChanged();
     void persistedIncidentsChanged();
+    void incidentKernelLogsChanged();
 
 public:
     Q_PROPERTY(QVariantList allProcesses READ allProcesses NOTIFY telemetryUpdated)
@@ -447,6 +456,9 @@ public:
     Q_PROPERTY(bool trendsLoading READ trendsLoading NOTIFY trendsLoadingChanged)
     Q_PROPERTY(QString trendsRange READ trendsRange WRITE setTrendsRange NOTIFY trendsRangeChanged)
     Q_PROPERTY(QVariantList persistedIncidents READ persistedIncidents NOTIFY persistedIncidentsChanged)
+    Q_PROPERTY(QVariantList incidentKernelLogEntries READ incidentKernelLogEntries NOTIFY incidentKernelLogsChanged)
+    Q_PROPERTY(bool incidentKernelLogsLoading READ incidentKernelLogsLoading NOTIFY incidentKernelLogsChanged)
+    Q_PROPERTY(QString incidentKernelLogsError READ incidentKernelLogsError NOTIFY incidentKernelLogsChanged)
     Q_PROPERTY(bool sessionMode READ sessionMode NOTIFY telemetryUpdated)
     Q_PROPERTY(QString sessionPath READ sessionPath NOTIFY telemetryUpdated)
     Q_PROPERTY(bool unsavedInvestigation READ unsavedInvestigation NOTIFY telemetryUpdated)
@@ -477,6 +489,9 @@ public:
     QString trendsRange() const { return m_trendsRange; }
     void setTrendsRange(const QString &range);
     QVariantList persistedIncidents() const { return m_persistedIncidents; }
+    QVariantList incidentKernelLogEntries() const { return m_kernelLogEntries; }
+    bool incidentKernelLogsLoading() const { return m_kernelLogsLoading; }
+    QString incidentKernelLogsError() const { return m_kernelLogError; }
     bool sessionMode() const { return m_sessionMode; }
     QString sessionPath() const { return m_sessionPath; }
     bool unsavedInvestigation() const { return m_unsavedInvestigation; }
@@ -487,6 +502,7 @@ public:
     void setSelectedStorageId(const QString &id);
     bool actionPending() const { return m_actionPending; }
     Q_INVOKABLE void reconnectCollector();
+    Q_INVOKABLE void setCollectorClientActive(bool active);
     Q_INVOKABLE void markProblemNow();
     Q_INVOKABLE void markProblemAndLaunch();
     Q_INVOKABLE void selectIncident(const QString &id);
@@ -508,6 +524,7 @@ private Q_SLOTS:
 private:
     QVariant remoteTelemetryValue(const char *key) const;
     QVariantList remoteCollection(const char *key) const;
+    int collectorStaleTimeoutMs() const;
     QVariantMap sampleForView(const FlightSample &sample, int index) const;
     template<class T> T remoteValue(const char *key, const T &local) const {
         return m_remoteClient ? remoteTelemetryValue(key).value<T>() : local;
@@ -538,6 +555,7 @@ private:
     int m_requestedRetentionSeconds = 300;
     QVariantList m_pendingSamples;
     bool m_remoteClient = false;
+    bool m_clientActive = true;
     bool m_connecting = false;
     bool m_syncing = false;
     bool m_sessionMode = false;
@@ -549,6 +567,11 @@ private:
     QString m_selectedGpuId;
     QString m_selectedStorageId;
     QString m_connectionState = QStringLiteral("Connecting");
+    QString m_kernelLogsIncidentId;
+    QVariantList m_kernelLogEntries;
+    QString m_kernelLogError;
+    quint64 m_kernelLogRequestId = 0;
+    bool m_kernelLogsLoading = false;
     QVariantMap m_remoteValues;
     QVariantMap m_investigationSummary;
     QVariantMap m_collectorPreferences;
@@ -597,6 +620,8 @@ private:
     QVariantMap m_selectedHistorySnapshot;
     VerdictStabilizer m_verdictStabilizer;
     QString m_activePowerProfile;
+    bool m_activePowerProfileAvailable = false;
+    qint64 m_activePowerProfileObservedAtMs = 0;
     QStringList m_availablePowerProfiles;
     QVariantList m_powerProfileHoldsVariant;
     QString m_powerProfileHoldsSummary;
@@ -618,8 +643,12 @@ private:
     QString m_wifiSsid;
     int m_wifiSignalPercent = 0;
     int m_wifiSignalDbm = 0;
+    qint64 m_wifiObservedAtMs = 0;
+    quint64 m_wifiRequestId = 0;
     double m_wifiFrequencyGhz = 0.0;
     int m_wifiBitrateMbps = 0;
+    QHash<QString, QVariantMap> m_wifiByInterface;
+    int m_wifiPrimaryDeviceOrder = -1;
 
     QVariantList m_domainSensorsVariant;
     QVariantList m_coreItemsVariant;

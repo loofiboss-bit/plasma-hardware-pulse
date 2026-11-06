@@ -35,6 +35,24 @@ enum class VerdictSeverity
     Unknown = 4
 };
 
+// Describes how directly the available evidence supports the diagnostic wording.
+enum class DiagnosisState
+{
+    Observation = 0,
+    SuspectedCause = 1,
+    ConfirmedProblem = 2
+};
+
+inline QString diagnosisStateLabel(DiagnosisState state)
+{
+    switch (state) {
+    case DiagnosisState::Observation: return QStringLiteral("Observed condition");
+    case DiagnosisState::SuspectedCause: return QStringLiteral("Possible contributing cause");
+    case DiagnosisState::ConfirmedProblem: return QStringLiteral("Confirmed event");
+    }
+    return QStringLiteral("Observed condition");
+}
+
 struct DomainSensorReading
 {
     QString id;
@@ -226,8 +244,10 @@ struct PsiAndMemorySnapshot
     double netTxMibPerSec = 0.0;
 
     bool wifiQualityAvailable = false;
+    bool primaryWifiSignalDbmAvailable = false;
     int primaryWifiSignalPercent = 0;
     int primaryWifiSignalDbm = 0;
+    qint64 primaryWifiObservedAtMs = 0;
     double primaryWifiFrequencyGhz = 0.0;
     QString primaryWifiSsid;
     int primaryWifiBitrateMbps = 0;
@@ -271,7 +291,9 @@ struct PowerFlowSnapshot
     double pl1LimitWatts = 0.0;
     double pl2LimitWatts = 0.0;
 
-    QString activePowerProfile = QStringLiteral("balanced");
+    QString activePowerProfile;
+    bool activePowerProfileAvailable = false;
+    qint64 activePowerProfileObservedAtMs = 0;
     QStringList availablePowerProfiles;
     int primaryFanRpm = 0;
 };
@@ -308,6 +330,8 @@ struct CausalVerdict
 {
     QString ruleId;
     QStringList evidence;
+    QStringList missingEvidence;
+    DiagnosisState diagnosisState = DiagnosisState::Observation;
     qint64 observedSinceMs = 0;
     qint64 durationMs = 0;
     VerdictSeverity severity = VerdictSeverity::Unknown;
@@ -382,9 +406,11 @@ struct FlightSample
     QString activePowerProfile;
     bool throttled = false;
     VerdictSeverity severity = VerdictSeverity::Nominal;
+    DiagnosisState diagnosisState = DiagnosisState::Observation;
     QString verdictHeadline;
     QString verdictRuleId;
     QStringList verdictEvidence;
+    QStringList verdictMissingEvidence;
     qint64 verdictDurationMs = 0;
     QString culpritName;
     int culpritPid = 0;

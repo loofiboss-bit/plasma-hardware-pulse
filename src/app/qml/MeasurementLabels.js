@@ -36,3 +36,10 @@ function formatTemperatureDelta(celsius, unit) {
     if (typeof celsius !== "number" || !isFinite(celsius)) return "N/A"
     return Math.round(unit === "F" ? celsius * 9 / 5 : celsius) + (unit === "F" ? "°F" : "°C")
 }
+
+function wifiSignalVisible(networkInterface) {
+    if (!networkInterface || networkInterface.isWireless !== true) return false
+    if (networkInterface.wirelessSignalAvailable !== undefined)
+        return networkInterface.wirelessSignalAvailable === true
+    return Number(networkInterface.wirelessSignalPercent) > 0
+}

@@ -38,7 +38,9 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
                                   const QString &domain,
                                   const QString &headline,
                                   const QString &details,
-                                  const QString &recommendation) {
+                                  const QString &recommendation,
+                                  DiagnosisState diagnosisState = DiagnosisState::SuspectedCause,
+                                  const QStringList &missingEvidence = {}) {
         CausalVerdict v;
         v.ruleId = ruleId;
         v.evidence.append(details);
@@ -47,6 +49,8 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
         v.headline = headline;
         v.causalChain = details;
         v.recommendation = recommendation;
+        v.diagnosisState = diagnosisState;
+        v.missingEvidence = missingEvidence;
         v.topProcess = cpuProcess;
         v.topMemoryProcess = memoryProcess;
         matches.append(v);
@@ -60,7 +64,8 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
                      cpu.temperatureAvailable
                          ? QStringLiteral("%1°C package temperature; %2 new throttle events").arg(cpu.packageTempCelsius, 0, 'f', 1).arg(cpu.deltaThrottleEvents)
                          : QStringLiteral("%1 throttle events observed; package temperature is unavailable.").arg(cpu.deltaThrottleEvents),
-                     QStringLiteral("Reduce sustained CPU load or choose a lower power profile."));
+                     QStringLiteral("Reduce sustained CPU load and improve cooling. A lower performance profile may also reduce heat."),
+                     DiagnosisState::ConfirmedProblem);
     }
 
     bool zramExhausted = false;
@@ -77,9 +82,11 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
                 .arg(psiMem.memoryPsi.someAvg10, 0, 'f', 1);
             addCandidate(QStringLiteral("memory.zram-exhaustion"), VerdictSeverity::Bottleneck,
                          QStringLiteral("Memory"),
-                         QStringLiteral("ZRAM compressed swap capacity exhausted"),
+                         QStringLiteral("ZRAM use is high during memory pressure"),
                          details,
-                         QStringLiteral("Close heavy browser tabs, virtual machines, or container workloads to avoid system freeze or OOM killer invocation."));
+                         QStringLiteral("Review memory pressure and consider closing unused browser tabs, virtual machines, or container workloads."),
+                         DiagnosisState::SuspectedCause,
+                         {QStringLiteral("The threshold shows high compressed-swap use; it does not by itself predict an out-of-memory event.")});
         }
     }
 
@@ -93,7 +100,9 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
                      QStringLiteral("Memory"),
                      QStringLiteral("Memory pressure is slowing the system"),
                      details,
-                     QStringLiteral("Review memory use in System Monitor and close work you no longer need."));
+                     QStringLiteral("Review memory use in System Monitor and close work you no longer need."),
+                     DiagnosisState::SuspectedCause,
+                     {QStringLiteral("Memory stalls are measured, but the affected application and its response time are not identified.")});
     }
 
     if (psiMem.ioPsi.fullAvailable && psiMem.ioPsi.fullAvg10 >= 8.0) {
@@ -118,7 +127,9 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
                      QStringLiteral("Storage"),
                      QStringLiteral("Storage pressure is blocking work"),
                      storageDetails,
-                     QStringLiteral("Check for background indexing, updates, or other heavy disk activity."));
+                     QStringLiteral("Check for background indexing, updates, or other heavy disk activity."),
+                     DiagnosisState::SuspectedCause,
+                     {QStringLiteral("I/O pressure is measured, but the responsible device or workload is not identified.")});
     }
 
     for (const NvmeControllerTelemetry &ctrl : psiMem.nvmeControllers) {
@@ -140,7 +151,8 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
                          QStringLiteral("NVMe storage hardware critical warning"),
                          QStringLiteral("Controller '%1' (%2) reported critical warning (0x%3): %4")
                              .arg(ctrl.id, ctrl.model, QString::number(mask, 16).toUpper(), issues.join(QStringLiteral(", "))),
-                         QStringLiteral("Backup critical data immediately and check NVMe SMART attributes for drive replacement."));
+                         QStringLiteral("Back up important data and check the drive health report; seek drive replacement advice if the warning persists."),
+                         DiagnosisState::ConfirmedProblem);
         } else if (isTempThreshold) {
             const bool ioPsiElevated = psiMem.ioPsi.fullAvailable && psiMem.ioPsi.fullAvg10 >= 5.0;
             const VerdictSeverity sev = ioPsiElevated ? VerdictSeverity::Bottleneck : VerdictSeverity::Elevated;
@@ -150,7 +162,8 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
                          QStringLiteral("Controller '%1' composite temperature is %2°C; %3")
                              .arg(ctrl.id).arg(ctrl.compositeTempCelsius, 0, 'f', 1)
                              .arg(ioPsiElevated ? QStringLiteral("I/O stall observed") : QStringLiteral("no active I/O stall observed")),
-                         QStringLiteral("Improve NVMe heatsink thermal pad contact or case airflow."));
+                         QStringLiteral("Improve NVMe cooling and check whether sustained transfers are affected."),
+                         DiagnosisState::ConfirmedProblem);
         }
     }
 
@@ -172,7 +185,9 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
                          QStringLiteral("GPU load and temperature are high"),
                          QStringLiteral("Measured GPU load: %1%; measured GPU temperature: %2°C (%3)")
                              .arg(gpu.busyPercent, 0, 'f', 0).arg(gpu.tempCelsius, 0, 'f', 1).arg(source),
-                         QStringLiteral("Reduce graphics work or lower the frame-rate limit if display performance is affected."));
+                         QStringLiteral("If graphics work is slow, reduce rendering load or check GPU cooling."),
+                         DiagnosisState::SuspectedCause,
+                         {QStringLiteral("No frame-time or application-latency measurement is available.")});
         } else if (gpu.temperatureAvailable && gpu.tempCelsius >= 88.0) {
             addCandidate(QStringLiteral("gpu.temperature"), VerdictSeverity::Elevated,
                          QStringLiteral("Graphics"),
@@ -181,7 +196,9 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
                              .arg(gpu.tempCelsius, 0, 'f', 1).arg(source)
                              .arg(gpu.busyAvailable ? QStringLiteral("Measured GPU load: %1%.").arg(gpu.busyPercent, 0, 'f', 0)
                                                     : QStringLiteral("GPU busy counter is unavailable.")),
-                         QStringLiteral("Watch GPU temperature during graphics-intensive workloads."));
+                         QStringLiteral("Watch GPU temperature during graphics-intensive workloads."),
+                         DiagnosisState::Observation,
+                         {QStringLiteral("Temperature alone does not confirm reduced graphics performance.")});
         }
     }
     std::stable_sort(matches.begin() + gpuMatchesBegin, matches.end(), [](const auto &a, const auto &b) {
@@ -196,7 +213,9 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
                          .arg(cpu.packageTempCelsius, 0, 'f', 1).arg(cpu.thermalHeadroomCelsius, 0, 'f', 1)
                          .arg(cpu.throttleCountersAvailable ? QStringLiteral("No new throttle event was observed.")
                                                             : QStringLiteral("Throttle counters are unavailable; throttling cannot be confirmed.")),
-                     QStringLiteral("Watch the temperature during sustained work. A lower power profile can reduce heat."));
+                     QStringLiteral("Watch temperature during sustained work and check cooling if it continues to rise."),
+                     DiagnosisState::Observation,
+                     {QStringLiteral("Thermal throttling requires a new throttle-counter event and is not confirmed by temperature alone.")});
     }
 
     for (const DomainSensorReading &sensor : domains) {
@@ -208,17 +227,21 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
                              .arg(sensor.currentCelsius, 0, 'f', 1)
                              .arg(psiMem.ioPsi.fullAvailable ? QStringLiteral("No high all-work I/O pressure was observed.")
                                                              : QStringLiteral("I/O pressure is unavailable; temperature alone does not establish an I/O bottleneck.")),
-                         QStringLiteral("Keep an eye on storage temperature during long transfers."));
+                     QStringLiteral("Keep an eye on storage temperature during long transfers."),
+                     DiagnosisState::Observation,
+                     {QStringLiteral("Temperature alone does not confirm storage throttling or an I/O bottleneck.")});
             break;
         }
     }
 
-    const bool isPowerSaverThrottlingCandidate = power.activePowerProfile == QStringLiteral("power-saver")
+    const bool powerSaverProfileObserved = power.activePowerProfileAvailable
+        && power.activePowerProfile == QStringLiteral("power-saver");
+    const bool isPowerSaverThrottlingCandidate = powerSaverProfileObserved
         && power.onAcPower
         && ((cpuLoadValid && cpu.totalLoadPercent >= 80.0)
             || (psiMem.cpuPsi.someAvailable && psiMem.cpuPsi.someAvg10 >= 12.0));
 
-    if (!isPowerSaverThrottlingCandidate && power.activePowerProfile == QStringLiteral("power-saver")
+    if (!isPowerSaverThrottlingCandidate && powerSaverProfileObserved
         && ((cpuLoadValid && cpu.totalLoadPercent >= 65.0)
             || (busyGpu && busyGpu->busyPercent >= 75.0)
             || (psiMem.cpuPsi.someAvailable && psiMem.cpuPsi.someAvg10 >= 10.0))) {
@@ -233,7 +256,9 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
                      QStringLiteral("Power & Cooling"),
                      QStringLiteral("High workload while power-saver profile is active"),
                      details,
-                     QStringLiteral("Switch to the 'balanced' or 'performance' power profile for higher responsiveness."));
+                     QStringLiteral("If the workload feels slow, consider switching to 'balanced' or 'performance'. The profile and workload alone do not prove a performance cap."),
+                     DiagnosisState::Observation,
+                     {QStringLiteral("No direct CPU frequency cap or throttle event was observed.")});
     }
 
     if (cpuLoadValid && cpu.totalLoadPercent >= 75.0
@@ -241,12 +266,14 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
         && power.pl1LimitWatts > 5.0 && power.packageWatts >= power.pl1LimitWatts * 0.95) {
         addCandidate(QStringLiteral("cpu.sustained-power-limit"), VerdictSeverity::Elevated,
                      QStringLiteral("Power & Cooling"),
-                     QStringLiteral("CPU is operating at its sustained power limit (PL1)"),
-                     QStringLiteral("Measured package power: %1 W at %2% CPU load (PL1 limit: %3 W)")
+                     QStringLiteral("CPU package power is near its configured PL1 limit"),
+                     QStringLiteral("Measured package power: %1 W at %2% CPU load (PL1 limit: %3 W; this sample is within 5% of the limit)")
                          .arg(power.packageWatts, 0, 'f', 1)
                          .arg(cpu.totalLoadPercent, 0, 'f', 0)
                          .arg(power.pl1LimitWatts, 0, 'f', 0),
-                     QStringLiteral("Sustained performance is capped by the power envelope. Use 'performance' profile if higher limits are supported."));
+                     QStringLiteral("Review the configured power limit and temperatures if sustained work is slower than expected. A single sample does not confirm a performance cap."),
+                     DiagnosisState::Observation,
+                     {QStringLiteral("A sustained time window or measured frequency cap is unavailable.")});
     }
 
     int saturatedCoreId = -1;
@@ -275,15 +302,17 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
                          QStringLiteral("CPU & SoC"),
                          QStringLiteral("Single-core CPU saturation observed"),
                          details,
-                         QStringLiteral("A single thread or process is bottlenecking work. Check the top culprit process in System Monitor."));
+                         QStringLiteral("Check the top process in System Monitor; reducing its work may improve responsiveness."),
+                         DiagnosisState::SuspectedCause,
+                         {QStringLiteral("Core load and CPU pressure are observed, but application frame-time or task latency is unavailable.")});
         }
     }
 
-    if (power.activePowerProfile == QStringLiteral("power-saver") && power.onAcPower) {
-        const bool cpuThrottledUnderPowerSaver = (cpuLoadValid && cpu.totalLoadPercent >= 80.0)
+    if (powerSaverProfileObserved && power.onAcPower) {
+        const bool highCpuDemand = (cpuLoadValid && cpu.totalLoadPercent >= 80.0)
             || (saturatedCoreId >= 0 && cpu.cores.size() >= 2 && cpuLoadValid && maxCoreLoad >= 90.0)
             || (psiMem.cpuPsi.someAvailable && psiMem.cpuPsi.someAvg10 >= 12.0);
-        if (cpuThrottledUnderPowerSaver) {
+        if (highCpuDemand) {
             QString details = QStringLiteral("Active power profile is 'power-saver' while on AC power");
             if (cpuLoadValid) {
                 details += QStringLiteral("; CPU load is %1%").arg(cpu.totalLoadPercent, 0, 'f', 0);
@@ -294,31 +323,35 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
             if (psiMem.cpuPsi.someAvailable) {
                 details += QStringLiteral("; CPU pressure is %1%").arg(psiMem.cpuPsi.someAvg10, 0, 'f', 1);
             }
-            addCandidate(QStringLiteral("power.profile-throttling"), VerdictSeverity::Bottleneck,
+            addCandidate(QStringLiteral("power.profile-throttling"), VerdictSeverity::Elevated,
                          QStringLiteral("Power & Cooling"),
-                         QStringLiteral("CPU performance throttled by power-saver profile"),
+                         QStringLiteral("High CPU demand while power-saver is active"),
                          details,
-                         QStringLiteral("Switch to 'balanced' or 'performance' mode using the header profile toggle."));
+                         QStringLiteral("If performance is insufficient, try 'balanced' and compare the same workload. High load alone does not confirm profile-related throttling."),
+                         DiagnosisState::Observation,
+                         {QStringLiteral("No direct frequency cap, throttle event, or same-workload profile comparison was observed.")});
         }
     }
 
-    if (psiMem.wifiQualityAvailable && psiMem.primaryWifiSignalPercent > 0
-        && (psiMem.primaryWifiSignalPercent <= 25 || psiMem.primaryWifiSignalDbm <= -78)
-        && psiMem.netThroughputAvailable && (psiMem.netRxMibPerSec + psiMem.netTxMibPerSec) >= 0.2) {
-        QString details = QStringLiteral("Wi-Fi signal quality is degraded (%1%, %2 dBm)")
-            .arg(psiMem.primaryWifiSignalPercent)
-            .arg(psiMem.primaryWifiSignalDbm);
+    if (psiMem.wifiQualityAvailable && psiMem.primaryWifiSignalPercent >= 0
+        && psiMem.primaryWifiSignalPercent <= 25) {
+        QString details = QStringLiteral("NetworkManager reports Wi-Fi signal strength at %1%")
+            .arg(psiMem.primaryWifiSignalPercent);
         if (!psiMem.primaryWifiSsid.isEmpty()) {
             details += QStringLiteral(" on '%1'").arg(psiMem.primaryWifiSsid);
         }
-        details += QStringLiteral("; active network traffic: %1 MiB/s")
-            .arg(psiMem.netRxMibPerSec + psiMem.netTxMibPerSec, 0, 'f', 1);
+        if (psiMem.primaryWifiFrequencyGhz > 0.0)
+            details += QStringLiteral("; frequency: %1 GHz").arg(psiMem.primaryWifiFrequencyGhz, 0, 'f', 1);
+        if (psiMem.primaryWifiBitrateMbps > 0)
+            details += QStringLiteral("; negotiated bitrate: %1 Mbps").arg(psiMem.primaryWifiBitrateMbps);
 
         addCandidate(QStringLiteral("network.wifi-link-degradation"), VerdictSeverity::Elevated,
                      QStringLiteral("Storage & Network"),
-                     QStringLiteral("Poor Wi-Fi signal degrading network throughput"),
+                     QStringLiteral("Weak Wi-Fi signal observed"),
                      details,
-                     QStringLiteral("Move closer to your wireless access point or switch to a 5 GHz band or wired Ethernet."));
+                     QStringLiteral("If network performance is poor, check packet loss and negotiated bitrate, then consider moving closer to the access point or trying another band."),
+                     DiagnosisState::Observation,
+                     {QStringLiteral("No packet-loss, retransmission, or same-location throughput comparison is available; the signal reading alone does not confirm degraded performance.")});
     }
 
     if ((psiMem.cpuPsi.someAvailable && psiMem.cpuPsi.someAvg10 >= 10.0)
@@ -340,7 +373,9 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
                      QStringLiteral("CPU & SoC"),
                      QStringLiteral("CPU pressure or thermal risk is elevated"),
                      details,
-                     QStringLiteral("Check whether the current workload is expected."));
+                     QStringLiteral("Check whether the current workload is expected."),
+                     DiagnosisState::Observation,
+                     {QStringLiteral("CPU pressure or thermal risk is observed; no new throttle event is confirmed.")});
     }
 
     if (power.batteryStateAvailable && power.batteryPresent && !power.onAcPower
@@ -353,7 +388,8 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
                      QStringLiteral("Power & Cooling"),
                      QStringLiteral("High battery power draw"),
                      details,
-                     QStringLiteral("Switch to the 'balanced' or 'power-saver' profile to extend battery runtime."));
+                     QStringLiteral("Switch to the 'balanced' or 'power-saver' profile to extend battery runtime."),
+                     DiagnosisState::Observation);
     }
 
     if (!matches.isEmpty()) {
@@ -386,6 +422,7 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
             .arg(unavailable.join(QStringLiteral(" and ")));
         verdict.recommendation = QStringLiteral("Review the data quality details for missing sensors and interfaces.");
         verdict.evidence.append(verdict.causalChain);
+        verdict.missingEvidence = unavailable;
         return verdict;
     }
 
@@ -396,6 +433,7 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
     verdict.causalChain = QStringLiteral("No sustained pressure or thermal risk was observed in the available readings.");
     verdict.recommendation = QStringLiteral("No action is needed.");
     verdict.evidence.append(verdict.causalChain);
+    verdict.diagnosisState = DiagnosisState::Observation;
     return verdict;
 }
 

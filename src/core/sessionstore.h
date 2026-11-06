@@ -21,6 +21,6 @@ public:
     static bool write(const QString &path, const SessionSnapshot &snapshot, bool includeProcessDetails = false, QString *error = nullptr);
     static bool read(const QString &path, SessionSnapshot *snapshot, QString *error = nullptr);
     static QVariant redactProcessDetails(const QVariant &value);
-    static QVariant redactReportText(const QVariant &value, const QList<FlightSample> &recording);
+    static QVariant redactReportText(const QVariant &value, const QList<FlightSample> &recording, bool includeProcessDetails = false);
 };
 } // namespace LoofiPulse

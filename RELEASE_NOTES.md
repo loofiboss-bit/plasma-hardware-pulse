@@ -1,45 +1,32 @@
-# Loofi Pulse v0.13.0 — Comprehensive Evolution
+# Loofi Pulse v0.15.0 — UI/UX Redesign & Visual Elevation
 
-Loofi Pulse v0.13.0 delivers a major evolutionary upgrade across system power management, wireless link quality telemetry, memory compression and slice attribution, smart incident flight recording, and modern KDE 6 Glass UI/UX styling.
+This is a development candidate for Fedora KDE Plasma 6. It introduces a comprehensive visual redesign across both the desktop application and the Plasma widget, powered by a unified design token system, GPU-accelerated charts, responsive navigation, and complete Swedish localization.
 
-## Key Highlights
+## Changes
 
-### 1. Power Profiles Daemon & Active Holds
-- **Interactive Profile Quick-Switcher**: Direct profile switching between `power-saver`, `balanced`, and `performance` from both the app header and Plasmoid popup.
-- **Active Profile Holds (`ActiveProfileHolds`)**: Queries D-Bus holds placed by desktop environments or background tools, surfacing hold reasons and preventing mystery throttling.
-- **Causal Throttling Rule (`power.profile-throttling`)**: Detects when an active `power-saver` or quiet profile restricts performance during demanding workloads while connected to AC power.
+### Visual Identity & Design System
 
-### 2. Hardware Link Quality & Wireless Telemetry
-- **Rich Wireless Link Metrics**: Real-time discovery of active SSID, frequency band (2.4 GHz, 5 GHz, 6 GHz), signal strength (% and dBm), and negotiated bitrate.
-- **Ethernet Duplex & Carrier State**: Inspects physical network interfaces for full/half duplex mode, carrier presence, and negotiated link speeds.
-- **Causal Wireless Degradation Rule (`network.wifi-link-degradation`)**: Alerts users when packet drops and aggressive rate down-negotiation correlate with weak signal or channel interference.
+- **New App Branding**: Redesigned modern application icon with an ECG pulse wave forming an "L" (`assets/logo.svg` and `assets/logo-symbolic.svg`), adhering to KDE Human Interface Guidelines.
+- **Shared Design Tokens (`PulseTheme`)**: Centralized typography scale, standard spacing units, border radiuses, animation curves, and semantic palette colors respecting system Breeze light and dark schemes.
+- **Reusable Component Library (`com.github.loofi.hardwarepulse`)**: Modern elevated surfaces (`PulseCard`), status badges (`StatusPill`), circular gauges (`PulseRingGauge`), trendlines (`PulseSparkline`), interactive multi-series charts (`PulseAreaChart`), metric tiles (`MetricCard`), and diagnostic findings rows (`FindingRow`).
 
-### 3. Memory Compression & Cgroup v2 Attribution
-- **ZRAM Capacity & Savings**: Monitors `/sys/block/zram*` to report actual compressed data size, uncompressed data size, space saved (GiB), and effective compression ratio.
-- **Cgroup v2 Slice Distribution**: Breaks down memory consumption across `user.slice` (desktop apps), `system.slice` (system services), and `machine.slice` (VMs / containers).
-- **ZRAM Exhaustion Rule (`memory.zram-exhaustion`)**: Flags critical memory bottlenecking when ZRAM approaches device capacity and swap write stalls induce thread waiting.
+### Desktop Application
 
-### 4. Smart Flight Recorder & Interactive HTML Incident Reports
-- **Automated Incident Bookmarks**: Automatically flags and bookmarks causal rule triggers with a 60-second stabilization cooldown.
-- **Self-Contained Interactive HTML Reports**: Generates standalone HTML incident reports (`loofi-pulse-report-%1.html`) featuring embedded responsive SVG timeline curves, kernel log tables, and comparative delta tables.
-- **SQLite v3 Schema Extensions**: Adds persistent trend storage for `batteryHealth`, `zramRatio`, and `wifiSignal`.
+- **Responsive Sidebar Navigation**: Collapsible navigation rail (`PulseSidebar`) with smooth width transitions (240px expanded to 68px collapsed on narrow viewports or toggle), categorized sections, live subsystem severity badges, and full keyboard navigation.
+- **Redesigned Overview Page**: Features the 6-domain `HealthHero` ring with diagnostic verdict chips, a 2x3 responsive `MetricCard` grid with live trendlines, and a sorted diagnostic findings card.
+- **Standardized Detail Pages**: `PowerThermalPage`, `PressureMemoryPage`, and `StorageNetworkPage` upgraded with `PulsePageHeader` (5/15/30-minute time window selector and incident trigger), hero `PulseAreaChart` time series, elevated device cards, and animated fan indicators.
+- **Process & Flight Recorder Views**: Elevated search/sort toolbar, improved process table contrast, standardized header strip, and incident timeline markers.
 
-### 5. Modern KDE 6 Glass & Accent Glows UI/UX
-- **Glass Surfaces & Accent Glows**: Translucent card surfaces, subtle borders, and dynamic glowing accents highlighting active severity alerts.
-- **Interactive Sparklines**: Scrub indicator lines and data tooltips on domain cards.
-- **Animated Cooling Indicators**: Rotating fan blades reflecting live RPM speeds.
-- **Plasmoid Widget Redesign**: Pulsating alert glows for critical warnings, prominent 1-click incident bookmarking, and instant power profile switching.
+### Plasma 6 Widget
 
-### 6. Localization & Packaging
-- **Complete Swedish Localization**: 100% translated UI, diagnostic verdict headlines, and technical causal evidence in `po/sv`.
-- **Fedora 44 & Plasma 6 Packaging**: Updated AppStream metainfo and RPM spec definitions.
+- **Panel Representations**: Integrated `PulseRingGauge` (Ring gauge mode) and `PulseSparkline` (Sparkline mode) with smooth GPU-accelerated path rendering.
+- **Popup Overview**: Elevated popup cards with `PulseCard` surfaces, theme integration, and smooth layout.
 
-## Compatibility and Privacy
+### Localization & Compatibility
 
-- `.pulse-session` format 1 and JSON report schema 2 remain fully backward-compatible. Additional telemetry is serialized under safe schema extensions.
-- Kernel logs are filtered strictly to hardware subsystems and scrubbed for IP addresses, MAC addresses, and private paths.
-- Background monitoring, autostart, and persistent history remain strictly opt-in.
+- **Swedish Localization**: 100% complete Swedish translations (`po/sv/`) across the desktop application and Plasma widget.
+- **Compatibility**: Preserves `.pulse-session` format 1, JSON report schema 2, Collector1 D-Bus API, and existing settings. Routine monitoring remains local and read-only.
 
-## Validation Status
+## Validation status
 
-Automated validation suite passes 100% on Fedora 44 KDE. See [docs/validation-v0.13.0.md](docs/validation-v0.13.0.md) for complete verification records.
+Automated validation is verified via `scripts/validate.sh`, including QML linting, AppStream metadata validation, and test suite execution. This remains a development candidate.

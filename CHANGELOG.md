@@ -1,5 +1,65 @@
 # Changelog
 
+## 0.15.0 — UI/UX Redesign & Visual Elevation (2026-11-06)
+
+### Added
+
+- **Modernized Branding & Identity**: New application logo featuring an ECG pulse wave forming an "L" shape (`assets/logo.svg` and `assets/logo-symbolic.svg`), aligned with KDE Human Interface Guidelines.
+- **Shared Component Library (`com.github.loofi.hardwarepulse`)**:
+  - `PulseTheme`: Central design tokens for typography, spacing, border radiuses, animation curves, and semantic palette colors.
+  - `PulseCard`: Elevated surfaces with subtle border strokes, hover lift, and state-aware glow accents.
+  - `StatusPill`: Severity-coded status pills with dot indicators.
+  - `PulseSparkline`: GPU-accelerated bezier curve trendlines using QtQuick.Shapes with fill gradients.
+  - `PulseAreaChart`: Interactive multi-series area chart with threshold lines, time scrubbing, and customizable point markers.
+  - `PulseRingGauge`: Circular gauge with round caps, gradient coloring, and alert pulse animations.
+  - `MetricCard`: Information-dense metric tile with real-time value, unit, status pill, and embedded trendline.
+  - `HealthHero`: 6-domain health ring hero with diagnostic verdict and quick-filter chips.
+  - `FindingRow`: Diagnostic anomaly row with severity badges and direct jump-to navigation.
+  - `PulsePageHeader`: Consistent header strip with 5/15/30-minute time window selector and incident capture.
+  - `DeviceCard`: Modular device status card for NVMe, storage partitions, batteries, and network interfaces.
+- **Responsive Navigation Sidebar**: Collapsible navigation rail with smooth transitions (240px expanded to 68px collapsed on narrow viewports or toggle), categorized section headers, live severity badges, and full keyboard accessibility.
+- **Redesigned Overview Page**: Features the 6-domain `HealthHero` ring, a 2x3 responsive `MetricCard` grid with live trendlines, and a severity-sorted diagnostic findings card.
+- **Standardized Detail Pages**: `PowerThermalPage`, `PressureMemoryPage`, and `StorageNetworkPage` upgraded with `PulsePageHeader`, hero `PulseAreaChart` time series, and elevated device cards.
+- **Refined Process & Flight Recorder Views**: Elevated search/sort toolbar, improved process table contrast, standardized header strip, and incident timeline markers.
+- **Plasma 6 Widget Enhancements**: Integrated `PulseRingGauge` and `PulseSparkline` in panel representations, elevated popup cards with `PulseCard` surfaces.
+- **Complete Swedish Localization**: 100% translation coverage across all newly introduced UI components, headers, metrics, and diagnostics.
+
+### Changed
+
+- Transitioned all legacy inline canvas charts to GPU-accelerated QtQuick.Shapes path rendering.
+- Replaced hardcoded dimensions and layout margins with centralized `PulseTheme` tokens.
+
+### Compatibility
+
+- Preserves `.pulse-session` format 1, JSON report schema 2, Collector1 D-Bus API, and existing configuration keys.
+- Fully backwards-compatible with existing Plasma 6 panel configurations.
+
+## 0.14.0 — Diagnostic Intelligence & Reliability (2026-11-03)
+
+### Added
+
+- Structured diagnostic assessments distinguish observations, suspected causes, and confirmed problems, with explicit missing evidence and actionable recommendations.
+- Flight Recorder incident summaries include wall-clock timestamps, evidence, uncertainty, and before/during/after coverage details.
+- Kernel event exports include real journal timestamps and incident correlation identifiers while retaining report schema 2.
+- Collector clients can declare UI activity so inactive desktop windows no longer force the fastest shared polling interval; retention requests remain honored.
+
+### Fixed
+
+- Do not infer CPU throttling from high load and a power-saver profile, or sustained capping from a single PL1 sample.
+- Do not report NetworkManager signal percentage as measured dBm or infer Wi-Fi throughput degradation without throughput evidence.
+- Keep asynchronous SSID, signal, frequency, and bitrate readings associated with their own adapter when several Wi-Fi devices are active.
+- Expire unavailable or stale Wi-Fi and power-profile observations instead of carrying them into new diagnoses.
+- Fetch incident kernel logs asynchronously; correlate them using wall-clock sample timestamps rather than monotonic uptime.
+- Redact network identifiers and additional address forms from default report exports.
+- Respect KDE's reduced-motion setting and stop decorative animations on hidden pages.
+
+### Compatibility
+
+- Keep `.pulse-session` format 1, JSON report schema 2, Collector1, existing settings, and existing diagnostic rule identifiers. New session evidence fields are optional.
+- Routine collection remains local and uses the current user permissions. Background monitoring, login startup, and persistent history remain separate opt-ins.
+
+Automated and manual qualification results are recorded in [docs/validation-v0.14.0.md](docs/validation-v0.14.0.md).
+
 ## 0.13.0 — Comprehensive Evolution (2026-10-25)
 
 ### Added

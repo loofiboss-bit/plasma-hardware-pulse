@@ -1,5 +1,5 @@
 Name:           plasma-hardware-pulse
-Version:        0.13.0
+Version:        0.15.0
 Release:        1%{?dist}
 Summary:        Hardware, temperature, memory pressure, and power monitor for KDE Plasma 6
 
@@ -16,6 +16,7 @@ BuildRequires:  gcc-c++
 BuildRequires:  dbus-daemon
 BuildRequires:  kf6-rpm-macros
 BuildRequires:  kf6-kcmutils
+BuildRequires:  kf6-kconfig-devel
 BuildRequires:  kf6-kcoreaddons-devel
 BuildRequires:  kf6-kcrash-devel
 BuildRequires:  kf6-ki18n-devel >= 6.21
@@ -72,10 +73,25 @@ QT_QPA_PLATFORM=offscreen QML_IMPORT_PATH="%{_vpath_builddir}/bin" ctest --test-
 %{_datadir}/plasma/plasmoids/com.github.loofi.hardwarepulse/
 %{_datadir}/knotifications6/plasma_applet_com.github.loofi.hardwarepulse.notifyrc
 %{_datadir}/icons/hicolor/scalable/apps/com.github.loofi.hardwarepulse.svg
+%{_datadir}/icons/hicolor/symbolic/apps/com.github.loofi.hardwarepulse-symbolic.svg
 %{_datadir}/applications/com.github.loofi.hardwarepulse.desktop
 %{_kf6_metainfodir}/com.github.loofi.hardwarepulse.metainfo.xml
 
 %changelog
+* Fri Nov 06 2026 Loofi <loofi@github.com> - 0.15.0-1
+- Full visual and interaction redesign: KDE-native premium design system with ECG wave logo
+- Shared GPU-accelerated QML component library (PulseTheme, PulseCard, PulseAreaChart, PulseRingGauge, HealthHero, MetricCard, FindingRow, DeviceCard)
+- Responsive sidebar navigation with smooth collapse for narrow viewports
+- Redesigned overview dashboard with 6-domain health ring hero, 2x3 metrics, and sorted finding list
+- Standardized detail pages (Power & Cooling, Memory & Pressure, Storage & Network, Processes, Flight Recorder)
+- Enhanced Plasma widget compact representation (Text Pill, Sparkline, Ring Gauge) and mini popup
+
+* Tue Nov 03 2026 Loofi <loofi@github.com> - 0.14.0-1
+- Separate diagnostic observations, suspected causes, and confirmed problems with explicit missing evidence
+- Prevent unsupported CPU throttling and Wi-Fi throughput conclusions; expire stale power and Wi-Fi telemetry
+- Correct asynchronous, wall-clock kernel event correlation and improve private report exports
+- Adapt collector polling to active UI clients while preserving retention and Collector1 compatibility
+- Honor Plasma reduced-motion settings and avoid fan animations on hidden pages
 * Sun Oct 25 2026 Loofi <loofi@github.com> - 0.13.0-1
 - Power Profiles Daemon (PPD) control, active holds tracking, and profile-throttling causal rule
 - Wi-Fi link telemetry (SSID, 2.4/5/6 GHz, dBm, bitrate, duplex) and wireless degradation causal rule

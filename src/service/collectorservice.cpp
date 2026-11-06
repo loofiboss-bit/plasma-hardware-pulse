@@ -109,7 +109,30 @@ QByteArray CollectorService::Subscribe(const QString &id, int interval, int rete
         sendErrorReply(QStringLiteral("com.github.loofi.hardwarepulse.InvalidClient"), QStringLiteral("Invalid client subscription.")); return {};
     }
     const QString key = message().service() + QLatin1Char('/') + id;
-    m_clients.insert(key, {message().service(), std::clamp(interval, 250, 10000), std::clamp(retention, 300, 1800), notifications});
+    Client client;
+    client.owner = message().service();
+    client.interval = std::clamp(interval, 250, 10000);
+    client.retention = std::clamp(retention, 300, 1800);
+    client.notifications = notifications;
+    if (m_clients.contains(key)) client.active = m_clients.value(key).active;
+    m_clients.insert(key, client);
+    updateRequests();
+    return dispatch([](auto *engine) { return engine->collectorPacket(true); });
+}
+QByteArray CollectorService::SetClientActive(const QString &id, bool active)
+{
+    if (id.isEmpty() || id.size() > 128) {
+        sendErrorReply(QStringLiteral("com.github.loofi.hardwarepulse.InvalidClient"), QStringLiteral("Invalid client subscription."));
+        return {};
+    }
+    const QString key = message().service() + QLatin1Char('/') + id;
+    auto it = m_clients.find(key);
+    if (it == m_clients.end()) {
+        sendErrorReply(QStringLiteral("com.github.loofi.hardwarepulse.InvalidClient"), QStringLiteral("Client is not subscribed."));
+        return {};
+    }
+    if (it->active == active) return dispatch([](auto *engine) { return engine->collectorPacket(true); });
+    it->active = active;
     updateRequests();
     return dispatch([](auto *engine) { return engine->collectorPacket(true); });
 }
@@ -133,7 +156,10 @@ void CollectorService::updateRequests()
     if (!m_clients.isEmpty()) { bool enabled = false; for (const auto &client : std::as_const(m_clients)) enabled = enabled || client.notifications; m_settings.setValue(QStringLiteral("backgroundNotificationsEnabled"), enabled); }
     int interval = background ? 1000 : 10000;
     int retention = 300;
-    for (const auto &client : std::as_const(m_clients)) { interval = std::min(interval, client.interval); retention = std::max(retention, client.retention); }
+    for (const auto &client : std::as_const(m_clients)) {
+        if (client.active) interval = std::min(interval, client.interval);
+        retention = std::max(retention, client.retention);
+    }
     QMetaObject::invokeMethod(m_anchor, [this, interval, retention] {
         m_engine->setPollIntervalMs(interval); m_engine->setHistoryRetentionSeconds(retention);
     }, Qt::QueuedConnection);

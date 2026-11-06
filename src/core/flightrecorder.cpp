@@ -324,6 +324,34 @@ SessionSnapshot FlightRecorder::freezeIncident(const QString &incidentId) const
     }
     return {};
 }
+
+QPair<qint64, qint64> FlightRecorder::incidentWallTimeRange(const QString &incidentId) const
+{
+    for (const auto &value : incidentEpisodes()) {
+        const QVariantMap incident = value.toMap();
+        if (incident.value(QStringLiteral("incidentId")).toString() != incidentId) continue;
+        qint64 start = 0;
+        qint64 end = 0;
+        const int startIndex = indexOfSample(incident.value(QStringLiteral("startSampleId")).toULongLong());
+        const int endIndex = indexOfSample(incident.value(QStringLiteral("endSampleId")).toULongLong());
+        if (startIndex >= 0) start = m_samples.at(startIndex).timestampMs;
+        if (endIndex >= 0) end = m_samples.at(endIndex).timestampMs;
+        if (start <= 0 && !m_samples.isEmpty()) start = m_samples.first().timestampMs;
+        if (end <= 0 && !m_samples.isEmpty()) end = m_samples.last().timestampMs;
+        if (start > 0 && end >= start) return {start, end};
+        return {};
+    }
+    for (const auto &value : m_markers) {
+        const QVariantMap marker = value.toMap();
+        if (marker.value(QStringLiteral("markerId")).toString() == incidentId) {
+            const qint64 timestamp = marker.value(QStringLiteral("timestampMs")).toLongLong();
+            if (timestamp > 0) return {timestamp, timestamp};
+            return {};
+        }
+    }
+    return {};
+}
+
 QVariantMap FlightRecorder::compareRange(quint64 startSampleId, quint64 endSampleId) const
 {
     const int start = indexOfSample(startSampleId), end = indexOfSample(endSampleId);
@@ -508,7 +536,56 @@ QString FlightRecorder::exportSummaryMarkdown(bool includeProcessDetails) const
         md += QStringLiteral("Responsiveness index: Unavailable; required PSI readings were incomplete.\n");
     }
 
-    return includeProcessDetails ? md : SessionStore::redactReportText(md, m_samples).toString();
+    const QVariantList episodes = incidentEpisodes();
+    if (!episodes.isEmpty()) {
+        md += QStringLiteral("\n## Incident summaries\n\n");
+        const int firstShown = std::max(0, static_cast<int>(episodes.size()) - 50);
+        if (firstShown > 0)
+            md += QStringLiteral("Showing the latest 50 of %1 retained incidents.\n\n").arg(episodes.size());
+        for (int i = firstShown; i < episodes.size(); ++i) {
+            const QVariantMap incident = episodes.at(i).toMap();
+            const QString id = incident.value(QStringLiteral("incidentId")).toString();
+            const int peakIndex = indexOfSample(incident.value(QStringLiteral("sampleId")).toULongLong());
+            const int startIndex = indexOfSample(incident.value(QStringLiteral("startSampleId")).toULongLong());
+            const int endIndex = indexOfSample(incident.value(QStringLiteral("endSampleId")).toULongLong());
+            const QString title = incident.value(QStringLiteral("headline")).toString().isEmpty()
+                ? QStringLiteral("Incident") : incident.value(QStringLiteral("headline")).toString();
+            const QString severity = incident.value(QStringLiteral("severity")).toInt() == static_cast<int>(VerdictSeverity::CriticalThrottle)
+                ? QStringLiteral("Critical") : (incident.value(QStringLiteral("severity")).toInt() == static_cast<int>(VerdictSeverity::Bottleneck)
+                    ? QStringLiteral("Bottleneck") : (incident.value(QStringLiteral("severity")).toInt() == static_cast<int>(VerdictSeverity::Elevated)
+                        ? QStringLiteral("Elevated") : QStringLiteral("Observed")));
+            const QString startText = startIndex >= 0
+                ? QDateTime::fromMSecsSinceEpoch(m_samples.at(startIndex).timestampMs).toLocalTime().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss"))
+                : QStringLiteral("Earlier in retained recording");
+            const QString endText = endIndex >= 0
+                ? QDateTime::fromMSecsSinceEpoch(m_samples.at(endIndex).timestampMs).toLocalTime().toString(QStringLiteral("HH:mm:ss"))
+                : QStringLiteral("Current");
+            md += QStringLiteral("### %1\n").arg(title);
+            md += QStringLiteral("- **Incident ID**: %1\n- **Severity**: %2\n- **Period**: %3 – %4\n")
+                      .arg(id, severity, startText, endText);
+            if (incident.value(QStringLiteral("partial")).toBool())
+                md += QStringLiteral("- **Coverage**: Partial; the incident began before retained history.\n");
+            if (peakIndex >= 0) {
+                const FlightSample &peak = m_samples.at(peakIndex);
+                const QString assessment = peak.severity == VerdictSeverity::Unknown
+                    ? QStringLiteral("Incomplete evidence") : diagnosisStateLabel(peak.diagnosisState);
+                md += QStringLiteral("- **Assessment**: %1\n").arg(assessment);
+                if (!peak.verdictRuleId.isEmpty())
+                    md += QStringLiteral("- **Rule**: `%1`\n").arg(peak.verdictRuleId);
+                for (const QString &item : peak.verdictEvidence)
+                    md += QStringLiteral("- **Evidence**: %1\n").arg(item);
+                for (const QString &item : peak.verdictMissingEvidence)
+                    md += QStringLiteral("- **Uncertainty**: %1\n").arg(item);
+                if (!peak.verdictRecommendation.isEmpty())
+                    md += QStringLiteral("- **Suggested next step**: %1\n").arg(peak.verdictRecommendation);
+            } else {
+                md += QStringLiteral("- **Assessment**: Peak sample is no longer retained.\n");
+            }
+            md += QLatin1Char('\n');
+        }
+    }
+
+    return SessionStore::redactReportText(md, m_samples, includeProcessDetails).toString();
 }
 
 QVariantMap FlightRecorder::sampleMetricMetadata(const FlightSample &s)
@@ -585,6 +662,10 @@ QVariantMap FlightRecorder::sampleMetricMetadata(const FlightSample &s)
     result.insert(QStringLiteral("netThroughput"),
                   metric(flag(QStringLiteral("netThroughputAvailable")) ? QStringLiteral("available") : QStringLiteral("unavailable"),
                          QStringLiteral("/proc/net/dev byte deltas")));
+    result.insert(QStringLiteral("wifiSignal"),
+                  metric(flag(QStringLiteral("wifiSignalAvailable")) ? QStringLiteral("available") : QStringLiteral("unavailable"),
+                         QStringLiteral("NetworkManager AccessPoint.Strength (percent)"),
+                         QStringLiteral("Signal strength is not measured dBm or a throughput test.")));
     return result;
 }
 
@@ -675,7 +756,10 @@ QString FlightRecorder::exportSamplesJson(bool includeProcessDetails) const
         obj.insert(QStringLiteral("newThrottleEvents"), valid(QStringLiteral("throttleCountersAvailable")) ? QJsonValue(s.newThrottleEvents) : QJsonValue(QJsonValue::Null));
         obj.insert(QStringLiteral("batteryPresent"), s.batteryPresent);
         obj.insert(QStringLiteral("onAcPower"), valid(QStringLiteral("powerStateAvailable")) ? QJsonValue(s.onAcPower) : QJsonValue(QJsonValue::Null));
-        obj.insert(QStringLiteral("activePowerProfile"), s.activePowerProfile.isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(s.activePowerProfile));
+        const bool powerProfileAvailabilityKnown = s.metricQuality.contains(QStringLiteral("powerProfileAvailable"));
+        const bool powerProfileAvailable = !powerProfileAvailabilityKnown || valid(QStringLiteral("powerProfileAvailable"));
+        obj.insert(QStringLiteral("activePowerProfile"),
+            s.activePowerProfile.isEmpty() || !powerProfileAvailable ? QJsonValue(QJsonValue::Null) : QJsonValue(s.activePowerProfile));
         obj.insert(QStringLiteral("throttled"), s.throttled);
         obj.insert(QStringLiteral("severity"), static_cast<int>(s.severity));
         obj.insert(QStringLiteral("verdictHeadline"), includeProcessDetails ? s.verdictHeadline : safeSample.value(QStringLiteral("verdictHeadline")).toString());
@@ -699,6 +783,9 @@ QString FlightRecorder::exportSamplesJson(bool includeProcessDetails) const
         obj.insert(QStringLiteral("processDetailsIncluded"), includeProcessDetails);
         obj.insert(QStringLiteral("verdictRuleId"), s.verdictRuleId);
         obj.insert(QStringLiteral("verdictEvidence"), QJsonArray::fromStringList(includeProcessDetails ? s.verdictEvidence : safeSample.value(QStringLiteral("verdictEvidence")).toStringList()));
+        obj.insert(QStringLiteral("diagnosisState"), diagnosisStateLabel(s.diagnosisState));
+        obj.insert(QStringLiteral("verdictMissingEvidence"), QJsonArray::fromStringList(
+            includeProcessDetails ? s.verdictMissingEvidence : safeSample.value(QStringLiteral("verdictMissingEvidence")).toStringList()));
         obj.insert(QStringLiteral("verdictDurationMs"), s.verdictDurationMs);
         obj.insert(QStringLiteral("powerSources"), QJsonObject{
             {QStringLiteral("packageWatts"), QStringLiteral("CPU package only; see metricMetadata.packagePower")},
@@ -706,7 +793,7 @@ QString FlightRecorder::exportSamplesJson(bool includeProcessDetails) const
             {QStringLiteral("systemWatts"), QStringLiteral("Legacy composite field; do not interpret as measured whole-system power")}});
         arr.append(obj);
     }
-    if (!includeProcessDetails) arr = QJsonArray::fromVariantList(SessionStore::redactReportText(arr.toVariantList(), m_samples).toList());
+    arr = QJsonArray::fromVariantList(SessionStore::redactReportText(arr.toVariantList(), m_samples, includeProcessDetails).toList());
     return QString::fromUtf8(QJsonDocument(arr).toJson(QJsonDocument::Indented));
 }
 

@@ -34,6 +34,8 @@ set(PULSECORE_PORTABLE_TESTS
     testHwmonDiscoveryAndVelocity
     testPsiAndZramCompression
     testCausalDiagnosisEngineVerdicts
+    testUnavailablePowerProfileDoesNotCreateDiagnosis
+    testZeroWifiSignalRemainsAnAvailableObservation
     testBatteryEtaAndHealthCalculation
     testBatteryOnlyDischargingAndZeroPower
     testReadableEmptyZramIsAvailableWithoutRatio
@@ -60,6 +62,11 @@ set(PULSECORE_PORTABLE_TESTS
     testMultiDomainContributingSignalsAndStabilizerOscillation
     testMultiFanAndNvmeControllerDiscovery
     testKernelLogReaderParsingAndRedaction
+    testKernelLogJsonTimestampFieldsAndIpv6Privacy
+    testKernelJournalQueryIncludesAllBoots
+    testJsonReportPreservesDiagnosisAndPowerProfileAvailability
+    testIncidentWallTimeRangeUsesWallClockSamples
+    testReportRedactsNetworkIdentifiersEvenWhenProcessDetailsAreIncluded
     testFlightRecorderCompareIncidents
 )
 foreach(test_name IN LISTS PULSECORE_PORTABLE_TESTS)
@@ -91,12 +98,14 @@ qt_add_executable(test_controller_actions
     ${PROJECT_SOURCE_DIR}/src/plugin/reportexport.cpp
 )
 target_include_directories(test_controller_actions PRIVATE ${PROJECT_SOURCE_DIR}/src/plugin)
-target_compile_definitions(test_controller_actions PRIVATE LOOFI_PULSE_VERSION="${PROJECT_VERSION}")
+target_compile_definitions(test_controller_actions PRIVATE
+    LOOFI_PULSE_VERSION="${PROJECT_VERSION}"
+    PULSE_QML_SOURCE_DIR="${PROJECT_SOURCE_DIR}/src/app/qml")
 target_link_libraries(test_controller_actions PRIVATE
     loofipulsecore Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::DBus Qt6::Widgets Qt6::Test
     KF6::Notifications KF6::I18n
 )
-foreach(test_name IN ITEMS testNavigationValidationAndPrivacyDefaults testNetworkSelectionAndHistoryMetadata testMissingSystemMonitorReportsFailure testUnsupportedProfileNeverStartsChange testUnwritableReportLocationReportsFailure testHistoryRetentionAndClearHistory testCollectorConnectedAndReconnect testSystemResumeResetsBaselinesAndSetsGap testTemperatureUnitPreference testCollectorPreferencesUpdate testTrendsPropertiesAndRanges testProcessInspectionHasNoMutationApi testProcessIoStats)
+foreach(test_name IN ITEMS testNavigationValidationAndPrivacyDefaults testNetworkSelectionAndHistoryMetadata testWifiSignalVisibilityHonorsAvailabilityAtZero testMissingSystemMonitorReportsFailure testUnsupportedProfileNeverStartsChange testUnwritableReportLocationReportsFailure testIncidentKernelLogLoadingDoesNotBlock testHistoryRetentionAndClearHistory testCollectorConnectedAndReconnect testSystemResumeResetsBaselinesAndSetsGap testTemperatureUnitPreference testCollectorPreferencesUpdate testTrendsPropertiesAndRanges testProcessInspectionHasNoMutationApi testProcessIoStats)
     add_test(NAME controller_${test_name} COMMAND test_controller_actions ${test_name})
     set_tests_properties(controller_${test_name} PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;${PULSE_TEST_XDG_ENV}")
 endforeach()
@@ -105,6 +114,11 @@ if(DBUS_RUN_SESSION)
     add_test(NAME controller_async_profile_failure
         COMMAND ${DBUS_RUN_SESSION} -- $<TARGET_FILE:test_controller_actions> testAsyncProfileSetFailure)
     set_tests_properties(controller_async_profile_failure PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;${PULSE_TEST_XDG_ENV}" TIMEOUT 15)
+    add_test(NAME controller_async_profile_success
+        COMMAND ${DBUS_RUN_SESSION} -- $<TARGET_FILE:test_controller_actions> testAsyncProfileSetUpdatesCurrentSampleImmediately)
+    set_tests_properties(controller_async_profile_success PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;${PULSE_TEST_XDG_ENV}" TIMEOUT 15)
+    pulse_add_dbus_test(controller_wifi_multi_adapter test_controller_actions 15 testWifiTelemetryRemainsAssociatedWithEachAdapter)
+    set_tests_properties(controller_wifi_multi_adapter PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;${PULSE_TEST_XDG_ENV}")
 endif()
 
 pulse_add_dbus_test(controller_trends_errors_ordering test_controller_actions 30 testTrendsErrorsOrderingAndIncidentIntegration)

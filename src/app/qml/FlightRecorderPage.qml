@@ -6,6 +6,7 @@ import QtQuick.Layouts
 import "MeasurementLabels.js" as MeasurementLabels
 import org.kde.kirigami as Kirigami
 import QtCore as QtCore
+import com.github.loofi.hardwarepulse 1.0
 
 Kirigami.ScrollablePage {
     id: flightPage
@@ -32,15 +33,11 @@ Kirigami.ScrollablePage {
     onRangeCaptureIdChanged: { rangeStartId = 0; rangeEndId = 0; rangeStartTimeMs = 0; rangeEndTimeMs = 0 }
 
     property string selectedIncidentId: ""
-    property var incidentLogs: []
+    readonly property var incidentLogs: controller.incidentKernelLogEntries
     property var comparisonResult: ({})
 
     function reloadKernelLogs(id) {
-        if (!id) {
-            incidentLogs = []
-            return
-        }
-        incidentLogs = controller.incidentKernelLogs(id) || []
+        controller.loadIncidentKernelLogs(id || "")
     }
 
     Connections {
@@ -160,6 +157,21 @@ Kirigami.ScrollablePage {
         Layout.fillWidth: true
         spacing: Kirigami.Units.largeSpacing
 
+        PulsePageHeader {
+            id: pageHeader
+            Layout.fillWidth: true
+            title: KI18n.i18n("History")
+            subtitle: KI18n.i18n("Blackbox telemetry recorder, incident timelines, and long-term trends")
+            selectedMinutes: Math.max(5, Math.round(flightPage.controller.historyRetentionSeconds / 60))
+            showSaveButton: true
+            showIncidentButton: true
+            onTimeWindowSelected: function(minutes) {
+                flightPage.controller.historyRetentionSeconds = minutes * 60
+            }
+            onSaveRequested: flightPage.saveSessionRequested()
+            onIncidentRequested: flightPage.controller.recordManualIncident()
+        }
+
         // Mode Selector: Flight Recorder vs Long-Term Trends
         RowLayout {
             Layout.fillWidth: true
@@ -203,19 +215,15 @@ Kirigami.ScrollablePage {
             spacing: Kirigami.Units.largeSpacing
 
             // 1. Telemetry Controls & Export Toolbar Card
-            Rectangle {
-            Layout.fillWidth: true
-            implicitHeight: toolbarCol.implicitHeight + Kirigami.Units.largeSpacing * 2
-            radius: theme.cardRadius
-            color: theme.surfaceColor
-            border.width: 1
-            border.color: theme.cardBorderColor
+            PulseCard {
+                Layout.fillWidth: true
+                implicitHeight: toolbarCol.implicitHeight + padding * 2
+                padding: theme.spacingL
 
-            ColumnLayout {
-                id: toolbarCol
-                anchors.fill: parent
-                anchors.margins: Kirigami.Units.largeSpacing
-                spacing: Kirigami.Units.mediumSpacing
+                ColumnLayout {
+                    id: toolbarCol
+                    width: parent.width
+                    spacing: Kirigami.Units.mediumSpacing
 
                 // Logical Toolbar Groups
                 Flow {
@@ -725,13 +733,27 @@ Kirigami.ScrollablePage {
                 focus: true
                 property real hoverX: -1
                 property var plotData: ({})
+                property bool plotDirty: false
+                property bool paintDirty: false
                 function refreshPlot() {
+                    plotDirty = false
+                    paintDirty = false
                     if (visible && width > 0) plotData = JSON.parse(flightPage.controller.historyPlotJson(Math.ceil(width)))
                     requestPaint()
                 }
+                function queuePlotRefresh() {
+                    if (visible && width > 0) plotDirty = true
+                }
+                function queuePlotPaint() {
+                    if (visible && width > 0) paintDirty = true
+                }
                 Component.onCompleted: refreshPlot()
-                onWidthChanged: refreshPlot()
-                onVisibleChanged: { if (visible) refreshPlot() }
+                onWidthChanged: { plotDirty = false; paintDirty = false; refreshPlot() }
+                onVisibleChanged: {
+                    plotDirty = false
+                    paintDirty = false
+                    if (visible) refreshPlot()
+                }
                 Accessible.role: Accessible.Graphic
                 Accessible.name: KI18n.i18n("Hardware history timeline. Select a sample with left and right arrow keys.")
                 Accessible.description: KI18n.i18n("Inspected sample ") + (flightPage.inspectedDetail.timeString || "unavailable")
@@ -740,19 +762,21 @@ Kirigami.ScrollablePage {
                 Keys.onPressed: (event) => {
                     if (event.key === Qt.Key_Home && flightPage.historyInfo.count) {
                         flightPage.controller.selectedHistorySampleId = flightPage.historyInfo.firstId
+                        timelineCanvas.requestPaint()
                         event.accepted = true
                     } else if (event.key === Qt.Key_End) {
                         flightPage.controller.selectedHistorySampleId = 0
+                        timelineCanvas.requestPaint()
                         event.accepted = true
                     }
                 }
-                Keys.onLeftPressed: flightPage.selectStep(-1)
-                Keys.onRightPressed: flightPage.selectStep(1)
+                Keys.onLeftPressed: { flightPage.selectStep(-1); timelineCanvas.requestPaint() }
+                Keys.onRightPressed: { flightPage.selectStep(1); timelineCanvas.requestPaint() }
 
                 Connections {
                     target: flightPage.controller
-                    function onTelemetryUpdated() { timelineCanvas.refreshPlot() }
-                    function onSelectedHistoryChanged() { timelineCanvas.requestPaint() }
+                    function onTelemetryUpdated() { timelineCanvas.queuePlotRefresh() }
+                    function onSelectedHistoryChanged() { timelineCanvas.queuePlotPaint() }
                 }
 
                 function sampleMetricValue(sample, valueKey) {
@@ -929,18 +953,34 @@ Kirigami.ScrollablePage {
                     }
                     function selectAtX(mouseX) {
                         var nearest = nearestIndexAtX(mouseX)
-                        if (nearest >= 0) flightPage.controller.selectedHistorySampleId = flightPage.controller.historySampleAt(nearest).sampleId
+                        if (nearest >= 0) {
+                            flightPage.controller.selectedHistorySampleId = flightPage.controller.historySampleAt(nearest).sampleId
+                            timelineCanvas.requestPaint()
+                        }
                     }
                     onPressed: (mouse) => { timelineCanvas.forceActiveFocus(); selectAtX(mouse.x) }
                     onPositionChanged: (mouse) => {
                         timelineCanvas.hoverX = mouse.x
                         flightPage.hoveredSampleIndex = nearestIndexAtX(mouse.x)
-                        timelineCanvas.requestPaint()
                         if (pressed) selectAtX(mouse.x)
+                        else timelineCanvas.requestPaint()
                     }
                     onExited: {
                         timelineCanvas.hoverX = -1
                         flightPage.hoveredSampleIndex = -1
+                        timelineCanvas.requestPaint()
+                    }
+                }
+            }
+
+            Timer {
+                interval: 500
+                repeat: true
+                running: timelineCanvas.visible
+                onTriggered: {
+                    if (timelineCanvas.plotDirty) timelineCanvas.refreshPlot()
+                    else if (timelineCanvas.paintDirty) {
+                        timelineCanvas.paintDirty = false
                         timelineCanvas.requestPaint()
                     }
                 }
@@ -1305,12 +1345,29 @@ Kirigami.ScrollablePage {
                             PulseButton {
                                 text: KI18n.i18n("Refresh logs")
                                 icon.name: "view-refresh"
+                                enabled: !flightPage.controller.incidentKernelLogsLoading
                                 onClicked: flightPage.reloadKernelLogs(flightPage.selectedIncidentId)
                             }
                         }
 
                         QQC2.Label {
-                            visible: flightPage.incidentLogs.length === 0
+                            visible: flightPage.controller.incidentKernelLogsLoading
+                            text: KI18n.i18n("Reading nearby kernel events…")
+                            color: Kirigami.Theme.disabledTextColor
+                        }
+
+                        QQC2.Label {
+                            visible: !flightPage.controller.incidentKernelLogsLoading
+                                     && (flightPage.controller.incidentKernelLogsError || "").length > 0
+                            text: KI18n.i18n(flightPage.controller.incidentKernelLogsError)
+                            color: Kirigami.Theme.disabledTextColor
+                            wrapMode: Text.WordWrap
+                        }
+
+                        QQC2.Label {
+                            visible: !flightPage.controller.incidentKernelLogsLoading
+                                     && (flightPage.controller.incidentKernelLogsError || "").length === 0
+                                     && flightPage.incidentLogs.length === 0
                             text: KI18n.i18n("No hardware-related kernel messages recorded within ±15s of this incident.")
                             color: Kirigami.Theme.disabledTextColor
                             font.italic: true

@@ -17,6 +17,7 @@ public:
     ~CollectorService() override;
 public Q_SLOTS:
     QByteArray Subscribe(const QString &clientId, int interval, int retention, bool notifications);
+    QByteArray SetClientActive(const QString &clientId, bool active);
     QByteArray Unsubscribe(const QString &clientId);
     QByteArray History(qulonglong afterId, int limit);
     QByteArray Incident(const QString &id);
@@ -40,7 +41,7 @@ private Q_SLOTS:
     void ownerChanged(const QString &name, const QString &previous, const QString &owner);
     void onPrepareForSleep(bool goingToSleep);
 private:
-    struct Client { QString owner; int interval = 1000; int retention = 300; bool notifications = true; };
+    struct Client { QString owner; int interval = 1000; int retention = 300; bool notifications = true; bool active = true; };
     QByteArray dispatch(std::function<QByteArray(PulseTelemetryController *)> operation);
     void updateRequests();
     void publish(const QByteArray &packet);

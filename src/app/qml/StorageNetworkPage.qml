@@ -4,6 +4,8 @@ import org.kde.ki18n
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
+import com.github.loofi.hardwarepulse 1.0
+import "MeasurementLabels.js" as MeasurementLabels
 
 Kirigami.ScrollablePage {
     id: page
@@ -29,23 +31,106 @@ Kirigami.ScrollablePage {
         return value !== undefined && isFinite(Number(value)) ? Number(value).toFixed(2) + suffix : KI18n.i18n("Unavailable")
     }
 
+    function historyDiskThroughputValues() {
+        var list = (page.controller && page.controller.historySamples) || []
+        var res = []
+        for (var i = 0; i < list.length; ++i) res.push((Number(list[i].diskReadMibPerSec) || 0) + (Number(list[i].diskWriteMibPerSec) || 0))
+        return res
+    }
+
+    function historyNetThroughputValues() {
+        var list = (page.controller && page.controller.historySamples) || []
+        var res = []
+        for (var i = 0; i < list.length; ++i) res.push((Number(list[i].netRxMibPerSec) || 0) + (Number(list[i].netTxMibPerSec) || 0))
+        return res
+    }
+
     ColumnLayout {
         Layout.fillWidth: true
         spacing: Kirigami.Units.largeSpacing
 
-        // Informational Context Banner
-        Rectangle {
+        PulsePageHeader {
+            id: pageHeader
             Layout.fillWidth: true
-            implicitHeight: bannerCol.implicitHeight + Kirigami.Units.mediumSpacing * 2
-            radius: theme.cardRadius
-            color: theme.surfaceColor
-            border.width: 1
-            border.color: theme.cardBorderColor
+            title: KI18n.i18n("Storage & Network")
+            subtitle: KI18n.i18n("Storage drives, NVMe controller hardware health, and network interfaces")
+            selectedMinutes: Math.max(5, Math.round(page.controller.historyRetentionSeconds / 60))
+            onTimeWindowSelected: function(minutes) {
+                page.controller.historyRetentionSeconds = minutes * 60
+            }
+        }
+
+        PulseCard {
+            id: ioChartCard
+            Layout.fillWidth: true
+            visible: (page.controller.historySamples || []).length > 2
+            padding: theme.spacingM
+
+            ColumnLayout {
+                width: parent.width
+                spacing: theme.spacingS
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: theme.spacingS
+
+                    Rectangle { implicitWidth: 8; implicitHeight: 8; radius: 2.5; color: theme.storageAccent }
+                    QQC2.Label {
+                        text: KI18n.i18n("Disk Throughput (MiB/s)")
+                        font.pointSize: theme.fontCaption
+                        font.weight: Font.DemiBold
+                        color: theme.textColor
+                    }
+
+                    Rectangle { implicitWidth: 8; implicitHeight: 8; radius: 2.5; color: theme.psiAccent }
+                    QQC2.Label {
+                        text: KI18n.i18n("Network Throughput (MiB/s)")
+                        font.pointSize: theme.fontCaption
+                        font.weight: Font.DemiBold
+                        color: theme.textColor
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    QQC2.Label {
+                        text: page.controller.diskThroughputAvailable
+                              ? KI18n.i18n("Disk: ") + Number((page.controller.diskReadMibPerSec || 0) + (page.controller.diskWriteMibPerSec || 0)).toFixed(1) + " MiB/s"
+                              : ""
+                        font.pointSize: theme.fontCaption
+                        font.weight: Font.Bold
+                        color: theme.mutedTextColor
+                    }
+                }
+
+                PulseAreaChart {
+                    Layout.fillWidth: true
+                    implicitHeight: Kirigami.Units.gridUnit * 7
+                    theme: page.theme
+                    series: [
+                        {
+                            values: page.historyDiskThroughputValues(),
+                            color: theme.storageAccent,
+                            label: KI18n.i18n("Disk Throughput")
+                        },
+                        {
+                            values: page.historyNetThroughputValues(),
+                            color: theme.psiAccent,
+                            label: KI18n.i18n("Network Throughput")
+                        }
+                    ]
+                }
+            }
+        }
+
+        // Informational Context Banner
+        PulseCard {
+            Layout.fillWidth: true
+            implicitHeight: bannerCol.implicitHeight + padding * 2
+            padding: theme.spacingM
 
             ColumnLayout {
                 id: bannerCol
-                anchors.fill: parent
-                anchors.margins: Kirigami.Units.mediumSpacing
+                width: parent.width
                 spacing: 4
 
                 RowLayout {
@@ -107,20 +192,18 @@ Kirigami.ScrollablePage {
 
             Repeater {
                 model: page.controller.storageDevices
-                delegate: Rectangle {
+                delegate: PulseCard {
                     id: diskCard
                     required property var modelData
                     Layout.fillWidth: true
-                    implicitHeight: diskInnerCol.implicitHeight + Kirigami.Units.largeSpacing * 2
-                    radius: theme.cardRadius
-                    color: theme.surfaceColor
-                    border.width: page.controller.selectedStorageId === diskCard.modelData.id ? 1.5 : 1
-                    border.color: page.controller.selectedStorageId === diskCard.modelData.id ? Kirigami.Theme.highlightColor : theme.cardBorderColor
+                    implicitHeight: diskInnerCol.implicitHeight + padding * 2
+                    padding: theme.spacingL
+                    accentColor: theme.storageAccent
+                    accentStrength: page.controller.selectedStorageId === diskCard.modelData.id ? 0.12 : 0.04
 
                     ColumnLayout {
                         id: diskInnerCol
-                        anchors.fill: parent
-                        anchors.margins: Kirigami.Units.largeSpacing
+                        width: parent.width
                         spacing: Kirigami.Units.smallSpacing
 
                         RowLayout {
@@ -293,20 +376,18 @@ Kirigami.ScrollablePage {
 
             Repeater {
                 model: page.controller.nvmeControllers || []
-                delegate: Rectangle {
+                delegate: PulseCard {
                     id: nvmeCard
                     required property var modelData
                     Layout.fillWidth: true
-                    implicitHeight: nvmeInnerCol.implicitHeight + Kirigami.Units.largeSpacing * 2
-                    radius: theme.cardRadius
-                    color: theme.surfaceColor
-                    border.width: 1
-                    border.color: nvmeCard.modelData.criticalWarningAlarm ? Kirigami.Theme.negativeTextColor : theme.cardBorderColor
+                    implicitHeight: nvmeInnerCol.implicitHeight + padding * 2
+                    padding: theme.spacingL
+                    accentColor: nvmeCard.modelData.criticalWarningAlarm ? Kirigami.Theme.negativeTextColor : theme.storageAccent
+                    accentStrength: nvmeCard.modelData.criticalWarningAlarm ? 0.16 : 0.05
 
                     ColumnLayout {
                         id: nvmeInnerCol
-                        anchors.fill: parent
-                        anchors.margins: Kirigami.Units.largeSpacing
+                        width: parent.width
                         spacing: Kirigami.Units.smallSpacing
 
                         RowLayout {
@@ -417,20 +498,18 @@ Kirigami.ScrollablePage {
 
             Repeater {
                 model: page.controller.networkInterfaces
-                delegate: Rectangle {
+                delegate: PulseCard {
                     id: netCard
                     required property var modelData
                     Layout.fillWidth: true
-                    implicitHeight: netInnerCol.implicitHeight + Kirigami.Units.largeSpacing * 2
-                    radius: theme.cardRadius
-                    color: theme.surfaceColor
-                    border.width: 1
-                    border.color: theme.cardBorderColor
+                    implicitHeight: netInnerCol.implicitHeight + padding * 2
+                    padding: theme.spacingL
+                    accentColor: theme.psiAccent
+                    accentStrength: netCard.modelData.included ? 0.08 : 0.02
 
                     ColumnLayout {
                         id: netInnerCol
-                        anchors.fill: parent
-                        anchors.margins: Kirigami.Units.largeSpacing
+                        width: parent.width
                         spacing: Kirigami.Units.smallSpacing
 
                         RowLayout {
@@ -479,7 +558,7 @@ Kirigami.ScrollablePage {
 
                             // Wi-Fi SSID & Signal
                             Rectangle {
-                                visible: netCard.modelData.isWireless && netCard.modelData.wirelessSignalPercent > 0
+                                visible: MeasurementLabels.wifiSignalVisible(netCard.modelData)
                                 radius: theme.pillRadius
                                 color: theme.cardNestedBg
                                 border.width: 1
@@ -497,7 +576,7 @@ Kirigami.ScrollablePage {
                                     }
                                     QQC2.Label {
                                         text: (netCard.modelData.wirelessSsid ? (netCard.modelData.wirelessSsid + " · ") : "")
-                                              + netCard.modelData.wirelessSignalPercent + "% (" + netCard.modelData.wirelessSignalDbm + " dBm)"
+                                              + netCard.modelData.wirelessSignalPercent + "% · " + KI18n.i18n("NetworkManager signal strength")
                                         font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 2)
                                         font.bold: true
                                         color: netCard.modelData.wirelessSignalPercent < 25 ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.positiveTextColor

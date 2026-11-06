@@ -61,6 +61,9 @@ install(FILES packaging/plasma_applet_com.github.loofi.hardwarepulse.notifyrc
 install(FILES assets/logo.svg
         RENAME com.github.loofi.hardwarepulse.svg
         DESTINATION ${KDE_INSTALL_ICONDIR}/hicolor/scalable/apps)
+install(FILES assets/logo-symbolic.svg
+        RENAME com.github.loofi.hardwarepulse-symbolic.svg
+        DESTINATION ${KDE_INSTALL_ICONDIR}/hicolor/symbolic/apps)
 
 # Install Desktop Entry and AppStream metainfo
 install(FILES packaging/com.github.loofi.hardwarepulse.desktop
