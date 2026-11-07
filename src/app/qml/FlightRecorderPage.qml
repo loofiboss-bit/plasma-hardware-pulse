@@ -1055,19 +1055,22 @@ Kirigami.ScrollablePage {
                     spacing: Kirigami.Units.smallSpacing
 
                     Repeater {
-                        model: flightPage.controller.incidentHistory
+                        model: (flightPage.controller.groupedIncidentHistory && flightPage.controller.groupedIncidentHistory.length > 0)
+                               ? flightPage.controller.groupedIncidentHistory : flightPage.controller.incidentHistory
                         delegate: PulseButton {
                             id: incidentChip
                             required property var modelData
-                            icon.name: incidentChip.modelData.throttled || incidentChip.modelData.severity >= 2 ? "dialog-warning" : "dialog-information"
-                            accentColor: incidentChip.modelData.throttled || incidentChip.modelData.severity >= 2 ? theme.negativeColor : theme.neutralColor
-                            text: incidentChip.modelData.timeString
-                                  + (incidentChip.modelData.durationSeconds > 1 ? " (" + incidentChip.modelData.durationSeconds + "s)" : "")
+                            icon.name: incidentChip.modelData.throttled || incidentChip.modelData.severity >= 2 || incidentChip.modelData.peakSeverity >= 2 ? "dialog-warning" : "dialog-information"
+                            accentColor: incidentChip.modelData.throttled || incidentChip.modelData.severity >= 2 || incidentChip.modelData.peakSeverity >= 2 ? theme.negativeColor : theme.neutralColor
+                            text: (incidentChip.modelData.count > 1 ? ("[" + incidentChip.modelData.count + "×] ") : "")
+                                  + (incidentChip.modelData.latestTimeString || incidentChip.modelData.timeString)
+                                  + (incidentChip.modelData.totalDurationSeconds > 1 ? " (" + Math.round(incidentChip.modelData.totalDurationSeconds) + "s)" : (incidentChip.modelData.durationSeconds > 1 ? " (" + Math.round(incidentChip.modelData.durationSeconds) + "s)" : ""))
                                   + " · " + incidentChip.modelData.headline
                             onClicked: {
-                                flightPage.selectedIncidentId = incidentChip.modelData.incidentId
-                                flightPage.controller.selectIncident(incidentChip.modelData.incidentId)
-                                flightPage.reloadKernelLogs(incidentChip.modelData.incidentId)
+                                var targetId = incidentChip.modelData.incidentId || (incidentChip.modelData.incidentIds ? incidentChip.modelData.incidentIds[0] : "")
+                                flightPage.selectedIncidentId = targetId
+                                flightPage.controller.selectIncident(targetId)
+                                flightPage.reloadKernelLogs(targetId)
                             }
                         }
                     }

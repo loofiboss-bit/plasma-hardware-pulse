@@ -592,6 +592,17 @@ private Q_SLOTS:
         QVERIFY(myStats.contains(QStringLiteral("readMib")));
         QVERIFY(myStats.contains(QStringLiteral("writeMib")));
     }
+
+    void testHostInfoAndGroupedIncidents()
+    {
+        PulseTelemetryController controller(QDBusConnection::systemBus());
+        QVERIFY(!controller.hostDistroName().isEmpty());
+        QVERIFY(!controller.hostKernelVersion().isEmpty());
+        QVERIFY(!controller.hostDeviceModel().isEmpty());
+
+        // When incidentHistory is empty, groupedIncidentHistory must be empty
+        QVERIFY(controller.groupedIncidentHistory().isEmpty());
+    }
 };
 
 QTEST_MAIN(TestControllerActions)

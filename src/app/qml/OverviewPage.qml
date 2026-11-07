@@ -19,15 +19,14 @@ Kirigami.ScrollablePage {
         height: 0
         visible: false
     }
-    topPadding: 16
-    bottomPadding: 16
-    leftPadding: 16
-    rightPadding: 16
+    topPadding: Kirigami.Units.largeSpacing
+    bottomPadding: Kirigami.Units.largeSpacing
+    leftPadding: Kirigami.Units.largeSpacing
+    rightPadding: Kirigami.Units.largeSpacing
 
     required property var controller
 
     property bool detailsExpanded: false
-    property bool whyExpanded: false
 
     signal navigateRequested(string pageName, string section)
 
@@ -45,7 +44,7 @@ Kirigami.ScrollablePage {
     function focusSection(section) {
         if (!section) return true
         if (section === "measurements") page.detailsExpanded = true
-        var target = section === "measurements" ? detailsCol : mainCol
+        var target = (section === "measurements" && detailsCol) ? detailsCol : mainCol
         if (!target) return false
         Qt.callLater(function() {
             var position = target.mapToItem(page.flickable.contentItem, 0, 0)
@@ -58,86 +57,88 @@ Kirigami.ScrollablePage {
 
     ColumnLayout {
         id: mainCol
-        width: page.width - Kirigami.Units.gridUnit * 2
-        spacing: 12
+        width: page.width - Kirigami.Units.largeSpacing * 2
+        spacing: Kirigami.Units.largeSpacing
 
         // ==========================================
         // 1. PAGE HEADER ROW
         // ==========================================
         RowLayout {
             Layout.fillWidth: true
-            spacing: 12
+            spacing: Kirigami.Units.largeSpacing
 
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 2
 
                 QQC2.Label {
-                    text: KI18n.i18n("Översikt")
-                    font.weight: Font.Bold
-                    font.pointSize: 18
-                    color: "#ffffff"
+                    text: KI18n.i18nd("loofi-pulse", "Overview")
+                    font.weight: Font.DemiBold
+                    font.pointSize: page.theme.fontHeadline
+                    color: page.theme.textColor
                 }
 
                 QQC2.Label {
-                    text: KI18n.i18n("Aktuell systemstatus, prestanda och energiförbrukning i realtid.")
-                    font.pointSize: 9.5
-                    color: "#94a3b8"
+                    text: KI18n.i18nd("loofi-pulse", "Real-time system health, performance, and hardware telemetry.")
+                    font.pointSize: page.theme.fontCaption
+                    color: page.theme.mutedTextColor
                 }
             }
 
-            // Status Pill (NORMAL / INITIALIZING)
+            // Health Status Badge
             Rectangle {
-                radius: 999
-                color: "#131922"
+                radius: page.theme.pillRadius
+                color: page.theme.severityBgColor(page.controller.verdictSeverity)
                 border.width: 1
-                border.color: "#1e293b"
-                implicitHeight: statusRow.implicitHeight + 8
-                implicitWidth: statusRow.implicitWidth + 18
+                border.color: page.theme.severityBorderColor(page.controller.verdictSeverity)
+                implicitHeight: statusRow.implicitHeight + page.theme.spacingS
+                implicitWidth: statusRow.implicitWidth + page.theme.spacingM
 
                 RowLayout {
                     id: statusRow
                     anchors.centerIn: parent
-                    spacing: 8
+                    spacing: 6
 
                     Rectangle {
                         Layout.preferredWidth: 8
                         Layout.preferredHeight: 8
                         radius: 4
-                        color: page.controller.verdictSeverity > 0 ? page.theme.negativeColor : "#22c55e"
+                        color: page.theme.severityColor(page.controller.verdictSeverity)
                     }
 
                     ColumnLayout {
                         spacing: 0
                         QQC2.Label {
                             text: page.theme.severityBadgeText(page.controller.verdictSeverity)
-                            color: page.controller.verdictSeverity > 0 ? page.theme.negativeColor : "#22c55e"
+                            color: page.theme.severityColor(page.controller.verdictSeverity)
                             font.bold: true
-                            font.pixelSize: 10
+                            font.pointSize: page.theme.fontCaption
                         }
                         QQC2.Label {
-                            text: KI18n.i18n(page.controller.verdictHeadline)
-                            color: "#94a3b8"
-                            font.pixelSize: 9
+                            text: KI18n.i18nd("loofi-pulse", page.controller.verdictHeadline)
+                            color: page.theme.mutedTextColor
+                            font.pointSize: page.theme.fontCaption * 0.9
+                            elide: Text.ElideRight
+                            Layout.maximumWidth: 180
                         }
                     }
                 }
 
                 QQC2.AbstractButton {
                     anchors.fill: parent
-                    Accessible.name: KI18n.i18n("Open status details")
-                    onClicked: page.navigateRequested("overview", "status")
+                    Accessible.name: KI18n.i18nd("loofi-pulse", "Open status details")
+                    onClicked: page.navigateRequested("pressure", "overview")
                 }
             }
 
-            // Live Button Pill
+            // Live State / Polling Control Pill
             Rectangle {
-                radius: 999
-                color: "#131922"
+                radius: page.theme.pillRadius
+                color: page.theme.surfaceColor
                 border.width: 1
-                border.color: "#1e293b"
-                implicitHeight: liveRow.implicitHeight + 8
-                implicitWidth: liveRow.implicitWidth + 16
+                border.color: page.theme.cardBorderColor
+                implicitHeight: liveRow.implicitHeight + page.theme.spacingS
+                implicitWidth: liveRow.implicitWidth + page.theme.spacingM
 
                 RowLayout {
                     id: liveRow
@@ -145,124 +146,138 @@ Kirigami.ScrollablePage {
                     spacing: 6
 
                     Kirigami.Icon {
-                        source: page.controller.recordingPaused ? "media-playback-start" : "view-statistics"
+                        source: page.controller.recordingPaused ? "media-playback-start" : "media-playback-pause"
                         implicitWidth: 14
                         implicitHeight: 14
-                        color: "#38bdf8"
+                        color: page.theme.highlightColor
                     }
 
                     QQC2.Label {
-                        text: page.controller.recordingPaused ? KI18n.i18n("Pausad") : (page.controller.collectorState + " · " + page.controller.pollIntervalMs + " ms")
-                        font.pixelSize: 10
-                        font.bold: true
-                        color: "#ffffff"
-                    }
-
-                    Kirigami.Icon {
-                        source: "arrow-down"
-                        implicitWidth: 10
-                        implicitHeight: 10
-                        color: "#94a3b8"
+                        text: page.controller.recordingPaused
+                              ? KI18n.i18nd("loofi-pulse", "Paused")
+                              : (page.controller.collectorState + " · " + page.controller.pollIntervalMs + " ms")
+                        font.pointSize: page.theme.fontCaption
+                        font.weight: Font.Medium
+                        color: page.theme.textColor
                     }
                 }
 
                 QQC2.AbstractButton {
                     anchors.fill: parent
-                    Accessible.name: KI18n.i18n("Toggle live recording")
+                    Accessible.name: KI18n.i18nd("loofi-pulse", "Toggle live recording")
                     onClicked: page.controller.recordingPaused = !page.controller.recordingPaused
                 }
             }
         }
 
         // ==========================================
-        // 2. REAL-TIME SYSTEM LOAD CHART CARD
+        // 2. REAL-TIME ACTIVITY CHART CARD
         // ==========================================
-        Rectangle {
+        PulseCard {
             Layout.fillWidth: true
-            implicitHeight: chartCol.implicitHeight + 24
-            radius: 8
-            color: "#131922"
-            border.width: 1
-            border.color: "#1e293b"
+            implicitHeight: chartCol.implicitHeight + padding * 2
+            padding: page.theme.spacingM
 
             ColumnLayout {
                 id: chartCol
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.top: parent.top
-                anchors.margins: 12
-                spacing: 8
+                spacing: page.theme.spacingS
 
                 // Chart Header & Legend
                 RowLayout {
                     Layout.fillWidth: true
-                    spacing: 12
+                    spacing: page.theme.spacingM
 
                     RowLayout {
                         spacing: 6
                         Kirigami.Icon {
                             source: "view-statistics"
-                            implicitWidth: 14
-                            implicitHeight: 14
-                            color: "#38bdf8"
+                            implicitWidth: 16
+                            implicitHeight: 16
+                            color: page.theme.cpuAccent
                         }
                         QQC2.Label {
-                            text: KI18n.i18n("Systembelastning (realtid)")
-                            font.bold: true
-                            font.pointSize: 10.5
-                            color: "#ffffff"
+                            text: KI18n.i18nd("loofi-pulse", "System Load & Temperature (Real-time)")
+                            font.weight: Font.DemiBold
+                            font.pointSize: page.theme.fontTitle
+                            color: page.theme.textColor
                         }
                     }
 
                     Item { Layout.fillWidth: true }
 
-                    // Legend: CPU Temp
+                    // Legend: CPU Load
                     RowLayout {
-                        spacing: 5
-                        Rectangle { width: 8; height: 8; radius: 2; color: "#f59e0b" }
+                        spacing: 6
+                        Rectangle { width: 10; height: 3; radius: 1.5; color: page.theme.cpuAccent }
                         QQC2.Label {
-                            text: KI18n.i18n("CPU-temperatur (°C)")
-                            font.pointSize: 8.5
-                            color: "#94a3b8"
+                            text: KI18n.i18nd("loofi-pulse", "CPU Load (%)")
+                            font.pointSize: page.theme.fontCaption
+                            color: page.theme.mutedTextColor
                         }
                     }
 
-                    // Legend: GPU Temp
+                    // Legend: CPU Temperature
                     RowLayout {
-                        spacing: 5
-                        Rectangle { width: 8; height: 8; radius: 2; color: "#38bdf8" }
+                        spacing: 6
+                        Rectangle { width: 10; height: 3; radius: 1.5; color: page.theme.tempAccent }
                         QQC2.Label {
-                            text: KI18n.i18n("GPU-temperatur (°C)")
-                            font.pointSize: 8.5
-                            color: "#94a3b8"
+                            text: KI18n.i18nd("loofi-pulse", "CPU Temp (°C)")
+                            font.pointSize: page.theme.fontCaption
+                            color: page.theme.mutedTextColor
                         }
                     }
                 }
 
-                // Dual-line Curve Canvas
+                // Chart Canvas Area
                 Item {
-                    id: dualChartItem
+                    id: chartArea
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 140
+                    Layout.preferredHeight: 130
 
-                    readonly property var cpuSeries: {
-                        var raw = JSON.parse(page.controller.historyRecentSeriesJson("cpu.temp", "cpu.temp.avail", 50))
-                        return (raw && raw.length > 0) ? raw : [62, 65, 63, 75, 68, 64, 66, 62, 65, 72, 65, 63, 68, 74, 62, 64, 65, 72, 64, 63, 75, 68, 64]
-                    }
-                    readonly property var gpuSeries: {
-                        var raw = JSON.parse(page.controller.historyRecentSeriesJson("gpu.temp", "gpu.temp.avail", 50))
-                        return (raw && raw.length > 0) ? raw : [25, 30, 28, 35, 32, 28, 30, 26, 30, 36, 28, 26, 32, 38, 25, 28, 30, 35, 27, 28, 32, 30, 28]
+                    readonly property var cpuLoadSeries: {
+                        var json = page.controller.historyRecentSeriesJson("cpuLoadPercent", "cpuLoadAvailable", 50)
+                        if (!json) return []
+                        try {
+                            var parsed = JSON.parse(json)
+                            var res = []
+                            for (var i = 0; i < parsed.length; ++i) {
+                                if (parsed[i].available && isFinite(parsed[i].value)) res.push(parsed[i].value)
+                            }
+                            return res
+                        } catch (e) {
+                            return []
+                        }
                     }
 
-                    // Horizontal Y-Axis Gridlines
+                    readonly property var cpuTempSeries: {
+                        var json = page.controller.historyRecentSeriesJson("cpuPackageTemp", "cpuTempAvailable", 50)
+                        if (!json) return []
+                        try {
+                            var parsed = JSON.parse(json)
+                            var res = []
+                            for (var i = 0; i < parsed.length; ++i) {
+                                if (parsed[i].available && isFinite(parsed[i].value)) res.push(parsed[i].value)
+                            }
+                            return res
+                        } catch (e) {
+                            return []
+                        }
+                    }
+
+                    readonly property bool hasTelemetry: cpuLoadSeries.length > 1 || cpuTempSeries.length > 1
+
+                    // Horizontal Gridlines
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 24
+                        anchors.leftMargin: 28
                         anchors.bottomMargin: 20
                         spacing: 0
 
                         Repeater {
-                            model: 5
+                            model: 4
                             delegate: Item {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
@@ -271,7 +286,7 @@ Kirigami.ScrollablePage {
                                     anchors.right: parent.right
                                     anchors.bottom: parent.bottom
                                     height: 1
-                                    color: "#1c2533"
+                                    color: page.theme.subtleBorderColor
                                 }
                             }
                         }
@@ -283,34 +298,36 @@ Kirigami.ScrollablePage {
                         anchors.top: parent.top
                         anchors.bottom: parent.bottom
                         anchors.bottomMargin: 20
-                        width: 22
+                        width: 24
                         spacing: 0
 
-                        QQC2.Label { text: "100"; font.pointSize: 7.5; color: "#64748b" }
+                        QQC2.Label { text: "100"; font.pointSize: page.theme.fontCaption * 0.85; color: page.theme.faintTextColor }
                         Item { Layout.fillHeight: true }
-                        QQC2.Label { text: "75"; font.pointSize: 7.5; color: "#64748b" }
+                        QQC2.Label { text: "75"; font.pointSize: page.theme.fontCaption * 0.85; color: page.theme.faintTextColor }
                         Item { Layout.fillHeight: true }
-                        QQC2.Label { text: "50"; font.pointSize: 7.5; color: "#64748b" }
+                        QQC2.Label { text: "50"; font.pointSize: page.theme.fontCaption * 0.85; color: page.theme.faintTextColor }
                         Item { Layout.fillHeight: true }
-                        QQC2.Label { text: "25"; font.pointSize: 7.5; color: "#64748b" }
+                        QQC2.Label { text: "25"; font.pointSize: page.theme.fontCaption * 0.85; color: page.theme.faintTextColor }
                         Item { Layout.fillHeight: true }
-                        QQC2.Label { text: "0"; font.pointSize: 7.5; color: "#64748b" }
+                        QQC2.Label { text: "0"; font.pointSize: page.theme.fontCaption * 0.85; color: page.theme.faintTextColor }
                     }
 
-                    // Dual Line Canvas
+                    // Canvas Line Drawing
                     Canvas {
-                        id: chartCanvas
+                        id: realTimeCanvas
                         anchors.fill: parent
-                        anchors.leftMargin: 26
+                        anchors.leftMargin: 28
                         anchors.bottomMargin: 20
 
                         onPaint: {
                             var ctx = getContext("2d")
                             ctx.clearRect(0, 0, width, height)
 
-                            function drawLine(vals, color) {
+                            if (!chartArea.hasTelemetry) return
+
+                            function renderLine(vals, strokeColor) {
                                 if (!vals || vals.length < 2) return
-                                ctx.strokeStyle = color
+                                ctx.strokeStyle = strokeColor
                                 ctx.lineWidth = 2
                                 ctx.lineJoin = "round"
                                 ctx.beginPath()
@@ -325,533 +342,370 @@ Kirigami.ScrollablePage {
                                 ctx.stroke()
                             }
 
-                            drawLine(dualChartItem.gpuSeries, "#38bdf8")
-                            drawLine(dualChartItem.cpuSeries, "#f59e0b")
+                            renderLine(chartArea.cpuTempSeries, page.theme.tempAccent)
+                            renderLine(chartArea.cpuLoadSeries, page.theme.cpuAccent)
                         }
 
                         Connections {
                             target: page.controller
-                            function onTelemetryUpdated() { chartCanvas.requestPaint() }
+                            function onTelemetryUpdated() { realTimeCanvas.requestPaint() }
                         }
                     }
 
-                    // X-Axis Labels
+                    // Empty state when no data yet
+                    QQC2.Label {
+                        anchors.centerIn: parent
+                        visible: !chartArea.hasTelemetry
+                        text: KI18n.i18nd("loofi-pulse", "Awaiting telemetry samples…")
+                        font.pointSize: page.theme.fontBody
+                        color: page.theme.faintTextColor
+                    }
+
+                    // X-Axis Time Labels
                     RowLayout {
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.bottom: parent.bottom
-                        anchors.leftMargin: 26
+                        anchors.leftMargin: 28
                         height: 18
 
-                        QQC2.Label { text: "-5 min"; font.pointSize: 8; color: "#64748b" }
+                        QQC2.Label { text: "-5m"; font.pointSize: page.theme.fontCaption * 0.85; color: page.theme.faintTextColor }
                         Item { Layout.fillWidth: true }
-                        QQC2.Label { text: "-4 min"; font.pointSize: 8; color: "#64748b" }
+                        QQC2.Label { text: "-4m"; font.pointSize: page.theme.fontCaption * 0.85; color: page.theme.faintTextColor }
                         Item { Layout.fillWidth: true }
-                        QQC2.Label { text: "-3 min"; font.pointSize: 8; color: "#64748b" }
+                        QQC2.Label { text: "-3m"; font.pointSize: page.theme.fontCaption * 0.85; color: page.theme.faintTextColor }
                         Item { Layout.fillWidth: true }
-                        QQC2.Label { text: "-2 min"; font.pointSize: 8; color: "#64748b" }
+                        QQC2.Label { text: "-2m"; font.pointSize: page.theme.fontCaption * 0.85; color: page.theme.faintTextColor }
                         Item { Layout.fillWidth: true }
-                        QQC2.Label { text: "-1 min"; font.pointSize: 8; color: "#64748b" }
+                        QQC2.Label { text: "-1m"; font.pointSize: page.theme.fontCaption * 0.85; color: page.theme.faintTextColor }
                         Item { Layout.fillWidth: true }
-                        QQC2.Label { text: KI18n.i18n("Nu"); font.pointSize: 8; color: "#64748b" }
+                        QQC2.Label { text: KI18n.i18nd("loofi-pulse", "Now"); font.pointSize: page.theme.fontCaption * 0.85; color: page.theme.faintTextColor }
                     }
                 }
             }
         }
 
         // ==========================================
-        // 3. FIVE METRIC CARDS ROW
+        // 3. FIVE CORE SYSTEM PILLARS (GRID)
         // ==========================================
         GridLayout {
             Layout.fillWidth: true
-            columns: page.width < 800 ? 2 : 5
-            rowSpacing: 10
-            columnSpacing: 10
+            columns: page.width < 750 ? 2 : (page.width < 1100 ? 3 : 5)
+            rowSpacing: page.theme.spacingS
+            columnSpacing: page.theme.spacingS
 
             // 1. CPU
-            Rectangle {
+            MetricCard {
                 Layout.fillWidth: true
-                implicitHeight: 88
-                radius: 8
-                color: "#131922"
-                border.width: 1
-                border.color: "#1e293b"
-
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 10
-                    spacing: 4
-
-                    RowLayout {
-                        spacing: 6
-                        Kirigami.Icon { source: "preferences-devices-cpu"; implicitWidth: 14; implicitHeight: 14; color: "#38bdf8" }
-                        QQC2.Label { text: "CPU"; font.bold: true; font.pointSize: 9.5; color: "#ffffff" }
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        QQC2.Label {
-                            text: (page.controller.cpuTempAvailable ? page.controller.cpuPackageTemp.toFixed(0) : "64") + " °C"
-                            font.bold: true
-                            font.pointSize: 18
-                            color: "#ffffff"
-                        }
-                        Item { Layout.fillWidth: true }
-                        ColumnLayout {
-                            spacing: 0
-                            QQC2.Label {
-                                text: (page.controller.cpuLoadAvailable ? page.controller.cpuLoadPercent.toFixed(0) : "28") + " %"
-                                font.bold: true
-                                font.pointSize: 11
-                                color: "#ffffff"
-                            }
-                            QQC2.Label {
-                                text: KI18n.i18n("belastning")
-                                font.pointSize: 8
-                                color: "#94a3b8"
-                            }
-                        }
-                    }
-
-                    // Blue Accent Bar
-                    Rectangle {
-                        Layout.fillWidth: true
-                        height: 3
-                        radius: 1.5
-                        color: "#1e293b"
-                        Rectangle {
-                            width: parent.width * Math.max(0.1, (page.controller.cpuLoadPercent || 28) / 100)
-                            height: parent.height
-                            radius: 1.5
-                            color: "#3b82f6"
-                        }
-                    }
+                title: "CPU"
+                available: page.controller.cpuLoadAvailable
+                value: page.controller.cpuLoadAvailable ? Math.round(page.controller.cpuLoadPercent).toString() : "—"
+                unit: "%"
+                caption: page.controller.cpuTempAvailable
+                         ? (page.controller.cpuPackageTemp.toFixed(0) + " °C · " + (page.controller.cpuAvgFreqMhz > 0 ? page.controller.cpuAvgFreqMhz + " MHz" : ""))
+                         : KI18n.i18nd("loofi-pulse", "Package temp unavailable")
+                channelColor: page.theme.cpuAccent
+                trend: {
+                    var raw = page.controller.historyRecentSeriesJson("cpuLoadPercent", "cpuLoadAvailable", 16)
+                    try { return JSON.parse(raw).map(function(item) { return item.value || 0 }) } catch (e) { return [] }
                 }
+                trendMin: 0
+                trendMax: 100
+                onClicked: page.navigateRequested("pressure", "cpu")
             }
 
-            // 2. GPU
-            Rectangle {
+            // 2. RAM & Memory
+            MetricCard {
                 Layout.fillWidth: true
-                implicitHeight: 88
-                radius: 8
-                color: "#131922"
-                border.width: 1
-                border.color: "#1e293b"
-
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 10
-                    spacing: 4
-
-                    RowLayout {
-                        spacing: 6
-                        Kirigami.Icon { source: "monitor-symbolic"; implicitWidth: 14; implicitHeight: 14; color: "#38bdf8" }
-                        QQC2.Label { text: "GPU"; font.bold: true; font.pointSize: 9.5; color: "#ffffff" }
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        QQC2.Label {
-                            text: (page.controller.gpuTempAvailable ? page.controller.gpuTempCelsius.toFixed(0) : "40") + " °C"
-                            font.bold: true
-                            font.pointSize: 18
-                            color: "#ffffff"
-                        }
-                        Item { Layout.fillWidth: true }
-                        ColumnLayout {
-                            spacing: 0
-                            QQC2.Label {
-                                text: (page.controller.gpuBusyAvailable ? page.controller.gpuBusyPercent.toFixed(0) : "0") + " %"
-                                font.bold: true
-                                font.pointSize: 11
-                                color: "#ffffff"
-                            }
-                            QQC2.Label {
-                                text: KI18n.i18n("belastning")
-                                font.pointSize: 8
-                                color: "#94a3b8"
-                            }
-                        }
-                    }
-
-                    // Cyan Accent Bar
-                    Rectangle {
-                        Layout.fillWidth: true
-                        height: 3
-                        radius: 1.5
-                        color: "#1e293b"
-                        Rectangle {
-                            width: parent.width * Math.max(0.05, (page.controller.gpuBusyPercent || 0) / 100)
-                            height: parent.height
-                            radius: 1.5
-                            color: "#38bdf8"
-                        }
-                    }
+                title: KI18n.i18nd("loofi-pulse", "Memory")
+                available: page.controller.memoryAvailable
+                value: page.controller.memoryAvailable ? Math.round(page.controller.ramUsedPercent).toString() : "—"
+                unit: "%"
+                caption: page.controller.memoryAvailable
+                         ? (page.controller.ramUsedGib.toFixed(1) + " / " + page.controller.ramTotalGib.toFixed(1) + " GiB")
+                         : KI18n.i18nd("loofi-pulse", "RAM unavailable")
+                channelColor: page.theme.psiAccent
+                trend: {
+                    var raw = page.controller.historyRecentSeriesJson("ramUsedPercent", "ramAvailable", 16)
+                    try { return JSON.parse(raw).map(function(item) { return item.value || 0 }) } catch (e) { return [] }
                 }
+                trendMin: 0
+                trendMax: 100
+                onClicked: page.navigateRequested("pressure", "memory")
             }
 
-            // 3. EFFEKT
-            Rectangle {
+            // 3. Systemrespons (PSI)
+            MetricCard {
                 Layout.fillWidth: true
-                implicitHeight: 88
-                radius: 8
-                color: "#131922"
-                border.width: 1
-                border.color: "#1e293b"
-
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 10
-                    spacing: 4
-
-                    RowLayout {
-                        spacing: 6
-                        Kirigami.Icon { source: "battery-profile-performance"; implicitWidth: 14; implicitHeight: 14; color: "#f59e0b" }
-                        QQC2.Label { text: KI18n.i18n("Effekt"); font.bold: true; font.pointSize: 9.5; color: "#ffffff" }
-                    }
-
-                    QQC2.Label {
-                        text: (page.controller.packagePowerAvailable ? page.controller.packageWatts.toFixed(1) : "17.8") + " W"
-                        font.bold: true
-                        font.pointSize: 18
-                        color: "#ffffff"
-                    }
-
-                    QQC2.Label {
-                        text: "PL1 30 W · PL2 51 W"
-                        font.pointSize: 8
-                        color: "#94a3b8"
-                    }
+                title: KI18n.i18nd("loofi-pulse", "Responsiveness")
+                available: page.controller.psiAvailable
+                value: page.controller.psiAvailable ? Math.round(page.controller.responsivenessScore).toString() : "—"
+                unit: "/ 100"
+                caption: page.controller.psiCpuSome10 > 0.5
+                         ? ("CPU-stall: " + page.controller.psiCpuSome10.toFixed(1) + "%")
+                         : KI18n.i18nd("loofi-pulse", "No pressure detected")
+                channelColor: page.theme.channelColor("psi")
+                trend: {
+                    var raw = page.controller.historyRecentSeriesJson("responsivenessScore", "psiAvailable", 16)
+                    try { return JSON.parse(raw).map(function(item) { return item.value || 0 }) } catch (e) { return [] }
                 }
+                trendMin: 0
+                trendMax: 100
+                onClicked: page.navigateRequested("pressure", "overview")
             }
 
-            // 4. BATTERI
-            Rectangle {
+            // 4. GPU
+            MetricCard {
                 Layout.fillWidth: true
-                implicitHeight: 88
-                radius: 8
-                color: "#131922"
-                border.width: 1
-                border.color: "#1e293b"
-
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 10
-                    spacing: 4
-
-                    RowLayout {
-                        spacing: 6
-                        Kirigami.Icon { source: "battery-080"; implicitWidth: 14; implicitHeight: 14; color: "#22c55e" }
-                        QQC2.Label { text: KI18n.i18n("Batteri"); font.bold: true; font.pointSize: 9.5; color: "#ffffff" }
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        QQC2.Label {
-                            text: (page.controller.batteryLevelAvailable ? page.controller.batteryPercent.toFixed(0) : "97") + " %"
-                            font.bold: true
-                            font.pointSize: 18
-                            color: "#ffffff"
-                        }
-                        Item { Layout.fillWidth: true }
-                        ColumnLayout {
-                            spacing: 0
-                            QQC2.Label {
-                                text: page.controller.batteryStatus || KI18n.i18n("Inte laddar")
-                                font.pointSize: 8.5
-                                color: "#94a3b8"
-                            }
-                            QQC2.Label {
-                                text: "≈ " + (page.controller.batteryWatts ? page.controller.batteryWatts.toFixed(1) : "0.0") + " W"
-                                font.pointSize: 8
-                                color: "#94a3b8"
-                            }
-                        }
-                    }
-
-                    // Green Accent Bar
-                    Rectangle {
-                        Layout.fillWidth: true
-                        height: 3
-                        radius: 1.5
-                        color: "#1e293b"
-                        Rectangle {
-                            width: parent.width * Math.max(0.1, (page.controller.batteryPercent || 97) / 100)
-                            height: parent.height
-                            radius: 1.5
-                            color: "#22c55e"
-                        }
-                    }
+                title: "GPU"
+                available: page.controller.gpuAvailable && (page.controller.gpuBusyAvailable || page.controller.gpuTempAvailable)
+                value: page.controller.gpuBusyAvailable
+                       ? Math.round(page.controller.gpuBusyPercent).toString()
+                       : (page.controller.gpuTempAvailable ? page.controller.gpuTempCelsius.toFixed(0) : "—")
+                unit: page.controller.gpuBusyAvailable ? "%" : (page.controller.gpuTempAvailable ? "°C" : "")
+                caption: page.controller.gpuAvailable
+                         ? (page.controller.gpuDriverName.length ? page.controller.gpuDriverName : KI18n.i18nd("loofi-pulse", "Active"))
+                         : KI18n.i18nd("loofi-pulse", "No discrete GPU")
+                channelColor: page.theme.gpuAccent
+                trend: {
+                    var raw = page.controller.historyRecentSeriesJson("gpuBusyPercent", "gpuBusyAvailable", 16)
+                    try { return JSON.parse(raw).map(function(item) { return item.value || 0 }) } catch (e) { return [] }
                 }
+                trendMin: 0
+                trendMax: 100
+                onClicked: page.navigateRequested("power", "gpu")
             }
 
-            // 5. KYLNING
-            Rectangle {
+            // 5. Energi & Batteri
+            MetricCard {
                 Layout.fillWidth: true
-                implicitHeight: 88
-                radius: 8
-                color: "#131922"
-                border.width: 1
-                border.color: "#1e293b"
-
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 10
-                    spacing: 4
-
-                    RowLayout {
-                        spacing: 6
-                        Kirigami.Icon { source: "speedometer-symbolic"; implicitWidth: 14; implicitHeight: 14; color: "#38bdf8" }
-                        QQC2.Label { text: KI18n.i18n("Kylning"); font.bold: true; font.pointSize: 9.5; color: "#ffffff" }
-                    }
-
-                    QQC2.Label {
-                        text: KI18n.i18n("Fläkthastighet")
-                        font.pointSize: 8.5
-                        color: "#94a3b8"
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        QQC2.Label {
-                            text: page.controller.fanAvailable && page.controller.primaryFanRpm > 0
-                                  ? page.controller.primaryFanRpm + " RPM"
-                                  : KI18n.i18n("Otillgänglig")
-                            font.bold: true
-                            font.pointSize: 12
-                            color: "#ffffff"
-                        }
-                        Item { Layout.fillWidth: true }
-                        Kirigami.Icon {
-                            source: "network-wireless-signal-good"
-                            implicitWidth: 18
-                            implicitHeight: 18
-                            color: "#64748b"
-                        }
-                    }
+                title: page.controller.batteryPresent
+                       ? KI18n.i18nd("loofi-pulse", "Power & Battery")
+                       : KI18n.i18nd("loofi-pulse", "Power Consumption")
+                available: page.controller.packagePowerAvailable || page.controller.batteryLevelAvailable
+                value: page.controller.packagePowerAvailable
+                       ? page.controller.packageWatts.toFixed(1)
+                       : (page.controller.batteryLevelAvailable ? Math.round(page.controller.batteryPercent).toString() : "—")
+                unit: page.controller.packagePowerAvailable ? "W" : (page.controller.batteryLevelAvailable ? "%" : "")
+                caption: page.controller.batteryPresent
+                         ? (Math.round(page.controller.batteryPercent) + "% · " + (page.controller.batteryStatus ? page.controller.batteryStatus : KI18n.i18nd("loofi-pulse", "AC Power")))
+                         : (page.controller.onAcPower ? KI18n.i18nd("loofi-pulse", "Connected to AC") : KI18n.i18nd("loofi-pulse", "Standard Power"))
+                channelColor: page.theme.powerAccent
+                trend: {
+                    var raw = page.controller.historyRecentSeriesJson("packageWatts", "packagePowerAvailable", 16)
+                    try { return JSON.parse(raw).map(function(item) { return item.value || 0 }) } catch (e) { return [] }
                 }
+                trendMin: 0
+                trendMax: page.controller.historyMaxWatts > 0 ? page.controller.historyMaxWatts : 65
+                onClicked: page.navigateRequested("power", page.controller.batteryPresent ? "battery" : "cpu")
             }
         }
 
         // ==========================================
-        // 4. BOTTOM TWO-COLUMN SECTION
+        // 4. LOWER TWO-COLUMN DETAILS SECTION
         // ==========================================
         GridLayout {
             Layout.fillWidth: true
-            columns: page.width < 700 ? 1 : 2
-            rowSpacing: 12
-            columnSpacing: 12
+            columns: page.width < 800 ? 1 : 2
+            rowSpacing: page.theme.spacingM
+            columnSpacing: page.theme.spacingM
 
             // ------------------------------------------
-            // LEFT COLUMN: CPU-kärnor och sensorer
+            // LEFT COLUMN: Processor & Hårdvarusensorer
             // ------------------------------------------
-            Rectangle {
+            PulseCard {
                 Layout.fillWidth: true
-                implicitHeight: leftColContent.implicitHeight + 24
-                radius: 8
-                color: "#131922"
-                border.width: 1
-                border.color: "#1e293b"
+                implicitHeight: leftColContent.implicitHeight + padding * 2
+                padding: page.theme.spacingM
 
                 ColumnLayout {
                     id: leftColContent
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.top: parent.top
-                    anchors.margins: 12
-                    spacing: 12
+                    spacing: page.theme.spacingM
 
                     // Card Title
                     RowLayout {
                         spacing: 6
-                        Kirigami.Icon { source: "preferences-devices-cpu"; implicitWidth: 14; implicitHeight: 14; color: "#38bdf8" }
+                        Kirigami.Icon {
+                            source: "preferences-devices-cpu"
+                            implicitWidth: 16
+                            implicitHeight: 16
+                            color: page.theme.cpuAccent
+                        }
                         QQC2.Label {
-                            text: KI18n.i18n("CPU-kärnor och sensorer")
-                            font.bold: true
-                            font.pointSize: 10.5
-                            color: "#ffffff"
+                            text: KI18n.i18nd("loofi-pulse", "CPU Cores & Hardware Sensors")
+                            font.weight: Font.DemiBold
+                            font.pointSize: page.theme.fontTitle
+                            color: page.theme.textColor
                         }
                     }
 
-                    // 4 Per-Core Tiles
+                    // Per-Core Tiles (if available)
                     GridLayout {
                         Layout.fillWidth: true
                         columns: 4
-                        rowSpacing: 8
-                        columnSpacing: 8
+                        rowSpacing: 6
+                        columnSpacing: 6
+                        visible: page.controller.coreItems && page.controller.coreItems.length > 0
 
                         Repeater {
                             model: (page.controller.coreItems && page.controller.coreItems.length > 0)
-                                   ? page.controller.coreItems.slice(0, 4)
-                                   : [
-                                       { coreId: 0, tempCelsius: 64, loadPercent: 26 },
-                                       { coreId: 1, tempCelsius: 63, loadPercent: 24 },
-                                       { coreId: 2, tempCelsius: 63, loadPercent: 26 },
-                                       { coreId: 3, tempCelsius: 64, loadPercent: 29 }
-                                   ]
+                                   ? page.controller.coreItems.slice(0, 8) : []
                             delegate: Rectangle {
                                 id: coreTile
                                 required property var modelData
                                 Layout.fillWidth: true
-                                implicitHeight: 52
-                                radius: 6
-                                color: "#0d1117"
+                                implicitHeight: 48
+                                radius: page.theme.innerRadius
+                                color: page.theme.cardNestedBg
                                 border.width: 1
-                                border.color: "#1e293b"
+                                border.color: page.theme.subtleBorderColor
 
                                 ColumnLayout {
                                     anchors.fill: parent
                                     anchors.margins: 6
-                                    spacing: 3
+                                    spacing: 2
 
                                     RowLayout {
                                         Layout.fillWidth: true
                                         QQC2.Label {
-                                            text: "CPU " + coreTile.modelData.coreId
-                                            font.bold: true
-                                            font.pointSize: 8.5
-                                            color: "#ffffff"
+                                            text: "Core " + coreTile.modelData.coreId
+                                            font.weight: Font.Medium
+                                            font.pointSize: page.theme.fontCaption
+                                            color: page.theme.textColor
                                         }
                                         Item { Layout.fillWidth: true }
-                                        Rectangle {
-                                            radius: 3
-                                            color: "#3a2608"
-                                            border.width: 1
-                                            border.color: "#78350f"
-                                            implicitHeight: 16
-                                            implicitWidth: coreTempLbl.implicitWidth + 8
-                                            QQC2.Label {
-                                                id: coreTempLbl
-                                                anchors.centerIn: parent
-                                                text: (coreTile.modelData.tempCelsius || 64).toFixed(0) + " °C"
-                                                font.bold: true
-                                                font.pointSize: 7.5
-                                                color: "#f59e0b"
-                                            }
+                                        QQC2.Label {
+                                            text: coreTile.modelData.tempCelsius > 0
+                                                  ? coreTile.modelData.tempCelsius.toFixed(0) + " °C" : "—"
+                                            font.pointSize: page.theme.fontCaption * 0.9
+                                            color: page.theme.tempAccent
                                         }
                                     }
 
                                     QQC2.Label {
-                                        text: (coreTile.modelData.loadPercent || 25).toFixed(0) + " %"
-                                        font.bold: true
-                                        font.pointSize: 9
-                                        color: "#94a3b8"
-                                    }
-
-                                    Rectangle {
-                                        Layout.fillWidth: true
-                                        height: 3
-                                        radius: 1.5
-                                        color: "#1e293b"
-                                        Rectangle {
-                                            width: parent.width * Math.max(0.1, (coreTile.modelData.loadPercent || 25) / 100)
-                                            height: parent.height
-                                            radius: 1.5
-                                            color: "#38bdf8"
-                                        }
+                                        text: coreTile.modelData.loadPercent > 0
+                                              ? Math.round(coreTile.modelData.loadPercent) + " %" : "0 %"
+                                        font.pointSize: page.theme.fontCaption
+                                        color: page.theme.mutedTextColor
                                     }
                                 }
                             }
                         }
                     }
 
-                    // Subtitle: Temperatursensorer
-                    RowLayout {
-                        spacing: 6
-                        Kirigami.Icon { source: "temperature-normal-symbolic"; implicitWidth: 14; implicitHeight: 14; color: "#f59e0b" }
-                        QQC2.Label {
-                            text: KI18n.i18n("Temperatursensorer")
-                            font.bold: true
-                            font.pointSize: 9.5
-                            color: "#ffffff"
-                        }
-                    }
-
-                    // Sensor Bars List
+                    // Hardware Sensors List
                     ColumnLayout {
                         Layout.fillWidth: true
-                        spacing: 8
+                        spacing: page.theme.spacingS
 
-                        // 1. CPU Package
+                        QQC2.Label {
+                            text: KI18n.i18nd("loofi-pulse", "Thermal Sensors")
+                            font.weight: Font.Medium
+                            font.pointSize: page.theme.fontBody
+                            color: page.theme.textColor
+                        }
+
+                        // CPU Package Temp Row
                         RowLayout {
                             Layout.fillWidth: true
-                            spacing: 10
-                            Kirigami.Icon { source: "preferences-devices-cpu"; implicitWidth: 14; implicitHeight: 14; color: "#94a3b8" }
-                            QQC2.Label { text: "CPU (Package)"; font.pointSize: 9; color: "#ffffff"; Layout.preferredWidth: 110 }
+                            spacing: page.theme.spacingM
+                            Kirigami.Icon { source: "preferences-devices-cpu"; implicitWidth: 14; implicitHeight: 14; color: page.theme.mutedTextColor }
+                            QQC2.Label {
+                                text: "CPU Package"
+                                font.pointSize: page.theme.fontCaption
+                                color: page.theme.textColor
+                                Layout.preferredWidth: 120
+                            }
                             Rectangle {
                                 Layout.fillWidth: true
-                                height: 6
-                                radius: 3
-                                color: "#1e293b"
+                                height: 5
+                                radius: 2.5
+                                color: page.theme.trackColor
                                 Rectangle {
-                                    width: parent.width * Math.max(0.1, (page.controller.cpuPackageTemp || 64) / 100)
+                                    width: parent.width * Math.max(0.02, Math.min(1.0, (page.controller.cpuPackageTemp || 0) / 100))
                                     height: parent.height
-                                    radius: 3
-                                    color: "#38bdf8"
+                                    radius: 2.5
+                                    color: page.theme.tempAccent
                                 }
                             }
                             QQC2.Label {
-                                text: (page.controller.cpuPackageTemp || 64).toFixed(0) + " °C"
-                                font.bold: true
-                                font.pointSize: 9
-                                color: "#ffffff"
-                                Layout.preferredWidth: 42
+                                text: page.controller.cpuTempAvailable ? page.controller.cpuPackageTemp.toFixed(0) + " °C" : "—"
+                                font.weight: Font.Medium
+                                font.pointSize: page.theme.fontCaption
+                                color: page.theme.textColor
+                                Layout.preferredWidth: 46
                                 horizontalAlignment: Text.AlignRight
                             }
                         }
 
-                        // 2. NVMe SSD
+                        // NVMe Storage Temp Row (if available)
                         RowLayout {
+                            visible: page.controller.nvmeTempAvailable
                             Layout.fillWidth: true
-                            spacing: 10
-                            Kirigami.Icon { source: "drive-harddisk-symbolic"; implicitWidth: 14; implicitHeight: 14; color: "#94a3b8" }
-                            QQC2.Label { text: "NVMe (SSD)"; font.pointSize: 9; color: "#ffffff"; Layout.preferredWidth: 110 }
+                            spacing: page.theme.spacingM
+                            Kirigami.Icon { source: "drive-harddisk"; implicitWidth: 14; implicitHeight: 14; color: page.theme.mutedTextColor }
+                            QQC2.Label {
+                                text: "NVMe Storage"
+                                font.pointSize: page.theme.fontCaption
+                                color: page.theme.textColor
+                                Layout.preferredWidth: 120
+                            }
                             Rectangle {
                                 Layout.fillWidth: true
-                                height: 6
-                                radius: 3
-                                color: "#1e293b"
+                                height: 5
+                                radius: 2.5
+                                color: page.theme.trackColor
                                 Rectangle {
-                                    width: parent.width * 0.40
+                                    width: parent.width * Math.max(0.02, Math.min(1.0, (page.controller.nvmeTempCelsius || 0) / 100))
                                     height: parent.height
-                                    radius: 3
-                                    color: "#38bdf8"
+                                    radius: 2.5
+                                    color: page.theme.storageAccent
                                 }
                             }
                             QQC2.Label {
-                                text: "40 °C"
-                                font.bold: true
-                                font.pointSize: 9
-                                color: "#ffffff"
-                                Layout.preferredWidth: 42
+                                text: page.controller.nvmeTempAvailable ? page.controller.nvmeTempCelsius.toFixed(0) + " °C" : "—"
+                                font.weight: Font.Medium
+                                font.pointSize: page.theme.fontCaption
+                                color: page.theme.textColor
+                                Layout.preferredWidth: 46
                                 horizontalAlignment: Text.AlignRight
                             }
                         }
 
-                        // 3. Wireless Wi-Fi
+                        // Wi-Fi Network Temp / Signal Row (if available)
                         RowLayout {
+                            visible: page.controller.wifiAvailable
                             Layout.fillWidth: true
-                            spacing: 10
-                            Kirigami.Icon { source: "network-wireless-symbolic"; implicitWidth: 14; implicitHeight: 14; color: "#94a3b8" }
-                            QQC2.Label { text: "Trådlös (Wi-Fi)"; font.pointSize: 9; color: "#ffffff"; Layout.preferredWidth: 110 }
+                            spacing: page.theme.spacingM
+                            Kirigami.Icon { source: "network-wireless"; implicitWidth: 14; implicitHeight: 14; color: page.theme.mutedTextColor }
+                            QQC2.Label {
+                                text: page.controller.wifiSsid.length > 0 ? page.controller.wifiSsid : KI18n.i18nd("loofi-pulse", "Wi-Fi Interface")
+                                font.pointSize: page.theme.fontCaption
+                                color: page.theme.textColor
+                                Layout.preferredWidth: 120
+                                elide: Text.ElideRight
+                            }
                             Rectangle {
                                 Layout.fillWidth: true
-                                height: 6
-                                radius: 3
-                                color: "#1e293b"
+                                height: 5
+                                radius: 2.5
+                                color: page.theme.trackColor
                                 Rectangle {
-                                    width: parent.width * 0.51
+                                    width: parent.width * Math.max(0.02, Math.min(1.0, (page.controller.wifiSignalPercent || 0) / 100))
                                     height: parent.height
-                                    radius: 3
-                                    color: "#38bdf8"
+                                    radius: 2.5
+                                    color: page.theme.psiAccent
                                 }
                             }
                             QQC2.Label {
-                                text: "51 °C"
-                                font.bold: true
-                                font.pointSize: 9
-                                color: "#ffffff"
-                                Layout.preferredWidth: 42
+                                text: page.controller.wifiSignalPercent + " %"
+                                font.weight: Font.Medium
+                                font.pointSize: page.theme.fontCaption
+                                color: page.theme.textColor
+                                Layout.preferredWidth: 46
                                 horizontalAlignment: Text.AlignRight
                             }
                         }
@@ -860,240 +714,152 @@ Kirigami.ScrollablePage {
             }
 
             // ------------------------------------------
-            // RIGHT COLUMN: Energiprofil & Batterier
+            // RIGHT COLUMN: Energiprofil & Diagnostik
             // ------------------------------------------
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 12
+                spacing: page.theme.spacingM
 
-                // Card 1: Energiprofil
-                Rectangle {
+                // Power Profile Selector Card
+                PulseCard {
                     Layout.fillWidth: true
-                    implicitHeight: profCardCol.implicitHeight + 24
-                    radius: 8
-                    color: "#131922"
-                    border.width: 1
-                    border.color: "#1e293b"
+                    implicitHeight: profCol.implicitHeight + padding * 2
+                    padding: page.theme.spacingM
 
                     ColumnLayout {
-                        id: profCardCol
+                        id: profCol
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.top: parent.top
-                        anchors.margins: 12
-                        spacing: 10
+                        spacing: page.theme.spacingS
 
                         RowLayout {
                             Layout.fillWidth: true
-                            RowLayout {
-                                spacing: 6
-                                Kirigami.Icon { source: "configure-shortcuts"; implicitWidth: 14; implicitHeight: 14; color: "#38bdf8" }
-                                QQC2.Label {
-                                    text: KI18n.i18n("Energiprofil")
-                                    font.bold: true
-                                    font.pointSize: 10.5
-                                    color: "#ffffff"
-                                }
+                            spacing: 6
+                            Kirigami.Icon {
+                                source: "configure-shortcuts"
+                                implicitWidth: 16
+                                implicitHeight: 16
+                                color: page.theme.powerAccent
+                            }
+                            QQC2.Label {
+                                text: KI18n.i18nd("loofi-pulse", "Power Profile")
+                                font.weight: Font.DemiBold
+                                font.pointSize: page.theme.fontTitle
+                                color: page.theme.textColor
                             }
                             Item { Layout.fillWidth: true }
                             QQC2.Label {
-                                text: KI18n.i18n("Aktiv profil: ") + (page.controller.activePowerProfile || "Balanced")
-                                font.bold: true
-                                font.pointSize: 9
-                                color: "#22c55e"
+                                text: page.controller.activePowerProfile.length > 0
+                                      ? page.controller.activePowerProfile
+                                      : KI18n.i18nd("loofi-pulse", "Default")
+                                font.pointSize: page.theme.fontCaption
+                                font.weight: Font.Medium
+                                color: page.theme.highlightColor
                             }
                         }
 
-                        // 3 Profile Buttons Side-by-Side
+                        // Profile Buttons
                         RowLayout {
                             Layout.fillWidth: true
-                            spacing: 8
+                            spacing: page.theme.spacingS
 
-                            // 1. Power-saver
-                            Rectangle {
-                                id: btnSaver
-                                Layout.fillWidth: true
-                                implicitHeight: 74
-                                radius: 8
-                                color: (page.controller.activePowerProfile === "power-saver") ? "#172554" : (hovSaver.hovered ? "#161f2c" : "#0d1117")
-                                border.width: 1
-                                border.color: (page.controller.activePowerProfile === "power-saver") ? "#2563eb" : "#1e293b"
+                            Repeater {
+                                model: page.controller.availablePowerProfiles.length > 0
+                                       ? page.controller.availablePowerProfiles
+                                       : ["power-saver", "balanced", "performance"]
+                                delegate: Rectangle {
+                                    id: profBtn
+                                    required property string modelData
+                                    readonly property bool isSelected: page.controller.activePowerProfile === profBtn.modelData
+                                    Layout.fillWidth: true
+                                    implicitHeight: 44
+                                    radius: page.theme.innerRadius
+                                    color: isSelected ? page.theme.selectionColor : (profHover.hovered ? page.theme.subtleSurfaceColor : page.theme.cardNestedBg)
+                                    border.width: isSelected ? 1 : 0
+                                    border.color: isSelected ? page.theme.highlightColor : "transparent"
 
-                                ColumnLayout {
-                                    anchors.fill: parent
-                                    anchors.margins: 8
-                                    spacing: 2
                                     RowLayout {
+                                        anchors.centerIn: parent
                                         spacing: 6
-                                        Kirigami.Icon { source: "battery-profile-powersave"; implicitWidth: 14; implicitHeight: 14; color: "#22c55e" }
-                                        QQC2.Label { text: "Power-saver"; font.bold: true; font.pointSize: 8.5; color: "#ffffff" }
-                                    }
-                                    QQC2.Label { text: KI18n.i18n("Lägre effekt"); font.pointSize: 7.5; color: "#94a3b8" }
-                                    QQC2.Label { text: KI18n.i18n("Längre batteritid"); font.pointSize: 7.5; color: "#94a3b8" }
-                                }
-                                HoverHandler { id: hovSaver; cursorShape: Qt.PointingHandCursor }
-                                TapHandler { onTapped: page.controller.setPowerProfile("power-saver") }
-                            }
-
-                            // 2. Balanced (Active)
-                            Rectangle {
-                                id: btnBal
-                                Layout.fillWidth: true
-                                implicitHeight: 74
-                                radius: 8
-                                color: (page.controller.activePowerProfile === "balanced" || !page.controller.activePowerProfile) ? "#172554" : (hovBal.hovered ? "#161f2c" : "#0d1117")
-                                border.width: (page.controller.activePowerProfile === "balanced" || !page.controller.activePowerProfile) ? 2 : 1
-                                border.color: (page.controller.activePowerProfile === "balanced" || !page.controller.activePowerProfile) ? "#2563eb" : "#1e293b"
-
-                                ColumnLayout {
-                                    anchors.fill: parent
-                                    anchors.margins: 8
-                                    spacing: 2
-                                    RowLayout {
-                                        spacing: 6
-                                        Kirigami.Icon { source: "battery-profile-balanced"; implicitWidth: 14; implicitHeight: 14; color: "#38bdf8" }
-                                        QQC2.Label { text: "Balanced"; font.bold: true; font.pointSize: 8.5; color: "#ffffff" }
-                                        Item { Layout.fillWidth: true }
-                                        Rectangle {
-                                            visible: (page.controller.activePowerProfile === "balanced" || !page.controller.activePowerProfile)
-                                            width: 14; height: 14; radius: 7; color: "#2563eb"
-                                            QQC2.Label { anchors.centerIn: parent; text: "✓"; font.bold: true; font.pointSize: 8; color: "#ffffff" }
+                                        Kirigami.Icon {
+                                            source: profBtn.modelData === "power-saver" ? "battery-profile-powersave"
+                                                  : (profBtn.modelData === "performance" ? "battery-profile-performance" : "battery-profile-balanced")
+                                            implicitWidth: 14
+                                            implicitHeight: 14
+                                            color: profBtn.isSelected ? page.theme.highlightColor : page.theme.mutedTextColor
+                                        }
+                                        QQC2.Label {
+                                            text: profBtn.modelData
+                                            font.weight: profBtn.isSelected ? Font.Medium : Font.Normal
+                                            font.pointSize: page.theme.fontCaption
+                                            color: profBtn.isSelected ? page.theme.textColor : page.theme.mutedTextColor
                                         }
                                     }
-                                    QQC2.Label { text: KI18n.i18n("Balanserad prestanda"); font.pointSize: 7.5; color: "#94a3b8" }
-                                    QQC2.Label { text: KI18n.i18n("och energiförbrukning"); font.pointSize: 7.5; color: "#94a3b8" }
-                                }
-                                HoverHandler { id: hovBal; cursorShape: Qt.PointingHandCursor }
-                                TapHandler { onTapped: page.controller.setPowerProfile("balanced") }
-                            }
 
-                            // 3. Performance
-                            Rectangle {
-                                id: btnPerf
-                                Layout.fillWidth: true
-                                implicitHeight: 74
-                                radius: 8
-                                color: (page.controller.activePowerProfile === "performance") ? "#172554" : (hovPerf.hovered ? "#161f2c" : "#0d1117")
-                                border.width: 1
-                                border.color: (page.controller.activePowerProfile === "performance") ? "#2563eb" : "#1e293b"
-
-                                ColumnLayout {
-                                    anchors.fill: parent
-                                    anchors.margins: 8
-                                    spacing: 2
-                                    RowLayout {
-                                        spacing: 6
-                                        Kirigami.Icon { source: "battery-profile-performance"; implicitWidth: 14; implicitHeight: 14; color: "#f59e0b" }
-                                        QQC2.Label { text: "Performance"; font.bold: true; font.pointSize: 8.5; color: "#ffffff" }
+                                    HoverHandler { id: profHover; cursorShape: Qt.PointingHandCursor }
+                                    TapHandler {
+                                        onTapped: {
+                                            if (page.controller.powerProfileServiceAvailable) {
+                                                page.controller.setPowerProfile(profBtn.modelData)
+                                            }
+                                        }
                                     }
-                                    QQC2.Label { text: KI18n.i18n("Högre prestanda"); font.pointSize: 7.5; color: "#94a3b8" }
-                                    QQC2.Label { text: KI18n.i18n("Högre effekt"); font.pointSize: 7.5; color: "#94a3b8" }
                                 }
-                                HoverHandler { id: hovPerf; cursorShape: Qt.PointingHandCursor }
-                                TapHandler { onTapped: page.controller.setPowerProfile("performance") }
                             }
                         }
                     }
                 }
 
-                // Card 2: Enskilda batterier
-                Rectangle {
+                // System Health & Diagnostics Summary Card
+                PulseCard {
                     Layout.fillWidth: true
-                    implicitHeight: batCardCol.implicitHeight + 24
-                    radius: 8
-                    color: "#131922"
-                    border.width: 1
-                    border.color: "#1e293b"
+                    implicitHeight: diagCol.implicitHeight + padding * 2
+                    padding: page.theme.spacingM
 
                     ColumnLayout {
-                        id: batCardCol
+                        id: diagCol
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.top: parent.top
-                        anchors.margins: 12
-                        spacing: 10
+                        spacing: page.theme.spacingS
 
                         RowLayout {
+                            Layout.fillWidth: true
                             spacing: 6
-                            Kirigami.Icon { source: "battery-080"; implicitWidth: 14; implicitHeight: 14; color: "#22c55e" }
+                            Kirigami.Icon {
+                                source: page.theme.severityIcon(page.controller.verdictSeverity)
+                                implicitWidth: 16
+                                implicitHeight: 16
+                                color: page.theme.severityColor(page.controller.verdictSeverity)
+                            }
                             QQC2.Label {
-                                text: KI18n.i18n("Enskilda batterier")
-                                font.bold: true
-                                font.pointSize: 10.5
-                                color: "#ffffff"
+                                text: KI18n.i18nd("loofi-pulse", "Diagnostic Status")
+                                font.weight: Font.DemiBold
+                                font.pointSize: page.theme.fontTitle
+                                color: page.theme.textColor
                             }
                         }
 
-                        // Battery 1: BAT0
-                        RowLayout {
+                        QQC2.Label {
                             Layout.fillWidth: true
-                            spacing: 10
-
-                            Kirigami.Icon { source: "battery-080"; implicitWidth: 16; implicitHeight: 16; color: "#22c55e" }
-
-                            ColumnLayout {
-                                spacing: 1
-                                QQC2.Label { text: "BAT0"; font.bold: true; font.pointSize: 9; color: "#ffffff" }
-                                QQC2.Label {
-                                    text: (page.controller.batteryLevelAvailable ? page.controller.batteryPercent.toFixed(0) : "97")
-                                          + "% laddning · " + (page.controller.batteryWatts ? page.controller.batteryWatts.toFixed(1) : "0.0") + " W"
-                                    font.pointSize: 8
-                                    color: "#94a3b8"
-                                }
-                            }
-
-                            Item { Layout.fillWidth: true }
-
-                            Rectangle {
-                                radius: 4
-                                color: "#161f2c"
-                                border.width: 1
-                                border.color: "#1e293b"
-                                implicitHeight: 22
-                                implicitWidth: batStat1.implicitWidth + 12
-                                QQC2.Label {
-                                    id: batStat1
-                                    anchors.centerIn: parent
-                                    text: page.controller.batteryStatus || KI18n.i18n("Inte laddar")
-                                    font.pointSize: 7.5
-                                    color: "#94a3b8"
-                                }
-                            }
+                            text: page.controller.verdictSeverity > 0
+                                  ? (KI18n.i18nd("loofi-pulse", page.controller.verdictHeadline) + (page.controller.culpritName.length > 0 ? " — " + page.controller.culpritName : ""))
+                                  : KI18n.i18nd("loofi-pulse", "All hardware sub-systems operating nominally without thermal or pressure bottlenecks.")
+                            font.pointSize: page.theme.fontBody
+                            color: page.controller.verdictSeverity > 0 ? page.theme.textColor : page.theme.mutedTextColor
+                            wrapMode: Text.WordWrap
                         }
 
-                        // Battery 2: hidpp_battery_0 (Peripheral battery)
                         RowLayout {
                             Layout.fillWidth: true
-                            spacing: 10
+                            visible: page.controller.verdictSeverity > 0
+                            spacing: page.theme.spacingS
 
-                            Kirigami.Icon { source: "battery-080"; implicitWidth: 16; implicitHeight: 16; color: "#22c55e" }
-
-                            ColumnLayout {
-                                spacing: 1
-                                QQC2.Label { text: "hidpp_battery_0"; font.bold: true; font.pointSize: 9; color: "#ffffff" }
-                                QQC2.Label {
-                                    text: KI18n.i18n("Laddning otillgänglig · Effekt otillgänglig")
-                                    font.pointSize: 8
-                                    color: "#94a3b8"
-                                }
-                            }
-
-                            Item { Layout.fillWidth: true }
-
-                            Rectangle {
-                                radius: 4
-                                color: "#161f2c"
-                                border.width: 1
-                                border.color: "#1e293b"
-                                implicitHeight: 22
-                                implicitWidth: batStat2.implicitWidth + 12
-                                QQC2.Label {
-                                    id: batStat2
-                                    anchors.centerIn: parent
-                                    text: KI18n.i18n("Laddar ur")
-                                    font.pointSize: 7.5
-                                    color: "#94a3b8"
-                                }
+                            PulseButton {
+                                text: KI18n.i18nd("loofi-pulse", "Investigate Incident")
+                                icon.name: "tools-report-bug"
+                                onClicked: page.navigateRequested("pressure", "overview")
                             }
                         }
                     }
@@ -1101,27 +867,28 @@ Kirigami.ScrollablePage {
             }
         }
 
-        // Hidden item needed for automated test compatibility (test 68)
-        Item {
-            id: detailsCol
-            objectName: "section_measurements"
-            width: 1
-            height: 1
-            opacity: 0
-            visible: true
+        // ==========================================
+        // 5. MEASUREMENT QUALITY & DETAILS
+        // ==========================================
+        PulseButton {
+            id: measurementDetailsBtn
+            objectName: "measurementDetailsButton"
+            Layout.fillWidth: true
+            icon.name: page.detailsExpanded ? "collapse-all" : "expand-all"
+            text: page.detailsExpanded
+                  ? KI18n.i18nd("loofi-pulse", "Hide measurement details")
+                  : KI18n.i18nd("loofi-pulse", "Measurement details")
+            checkable: true
+            checked: page.detailsExpanded
+            onToggled: page.detailsExpanded = checked
+        }
 
-            QQC2.Button {
-                id: measurementDetailsBtn
-                objectName: "measurementDetailsButton"
-                width: 1
-                height: 1
-                visible: true
-                checkable: true
-                checked: page.detailsExpanded
-                text: page.detailsExpanded ? KI18n.i18nd("loofi-pulse", "Hide measurement details") : KI18n.i18nd("loofi-pulse", "Show measurement details")
-                Accessible.name: text
-                onClicked: page.detailsExpanded = checked
-            }
+        MeasurementDetails {
+            id: detailsCol
+            visible: page.detailsExpanded
+            Layout.fillWidth: true
+            metadata: page.controller ? page.controller.metricMetadata : null
+            expanded: page.detailsExpanded
         }
     }
 }

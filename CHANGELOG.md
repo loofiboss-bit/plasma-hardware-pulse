@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.17.0 — UX/UI Modernization & Genuine Hardware Telemetry (2026-11-07)
+
+### Added
+- **5 Core Telemetry Pillars**: Clear hierarchy on Overview page for CPU, Memory, PSI, GPU, and Power & Battery.
+- **Dynamic Dual-Line Activity Chart**: Clean real-time Canvas chart for CPU load and temperature with dynamic min/max y-axis markers and graceful empty states.
+- **Dynamic Host System Detection**: `PulseTelemetryController` dynamically detects distribution name, kernel version, and chassis/product name via `QSysInfo` and DMI `/sys/class/dmi/id/product_name`.
+- **Grouped Incident History**: Causal diagnosis episodes are clustered by rule ID or headline with `[N×]` occurrence multipliers, duration sums, and latest timestamps in both Flight Recorder and widget.
+- **Compact Plasma 6 Widget Popup**: Focused popup layout with status pill, 2x2 key metrics grid, switchable mini sparkline channels, and direct power profile selector.
+
+### Changed
+- Replaced all AI-generated placeholder data and fallback numbers (`64°C`, `28%`, `40°C`, `17.8W`, `97%`) with real sensor readings and semantic `—` placeholders.
+- Replaced hardcoded "HP EliteBook 840 G8" hardware badge with real host telemetry.
+- Consolidated duplicate incident controls in widget popup to a single action.
+- Restored complete 7-section navigation in `PulseSidebar`.
+
 ## 0.16.0 — UX/UI Simplification & KDE-Native Overhaul (2026-11-07)
 
 ### Added
