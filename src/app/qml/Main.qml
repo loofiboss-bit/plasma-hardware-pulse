@@ -703,14 +703,14 @@ Kirigami.ApplicationWindow {
     footer: Rectangle {
         width: appWindow.width
         implicitHeight: 28
-        color: "#0c1017"
+        color: appWindow.theme.surfaceColor
 
         Rectangle {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top
             height: 1
-            color: "#18202c"
+            color: appWindow.theme.cardBorderColor
         }
 
         RowLayout {
@@ -726,15 +726,15 @@ Kirigami.ApplicationWindow {
                     width: 7
                     height: 7
                     radius: 3.5
-                    color: telemetry.verdictSeverity > 0 ? appWindow.theme.negativeColor : "#22c55e"
+                    color: appWindow.theme.severityColor(telemetry.verdictSeverity)
                 }
 
                 QQC2.Label {
                     text: telemetry.recordingPaused
-                          ? KI18n.i18n("Pausad: Flight Recorder")
-                          : (telemetry.lastActionStatus.length > 0 ? telemetry.lastActionStatus : KI18n.i18n("Klart: Flight Recorder resumed"))
-                    font.pointSize: 8.5
-                    color: "#94a3b8"
+                          ? KI18n.i18nd("loofi-pulse", "Paused: Flight Recorder")
+                          : (telemetry.lastActionStatus.length > 0 ? telemetry.lastActionStatus : KI18n.i18nd("loofi-pulse", "Ready: Flight Recorder running"))
+                    font.pointSize: appWindow.theme.fontCaption
+                    color: appWindow.theme.mutedTextColor
                 }
             }
 
@@ -746,31 +746,31 @@ Kirigami.ApplicationWindow {
 
                 RowLayout {
                     spacing: 4
-                    Kirigami.Icon { source: "view-list"; implicitWidth: 12; implicitHeight: 12; color: "#64748b" }
+                    Kirigami.Icon { source: "view-list"; implicitWidth: 12; implicitHeight: 12; color: appWindow.theme.faintTextColor }
                     QQC2.Label {
-                        text: (telemetry.sessionMode ? KI18n.i18n("Vy: Historisk session") : KI18n.i18n("Vy: Aktuell inspelning"))
-                        font.pointSize: 8.5
-                        color: "#94a3b8"
+                        text: (telemetry.sessionMode ? KI18n.i18nd("loofi-pulse", "View: Saved session") : KI18n.i18nd("loofi-pulse", "View: Live telemetry"))
+                        font.pointSize: appWindow.theme.fontCaption
+                        color: appWindow.theme.mutedTextColor
                     }
                 }
 
-                QQC2.Label { text: "|"; color: "#334155" }
+                QQC2.Label { text: "·"; color: appWindow.theme.faintTextColor }
 
                 QQC2.Label {
-                    text: KI18n.i18n("Insamlare: ") + telemetry.collectorState + " · " + telemetry.pollIntervalMs + " ms"
-                    font.pointSize: 8.5
-                    color: "#94a3b8"
+                    text: KI18n.i18nd("loofi-pulse", "Collector: ") + telemetry.collectorState + " · " + telemetry.pollIntervalMs + " ms"
+                    font.pointSize: appWindow.theme.fontCaption
+                    color: appWindow.theme.mutedTextColor
                 }
 
-                QQC2.Label { text: "|"; color: "#334155" }
+                QQC2.Label { text: "·"; color: appWindow.theme.faintTextColor }
 
                 RowLayout {
                     spacing: 4
-                    Kirigami.Icon { source: "appointment-recurring"; implicitWidth: 12; implicitHeight: 12; color: "#64748b" }
+                    Kirigami.Icon { source: "appointment-recurring"; implicitWidth: 12; implicitHeight: 12; color: appWindow.theme.faintTextColor }
                     QQC2.Label {
                         text: Qt.formatDateTime(new Date(), "hh:mm · yyyy-MM-dd")
-                        font.pointSize: 8.5
-                        color: "#94a3b8"
+                        font.pointSize: appWindow.theme.fontCaption
+                        color: appWindow.theme.mutedTextColor
                     }
                 }
             }

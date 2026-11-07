@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 pragma ComponentBehavior: Bound
 
 import QtQuick
@@ -13,10 +14,10 @@ Item {
 
     required property var controller
 
-    Layout.minimumWidth: Kirigami.Units.gridUnit * 16
-    Layout.preferredWidth: Kirigami.Units.gridUnit * 26
-    Layout.minimumHeight: Kirigami.Units.gridUnit * 20
-    Layout.preferredHeight: Kirigami.Units.gridUnit * 28
+    Layout.minimumWidth: Kirigami.Units.gridUnit * 18
+    Layout.preferredWidth: Kirigami.Units.gridUnit * 23
+    Layout.minimumHeight: Kirigami.Units.gridUnit * 18
+    Layout.preferredHeight: Kirigami.Units.gridUnit * 25
 
     readonly property bool isDark: {
         var c = Kirigami.Theme.backgroundColor
@@ -34,17 +35,14 @@ Item {
     }
 
     readonly property color cardSurface: isDark
-        ? Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(1, 1, 1, 0.055))
-        : Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(0, 0, 0, 0.035))
-    readonly property color cardHoverSurface: isDark
-        ? Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(1, 1, 1, 0.095))
-        : Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(0, 0, 0, 0.065))
+        ? Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(1, 1, 1, 0.045))
+        : Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(0, 0, 0, 0.025))
     readonly property color cardBorder: isDark
-        ? Qt.rgba(1, 1, 1, 0.12)
-        : Qt.rgba(0, 0, 0, 0.12)
+        ? Qt.rgba(1, 1, 1, 0.08)
+        : Qt.rgba(0, 0, 0, 0.08)
     readonly property color trackBg: isDark
-        ? Qt.rgba(1, 1, 1, 0.10)
-        : Qt.rgba(0, 0, 0, 0.09)
+        ? Qt.rgba(1, 1, 1, 0.08)
+        : Qt.rgba(0, 0, 0, 0.07)
 
     readonly property color tempAccent: isDark ? "#fb923c" : "#d97706"
     readonly property color cpuAccent: isDark ? "#38bdf8" : "#0284c7"
@@ -96,15 +94,14 @@ Item {
 
     function severityColor(sev) {
         if (sev === 4) return Kirigami.Theme.disabledTextColor
-        if (sev === 3) return Kirigami.Theme.negativeTextColor
-        if (sev === 2) return Kirigami.Theme.negativeTextColor
+        if (sev === 3 || sev === 2) return Kirigami.Theme.negativeTextColor
         if (sev === 1) return Kirigami.Theme.neutralTextColor
         return Kirigami.Theme.positiveTextColor
     }
 
     function severityBgColor(sev) {
         var c = severityColor(sev)
-        return Qt.rgba(c.r, c.g, c.b, isDark ? 0.13 : 0.08)
+        return Qt.rgba(c.r, c.g, c.b, isDark ? 0.12 : 0.08)
     }
 
     function severityBadgeText(sev) {
@@ -135,276 +132,111 @@ Item {
     Flickable {
         anchors.fill: parent
         contentWidth: width
-        contentHeight: contentColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
+        contentHeight: contentColumn.implicitHeight + Kirigami.Units.mediumSpacing * 2
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
         ColumnLayout {
             id: contentColumn
-            width: parent.width - Kirigami.Units.largeSpacing * 2
-            x: Kirigami.Units.largeSpacing
-            y: Kirigami.Units.largeSpacing
+            width: parent.width - Kirigami.Units.mediumSpacing * 2
+            x: Kirigami.Units.mediumSpacing
+            y: Kirigami.Units.mediumSpacing
             spacing: Kirigami.Units.mediumSpacing
 
-            // Header Row
-            ColumnLayout {
+            // ==========================================
+            // 1. COMPACT HEADER & PRIMARY ACTIONS
+            // ==========================================
+            RowLayout {
                 Layout.fillWidth: true
                 spacing: Kirigami.Units.smallSpacing
 
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
-
-                    Kirigami.Icon {
-                        source: "utilities-system-monitor"
-                        Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
-                        Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium
-                    }
-
-                    Kirigami.Heading {
-                        level: 3
-                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Loofi Pulse")
-                        Layout.fillWidth: true
-                    }
-
-                    PlasmaComponents3.Button {
-                        icon.name: "bookmark-new"
-                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Mark Incident")
-                        Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Mark incident now and launch timeline")
-                        onClicked: fullRoot.controller.markProblemAndLaunch()
-                    }
-
-                    Rectangle {
-                        radius: 5
-                        color: fullRoot.cardSurface
-                        border.width: 1
-                        border.color: fullRoot.cardBorder
-                        implicitWidth: colRow.implicitWidth + 10
-                        implicitHeight: colRow.implicitHeight + 4
-                        RowLayout {
-                            id: colRow
-                            anchors.centerIn: parent
-                            spacing: 5
-                            Rectangle {
-                                Layout.preferredWidth: 6
-                                Layout.preferredHeight: 6
-                                radius: 3
-                                color: fullRoot.controller.collectorState.startsWith("Live")
-                                       ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.disabledTextColor
-                            }
-                            PlasmaComponents3.Label {
-                                text: fullRoot.controller.collectorState
-                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                                opacity: 0.85
-                            }
-                        }
-                    }
-
-                    Rectangle {
-                        visible: fullRoot.controller.activePowerProfile.length > 0
-                        radius: 5
-                        color: fullRoot.cardSurface
-                        border.width: 1
-                        border.color: fullRoot.cardBorder
-                        implicitWidth: profBadge.implicitWidth + 12
-                        implicitHeight: profBadge.implicitHeight + 4
-
-                        PlasmaComponents3.Label {
-                            id: profBadge
-                            anchors.centerIn: parent
-                            text: fullRoot.controller.activePowerProfile
-                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                            font.bold: true
-                        }
-                    }
+                Kirigami.Icon {
+                    source: "utilities-system-monitor"
+                    Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
+                    Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium
                 }
 
-                RowLayout {
+                Kirigami.Heading {
+                    level: 4
+                    text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Loofi Pulse")
                     Layout.fillWidth: true
-                    spacing: Kirigami.Units.smallSpacing
-
-                    PlasmaComponents3.Button {
-                        Layout.fillWidth: true
-                        icon.name: "window-new"
-                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Open App")
-                        Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Open Loofi Pulse")
-                        onClicked: fullRoot.controller.launchStudioApp("overview")
-                    }
-
-                    PlasmaComponents3.Button {
-                        icon.name: "view-process-all"
-                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Processes")
-                        Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Open Loofi Pulse Processes view")
-                        onClicked: fullRoot.controller.launchStudioApp("processes")
-                    }
-
-                    PlasmaComponents3.Button {
-                        icon.name: "chronometer"
-                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "History")
-                        Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Open Loofi Pulse History view")
-                        onClicked: fullRoot.controller.launchStudioApp("flight")
-                    }
-
-                    PlasmaComponents3.Button {
-                        icon.name: "utilities-system-monitor"
-                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "System Monitor")
-                        Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Open KDE System Monitor process view")
-                        onClicked: fullRoot.controller.openSystemMonitor()
-                    }
                 }
 
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: Kirigami.Units.smallSpacing
-
-                    PlasmaComponents3.Button {
-                        Layout.fillWidth: true
-                        icon.name: "bookmark-new"
-                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Mark Problem Now")
-                        Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Mark problem and open history")
-                        onClicked: fullRoot.controller.markProblemAndLaunch()
-                    }
-
-                    PlasmaComponents3.Button {
-                        icon.name: "notifications-disabled"
-                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Snooze 15 min")
-                        Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Snooze notifications for 15 minutes")
-                        onClicked: fullRoot.controller.snoozeNotifications()
-                    }
-
-                    PlasmaComponents3.Button {
-                        icon.name: "edit-copy"
-                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Copy report")
-                        Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Copy current incident report")
-                        onClicked: fullRoot.controller.copyIncidentReportToClipboard()
-                    }
-                }
-
-                // Power Profile Interactive Switcher Row
-                RowLayout {
-                    visible: fullRoot.controller.powerProfileServiceAvailable && fullRoot.controller.availablePowerProfiles.length > 0
-                    Layout.fillWidth: true
-                    spacing: 6
+                // Status Badge
+                Rectangle {
+                    radius: fullRoot.theme.pillRadius
+                    color: fullRoot.severityBgColor(fullRoot.controller.verdictSeverity)
+                    border.width: 1
+                    border.color: fullRoot.severityColor(fullRoot.controller.verdictSeverity)
+                    implicitWidth: statusBadgeLbl.implicitWidth + 10
+                    implicitHeight: statusBadgeLbl.implicitHeight + 4
 
                     PlasmaComponents3.Label {
-                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Power profile:")
-                        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                        id: statusBadgeLbl
+                        anchors.centerIn: parent
+                        text: fullRoot.severityBadgeText(fullRoot.controller.verdictSeverity)
+                        color: fullRoot.severityColor(fullRoot.controller.verdictSeverity)
                         font.bold: true
-                        opacity: 0.85
+                        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                     }
-
-                    Repeater {
-                        model: fullRoot.controller.availablePowerProfiles
-                        delegate: PlasmaComponents3.Button {
-                            id: pBtn
-                            required property string modelData
-                            text: pBtn.modelData
-                            checkable: true
-                            checked: fullRoot.controller.activePowerProfile === pBtn.modelData
-                            enabled: !fullRoot.controller.powerProfileChangePending
-                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                            onClicked: fullRoot.controller.setPowerProfile(pBtn.modelData)
-                        }
-                    }
-
-                    Item { Layout.fillWidth: true }
                 }
 
-                // Telemetry Quick Status Chips (Wi-Fi, NVMe, Battery)
-                Flow {
-                    Layout.fillWidth: true
-                    spacing: Kirigami.Units.smallSpacing
-
-                    // Wi-Fi Chip
-                    Rectangle {
-                        visible: fullRoot.controller.wifiAvailable && fullRoot.controller.wifiSsid.length > 0
-                        radius: 5
-                        color: fullRoot.cardSurface
-                        border.width: 1
-                        border.color: fullRoot.cardBorder
-                        implicitWidth: wifiChipRow.implicitWidth + 10
-                        implicitHeight: wifiChipRow.implicitHeight + 4
-
-                        RowLayout {
-                            id: wifiChipRow
-                            anchors.centerIn: parent
-                            spacing: 5
-                            Kirigami.Icon {
-                                source: "network-wireless-connected-100"
-                                Layout.preferredWidth: 12
-                                Layout.preferredHeight: 12
-                            }
-                            PlasmaComponents3.Label {
-                                text: fullRoot.controller.wifiSsid + " (" + fullRoot.controller.wifiSignalPercent + "%)"
-                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                            }
-                        }
-                    }
-
-                    // NVMe Temp Chip
-                    Rectangle {
-                        visible: fullRoot.controller.nvmeTempAvailable
-                        radius: 5
-                        color: fullRoot.cardSurface
-                        border.width: 1
-                        border.color: fullRoot.cardBorder
-                        implicitWidth: nvmeChipRow.implicitWidth + 10
-                        implicitHeight: nvmeChipRow.implicitHeight + 4
-
-                        RowLayout {
-                            id: nvmeChipRow
-                            anchors.centerIn: parent
-                            spacing: 5
-                            Kirigami.Icon {
-                                source: "drive-harddisk"
-                                Layout.preferredWidth: 12
-                                Layout.preferredHeight: 12
-                            }
-                            PlasmaComponents3.Label {
-                                text: "NVMe: " + TemperatureLabels.formatTemperature(fullRoot.controller.nvmeTempCelsius, fullRoot.controller.temperatureUnit)
-                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                            }
-                        }
-                    }
-
-                    // Battery Health Chip
-                    Rectangle {
-                        visible: fullRoot.controller.batteryPresent
-                        radius: 5
-                        color: fullRoot.cardSurface
-                        border.width: 1
-                        border.color: fullRoot.cardBorder
-                        implicitWidth: batChipRow.implicitWidth + 10
-                        implicitHeight: batChipRow.implicitHeight + 4
-
-                        RowLayout {
-                            id: batChipRow
-                            anchors.centerIn: parent
-                            spacing: 5
-                            Kirigami.Icon {
-                                source: fullRoot.controller.onAcPower ? "ac-adapter" : "battery-profile-performance"
-                                Layout.preferredWidth: 12
-                                Layout.preferredHeight: 12
-                            }
-                            PlasmaComponents3.Label {
-                                text: Math.round(fullRoot.controller.batteryPercent) + "%" + (fullRoot.controller.batteryHealthAvailable ? " (" + Math.round(fullRoot.controller.batteryHealthPercent) + "% health)" : "")
-                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                            }
-                        }
-                    }
+                // Primary Launch Button
+                PlasmaComponents3.Button {
+                    icon.name: "window-new"
+                    text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Open App")
+                    Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Open Loofi Pulse")
+                    onClicked: fullRoot.controller.launchStudioApp("overview")
                 }
             }
 
+            // Consolidated Secondary Actions Toolbar
             RowLayout {
                 Layout.fillWidth: true
-                visible: fullRoot.controller.lastActionStatus.length > 0 || fullRoot.controller.lastActionPath.length > 0
+                spacing: Kirigami.Units.smallSpacing
+
+                PlasmaComponents3.Button {
+                    Layout.fillWidth: true
+                    icon.name: "bookmark-new"
+                    text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Mark Incident")
+                    Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Mark incident now and launch timeline")
+                    onClicked: fullRoot.controller.markProblemAndLaunch()
+                }
+
+                PlasmaComponents3.Button {
+                    icon.name: "notifications-disabled"
+                    text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Snooze 15m")
+                    Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Snooze notifications for 15 minutes")
+                    onClicked: fullRoot.controller.snoozeNotifications()
+                }
+
+                PlasmaComponents3.Button {
+                    icon.name: "edit-copy"
+                    text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Copy")
+                    Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Copy current incident report")
+                    onClicked: fullRoot.controller.copyIncidentReportToClipboard()
+                }
+
+                PlasmaComponents3.Button {
+                    icon.name: "utilities-system-monitor"
+                    Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Open KDE System Monitor process view")
+                    onClicked: fullRoot.controller.openSystemMonitor()
+                }
+            }
+
+            // Action status notification banner (if active)
+            RowLayout {
+                Layout.fillWidth: true
+                visible: fullRoot.controller.lastActionStatus.length > 0
+                spacing: 6
+
                 PlasmaComponents3.Label {
                     Layout.fillWidth: true
                     text: fullRoot.controller.lastActionStatus
                     wrapMode: Text.WordWrap
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                     color: fullRoot.controller.lastActionSucceeded
                            ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.negativeTextColor
-                    Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Action result: ") + text
                 }
                 PlasmaComponents3.Button {
                     visible: fullRoot.controller.lastActionPath.length > 0
@@ -414,324 +246,294 @@ Item {
                 }
             }
 
-            Repeater {
-                model: fullRoot.controller.incidentHistory.slice(-5).reverse()
-                delegate: PlasmaComponents3.Button {
-                    required property var modelData
-                    Layout.fillWidth: true
-                    text: modelData.timeString + " · " + modelData.headline
-                    Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Investigate incident: ") + text
-                    onClicked: fullRoot.controller.launchIncident(modelData.incidentId)
-                }
-            }
-
-            // 1. Causal Diagnosis Card
+            // ==========================================
+            // 2. ACTIVE PROBLEM BANNER (CONDITIONAL)
+            // ==========================================
             PulseCard {
                 Layout.fillWidth: true
-                implicitHeight: verdictCol.implicitHeight + padding * 2
-                padding: theme.spacingL
+                visible: fullRoot.controller.verdictSeverity > 0
+                implicitHeight: alertCol.implicitHeight + padding * 2
+                padding: Kirigami.Units.smallSpacing * 2
                 accentColor: fullRoot.severityColor(fullRoot.controller.verdictSeverity)
-                accentStrength: 0.12
+                accentStrength: 0.15
 
                 ColumnLayout {
-                    id: verdictCol
+                    id: alertCol
                     width: parent.width
-                    spacing: 5
+                    spacing: 4
 
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 6
-                        Rectangle {
-                            Layout.preferredWidth: 10
-                            Layout.preferredHeight: 10
-                            radius: 5
+
+                        Kirigami.Icon {
+                            source: "dialog-warning"
+                            Layout.preferredWidth: 16
+                            Layout.preferredHeight: 16
                             color: fullRoot.severityColor(fullRoot.controller.verdictSeverity)
                         }
-                        Rectangle {
-                            radius: 4
-                            color: fullRoot.severityBgColor(fullRoot.controller.verdictSeverity)
-                            border.width: 1
-                            border.color: fullRoot.severityColor(fullRoot.controller.verdictSeverity)
-                            implicitWidth: sevPillLbl.implicitWidth + 10
-                            implicitHeight: sevPillLbl.implicitHeight + 3
-                            PlasmaComponents3.Label {
-                                id: sevPillLbl
-                                anchors.centerIn: parent
-                                text: fullRoot.severityBadgeText(fullRoot.controller.verdictSeverity)
-                                color: fullRoot.severityColor(fullRoot.controller.verdictSeverity)
-                                font.bold: true
-                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                            }
-                        }
+
                         PlasmaComponents3.Label {
                             Layout.fillWidth: true
                             text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", fullRoot.controller.verdictHeadline)
                             font.bold: true
+                            color: fullRoot.severityColor(fullRoot.controller.verdictSeverity)
                             wrapMode: Text.WordWrap
                         }
                     }
 
-                    PlasmaComponents3.Button {
-                        id: explanationToggle
-                        objectName: "widgetStatusExplanationButton"
-                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Why this status?")
-                        checkable: true
-                        Accessible.description: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Expand observed signals, diagnosis duration, missing evidence, and next step.")
-                    }
-
                     PlasmaComponents3.Label {
                         Layout.fillWidth: true
-                        visible: explanationToggle.checked
-                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Rule: ") + fullRoot.controller.verdictRuleId + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " · Observed for ")
-                              + fullRoot.controller.verdictDurationSeconds.toFixed(1) + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " s")
-                              + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "\nSignals: ") + (fullRoot.controller.verdictEvidence || []).join("; ")
-                              + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "\nMissing evidence: ") + ((fullRoot.controller.verdictMissingEvidence || []).join("; ") || KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "No missing signals reported"))
-                        wrapMode: Text.WordWrap
+                        visible: fullRoot.controller.culpritName.length > 0
+                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Culprit: ") + fullRoot.controller.culpritName
+                              + (fullRoot.controller.culpritPid > 0 ? " (" + fullRoot.controller.culpritPid + ")" : "")
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                        opacity: 0.9
                     }
 
-                    PlasmaComponents3.Label {
+                    RowLayout {
                         Layout.fillWidth: true
-                        visible: explanationToggle.checked
-                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Original technical evidence (preserved language):") + "\n" + (fullRoot.controller.verdictCausalChain)
-                        font.family: Kirigami.Theme.defaultFont.family
-                        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                        opacity: 0.92
-                        wrapMode: Text.WordWrap
-                    }
-
-                    Flow {
-                        Layout.fillWidth: true
-                        visible: fullRoot.controller.verdictContributingSignals
-                                 && fullRoot.controller.verdictContributingSignals.length > 0
-                        spacing: 4
-
-                        Repeater {
-                            model: fullRoot.controller.verdictContributingSignals || []
-                            delegate: Rectangle {
-                                id: contribChip
-                                required property string modelData
-                                radius: 4
-                                color: fullRoot.cardSurface
-                                border.width: 1
-                                border.color: fullRoot.cardBorder
-                                implicitWidth: contribLbl.implicitWidth + 8
-                                implicitHeight: contribLbl.implicitHeight + 3
-
-                                PlasmaComponents3.Label {
-                                    id: contribLbl
-                                    anchors.centerIn: parent
-                                    text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "+ ") + contribChip.modelData
-                                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                                    opacity: 0.85
-                                }
-                            }
+                        spacing: 6
+                        Item { Layout.fillWidth: true }
+                        PlasmaComponents3.Button {
+                            text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Investigate in Pulse")
+                            icon.name: "tools-report-bug"
+                            onClicked: fullRoot.controller.launchStudioApp("pressure", "overview")
                         }
-                    }
-
-                    PlasmaComponents3.Label {
-                        Layout.fillWidth: true
-                        text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Next step: ") + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", fullRoot.controller.verdictRecommendation)
-                        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                        opacity: 0.78
-                        wrapMode: Text.WordWrap
                     }
                 }
             }
 
-            // 2. Physical Domain Cards Grid (2x2) — Full card clickable with progress bars
+            // ==========================================
+            // 3. KEY HARDWARE METRIC CARDS (2x2 GRID)
+            // ==========================================
             GridLayout {
                 Layout.fillWidth: true
-                columns: width >= Kirigami.Units.gridUnit * 24 ? 2 : 1
+                columns: 2
                 rowSpacing: Kirigami.Units.smallSpacing
                 columnSpacing: Kirigami.Units.smallSpacing
 
-                Repeater {
-                    model: [
-                        {
-                            title: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "CPU & SoC"),
-                            targetPage: "power",
-                            targetSection: "cpu",
-                            accessibleName: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Open CPU and Power details"),
-                            accentKey: "cpu",
-                            headline: (fullRoot.controller.cpuTempAvailable ? TemperatureLabels.formatTemperature(fullRoot.controller.cpuPackageTemp, fullRoot.controller.temperatureUnit) : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Temp unavailable"))
-                                      + "  •  " + (fullRoot.controller.cpuLoadAvailable ? Math.round(fullRoot.controller.cpuLoadPercent) + "%" : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Load unavailable")),
-                            subtitle: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Thermal margin: ")
-                                      + (fullRoot.controller.thermalHeadroomAvailable ? TemperatureLabels.formatTemperatureDelta(fullRoot.controller.thermalHeadroom, fullRoot.controller.temperatureUnit) : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable"))
-                                      + (fullRoot.controller.cpuAvgFreqMhz > 0 ? " · " + fullRoot.controller.cpuAvgFreqMhz + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " MHz") : ""),
-                            ratio: fullRoot.controller.cpuLoadAvailable
-                                   ? Math.min(1.0, Math.max(0.0, fullRoot.controller.cpuLoadPercent / 100.0)) : 0.0,
-                            barVisible: fullRoot.controller.cpuLoadAvailable
-                        },
-                        {
-                            title: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Memory & PSI"),
-                            targetPage: "pressure",
-                            targetSection: "overview",
-                            accessibleName: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Open Memory and Pressure details"),
-                            accentKey: "psi",
-                            headline: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Responsiveness: ") + (fullRoot.controller.psiAvailable ? fullRoot.controller.responsivenessScore.toFixed(1) + "/100" : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable"))
-                                      + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " · ZRAM: ") + (fullRoot.controller.zramCompressionAvailable
-                                      ? fullRoot.controller.zramCompressionRatio.toFixed(1) + "×"
-                                      : (fullRoot.controller.zramAvailable ? "Idle" : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable"))),
-                            subtitle: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "PSI wait · CPU ") + (fullRoot.controller.psiCpuAvailable ? fullRoot.controller.psiCpuSome10.toFixed(1) + "%" : "N/A")
-                                      + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " · Mem ") + (fullRoot.controller.psiMemoryAvailable ? fullRoot.controller.psiMemSome10.toFixed(1) + "%" : "N/A")
-                                      + (fullRoot.controller.diskThroughputAvailable
-                                         ? KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " · Disk ") + Number(fullRoot.controller.diskReadMibPerSec + fullRoot.controller.diskWriteMibPerSec).toFixed(1) + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " MiB/s")
-                                         : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " · I/O ") + (fullRoot.controller.psiIoFullAvailable ? fullRoot.controller.psiIoFull10.toFixed(1) + "%" : "N/A"))
-                                      + (fullRoot.controller.netThroughputAvailable
-                                         ? KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " · Net ") + Number(fullRoot.controller.netRxMibPerSec + fullRoot.controller.netTxMibPerSec).toFixed(1) + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " MiB/s")
-                                         : ""),
-                            ratio: fullRoot.controller.psiAvailable
-                                   ? Math.min(1.0, Math.max(0.0, fullRoot.controller.responsivenessScore / 100.0)) : 0.0,
-                            barVisible: fullRoot.controller.psiAvailable
-                        },
-                        {
-                            title: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "GPU & Sensors"),
-                            targetPage: "power",
-                            targetSection: "gpu",
-                            accessibleName: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Open GPU and sensor details"),
-                            accentKey: "gpu",
-                            headline: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "GPU ") + (fullRoot.controller.gpuBusyAvailable ? Math.round(fullRoot.controller.gpuBusyPercent) + "%" : "N/A")
-                                      + (fullRoot.controller.gpuTempAvailable ? " (" + TemperatureLabels.formatTemperature(fullRoot.controller.gpuTempCelsius, fullRoot.controller.temperatureUnit) + ")" : "")
-                                      + (fullRoot.controller.gpuFrequencyAvailable ? " · " + fullRoot.controller.gpuCurrentFreqMhz + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " MHz") : ""),
-                            subtitle: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "NVMe ") + (fullRoot.controller.nvmeTempAvailable ? TemperatureLabels.formatTemperature(fullRoot.controller.nvmeTempCelsius, fullRoot.controller.temperatureUnit) : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable"))
-                                      + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " · Wi-Fi ") + (fullRoot.controller.wifiTempAvailable ? TemperatureLabels.formatTemperature(fullRoot.controller.wifiTempCelsius, fullRoot.controller.temperatureUnit) : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable")),
-                            ratio: fullRoot.controller.gpuBusyAvailable
-                                   ? Math.min(1.0, Math.max(0.0, fullRoot.controller.gpuBusyPercent / 100.0)) : 0.0,
-                            barVisible: fullRoot.controller.gpuBusyAvailable
-                        },
-                        {
-                            title: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Power & Battery"),
-                            targetPage: "power",
-                            targetSection: "battery",
-                            accessibleName: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Open Power and Cooling details"),
-                            accentKey: "power",
-                            headline: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "CPU: ") + (fullRoot.controller.packagePowerAvailable
-                                       ? fullRoot.controller.packageWatts.toFixed(1) + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " W") + (fullRoot.controller.packagePowerEstimated ? KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " · Est.") : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " · Measured"))
-                                       : "N/A") + "  •  "
-                                      + (fullRoot.controller.batteryStateAvailable ? fullRoot.controller.batteryTimeRemainingText : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Battery unavailable")),
-                            subtitle: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Discharge: ") + (fullRoot.controller.batteryPowerAvailable && fullRoot.controller.batteryStatus === "Discharging"
-                                      ? fullRoot.controller.batteryWatts.toFixed(1) + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " W") : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable or AC"))
-                                      + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " · Limits: ") + (fullRoot.controller.powerLimitsAvailable
-                                      ? Math.round(fullRoot.controller.pl1LimitWatts) + "/" + Math.round(fullRoot.controller.pl2LimitWatts) + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " W")
-                                      : "N/A") + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " · Fan: ")
-                                      + (fullRoot.controller.fanAvailable ? (fullRoot.controller.primaryFanRpm + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " RPM")) : "N/A"),
-                            ratio: fullRoot.controller.packagePowerAvailable
-                                   ? Math.min(1.0, Math.max(0.0, fullRoot.controller.packageWatts / Math.max(25.0, fullRoot.controller.pl1LimitWatts > 0 ? fullRoot.controller.pl1LimitWatts : 45.0))) : 0.0,
-                            barVisible: fullRoot.controller.packagePowerAvailable
-                        }
-                    ]
+                // 1. CPU & SoC
+                PlasmaComponents3.Button {
+                    id: cpuCard
+                    Layout.fillWidth: true
+                    implicitHeight: 64
+                    Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Open CPU and Power details")
+                    onClicked: fullRoot.controller.launchStudioApp("power", "cpu")
 
-                    delegate: Rectangle {
-                        id: domCard
-                        required property var modelData
-                        readonly property color accentColor: fullRoot.channelColor(domCard.modelData.accentKey)
-                        property bool hovered: false
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        implicitHeight: domCardCol.implicitHeight + Kirigami.Units.mediumSpacing * 2
-                        radius: 10
-                        color: domCard.hovered || domCard.activeFocus ? fullRoot.cardHoverSurface : fullRoot.cardSurface
-                        border.width: domCard.hovered || domCard.activeFocus ? 2 : 1
-                        border.color: domCard.hovered || domCard.activeFocus ? Kirigami.Theme.focusColor : fullRoot.cardBorder
-                        activeFocusOnTab: true
-                        Accessible.role: Accessible.Button
-                        Accessible.name: domCard.modelData.accessibleName
-                        Accessible.description: domCard.modelData.headline + ". " + domCard.modelData.subtitle
-                        Accessible.onPressAction: fullRoot.controller.launchStudioApp(domCard.modelData.targetPage, domCard.modelData.targetSection)
-                        Keys.onReturnPressed: fullRoot.controller.launchStudioApp(domCard.modelData.targetPage, domCard.modelData.targetSection)
-                        Keys.onEnterPressed: fullRoot.controller.launchStudioApp(domCard.modelData.targetPage, domCard.modelData.targetSection)
-                        Keys.onSpacePressed: event => {
-                            fullRoot.controller.launchStudioApp(domCard.modelData.targetPage, domCard.modelData.targetSection)
-                            event.accepted = true
-                        }
+                    contentItem: ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 6
+                        spacing: 2
 
-                        MouseArea {
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onEntered: domCard.hovered = true
-                            onExited: domCard.hovered = false
-                            onClicked: {
-                                domCard.forceActiveFocus()
-                                fullRoot.controller.launchStudioApp(domCard.modelData.targetPage, domCard.modelData.targetSection)
-                            }
-                        }
-
-                        ColumnLayout {
-                            id: domCardCol
-                            anchors.fill: parent
-                            anchors.margins: Kirigami.Units.mediumSpacing
+                        RowLayout {
+                            Layout.fillWidth: true
                             spacing: 4
-
-                            RowLayout {
-                                Layout.fillWidth: true
-                                spacing: 6
-
-                                Rectangle {
-                                    Layout.preferredWidth: 8
-                                    Layout.preferredHeight: 8
-                                    radius: 4
-                                    color: domCard.accentColor
-                                }
-
-                                PlasmaComponents3.Label {
-                                    text: domCard.modelData.title
-                                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                                    font.bold: true
-                                    opacity: 0.8
-                                    elide: Text.ElideRight
-                                    Layout.fillWidth: true
-                                }
-
-                                PlasmaComponents3.ToolButton {
-                                    icon.name: "go-next"
-                                    display: PlasmaComponents3.AbstractButton.IconOnly
-                                    Accessible.name: domCard.modelData.accessibleName
-                                    onClicked: fullRoot.controller.launchStudioApp(domCard.modelData.targetPage, domCard.modelData.targetSection)
-                                }
-                            }
-
+                            Rectangle { width: 6; height: 6; radius: 3; color: fullRoot.cpuAccent }
                             PlasmaComponents3.Label {
-                                Layout.fillWidth: true
-                                wrapMode: Text.WordWrap
-                                text: domCard.modelData.headline
-                                font.bold: true
-                                font.pixelSize: Kirigami.Theme.defaultFont.pixelSize + 1
-                            }
-
-                            Rectangle {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 5
-                                radius: 2.5
-                                color: fullRoot.trackBg
-
-                                Rectangle {
-                                    visible: domCard.modelData.barVisible
-                                    width: parent.width * domCard.modelData.ratio
-                                    height: parent.height
-                                    radius: 2.5
-                                    color: domCard.accentColor
-                                }
-                            }
-
-                            PlasmaComponents3.Label {
-                                Layout.fillWidth: true
-                                wrapMode: Text.WordWrap
-                                text: domCard.modelData.subtitle
+                                text: "CPU"
                                 font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                                 opacity: 0.8
+                                Layout.fillWidth: true
+                            }
+                            PlasmaComponents3.Label {
+                                text: fullRoot.controller.cpuTempAvailable
+                                      ? TemperatureLabels.formatTemperature(fullRoot.controller.cpuPackageTemp, fullRoot.controller.temperatureUnit) : "—"
+                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                                color: fullRoot.tempAccent
+                            }
+                        }
+
+                        PlasmaComponents3.Label {
+                            text: fullRoot.controller.cpuLoadAvailable ? Math.round(fullRoot.controller.cpuLoadPercent) + "%" : "—"
+                            font.bold: true
+                            font.pixelSize: Kirigami.Theme.defaultFont.pixelSize + 1
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 3
+                            radius: 1.5
+                            color: fullRoot.trackBg
+                            Rectangle {
+                                width: parent.width * Math.max(0.02, Math.min(1.0, (fullRoot.controller.cpuLoadPercent || 0) / 100))
+                                height: parent.height
+                                radius: 1.5
+                                color: fullRoot.cpuAccent
+                            }
+                        }
+                    }
+                }
+
+                // 2. Memory & PSI
+                PlasmaComponents3.Button {
+                    id: memCard
+                    Layout.fillWidth: true
+                    implicitHeight: 64
+                    Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Open Memory and Pressure details")
+                    onClicked: fullRoot.controller.launchStudioApp("pressure", "overview")
+
+                    contentItem: ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 6
+                        spacing: 2
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+                            Rectangle { width: 6; height: 6; radius: 3; color: fullRoot.psiAccent }
+                            PlasmaComponents3.Label {
+                                text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "RAM & PSI")
+                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                                opacity: 0.8
+                                Layout.fillWidth: true
+                            }
+                            PlasmaComponents3.Label {
+                                text: fullRoot.controller.psiAvailable ? fullRoot.controller.responsivenessScore.toFixed(0) + "/100" : "—"
+                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                                color: fullRoot.psiAccent
+                            }
+                        }
+
+                        PlasmaComponents3.Label {
+                            text: fullRoot.controller.memoryAvailable ? Math.round(fullRoot.controller.ramUsedPercent) + "%" : "—"
+                            font.bold: true
+                            font.pixelSize: Kirigami.Theme.defaultFont.pixelSize + 1
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 3
+                            radius: 1.5
+                            color: fullRoot.trackBg
+                            Rectangle {
+                                width: parent.width * Math.max(0.02, Math.min(1.0, (fullRoot.controller.ramUsedPercent || 0) / 100))
+                                height: parent.height
+                                radius: 1.5
+                                color: fullRoot.psiAccent
+                            }
+                        }
+                    }
+                }
+
+                // 3. GPU & Storage
+                PlasmaComponents3.Button {
+                    id: gpuCard
+                    Layout.fillWidth: true
+                    implicitHeight: 64
+                    Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Open GPU and sensor details")
+                    onClicked: fullRoot.controller.launchStudioApp("power", "gpu")
+
+                    contentItem: ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 6
+                        spacing: 2
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+                            Rectangle { width: 6; height: 6; radius: 3; color: fullRoot.gpuAccent }
+                            PlasmaComponents3.Label {
+                                text: "GPU"
+                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                                opacity: 0.8
+                                Layout.fillWidth: true
+                            }
+                            PlasmaComponents3.Label {
+                                text: fullRoot.controller.nvmeTempAvailable
+                                      ? "NVMe " + TemperatureLabels.formatTemperature(fullRoot.controller.nvmeTempCelsius, fullRoot.controller.temperatureUnit) : ""
+                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize * 0.9
+                                opacity: 0.8
+                            }
+                        }
+
+                        PlasmaComponents3.Label {
+                            text: fullRoot.controller.gpuBusyAvailable
+                                  ? Math.round(fullRoot.controller.gpuBusyPercent) + "%"
+                                  : (fullRoot.controller.gpuTempAvailable ? TemperatureLabels.formatTemperature(fullRoot.controller.gpuTempCelsius, fullRoot.controller.temperatureUnit) : "—")
+                            font.bold: true
+                            font.pixelSize: Kirigami.Theme.defaultFont.pixelSize + 1
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 3
+                            radius: 1.5
+                            color: fullRoot.trackBg
+                            Rectangle {
+                                width: parent.width * Math.max(0.02, Math.min(1.0, (fullRoot.controller.gpuBusyPercent || 0) / 100))
+                                height: parent.height
+                                radius: 1.5
+                                color: fullRoot.gpuAccent
+                            }
+                        }
+                    }
+                }
+
+                // 4. Power & Battery
+                PlasmaComponents3.Button {
+                    id: pwrCard
+                    Layout.fillWidth: true
+                    implicitHeight: 64
+                    Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Open Power and Battery details")
+                    onClicked: fullRoot.controller.launchStudioApp("power", "battery")
+
+                    contentItem: ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 6
+                        spacing: 2
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+                            Rectangle { width: 6; height: 6; radius: 3; color: fullRoot.powerAccent }
+                            PlasmaComponents3.Label {
+                                text: fullRoot.controller.batteryPresent
+                                      ? KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Battery")
+                                      : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Power")
+                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                                opacity: 0.8
+                                Layout.fillWidth: true
+                            }
+                            PlasmaComponents3.Label {
+                                text: fullRoot.controller.batteryPresent
+                                      ? Math.round(fullRoot.controller.batteryPercent) + "%"
+                                      : (fullRoot.controller.onAcPower ? "AC" : "")
+                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                                color: fullRoot.powerAccent
+                            }
+                        }
+
+                        PlasmaComponents3.Label {
+                            text: fullRoot.controller.packagePowerAvailable
+                                  ? fullRoot.controller.packageWatts.toFixed(1) + " W" : "—"
+                            font.bold: true
+                            font.pixelSize: Kirigami.Theme.defaultFont.pixelSize + 1
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 3
+                            radius: 1.5
+                            color: fullRoot.trackBg
+                            Rectangle {
+                                width: parent.width * Math.max(0.02, Math.min(1.0, (fullRoot.controller.packageWatts || 0) / 65))
+                                height: parent.height
+                                radius: 1.5
+                                color: fullRoot.powerAccent
                             }
                         }
                     }
                 }
             }
 
-            // 3. Collision-Free Mini Live Sparkline (Dedicated header above Canvas)
+            // ==========================================
+            // 4. MINI LIVE SPARKLINE
+            // ==========================================
             PulseCard {
                 Layout.fillWidth: true
                 implicitHeight: sparkCol.implicitHeight + padding * 2
-                padding: theme.spacingM
+                padding: Kirigami.Units.smallSpacing * 1.5
 
                 ColumnLayout {
                     id: sparkCol
@@ -743,7 +545,7 @@ Item {
                         spacing: 6
                         PlasmaComponents3.Label {
                             text: fullRoot.sparkChannelDescription()
-                            font: Kirigami.Theme.smallFont
+                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                             opacity: 0.8
                             Layout.fillWidth: true
                             elide: Text.ElideRight
@@ -756,6 +558,7 @@ Item {
                         }
                     }
 
+                    // Channel selector buttons
                     Flow {
                         Layout.fillWidth: true
                         spacing: 4
@@ -764,7 +567,7 @@ Item {
                                 { key: "temp", label: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Temp"), objName: "sparkChannelTempButton" },
                                 { key: "cpu", label: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "CPU"), objName: "sparkChannelCpuButton" },
                                 { key: "psi", label: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Responsiveness"), objName: "sparkChannelPsiButton" },
-                                { key: "power", label: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "CPU package"), objName: "sparkChannelPowerButton" },
+                                { key: "power", label: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Power"), objName: "sparkChannelPowerButton" },
                                 { key: "battery", label: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Battery"), objName: "sparkChannelBatteryButton" }
                             ]
                             delegate: PlasmaComponents3.ToolButton {
@@ -784,13 +587,14 @@ Item {
                         }
                     }
 
+                    // Sparkline Canvas
                     Canvas {
                         id: miniSparkCanvas
                         Layout.fillWidth: true
-                        Layout.preferredHeight: Kirigami.Units.gridUnit * 3.5
+                        Layout.preferredHeight: Kirigami.Units.gridUnit * 3
                         Accessible.role: Accessible.Graphic
                         Accessible.name: fullRoot.sparkChannelDescription()
-                        Accessible.description: fullRoot.sparkChannelNowText() + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", ". Missing readings and recording pauses appear as gaps.")
+                        Accessible.description: fullRoot.sparkChannelNowText()
 
                         Connections {
                             target: fullRoot.controller
@@ -859,44 +663,77 @@ Item {
                 }
             }
 
-            // 4. Power Profile Quick Switcher
-            ColumnLayout {
+            // ==========================================
+            // 5. POWER PROFILE QUICK SELECTOR
+            // ==========================================
+            RowLayout {
+                visible: fullRoot.controller.powerProfileServiceAvailable && fullRoot.controller.availablePowerProfiles.length > 0
                 Layout.fillWidth: true
-                spacing: Kirigami.Units.smallSpacing
+                spacing: 6
 
                 PlasmaComponents3.Label {
-                    Layout.fillWidth: true
-                    text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Power profile: ") + (fullRoot.controller.powerProfileChangePending ? "Changing…"
-                          : (fullRoot.controller.activePowerProfile || KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable")))
+                    text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Profile:")
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                     font.bold: true
-                    opacity: 0.85
+                    opacity: 0.8
                 }
 
-                Flow {
-                    Layout.fillWidth: true
-                    spacing: Kirigami.Units.smallSpacing
-                    Repeater {
-                        model: fullRoot.controller.availablePowerProfiles
-                        delegate: PlasmaComponents3.Button {
-                            required property string modelData
-                            text: modelData
-                            checked: fullRoot.controller.activePowerProfile === modelData
-                            checkable: true
-                            enabled: fullRoot.controller.powerProfileServiceAvailable && !fullRoot.controller.powerProfileChangePending
-                            Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Select ") + modelData + KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", " power profile")
-                            onClicked: fullRoot.controller.setPowerProfile(modelData)
+                Repeater {
+                    model: fullRoot.controller.availablePowerProfiles
+                    delegate: PlasmaComponents3.Button {
+                        id: pBtn
+                        required property string modelData
+                        text: pBtn.modelData
+                        checkable: true
+                        checked: fullRoot.controller.activePowerProfile === pBtn.modelData
+                        enabled: !fullRoot.controller.powerProfileChangePending
+                        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                        Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Set profile ") + pBtn.modelData
+                        onClicked: fullRoot.controller.setPowerProfile(pBtn.modelData)
+                    }
+                }
+
+                Item { Layout.fillWidth: true }
+            }
+
+            // ==========================================
+            // 6. RECENT INCIDENTS (COMPACT, GROUPED)
+            // ==========================================
+            ColumnLayout {
+                Layout.fillWidth: true
+                visible: (fullRoot.controller.groupedIncidentHistory && fullRoot.controller.groupedIncidentHistory.length > 0)
+                         || (fullRoot.controller.incidentHistory && fullRoot.controller.incidentHistory.length > 0)
+                spacing: 4
+
+                PlasmaComponents3.Label {
+                    text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Recent Incidents")
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                    font.bold: true
+                    opacity: 0.8
+                }
+
+                Repeater {
+                    model: (fullRoot.controller.groupedIncidentHistory && fullRoot.controller.groupedIncidentHistory.length > 0)
+                           ? fullRoot.controller.groupedIncidentHistory.slice(-2).reverse()
+                           : fullRoot.controller.incidentHistory.slice(-2).reverse()
+                    delegate: PlasmaComponents3.Button {
+                        id: incBtn
+                        required property var modelData
+                        Layout.fillWidth: true
+                        text: (incBtn.modelData.count > 1 ? ("[" + incBtn.modelData.count + "×] ") : "")
+                              + (incBtn.modelData.latestTimeString || incBtn.modelData.timeString)
+                              + " · " + incBtn.modelData.headline
+                        icon.name: incBtn.modelData.severity >= 2 || incBtn.modelData.peakSeverity >= 2 ? "dialog-warning" : "dialog-information"
+                        Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Investigate incident: ") + text
+                        onClicked: {
+                            var id = incBtn.modelData.incidentId || (incBtn.modelData.incidentIds ? incBtn.modelData.incidentIds[0] : "")
+                            fullRoot.controller.launchIncident(id)
                         }
                     }
                 }
-                PlasmaComponents3.Label {
-                    visible: !fullRoot.controller.powerProfileServiceAvailable
-                    text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Power profile service unavailable")
-                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                    opacity: 0.7
-                }
             }
 
+            // Measurement details collapsible expander
             PlasmaComponents3.Button {
                 id: qualityToggle
                 Layout.fillWidth: true
@@ -904,7 +741,6 @@ Item {
                 text: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Measurement details")
                 checkable: true
                 Accessible.name: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Show measurement details, sources, and sample times")
-                Accessible.description: KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Expand details for CPU load, CPU temperature, responsiveness index, and CPU package power")
             }
 
             ColumnLayout {
@@ -932,18 +768,6 @@ Item {
                 PlasmaComponents3.Label {
                     Layout.fillWidth: true
                     text: fullRoot.qualityText("packagePower", KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "CPU package power"))
-                    wrapMode: Text.WordWrap
-                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                }
-                PlasmaComponents3.Label {
-                    Layout.fillWidth: true
-                    text: fullRoot.qualityText("batteryDischarge", KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Battery discharge"))
-                    wrapMode: Text.WordWrap
-                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                }
-                PlasmaComponents3.Label {
-                    Layout.fillWidth: true
-                    text: fullRoot.qualityText("netThroughput", KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Network throughput"))
                     wrapMode: Text.WordWrap
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                 }

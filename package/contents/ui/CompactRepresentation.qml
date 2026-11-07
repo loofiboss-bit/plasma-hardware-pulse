@@ -146,7 +146,7 @@ Item {
                     Layout.alignment: Qt.AlignVCenter
                     text: compactRoot.verticalPanel ? compactRoot.temperatureText : compactRoot.panelText
                     elide: Text.ElideRight
-                    font.bold: true
+                    font.weight: Font.Medium
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                 }
             }

@@ -181,6 +181,10 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(QVariantList historySamples READ historySamples NOTIFY telemetryUpdated)
     Q_PROPERTY(QVariantMap historySummary READ historySummary NOTIFY telemetryUpdated)
     Q_PROPERTY(QVariantList incidentHistory READ incidentHistory NOTIFY telemetryUpdated)
+    Q_PROPERTY(QVariantList groupedIncidentHistory READ groupedIncidentHistory NOTIFY telemetryUpdated)
+    Q_PROPERTY(QString hostDistroName READ hostDistroName CONSTANT)
+    Q_PROPERTY(QString hostKernelVersion READ hostKernelVersion CONSTANT)
+    Q_PROPERTY(QString hostDeviceModel READ hostDeviceModel CONSTANT)
     Q_PROPERTY(double historyMaxWatts READ historyMaxWatts NOTIFY telemetryUpdated)
     Q_PROPERTY(double historyMaxDiskMibPerSec READ historyMaxDiskMibPerSec NOTIFY telemetryUpdated)
     Q_PROPERTY(QVariantMap metricMetadata READ metricMetadata NOTIFY telemetryUpdated)
@@ -364,6 +368,10 @@ public:
     Q_INVOKABLE QVariantList historyRecentSeries(const QString &valueKey, const QString &availableKey, int limit) const;
     Q_INVOKABLE QString historyRecentSeriesJson(const QString &valueKey, const QString &availableKey, int limit) const;
     QVariantList incidentHistory() const { return m_incidentHistoryVariant; }
+    QVariantList groupedIncidentHistory() const;
+    QString hostDistroName() const;
+    QString hostKernelVersion() const;
+    QString hostDeviceModel() const;
     double historyMaxWatts() const { return remoteValue<double>("historyMaxWatts", m_historyMaxWatts); }
     double historyMaxDiskMibPerSec() const { return remoteValue<double>("historyMaxDiskMibPerSec", m_historyMaxDiskMibPerSec); }
     QVariantMap metricMetadata() const;

@@ -1,6 +1,8 @@
 #include "pulsetelemetrycontroller.h"
 #include "kernellogreader.h"
 
+#include <QSysInfo>
+#include <QFile>
 #include <KNotification>
 #include "collectorprotocol.h"
 #include <QMetaProperty>
@@ -1455,6 +1457,83 @@ void PulseTelemetryController::loadIncidentKernelLogs(const QString &incidentId)
 QVariantMap PulseTelemetryController::compareIncidents(const QString &incidentIdA, const QString &incidentIdB) const
 {
     return m_recorder.compareIncidents(incidentIdA, incidentIdB);
+}
+
+QString PulseTelemetryController::hostDistroName() const
+{
+    const QString name = QSysInfo::prettyProductName();
+    return name.isEmpty() ? QStringLiteral("Linux") : name;
+}
+
+QString PulseTelemetryController::hostKernelVersion() const
+{
+    return QSysInfo::kernelType() + QStringLiteral(" ") + QSysInfo::kernelVersion();
+}
+
+QString PulseTelemetryController::hostDeviceModel() const
+{
+    QFile dmiFile(QStringLiteral("/sys/class/dmi/id/product_name"));
+    if (dmiFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        const QString name = QString::fromUtf8(dmiFile.readLine()).trimmed();
+        if (!name.isEmpty() && name != QStringLiteral("System Product Name") && name != QStringLiteral("None")) {
+            return name;
+        }
+    }
+    return QSysInfo::machineHostName();
+}
+
+QVariantList PulseTelemetryController::groupedIncidentHistory() const
+{
+    const QVariantList list = incidentHistory();
+    if (list.isEmpty()) {
+        return {};
+    }
+
+    QVariantList grouped;
+    for (const auto &item : list) {
+        const QVariantMap current = item.toMap();
+        const QString headline = current.value(QStringLiteral("headline")).toString();
+        const QString ruleId = current.value(QStringLiteral("ruleId")).toString();
+        const qint64 startMs = current.value(QStringLiteral("startMs")).toLongLong();
+        const qint64 endMs = current.value(QStringLiteral("endMs")).toLongLong();
+        const int sev = current.value(QStringLiteral("severity")).toInt();
+        const double duration = current.value(QStringLiteral("durationSeconds")).toDouble();
+        const QString id = current.value(QStringLiteral("incidentId")).toString();
+
+        if (!grouped.isEmpty()) {
+            QVariantMap lastGroup = grouped.last().toMap();
+            const QString lastHeadline = lastGroup.value(QStringLiteral("headline")).toString();
+            const QString lastRule = lastGroup.value(QStringLiteral("ruleId")).toString();
+
+            if ((!ruleId.isEmpty() && ruleId == lastRule) || (ruleId.isEmpty() && headline == lastHeadline)) {
+                int count = lastGroup.value(QStringLiteral("count")).toInt() + 1;
+                lastGroup.insert(QStringLiteral("count"), count);
+                lastGroup.insert(QStringLiteral("peakSeverity"), std::max(lastGroup.value(QStringLiteral("peakSeverity")).toInt(), sev));
+                lastGroup.insert(QStringLiteral("totalDurationSeconds"), lastGroup.value(QStringLiteral("totalDurationSeconds")).toDouble() + duration);
+                lastGroup.insert(QStringLiteral("lastTimestampMs"), endMs > 0 ? endMs : startMs);
+                QStringList ids = lastGroup.value(QStringLiteral("incidentIds")).toStringList();
+                ids.append(id);
+                lastGroup.insert(QStringLiteral("incidentIds"), ids);
+                if (current.contains(QStringLiteral("timeString"))) {
+                    lastGroup.insert(QStringLiteral("latestTimeString"), current.value(QStringLiteral("timeString")));
+                }
+                grouped.last() = lastGroup;
+                continue;
+            }
+        }
+
+        QVariantMap group = current;
+        group.insert(QStringLiteral("count"), 1);
+        group.insert(QStringLiteral("peakSeverity"), sev);
+        group.insert(QStringLiteral("totalDurationSeconds"), duration);
+        group.insert(QStringLiteral("firstTimestampMs"), startMs);
+        group.insert(QStringLiteral("lastTimestampMs"), endMs > 0 ? endMs : startMs);
+        group.insert(QStringLiteral("incidentIds"), QStringList{id});
+        group.insert(QStringLiteral("latestTimeString"), current.value(QStringLiteral("timeString")));
+        grouped.append(group);
+    }
+
+    return grouped;
 }
 
 } // namespace LoofiPulse

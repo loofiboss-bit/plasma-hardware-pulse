@@ -24,6 +24,11 @@
   </developer>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.17.0" date="2026-11-07" type="development">
+      <description>
+        <p>Comprehensive UX/UI modernization and genuine hardware telemetry integration: 5 core overview pillars (CPU, Memory, PSI, GPU, Power &amp; Battery), zero placeholder values, dynamic dual-line activity chart, compact and focused Plasma 6 widget popup with consolidated incident controls, dynamic host system detection, and grouped incident history clustering repeated episodes.</p>
+      </description>
+    </release>
     <release version="0.16.0" date="2026-11-07" type="development">
       <description>
         <p>Comprehensive UX/UI simplification and KDE-native Breeze/Kirigami overhaul: simplified 4-section navigation with Kirigami.GlobalDrawer, clean KDE System Monitor-style overview, consolidated Hardware Monitor subtabs, split unit charts in Flight Recorder, lightweight Plasma 6 widget popup without animations or glowing halos, true Linux PSI stall metrics, and removal of AI-slop visual clutter.</p>
