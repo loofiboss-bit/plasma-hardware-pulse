@@ -10,11 +10,16 @@ Kirigami.ScrollablePage {
     id: psiPage
     objectName: "pressurePage"
     title: KI18n.i18n("Memory & Pressure")
+    globalToolBarStyle: Kirigami.ApplicationHeaderStyle.None
     titleDelegate: Item {
         width: parent ? parent.width : 0
         height: 0
         visible: false
     }
+    topPadding: 16
+    bottomPadding: 16
+    leftPadding: 16
+    rightPadding: 16
 
     required property var controller
 
@@ -93,14 +98,53 @@ Kirigami.ScrollablePage {
         Layout.fillWidth: true
         spacing: Kirigami.Units.largeSpacing
 
-        PulsePageHeader {
-            id: pageHeader
+        // Page Title & Header Strip (consistent with Overview)
+        RowLayout {
             Layout.fillWidth: true
-            title: KI18n.i18n("Memory & Pressure")
-            subtitle: KI18n.i18n("Linux Pressure Stall Information (PSI), responsiveness score and ZRAM compression")
-            selectedMinutes: Math.max(5, Math.round(psiPage.controller.historyRetentionSeconds / 60))
-            onTimeWindowSelected: function(minutes) {
-                psiPage.controller.historyRetentionSeconds = minutes * 60
+            spacing: 12
+
+            ColumnLayout {
+                spacing: 2
+                QQC2.Label {
+                    text: KI18n.i18n("Prestanda & Belastning")
+                    font.bold: true
+                    font.pointSize: 18
+                    color: "#ffffff"
+                }
+                QQC2.Label {
+                    text: KI18n.i18n("Systemtryck (PSI), minnesallokering, ZRAM och processorbelastning i realtid.")
+                    font.pointSize: 9
+                    color: "#94a3b8"
+                }
+            }
+
+            Item { Layout.fillWidth: true }
+
+            // Live Sampling Frequency Pill
+            Rectangle {
+                radius: 12
+                color: "#161f2c"
+                border.width: 1
+                border.color: "#1e293b"
+                implicitHeight: 26
+                implicitWidth: livePsiRow.implicitWidth + 18
+
+                RowLayout {
+                    id: livePsiRow
+                    anchors.centerIn: parent
+                    spacing: 6
+                    Kirigami.Icon {
+                        source: "view-statistics"
+                        implicitWidth: 12
+                        implicitHeight: 12
+                        color: "#38bdf8"
+                    }
+                    QQC2.Label {
+                        text: KI18n.i18n("Live · %1 ms", (psiPage.controller.pollIntervalMs || 1000).toLocaleString())
+                        font.pointSize: 8.5
+                        color: "#e2e8f0"
+                    }
+                }
             }
         }
 
@@ -108,6 +152,7 @@ Kirigami.ScrollablePage {
             id: psiChartCard
             Layout.fillWidth: true
             visible: (psiPage.controller.historySamples || []).length > 2
+            Layout.preferredHeight: visible ? -1 : 0
             padding: theme.spacingM
 
             ColumnLayout {
@@ -864,144 +909,39 @@ Kirigami.ScrollablePage {
             }
         }
 
-        // 4. Concurrent Resource Use (Process Radar Table)
-        Flow {
+        // 4. Process Resource Attribution (Clean Breeze Card)
+        PulseCard {
             Layout.fillWidth: true
-            spacing: Kirigami.Units.smallSpacing
+            theme: psiPage.theme
+            padding: psiPage.theme.spacingM
 
-            Kirigami.Heading {
-                level: 3
-                id: processesHeading
-                objectName: "section_processes"
-                focus: true
-                text: KI18n.i18n("Concurrent resource use")
-            }
+            ColumnLayout {
+                anchors.fill: parent
+                spacing: psiPage.theme.spacingS
 
-            Repeater {
-                model: [
-                    { key: "combined", label: KI18n.i18n("Sort: Combined") },
-                    { key: "cpu", label: KI18n.i18n("Sort: CPU %") },
-                    { key: "rss", label: KI18n.i18n("Sort: Memory RSS") },
-                    { key: "disk", label: KI18n.i18n("Sort: Disk Wait") }
-                ]
-                delegate: PulseButton {
-                    id: sortBtn
-                    required property var modelData
-                    text: sortBtn.modelData.label
-                    checkable: true
-                    checked: psiPage.processSortMode === sortBtn.modelData.key
-                    onClicked: psiPage.processSortMode = sortBtn.modelData.key
+                RowLayout {
+                    Layout.fillWidth: true
+                    Kirigami.Heading {
+                        level: 3
+                        id: processesHeading
+                        objectName: "section_processes"
+                        focus: true
+                        text: KI18n.i18n("Process Resource Attribution")
+                    }
+                    Item { Layout.fillWidth: true }
+                    QQC2.Button {
+                        icon.name: "utilities-system-monitor"
+                        text: KI18n.i18n("Open System Monitor")
+                        onClicked: psiPage.controller.openSystemMonitor()
+                    }
                 }
-            }
 
-            PulseButton {
-                icon.name: "utilities-system-monitor"
-                text: KI18n.i18n("Open System Monitor")
-                onClicked: psiPage.controller.openSystemMonitor()
-            }
-        }
-
-        Repeater {
-            model: psiPage.sortedProcesses()
-            delegate: Rectangle {
-                id: processCard
-                required property var modelData
-                readonly property string identity: String(modelData.pid) + ":" + String(modelData.startTimeTicks)
-                readonly property bool expanded: psiPage.expandedProcessIdentity === identity
-                Layout.fillWidth: true
-                implicitHeight: pCardCol.implicitHeight + Kirigami.Units.smallSpacing * 2
-                radius: theme.innerRadius
-                color: processCard.expanded ? theme.elevatedSurfaceColor : theme.surfaceColor
-                border.width: 1
-                border.color: processCard.expanded ? Kirigami.Theme.highlightColor : theme.cardBorderColor
-
-                ColumnLayout {
-                    id: pCardCol
-                    anchors.fill: parent
-                    anchors.margins: Kirigami.Units.smallSpacing
-                    spacing: 4
-
-                    QQC2.ToolButton {
-                        Layout.fillWidth: true
-                        objectName: "processRow"
-                        icon.name: processCard.expanded ? "arrow-down" : "arrow-right"
-                        text: processCard.modelData.name + " · " + Number(processCard.modelData.cpuPercent).toFixed(1)
-                              + KI18n.i18n("% CPU · ") + Math.round(Number(processCard.modelData.rssMegabytes)) + KI18n.i18n(" MiB")
-                              + (processCard.modelData.inDiskWait ? KI18n.i18n(" · DISK WAIT (D)") : "")
-                        checkable: true
-                        checked: processCard.expanded
-                        Accessible.name: text + (checked ? KI18n.i18n(". Collapse process details") : KI18n.i18n(". Expand process details"))
-                        onClicked: psiPage.expandedProcessIdentity = processCard.expanded ? "" : processCard.identity
-
-                        contentItem: RowLayout {
-                            spacing: 8
-                            Kirigami.Icon {
-                                source: processCard.expanded ? "arrow-down" : "arrow-right"
-                                Layout.preferredWidth: 12
-                                Layout.preferredHeight: 12
-                                color: Kirigami.Theme.disabledTextColor
-                            }
-                            QQC2.Label {
-                                text: processCard.modelData.name
-                                font.bold: true
-                                color: Kirigami.Theme.textColor
-                                Layout.fillWidth: true
-                                elide: Text.ElideRight
-                            }
-                            Rectangle {
-                                visible: processCard.modelData.inDiskWait
-                                radius: theme.pillRadius
-                                color: theme.accentTint(Kirigami.Theme.negativeTextColor, 0.20)
-                                border.width: 1
-                                border.color: Kirigami.Theme.negativeTextColor
-                                implicitWidth: dwLbl.implicitWidth + 8
-                                implicitHeight: dwLbl.implicitHeight + 4
-                                QQC2.Label { id: dwLbl; anchors.centerIn: parent; text: KI18n.i18n("DISK WAIT (D)"); font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 2); font.bold: true; color: Kirigami.Theme.negativeTextColor }
-                            }
-                            Rectangle {
-                                radius: theme.pillRadius
-                                color: theme.accentTint(theme.cpuAccent, 0.14)
-                                border.width: 1
-                                border.color: theme.cpuAccent
-                                implicitWidth: cpuPillLbl.implicitWidth + 8
-                                implicitHeight: cpuPillLbl.implicitHeight + 4
-                                QQC2.Label { id: cpuPillLbl; anchors.centerIn: parent; text: Number(processCard.modelData.cpuPercent).toFixed(1) + KI18n.i18n("% CPU"); font.pixelSize: Kirigami.Theme.smallFont.pixelSize; font.bold: true; color: theme.cpuAccent }
-                            }
-                            Rectangle {
-                                radius: theme.pillRadius
-                                color: theme.subtleSurfaceColor
-                                border.width: 1
-                                border.color: theme.subtleBorderColor
-                                implicitWidth: rssPillLbl.implicitWidth + 8
-                                implicitHeight: rssPillLbl.implicitHeight + 4
-                                QQC2.Label { id: rssPillLbl; anchors.centerIn: parent; text: Math.round(Number(processCard.modelData.rssMegabytes)) + KI18n.i18n(" MiB"); font.pixelSize: Kirigami.Theme.smallFont.pixelSize; color: Kirigami.Theme.disabledTextColor }
-                            }
-                        }
-                    }
-
-                    Rectangle {
-                        visible: processCard.expanded
-                        Layout.fillWidth: true
-                        implicitHeight: expDetailsCol.implicitHeight + 12
-                        radius: theme.innerRadius
-                        color: theme.cardNestedBg
-
-                        ColumnLayout {
-                            id: expDetailsCol
-                            anchors.fill: parent
-                            anchors.margins: 6
-                            spacing: 2
-                            QQC2.Label {
-                                Layout.fillWidth: true
-                                wrapMode: Text.WordWrap
-                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                                text: KI18n.i18n("PID ") + processCard.modelData.pid + KI18n.i18n(" · start ticks ") + processCard.modelData.startTimeTicks
-                                      + KI18n.i18n(" · observed ") + (Number(processCard.modelData.observedAtMs) > 0
-                                          ? new Date(Number(processCard.modelData.observedAtMs)).toLocaleTimeString() : KI18n.i18n("Unavailable"))
-                                      + KI18n.i18n(". Concurrent resource use does not establish causation.")
-                            }
-                        }
-                    }
+                QQC2.Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: psiPage.theme.mutedTextColor
+                    font.pointSize: psiPage.theme.fontCaption
+                    text: KI18n.i18n("Process inspection is read-only. For sorting, filtering, and examining per-process threads and memory allocations, switch to the dedicated Processes view or open KDE System Monitor.")
                 }
             }
         }

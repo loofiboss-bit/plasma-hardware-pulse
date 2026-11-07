@@ -4,8 +4,8 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import org.kde.kirigami as Kirigami
 
-// Elevated surface used by every Pulse card. Content is placed in the
-// padded area; `interactive` enables hover lift and the `clicked` signal.
+// Clean Breeze surface used by Pulse components.
+// Flat, responsive, without shadows, gradient washes, or hover-lift animations.
 Item {
     id: card
 
@@ -19,7 +19,7 @@ Item {
         positiveColor: card.Kirigami.Theme.positiveTextColor
     }
     property bool interactive: false
-    property real padding: theme.spacingL
+    property real padding: theme.spacingM
     property color surfaceColor: theme.cardColor
     property color accentColor: "transparent"
     property real accentStrength: 0
@@ -28,46 +28,35 @@ Item {
 
     signal clicked()
 
-    implicitWidth: contentArea.childrenRect.width + padding * 2
-    implicitHeight: contentArea.childrenRect.height + padding * 2
+    implicitWidth: Math.max(contentArea.implicitWidth, contentArea.childrenRect.width) + padding * 2
+    implicitHeight: {
+        var h = 0
+        for (var i = 0; i < contentArea.children.length; ++i) {
+            var c = contentArea.children[i]
+            var ch = (c.implicitHeight > 0) ? c.implicitHeight : c.height
+            if (ch > h) h = ch
+        }
+        return Math.max(h, contentArea.childrenRect.height) + padding * 2
+    }
     activeFocusOnTab: interactive
 
-    Kirigami.ShadowedRectangle {
+    Rectangle {
         id: surface
         anchors.fill: parent
-        anchors.topMargin: card.interactive && (card.hovered || card.activeFocus) ? -1 : 0
-        anchors.bottomMargin: card.interactive && (card.hovered || card.activeFocus) ? 1 : 0
-        radius: card.theme.cardRadius
-        color: card.surfaceColor
+        radius: card.theme.innerRadius
+        color: card.interactive && (card.hovered || card.activeFocus)
+               ? card.theme.elevatedSurfaceColor
+               : card.surfaceColor
         border.width: 1
-        border.color: card.activeFocus ? Kirigami.Theme.focusColor
-            : (card.interactive && card.hovered ? card.theme.cardHoverBorderColor : card.theme.cardBorderColor)
-        shadow.size: card.interactive && card.hovered ? 18 : 10
-        shadow.yOffset: card.interactive && card.hovered ? 4 : 2
-        shadow.color: card.theme.cardShadowColor
-
-        Behavior on anchors.topMargin { NumberAnimation { duration: card.theme.durationShort; easing.type: Easing.OutCubic } }
-        Behavior on shadow.size { NumberAnimation { duration: card.theme.durationShort } }
-
-        // Soft accent wash from the top-left corner (used for severity).
-        Rectangle {
-            anchors.fill: parent
-            radius: parent.radius
-            visible: card.accentStrength > 0
-            gradient: Gradient {
-                orientation: Gradient.Horizontal
-                GradientStop { position: 0.0; color: card.theme.accentTint(card.accentColor, card.accentStrength) }
-                GradientStop { position: 0.55; color: "transparent" }
-            }
-        }
+        border.color: card.activeFocus
+                      ? Kirigami.Theme.focusColor
+                      : (card.interactive && card.hovered ? card.theme.cardHoverBorderColor : card.theme.cardBorderColor)
     }
 
     Item {
         id: contentArea
         anchors.fill: parent
         anchors.margins: card.padding
-        anchors.topMargin: card.padding + surface.anchors.topMargin
-        anchors.bottomMargin: card.padding - surface.anchors.topMargin
     }
 
     HoverHandler {

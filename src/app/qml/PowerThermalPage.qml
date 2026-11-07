@@ -11,11 +11,16 @@ Kirigami.ScrollablePage {
     id: powerPage
     objectName: "powerPage"
     title: KI18n.i18n("Power & Cooling")
+    globalToolBarStyle: Kirigami.ApplicationHeaderStyle.None
     titleDelegate: Item {
         width: parent ? parent.width : 0
         height: 0
         visible: false
     }
+    topPadding: 16
+    bottomPadding: 16
+    leftPadding: 16
+    rightPadding: 16
     required property var controller
 
     function formatTemp(celsius) {
@@ -89,14 +94,81 @@ Kirigami.ScrollablePage {
         Layout.fillWidth: true
         spacing: Kirigami.Units.largeSpacing
 
-        PulsePageHeader {
-            id: pageHeader
+        // Page Title & Header Strip (consistent with Overview)
+        RowLayout {
             Layout.fillWidth: true
-            title: KI18n.i18n("Power & Cooling")
-            subtitle: KI18n.i18n("CPU power envelope, GPU state, battery levels, cooling fans and thermal sensors")
-            selectedMinutes: Math.max(5, Math.round(powerPage.controller.historyRetentionSeconds / 60))
-            onTimeWindowSelected: function(minutes) {
-                powerPage.controller.historyRetentionSeconds = minutes * 60
+            spacing: 12
+
+            ColumnLayout {
+                spacing: 2
+                QQC2.Label {
+                    text: KI18n.i18n("Effekt & Kylning")
+                    font.bold: true
+                    font.pointSize: 18
+                    color: "#ffffff"
+                }
+                QQC2.Label {
+                    text: KI18n.i18n("Energiförbrukning, temperaturer, fläkthastigheter och energiprofiler i realtid.")
+                    font.pointSize: 9
+                    color: "#94a3b8"
+                }
+            }
+
+            Item { Layout.fillWidth: true }
+
+            // Active Power Profile Pill
+            Rectangle {
+                radius: 12
+                color: "#161f2c"
+                border.width: 1
+                border.color: "#1e293b"
+                implicitHeight: 26
+                implicitWidth: profRow.implicitWidth + 18
+
+                RowLayout {
+                    id: profRow
+                    anchors.centerIn: parent
+                    spacing: 6
+                    Kirigami.Icon {
+                        source: "battery-profile-performance"
+                        implicitWidth: 12
+                        implicitHeight: 12
+                        color: "#22c55e"
+                    }
+                    QQC2.Label {
+                        text: (powerPage.controller.activePowerProfile ? powerPage.controller.activePowerProfile.toUpperCase() : "BALANCED")
+                        font.bold: true
+                        font.pointSize: 8
+                        color: "#22c55e"
+                    }
+                }
+            }
+
+            // Live Sampling Frequency Pill
+            Rectangle {
+                radius: 12
+                color: "#161f2c"
+                border.width: 1
+                border.color: "#1e293b"
+                implicitHeight: 26
+                implicitWidth: liveRow.implicitWidth + 18
+
+                RowLayout {
+                    id: liveRow
+                    anchors.centerIn: parent
+                    spacing: 6
+                    Kirigami.Icon {
+                        source: "view-statistics"
+                        implicitWidth: 12
+                        implicitHeight: 12
+                        color: "#38bdf8"
+                    }
+                    QQC2.Label {
+                        text: KI18n.i18n("Live · %1 ms", (powerPage.controller.pollIntervalMs || 1000).toLocaleString())
+                        font.pointSize: 8.5
+                        color: "#e2e8f0"
+                    }
+                }
             }
         }
 
@@ -104,6 +176,7 @@ Kirigami.ScrollablePage {
             id: powerChartCard
             Layout.fillWidth: true
             visible: (powerPage.controller.historySamples || []).length > 2
+            Layout.preferredHeight: visible ? -1 : 0
             padding: theme.spacingM
 
             ColumnLayout {

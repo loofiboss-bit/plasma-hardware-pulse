@@ -108,52 +108,17 @@ Item {
                 anchors.fill: parent
                 spacing: Kirigami.Units.smallSpacing
 
-                // Style 0 & 1: Status dot with pulsating glow on severity >= 2
+                // Style 0, 1 & 2: Clean Breeze status dot (no animations or halos in v0.16)
                 Item {
-                    visible: compactRoot.panelDisplayStyle !== 2
                     Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredWidth: 9
-                    Layout.preferredHeight: 9
-
-                    Rectangle {
-                        id: pulseGlow
-                        visible: compactRoot.motionAllowed && compactRoot.controller.verdictSeverity >= 2
-                        anchors.centerIn: parent
-                        width: 13
-                        height: 13
-                        radius: 6.5
-                        color: compactRoot.badgeColor(compactRoot.controller.verdictSeverity)
-                        opacity: 0.0
-
-                        SequentialAnimation on opacity {
-                            running: compactRoot.motionAllowed && compactRoot.visible && compactRoot.controller.verdictSeverity >= 2
-                            loops: Animation.Infinite
-                            NumberAnimation { to: 0.65; duration: 800; easing.type: Easing.InOutQuad }
-                            NumberAnimation { to: 0.10; duration: 800; easing.type: Easing.InOutQuad }
-                        }
-                    }
+                    Layout.preferredWidth: 8
+                    Layout.preferredHeight: 8
 
                     Rectangle {
                         anchors.centerIn: parent
                         width: 7
                         height: 7
                         radius: 3.5
-                        color: compactRoot.badgeColor(compactRoot.controller.verdictSeverity)
-                    }
-                }
-
-                // Style 2: Ring gauge
-                Item {
-                    id: ringGaugeWrapper
-                    visible: compactRoot.panelDisplayStyle === 2
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredWidth: 16
-                    Layout.preferredHeight: 16
-
-                    PulseRingGauge {
-                        anchors.fill: parent
-                        theme: pulseTheme
-                        value: compactRoot.controller.cpuLoadAvailable ? (compactRoot.controller.cpuLoadPercent / 100.0) : 0.0
                         color: compactRoot.badgeColor(compactRoot.controller.verdictSeverity)
                     }
                 }

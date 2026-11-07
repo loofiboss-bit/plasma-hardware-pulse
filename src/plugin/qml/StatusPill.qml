@@ -33,7 +33,6 @@ Rectangle {
     Accessible.role: Accessible.StaticText
     Accessible.name: text
 
-    Behavior on color { ColorAnimation { duration: pill.theme.durationLong } }
 
     Row {
         anchors.centerIn: parent

@@ -28,9 +28,9 @@ PulseCard {
     property bool dense: false
 
     interactive: true
-    padding: dense ? theme.spacingM : theme.spacingL
-    accentColor: theme.severityColor(severity)
-    accentStrength: severity > 0 && severity < 4 ? (theme.isDark ? 0.10 : 0.07) : 0
+    padding: dense ? theme.spacingS : theme.spacingM
+    accentColor: "transparent"
+    accentStrength: 0
 
     implicitWidth: Kirigami.Units.gridUnit * (dense ? 8 : 13)
     implicitHeight: body.implicitHeight + padding * 2 + trendLine.height

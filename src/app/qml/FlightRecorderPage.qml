@@ -12,11 +12,16 @@ Kirigami.ScrollablePage {
     id: flightPage
     objectName: "historyPage"
     title: KI18n.i18n("History")
+    globalToolBarStyle: Kirigami.ApplicationHeaderStyle.None
     titleDelegate: Item {
         width: parent ? parent.width : 0
         height: 0
         visible: false
     }
+    topPadding: 16
+    bottomPadding: 16
+    leftPadding: 16
+    rightPadding: 16
 
     required property var controller
     signal saveSessionRequested()
@@ -156,21 +161,6 @@ Kirigami.ScrollablePage {
     ColumnLayout {
         Layout.fillWidth: true
         spacing: Kirigami.Units.largeSpacing
-
-        PulsePageHeader {
-            id: pageHeader
-            Layout.fillWidth: true
-            title: KI18n.i18n("History")
-            subtitle: KI18n.i18n("Blackbox telemetry recorder, incident timelines, and long-term trends")
-            selectedMinutes: Math.max(5, Math.round(flightPage.controller.historyRetentionSeconds / 60))
-            showSaveButton: true
-            showIncidentButton: true
-            onTimeWindowSelected: function(minutes) {
-                flightPage.controller.historyRetentionSeconds = minutes * 60
-            }
-            onSaveRequested: flightPage.saveSessionRequested()
-            onIncidentRequested: flightPage.controller.recordManualIncident()
-        }
 
         // Mode Selector: Flight Recorder vs Long-Term Trends
         RowLayout {
@@ -1312,7 +1302,7 @@ Kirigami.ScrollablePage {
                                 required property var modelData
                                 Layout.fillWidth: true; wrapMode: Text.WordWrap
                                 text: (modelData.name || KI18n.i18n("Identity omitted")) + (modelData.pid ? KI18n.i18n(" · PID ") + modelData.pid : "")
-                                      + " · " + (modelData.cpuAvailable === false ? KI18n.i18n("CPU warming up") : Number(modelData.cpuPercent || 0).toFixed(1) + KI18n.i18n("% CPU"))
+                                      + " · " + (modelData.cpuAvailable === false ? KI18n.i18n("CPU initializing…") : Number(modelData.cpuPercent || 0).toFixed(1) + KI18n.i18n("% CPU"))
                                       + " · " + Number(modelData.rssMegabytes || 0).toFixed(1) + KI18n.i18n(" MiB")
                                       + KI18n.i18n(" · Observed ") + new Date(Number(modelData.observedAtMs)).toLocaleTimeString()
                             }
@@ -1359,7 +1349,7 @@ Kirigami.ScrollablePage {
                         QQC2.Label {
                             visible: !flightPage.controller.incidentKernelLogsLoading
                                      && (flightPage.controller.incidentKernelLogsError || "").length > 0
-                            text: KI18n.i18n(flightPage.controller.incidentKernelLogsError)
+                            text: flightPage.controller.incidentKernelLogsError ? KI18n.i18n(flightPage.controller.incidentKernelLogsError) : ""
                             color: Kirigami.Theme.disabledTextColor
                             wrapMode: Text.WordWrap
                         }
@@ -1484,13 +1474,16 @@ Kirigami.ScrollablePage {
             }
         }
     }
+    }
 
     QQC2.Dialog {
         id: compareDialog
         title: KI18n.i18n("Compare Recorded Incidents")
         modal: true
         standardButtons: QQC2.Dialog.Close
-        anchors.centerIn: parent
+        parent: QQC2.Overlay.overlay
+        x: Math.round((parent.width - width) / 2)
+        y: Math.round((parent.height - height) / 2)
         implicitWidth: Math.min(flightPage.width - Kirigami.Units.gridUnit * 2, Kirigami.Units.gridUnit * 38)
 
         property string idA: ""
@@ -1664,6 +1657,5 @@ Kirigami.ScrollablePage {
                 }
             }
         }
-    }
 }
 }

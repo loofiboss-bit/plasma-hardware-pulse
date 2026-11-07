@@ -410,7 +410,7 @@ CausalVerdict CausalDiagnosisEngine::evaluateDevices(
     if (!cpuLoadValid || !cpu.temperatureAvailable || !psiMem.responsivenessAvailable) {
         QStringList unavailable;
         if (!cpuLoadValid) unavailable.append(cpu.loadAvailable
-            ? QStringLiteral("CPU load samples are warming up")
+            ? QStringLiteral("CPU load samples are initializing")
             : QStringLiteral("CPU load"));
         if (!cpu.temperatureAvailable) unavailable.append(QStringLiteral("CPU temperature"));
         if (!psiMem.responsivenessAvailable) unavailable.append(QStringLiteral("system pressure"));

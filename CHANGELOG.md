@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.16.0 — UX/UI Simplification & KDE-Native Overhaul (2026-11-07)
+
+### Added
+- **Refined Navigation Sidebar**: 9-section sidebar (`Översikt`, `Prestanda`, `Effekt & Kylning`, `Grafik (GPU)`, `Batteri`, `Sensorer`, `Historik & Logg`, `Profiler`, `Inställningar`) and host system identity badge (Fedora Linux, KDE Plasma, Kernel, hardware model).
+- **Streamlined Overview Dashboard**:
+  - Live real-time dual-line chart (`Systembelastning (realtid)`) for CPU and GPU temperatures.
+  - 5-metric overview cards for CPU, GPU, Power, Battery, and Cooling.
+  - Two-column bottom layout with per-core CPU tiles, hardware temperature sensors, interactive power profile switcher, and individual battery monitors.
+- **Flight Recorder Status Bar**: Bottom status line showing recording status, sampling frequency, and timestamps.
+- **True Linux PSI Metrics**: Direct exposure of memory, CPU, and I/O pressure stall percentages (`some avg10 / full avg10`) replacing synthetic scores.
+
+### Changed
+- Replaced misleading "Warming up" status label with "Initializing...".
+- Eliminated redundant process listing from Memory view in favor of dedicated Processes view.
+- Removed duplicate modal settings dialog in favor of dedicated `SettingsPage`.
+- Removed `PulseCard` hover-lift animations, shadows, and gradient overlays in favor of clean Breeze surfaces.
+- Updated Swedish translations for 100% complete localized coverage.
+
 ## 0.15.0 — UI/UX Redesign & Visual Elevation (2026-11-06)
 
 ### Added

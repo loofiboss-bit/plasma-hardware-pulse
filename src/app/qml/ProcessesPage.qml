@@ -10,11 +10,16 @@ Kirigami.Page {
     id: page
     objectName: "processesPage"
     title: KI18n.i18n("Processes")
+    globalToolBarStyle: Kirigami.ApplicationHeaderStyle.None
     titleDelegate: Item {
         width: parent ? parent.width : 0
         height: 0
         visible: false
     }
+    topPadding: 16
+    bottomPadding: 16
+    leftPadding: 16
+    rightPadding: 16
     required property var controller
     property string selectedIdentity: ""
     property var lastSelection: null
@@ -205,7 +210,7 @@ Kirigami.Page {
                 width: processList.width
                 highlighted: page.selectedIdentity === page.identity(modelData)
                 text: modelData.name + KI18n.i18n(" · PID ") + modelData.pid
-                      + " · " + (modelData.cpuAvailable === false ? KI18n.i18n("CPU warming up") : page.metric(modelData.cpuPercent, KI18n.i18n("% CPU")))
+                      + " · " + (modelData.cpuAvailable === false ? KI18n.i18n("CPU initializing…") : page.metric(modelData.cpuPercent, KI18n.i18n("% CPU")))
                       + " · " + page.metric(modelData.rssMegabytes, KI18n.i18n(" MiB"))
                 Accessible.name: text
                 onClicked: { page.selectedIdentity = page.identity(modelData); page.lastSelection = modelData }

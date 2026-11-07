@@ -62,6 +62,9 @@ void TrayIcon::init(PulseTelemetryController *controller, QWindow *mainWindow)
 
     if (!m_tray) {
         m_tray = new QSystemTrayIcon(this);
+        m_tray->setIcon(QIcon::fromTheme(QStringLiteral("com.github.loofi.hardwarepulse-symbolic"),
+                                         QIcon::fromTheme(QStringLiteral("com.github.loofi.hardwarepulse"),
+                                                          QIcon::fromTheme(QStringLiteral("utilities-system-monitor")))));
         m_menu = new QMenu();
 
         m_actionToggleWindow = m_menu->addAction(i18n("Show Loofi Pulse"), this, &TrayIcon::toggleWindowVisibility);
@@ -111,7 +114,15 @@ void TrayIcon::onTelemetryUpdated()
 
 void TrayIcon::updateTooltipAndIcon()
 {
-    if (!m_tray || !m_controller) return;
+    if (!m_tray) return;
+
+    if (!m_controller) {
+        m_tray->setIcon(QIcon::fromTheme(QStringLiteral("com.github.loofi.hardwarepulse-symbolic"),
+                                         QIcon::fromTheme(QStringLiteral("com.github.loofi.hardwarepulse"),
+                                                          QIcon::fromTheme(QStringLiteral("utilities-system-monitor")))));
+        m_tray->setToolTip(i18n("Loofi Pulse — Hardware Health Monitor"));
+        return;
+    }
 
     const int severity = m_controller->verdictSeverity();
     QString headline = m_controller->verdictHeadline();
@@ -142,8 +153,9 @@ void TrayIcon::updateTooltipAndIcon()
         m_tray->setIcon(QIcon::fromTheme(QStringLiteral("dialog-warning"),
                                          QIcon::fromTheme(QStringLiteral("utilities-system-monitor"))));
     } else {
-        m_tray->setIcon(QIcon::fromTheme(QStringLiteral("com.github.loofi.hardwarepulse"),
-                                         QIcon::fromTheme(QStringLiteral("utilities-system-monitor"))));
+        m_tray->setIcon(QIcon::fromTheme(QStringLiteral("com.github.loofi.hardwarepulse-symbolic"),
+                                         QIcon::fromTheme(QStringLiteral("com.github.loofi.hardwarepulse"),
+                                                          QIcon::fromTheme(QStringLiteral("utilities-system-monitor")))));
     }
 }
 

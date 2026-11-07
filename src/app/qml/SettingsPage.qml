@@ -11,6 +11,16 @@ Kirigami.ScrollablePage {
 
     objectName: "settingsPage"
     title: KI18n.i18n("Settings")
+    globalToolBarStyle: Kirigami.ApplicationHeaderStyle.None
+    titleDelegate: Item {
+        width: parent ? parent.width : 0
+        height: 0
+        visible: false
+    }
+    topPadding: 16
+    bottomPadding: 16
+    leftPadding: 16
+    rightPadding: 16
 
     required property PulseTelemetryController controller
     property var appWindow: null

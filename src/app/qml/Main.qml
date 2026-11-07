@@ -33,20 +33,6 @@ Kirigami.ApplicationWindow {
         highlightColor: appWindow.Kirigami.Theme.highlightColor
     }
 
-    PulseSidebar {
-        id: sidebar
-        anchors.left: parent.left
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        z: 20
-        visible: appWindow.width >= 640
-        collapsed: appWindow.width < 900
-        theme: appWindow.theme
-        controller: telemetry
-        currentPage: appWindow.currentPageName
-        onPageSelected: pageId => appWindow.switchToPage(pageId)
-    }
-
     QtCore.Settings {
         id: appSettings
         category: "LoofiPulse"
@@ -92,9 +78,26 @@ Kirigami.ApplicationWindow {
     function updateCollectorActivity() {
         telemetry.setCollectorClientActive(appWindow.visible && appWindow.visibility !== Window.Minimized)
     }
+
+    PulseSidebar {
+        id: sidebar
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        z: 20
+        visible: appWindow.width >= 640
+        theme: appWindow.theme
+        controller: telemetry
+        currentPage: appWindow.currentPageName
+        onPageSelected: (pageId, section) => appWindow.switchToPage(pageId, section)
+    }
+
+    pageStack.globalToolBar.style: Kirigami.ApplicationHeaderStyle.None
+
     Component.onCompleted: {
         updateCollectorActivity()
         if (appWindow.pageStack) {
+            appWindow.pageStack.globalToolBar.style = Kirigami.ApplicationHeaderStyle.None
             appWindow.pageStack.anchors.leftMargin = Qt.binding(function() {
                 return sidebar.visible ? sidebar.width : 0
             })
@@ -266,6 +269,16 @@ Kirigami.ApplicationWindow {
         var targetPage = appWindow.pageStack.depth > 0
             ? appWindow.pageStack.replace(targetComp) : appWindow.pageStack.push(targetComp)
         Qt.callLater(function() { appWindow.focusPageSection(targetPage, section || "") })
+    }
+
+    function pageTitle(pageName) {
+        if (pageName === "flight") return KI18n.i18n("History")
+        if (pageName === "pressure") return KI18n.i18n("Memory & Pressure")
+        if (pageName === "power") return KI18n.i18n("Power & Cooling")
+        if (pageName === "processes") return KI18n.i18n("Processes")
+        if (pageName === "storage") return KI18n.i18n("Storage & Network")
+        if (pageName === "settings") return KI18n.i18n("Settings")
+        return KI18n.i18n("Overview")
     }
 
     function applyInitialNavigation() { switchToPage(initialPageName, initialSectionName) }
@@ -498,31 +511,17 @@ Kirigami.ApplicationWindow {
         }
     }
 
-    Item {
-        id: appActionsContainer
-        visible: false
-
-        data: [
+    globalDrawer: Kirigami.GlobalDrawer {
+        id: globalDrawer
+        isMenu: false
+        handleVisible: false
+        actions: [
             Kirigami.Action {
                 objectName: "navigateOverview"
                 text: KI18n.i18n("Overview")
                 icon.name: "view-statistics"
                 checked: appWindow.currentPageName === "overview"
                 onTriggered: appWindow.switchToPage("overview")
-            },
-            Kirigami.Action {
-                objectName: "navigateHistory"
-                text: KI18n.i18n("History")
-                icon.name: "chronometer"
-                checked: appWindow.currentPageName === "flight"
-                onTriggered: appWindow.switchToPage("flight")
-            },
-            Kirigami.Action {
-                objectName: "navigatePressure"
-                text: KI18n.i18n("Memory & Pressure")
-                icon.name: "memory"
-                checked: appWindow.currentPageName === "pressure"
-                onTriggered: appWindow.switchToPage("pressure")
             },
             Kirigami.Action {
                 objectName: "navigatePower"
@@ -532,11 +531,11 @@ Kirigami.ApplicationWindow {
                 onTriggered: appWindow.switchToPage("power")
             },
             Kirigami.Action {
-                objectName: "navigateProcesses"
-                text: KI18n.i18n("Processes")
-                icon.name: "view-process-all"
-                checked: appWindow.currentPageName === "processes"
-                onTriggered: appWindow.switchToPage("processes")
+                objectName: "navigatePressure"
+                text: KI18n.i18n("Memory & Pressure")
+                icon.name: "memory"
+                checked: appWindow.currentPageName === "pressure"
+                onTriggered: appWindow.switchToPage("pressure")
             },
             Kirigami.Action {
                 objectName: "navigateStorage"
@@ -544,6 +543,23 @@ Kirigami.ApplicationWindow {
                 icon.name: "drive-harddisk"
                 checked: appWindow.currentPageName === "storage"
                 onTriggered: appWindow.switchToPage("storage")
+            },
+            Kirigami.Action {
+                objectName: "navigateProcesses"
+                text: KI18n.i18n("Processes")
+                icon.name: "view-process-all"
+                checked: appWindow.currentPageName === "processes"
+                onTriggered: appWindow.switchToPage("processes")
+            },
+            Kirigami.Action {
+                objectName: "navigateHistory"
+                text: KI18n.i18n("History")
+                icon.name: "chronometer"
+                checked: appWindow.currentPageName === "flight"
+                onTriggered: appWindow.switchToPage("flight")
+            },
+            Kirigami.Action {
+                separator: true
             },
             Kirigami.Action {
                 objectName: "navigateSettings"
@@ -602,423 +618,161 @@ Kirigami.ApplicationWindow {
         ]
     }
 
-    menuBar: Rectangle {
-        x: sidebar.visible ? sidebar.width : 0
-        width: appWindow.width - x
-        implicitHeight: topBarCol.implicitHeight + Kirigami.Units.smallSpacing * 2
-        color: theme.surfaceColor
-        border.width: 0
+    header: Rectangle {
+        width: appWindow.width
+        implicitHeight: 38
+        color: "#0e131b"
 
         Rectangle {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.bottom: parent.bottom
             height: 1
-            color: theme.cardBorderColor
+            color: "#1a222e"
         }
 
-        ColumnLayout {
-            id: topBarCol
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.margins: Kirigami.Units.smallSpacing
-            anchors.leftMargin: Kirigami.Units.largeSpacing
-            anchors.rightMargin: Kirigami.Units.largeSpacing
-            spacing: Kirigami.Units.smallSpacing
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 14
+            anchors.rightMargin: 14
+            spacing: 10
 
-            Kirigami.InlineMessage {
-                id: collectorAlertMessage
-                Layout.fillWidth: true
-                visible: !telemetry.collectorConnected
-                type: Kirigami.MessageType.Error
-                text: KI18n.i18n("Collector service is disconnected (") + telemetry.collectorState + KI18n.i18n("). Real-time telemetry is paused.")
-                actions: [
-                    Kirigami.Action {
-                        text: KI18n.i18n("Reconnect")
-                        icon.name: "view-refresh"
-                        onTriggered: telemetry.reconnectCollector()
-                    }
-                ]
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: Kirigami.Units.smallSpacing
-
-                // Live System Verdict Status Pill
-                Rectangle {
-                    radius: theme.pillRadius
-                    color: theme.severityBgColor(telemetry.verdictSeverity)
-                    border.width: 1
-                    border.color: theme.severityBorderColor(telemetry.verdictSeverity)
-                    implicitWidth: Math.min(appWindow.width * 0.42, statusPillRow.implicitWidth + 16)
-                    implicitHeight: statusPillRow.implicitHeight + 8
-
-                    RowLayout {
-                        id: statusPillRow
-                        anchors.fill: parent
-                        anchors.leftMargin: 8
-                        anchors.rightMargin: 8
-                        spacing: 6
-
-                        Rectangle {
-                            Layout.preferredWidth: 8
-                            Layout.preferredHeight: 8
-                            radius: 4
-                            color: theme.severityColor(telemetry.verdictSeverity)
-                        }
-
-                        QQC2.Label {
-                            text: theme.severityBadgeText(telemetry.verdictSeverity)
-                            color: theme.severityColor(telemetry.verdictSeverity)
-                            font.bold: true
-                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                        }
-
-                        QQC2.Label {
-                            visible: appWindow.width >= 820
-                            text: KI18n.i18n("· ") + KI18n.i18n(telemetry.verdictHeadline)
-                            color: Kirigami.Theme.textColor
-                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                            elide: Text.ElideRight
-                            Layout.fillWidth: true
-                        }
-                    }
-
-                    QQC2.AbstractButton {
-                        objectName: "statusExplanationButton"
-                        anchors.fill: parent
-                        Accessible.name: KI18n.i18n(telemetry.verdictHeadline) + KI18n.i18n(". Open status explanation")
-                        onClicked: appWindow.switchToPage("overview", "status")
-                        background: Rectangle { color: "transparent"; border.width: parent.activeFocus ? 2 : 0; border.color: Kirigami.Theme.focusColor }
-                    }
-                }
-
-                // Interactive Power Profile Quick-Switcher Pill
-                Rectangle {
-                    visible: telemetry.powerProfileServiceAvailable && telemetry.availablePowerProfiles.length > 0
-                    radius: theme.pillRadius
-                    color: theme.subtleSurfaceColor
-                    border.width: 1
-                    border.color: theme.subtleBorderColor
-                    implicitHeight: powerProfileRow.implicitHeight + 6
-                    implicitWidth: powerProfileRow.implicitWidth + 12
-
-                    RowLayout {
-                        id: powerProfileRow
-                        anchors.centerIn: parent
-                        spacing: 2
-
-                        Kirigami.Icon {
-                            source: telemetry.activePowerProfile === "power-saver" ? "battery-profile-powersave"
-                                  : (telemetry.activePowerProfile === "performance" ? "battery-profile-performance" : "battery-profile-balanced")
-                            Layout.preferredWidth: 14
-                            Layout.preferredHeight: 14
-                        }
-
-                        Repeater {
-                            model: telemetry.availablePowerProfiles
-                            delegate: QQC2.Button {
-                                id: profQuickBtn
-                                required property string modelData
-                                text: modelData === "power-saver" ? KI18n.i18n("Saver")
-                                    : (modelData === "performance" ? KI18n.i18n("Perf") : KI18n.i18n("Bal"))
-                                flat: true
-                                checkable: true
-                                checked: telemetry.activePowerProfile === profQuickBtn.modelData
-                                enabled: !telemetry.powerProfileChangePending
-                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                                font.bold: checked
-                                padding: 4
-                                Accessible.name: KI18n.i18n("Power profile ") + profQuickBtn.modelData
-                                onClicked: telemetry.setPowerProfile(profQuickBtn.modelData)
-                            }
-                        }
-                    }
-                }
-
-                Item {
-                    Layout.fillWidth: true
-                }
-
-                // Quick telemetry readout pills on wide screens
-                Rectangle {
-                    visible: appWindow.width >= 1000
-                    radius: theme.pillRadius
-                    color: theme.subtleSurfaceColor
-                    border.width: 1
-                    border.color: theme.subtleBorderColor
-                    implicitWidth: quickMetricsRow.implicitWidth + 16
-                    implicitHeight: quickMetricsRow.implicitHeight + 6
-
-                    RowLayout {
-                        id: quickMetricsRow
-                        anchors.centerIn: parent
-                        spacing: 8
-
-                        QQC2.Label {
-                            text: telemetry.cpuTempAvailable
-                                  ? MeasurementLabels.formatTemperature(telemetry.cpuPackageTemp, telemetry.temperatureUnit)
-                                  : KI18n.i18n("Temp N/A")
-                            color: theme.tempAccent
-                            font.bold: true
-                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                        }
-
-                        QQC2.Label {
-                            text: KI18n.i18n("·")
-                            color: Kirigami.Theme.disabledTextColor
-                        }
-
-                        QQC2.Label {
-                            text: telemetry.cpuLoadAvailable
-                                  ? Math.round(telemetry.cpuLoadPercent) + KI18n.i18n("% CPU")
-                                  : KI18n.i18n("CPU N/A")
-                            color: theme.cpuAccent
-                            font.bold: true
-                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                        }
-
-                        QQC2.Label {
-                            text: KI18n.i18n("·")
-                            color: Kirigami.Theme.disabledTextColor
-                        }
-
-                        QQC2.Label {
-                            text: telemetry.psiAvailable
-                                  ? KI18n.i18n("Responsiveness ") + Math.round(telemetry.responsivenessScore) + "/100"
-                                  : KI18n.i18n("Index unavailable")
-                            color: theme.psiAccent
-                            font.bold: true
-                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                        }
-
-                        QQC2.Label {
-                            visible: telemetry.packagePowerAvailable
-                            text: KI18n.i18n("· CPU package ") + telemetry.packageWatts.toFixed(1) + KI18n.i18n(" W")
-                                  + (telemetry.packagePowerEstimated ? KI18n.i18n(" (est.)") : "")
-                            color: theme.powerAccent
-                            font.bold: true
-                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                        }
-                    }
-                }
-
-                // Live / Pause pill button
-                PulseButton {
-                    icon.name: telemetry.recordingPaused ? "media-playback-start" : "media-playback-pause"
-                    text: telemetry.recordingPaused ? KI18n.i18n("Recording paused") : (telemetry.collectorState + " · " + telemetry.pollIntervalMs + KI18n.i18n(" ms"))
-                    display: appWindow.width < 680 ? QQC2.AbstractButton.IconOnly : QQC2.AbstractButton.TextBesideIcon
-                    Accessible.name: telemetry.recordingPaused ? KI18n.i18n("Resume Flight Recorder") : KI18n.i18n("Pause Flight Recorder")
-                    onClicked: telemetry.recordingPaused = !telemetry.recordingPaused
-                }
-            }
-
-            // Collector and Mode Status Indicator
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                Rectangle {
-                    radius: theme.pillRadius
-                    color: telemetry.sessionMode ? theme.accentTint(theme.neutralColor, 0.16) : theme.subtleSurfaceColor
-                    border.width: 1
-                    border.color: telemetry.sessionMode ? theme.neutralColor : theme.subtleBorderColor
-                    implicitWidth: collStatusRow.implicitWidth + 12
-                    implicitHeight: collStatusRow.implicitHeight + 4
-
-                    RowLayout {
-                        id: collStatusRow
-                        anchors.centerIn: parent
-                        spacing: 6
-                        Rectangle {
-                            Layout.preferredWidth: 6
-                            Layout.preferredHeight: 6
-                            radius: 3
-                            color: telemetry.collectorState.indexOf("Disconnected") === 0
-                                   ? Kirigami.Theme.negativeTextColor
-                                   : (telemetry.sessionMode ? theme.neutralColor : Kirigami.Theme.positiveTextColor)
-                        }
-                        QQC2.Label {
-                            text: KI18n.i18n("Collector: ") + telemetry.collectorState
-                                  + (telemetry.sessionMode ? KI18n.i18n(" · HISTORICAL investigation (live monitoring continues separately)") : KI18n.i18n(" · Live recording"))
-                                  + (telemetry.unsavedInvestigation ? KI18n.i18n(" · Unsaved") : "")
-                            color: telemetry.sessionMode ? theme.neutralColor : Kirigami.Theme.disabledTextColor
-                            font.pixelSize: Math.max(9, Kirigami.Theme.smallFont.pixelSize - 1)
-                            font.bold: telemetry.sessionMode
-                        }
-                    }
-                }
-
-                Item { Layout.fillWidth: true }
-            }
-
-            // Segmented View Switcher Row (Recessed track container with elevated active tab)
             Rectangle {
-                Layout.fillWidth: true
+                width: 22
+                height: 22
+                radius: 5
+                color: "#2563eb"
+                QQC2.Label {
+                    anchors.centerIn: parent
+                    text: "Lp"
+                    font.bold: true
+                    font.pointSize: 9
+                    color: "#ffffff"
+                }
+            }
+
+            QQC2.Label {
+                text: "Loofi Pulse"
+                font.bold: true
+                font.pointSize: 11
+                color: "#ffffff"
+            }
+
+            QQC2.Label {
+                text: "|"
+                font.pointSize: 11
+                color: "#334155"
+            }
+
+            QQC2.Label {
+                text: KI18n.i18n("Systemövervakning & prestandastyrning")
+                font.pointSize: 9.5
+                color: "#94a3b8"
+            }
+
+            Item { Layout.fillWidth: true }
+
+            // pageSelector for tests and small screens
+            QQC2.ComboBox {
+                id: pageSelector
+                objectName: "pageSelector"
                 visible: appWindow.width < 900
-                implicitHeight: visible ? (pageSelector.implicitHeight + 8) : 0
-                radius: theme.innerRadius + 2
-                color: theme.cardNestedBg
-                border.width: 1
-                border.color: theme.subtleBorderColor
-
-                QQC2.ComboBox {
-                    id: pageSelector
-                    objectName: "pageSelector"
-                    visible: appWindow.width < 900
-                    anchors.fill: parent
-                    anchors.margins: 4
-                    Accessible.name: KI18n.i18n("Navigate to page")
-                    textRole: "label"
-                    valueRole: "id"
-                    model: [
-                        { id: "overview", label: KI18n.i18n("Overview") },
-                        { id: "flight", label: KI18n.i18n("History") },
-                        { id: "pressure", label: KI18n.i18n("Memory & Pressure") },
-                        { id: "power", label: KI18n.i18n("Power & Cooling") },
-                        { id: "processes", label: KI18n.i18n("Processes") },
-                        { id: "storage", label: KI18n.i18n("Storage & Network") },
-                        { id: "settings", label: KI18n.i18n("Settings") }
-                    ]
-                    currentIndex: {
-                        for (let i = 0; i < model.length; ++i)
-                            if (model[i].id === appWindow.currentPageName) return i
-                        return 0
-                    }
-                    onActivated: index => appWindow.switchToPage(model[index].id)
+                implicitHeight: 28
+                Accessible.name: KI18n.i18n("Navigate to page")
+                textRole: "label"
+                valueRole: "id"
+                model: [
+                    { id: "overview", label: KI18n.i18n("Overview") },
+                    { id: "flight", label: KI18n.i18n("History") },
+                    { id: "pressure", label: KI18n.i18n("Memory & Pressure") },
+                    { id: "power", label: KI18n.i18n("Power & Cooling") },
+                    { id: "processes", label: KI18n.i18n("Processes") },
+                    { id: "storage", label: KI18n.i18n("Storage & Network") },
+                    { id: "settings", label: KI18n.i18n("Settings") }
+                ]
+                currentIndex: {
+                    for (let i = 0; i < model.length; ++i)
+                        if (model[i].id === appWindow.currentPageName) return i
+                    return 0
                 }
-
-                RowLayout {
-                    id: navTabsRow
-                    visible: appWindow.width >= 900
-                    anchors.fill: parent
-                    anchors.margins: 4
-                    spacing: 4
-
-                    Repeater {
-                        model: [
-                            { id: "overview", label: KI18n.i18n("Overview"), shortLabel: KI18n.i18n("Overview"), icon: "view-statistics" },
-                            { id: "flight", label: KI18n.i18n("History"), shortLabel: KI18n.i18n("History"), icon: "chronometer" },
-                            { id: "pressure", label: KI18n.i18n("Memory & Pressure"), shortLabel: KI18n.i18n("Memory & PSI"), icon: "memory" },
-                            { id: "power", label: KI18n.i18n("Power & Cooling"), shortLabel: KI18n.i18n("Power & Fan"), icon: "battery-profile-performance" },
-                            { id: "processes", label: KI18n.i18n("Processes"), shortLabel: KI18n.i18n("Processes"), icon: "view-process-all" },
-                            { id: "storage", label: KI18n.i18n("Storage & Network"), shortLabel: KI18n.i18n("Storage & Net"), icon: "drive-harddisk" }
-                        ]
-                        delegate: QQC2.AbstractButton {
-                            id: navTabBtn
-                            required property var modelData
-                            readonly property bool isCurrent: appWindow.currentPageName === navTabBtn.modelData.id
-                            Layout.fillWidth: true
-                            implicitHeight: Math.max(32, Kirigami.Theme.defaultFont.pixelSize + 16)
-                            hoverEnabled: true
-                            Accessible.name: navTabBtn.modelData.label + KI18n.i18n(" tab")
-                            checkable: true
-                            checked: navTabBtn.isCurrent
-                            onClicked: appWindow.switchToPage(navTabBtn.modelData.id)
-
-                            background: Rectangle {
-                                radius: theme.innerRadius
-                                color: navTabBtn.isCurrent
-                                       ? (theme.isDark ? Qt.rgba(1, 1, 1, 0.12) : Qt.rgba(1, 1, 1, 0.95))
-                                       : (navTabBtn.hovered ? (theme.isDark ? Qt.rgba(1, 1, 1, 0.06) : Qt.rgba(1, 1, 1, 0.5)) : "transparent")
-                                border.width: 1
-                                border.color: navTabBtn.activeFocus ? Kirigami.Theme.focusColor
-                                              : (navTabBtn.isCurrent ? (theme.isDark ? Qt.rgba(1, 1, 1, 0.22) : Qt.rgba(0, 0, 0, 0.15)) : "transparent")
-
-                                // Active indicator line at bottom
-                                Rectangle {
-                                    anchors.bottom: parent.bottom
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    width: navTabBtn.isCurrent ? parent.width - 20 : 0
-                                    height: 2
-                                    radius: 1
-                                    color: Kirigami.Theme.highlightColor
-                                    visible: navTabBtn.isCurrent
-                                }
-                            }
-
-                            contentItem: RowLayout {
-                                anchors.centerIn: parent
-                                spacing: 6
-                                Kirigami.Icon {
-                                    source: navTabBtn.modelData.icon
-                                    Layout.preferredWidth: Kirigami.Units.iconSizes.small
-                                    Layout.preferredHeight: Kirigami.Units.iconSizes.small
-                                    color: navTabBtn.isCurrent ? Kirigami.Theme.highlightColor : Kirigami.Theme.disabledTextColor
-                                }
-                                QQC2.Label {
-                                    text: appWindow.width < 980 ? navTabBtn.modelData.shortLabel : navTabBtn.modelData.label
-                                    font.bold: navTabBtn.isCurrent
-                                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                                    color: navTabBtn.isCurrent ? Kirigami.Theme.textColor : Kirigami.Theme.disabledTextColor
-                                    elide: Text.ElideRight
-                                    visible: appWindow.width >= 620
-                                }
-                            }
-                        }
-                    }
-                }
+                onActivated: index => appWindow.switchToPage(model[index].id)
             }
         }
     }
 
     footer: Rectangle {
-        visible: telemetry.lastActionStatus.length > 0
-        height: visible ? statusRow.implicitHeight + Kirigami.Units.smallSpacing * 2 : 0
-        color: theme.elevatedSurfaceColor
-        border.width: 1
-        border.color: (telemetry.powerProfileChangePending || telemetry.actionPending)
-                      ? Kirigami.Theme.neutralTextColor
-                      : (telemetry.lastActionSucceeded ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.negativeTextColor)
+        width: appWindow.width
+        implicitHeight: 28
+        color: "#0c1017"
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            height: 1
+            color: "#18202c"
+        }
 
         RowLayout {
-            id: statusRow
             anchors.fill: parent
             anchors.leftMargin: 14
             anchors.rightMargin: 14
-            spacing: Kirigami.Units.smallSpacing
+            spacing: 12
 
-            Rectangle {
-                Layout.preferredWidth: 8
-                Layout.preferredHeight: 8
-                radius: 4
-                color: (telemetry.powerProfileChangePending || telemetry.actionPending)
-                       ? Kirigami.Theme.neutralTextColor
-                       : (telemetry.lastActionSucceeded ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.negativeTextColor)
+            // Left: status indicator
+            RowLayout {
+                spacing: 6
+                Rectangle {
+                    width: 7
+                    height: 7
+                    radius: 3.5
+                    color: telemetry.verdictSeverity > 0 ? appWindow.theme.negativeColor : "#22c55e"
+                }
+
+                QQC2.Label {
+                    text: telemetry.recordingPaused
+                          ? KI18n.i18n("Pausad: Flight Recorder")
+                          : (telemetry.lastActionStatus.length > 0 ? telemetry.lastActionStatus : KI18n.i18n("Klart: Flight Recorder resumed"))
+                    font.pointSize: 8.5
+                    color: "#94a3b8"
+                }
             }
 
-            QQC2.Label {
-                text: ((telemetry.powerProfileChangePending || telemetry.actionPending) ? KI18n.i18n("Working: ")
-                       : telemetry.lastActionSucceeded ? KI18n.i18n("Completed: ") : KI18n.i18n("Could not complete: "))
-                      + telemetry.lastActionStatus
-                wrapMode: Text.WordWrap
-                color: Kirigami.Theme.textColor
-                font.bold: true
-                Layout.fillWidth: true
-            }
+            Item { Layout.fillWidth: true }
 
-            QQC2.Button {
-                visible: telemetry.lastActionPath.length > 0
-                icon.name: "folder-open"
-                text: KI18n.i18n("Open folder")
-                onClicked: telemetry.openReportsFolder()
-            }
+            // Right: view mode | collector interval | clock
+            RowLayout {
+                spacing: 10
 
-            QQC2.Label {
-                objectName: "recordingStatusLabel"
-                Layout.maximumWidth: appWindow.width * 0.42
-                wrapMode: Text.WordWrap
-                text: (telemetry.sessionMode ? KI18n.i18n("View: Historical investigation") : KI18n.i18n("View: Current recording"))
-                      + KI18n.i18n("\nCollector: ") + telemetry.collectorState + " · " + telemetry.pollIntervalMs + KI18n.i18n(" ms")
-                      + (telemetry.recordingPaused ? KI18n.i18n(" · Recording paused in this window") : "")
-                color: telemetry.collectorState.indexOf("Disconnected") === 0
-                       ? Kirigami.Theme.negativeTextColor
-                       : (telemetry.sessionMode || telemetry.recordingPaused || telemetry.collectorState.indexOf("Live") !== 0
-                          ? Kirigami.Theme.neutralTextColor : Kirigami.Theme.positiveTextColor)
-                Accessible.name: text
-                font.bold: true
+                RowLayout {
+                    spacing: 4
+                    Kirigami.Icon { source: "view-list"; implicitWidth: 12; implicitHeight: 12; color: "#64748b" }
+                    QQC2.Label {
+                        text: (telemetry.sessionMode ? KI18n.i18n("Vy: Historisk session") : KI18n.i18n("Vy: Aktuell inspelning"))
+                        font.pointSize: 8.5
+                        color: "#94a3b8"
+                    }
+                }
+
+                QQC2.Label { text: "|"; color: "#334155" }
+
+                QQC2.Label {
+                    text: KI18n.i18n("Insamlare: ") + telemetry.collectorState + " · " + telemetry.pollIntervalMs + " ms"
+                    font.pointSize: 8.5
+                    color: "#94a3b8"
+                }
+
+                QQC2.Label { text: "|"; color: "#334155" }
+
+                RowLayout {
+                    spacing: 4
+                    Kirigami.Icon { source: "appointment-recurring"; implicitWidth: 12; implicitHeight: 12; color: "#64748b" }
+                    QQC2.Label {
+                        text: Qt.formatDateTime(new Date(), "hh:mm · yyyy-MM-dd")
+                        font.pointSize: 8.5
+                        color: "#94a3b8"
+                    }
+                }
             }
         }
     }

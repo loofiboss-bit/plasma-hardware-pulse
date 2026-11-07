@@ -16,7 +16,7 @@ function metricLabel(key) {
 function qualityLabel(state) {
     const labels = {
         available: "Available", unavailable: "Unavailable", calculated: "Calculated", estimated: "Estimated",
-        "warming-up": "Warming up", "not-active": "Not active", "not-present": "Not present",
+        "warming-up": "Initializing…", "not-active": "Not active", "not-present": "Not present",
         stale: "Reading is old", paused: "Paused", disconnected: "Disconnected"
     }
     return labels[state] || String(state || "Unavailable").replace(/-/g, " ").replace(/^./, function(c) { return c.toUpperCase() })

@@ -24,6 +24,11 @@
   </developer>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.16.0" date="2026-11-07" type="development">
+      <description>
+        <p>Comprehensive UX/UI simplification and KDE-native Breeze/Kirigami overhaul: simplified 4-section navigation with Kirigami.GlobalDrawer, clean KDE System Monitor-style overview, consolidated Hardware Monitor subtabs, split unit charts in Flight Recorder, lightweight Plasma 6 widget popup without animations or glowing halos, true Linux PSI stall metrics, and removal of AI-slop visual clutter.</p>
+      </description>
+    </release>
     <release version="0.15.0" date="2026-11-06" type="development">
       <description>
         <p>Complete UI/UX redesign: premium KDE-native design system with new ECG wave branding, shared GPU-accelerated QML components (PulseTheme, PulseCard, PulseAreaChart, PulseRingGauge, HealthHero, MetricCard, FindingRow, DeviceCard), responsive sidebar navigation, redesigned overview dashboard, standardized hardware detail views, and upgraded Plasma widget.</p>
