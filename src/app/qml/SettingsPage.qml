@@ -52,10 +52,48 @@ Kirigami.ScrollablePage {
         saveCollectorPreference("mutedNotificationDomains", list)
     }
 
-    Kirigami.FormLayout {
-        id: formLayout
-        anchors.left: parent.left
-        anchors.right: parent.right
+    function focusSection(section) {
+        if (!section || !root.flickable) return true
+        if (section === "about") {
+            Qt.callLater(function() {
+                if (root.flickable) {
+                    root.flickable.contentY = Math.max(0, root.flickable.contentHeight - root.flickable.height)
+                }
+            })
+            return true
+        }
+        return true
+    }
+
+    ColumnLayout {
+        width: parent ? parent.width : 0
+        spacing: Kirigami.Units.largeSpacing
+
+        RowLayout {
+            id: settingsHeaderRow
+            Layout.fillWidth: true
+
+            ColumnLayout {
+                spacing: 2
+                QQC2.Label {
+                    text: KI18n.i18nd("loofi-pulse", "Settings")
+                    font.weight: Font.DemiBold
+                    font.pointSize: 18
+                    color: root.Kirigami.Theme.textColor
+                }
+                QQC2.Label {
+                    text: KI18n.i18nd("loofi-pulse", "Telemetry sampling, retention, notification rules, and preferences.")
+                    font.pointSize: 10
+                    color: root.Kirigami.Theme.disabledTextColor
+                }
+            }
+
+            Item { Layout.fillWidth: true }
+        }
+
+        Kirigami.FormLayout {
+            id: formLayout
+            Layout.fillWidth: true
 
         // --- 1. MONITORING & SAMPLING ---
         Kirigami.Separator {
@@ -275,10 +313,38 @@ Kirigami.ScrollablePage {
             }
         }
 
-        // --- 4. DISPLAY & UNITS ---
+        // --- 4. DISPLAY & LANGUAGE ---
         Kirigami.Separator {
             Kirigami.FormData.isSection: true
-            Kirigami.FormData.label: KI18n.i18n("Display & Units")
+            Kirigami.FormData.label: KI18n.i18n("Display & Language")
+        }
+
+        QQC2.ComboBox {
+            id: languageCombo
+            Kirigami.FormData.label: KI18n.i18n("Application language:")
+            Accessible.name: KI18n.i18n("Application language preference")
+            model: [
+                { text: KI18n.i18n("English (Default)"), value: "en" },
+                { text: KI18n.i18n("Svenska (Swedish)"), value: "sv" },
+                { text: KI18n.i18n("Follow System (OS Default)"), value: "system" }
+            ]
+            textRole: "text"
+            valueRole: "value"
+            currentIndex: {
+                var lang = (root.appWindow && root.appWindow.appSettings) ? root.appWindow.appSettings.savedLanguage : "en"
+                if (lang === "sv") return 1
+                if (lang === "system") return 2
+                return 0
+            }
+            onActivated: {
+                var selected = model[currentIndex].value
+                if (root.appWindow && root.appWindow.appSettings) {
+                    root.appWindow.appSettings.savedLanguage = selected
+                }
+                if (root.controller && typeof root.controller.setApplicationLanguage === "function") {
+                    root.controller.setApplicationLanguage(selected)
+                }
+            }
         }
 
         QQC2.ComboBox {
@@ -439,6 +505,43 @@ Kirigami.ScrollablePage {
             Kirigami.FormData.label: KI18n.i18n("About & Documentation")
         }
 
+        ColumnLayout {
+            Kirigami.FormData.label: KI18n.i18n("Application:")
+            spacing: Kirigami.Units.smallSpacing
+
+            QQC2.Label {
+                text: KI18n.i18n("Loofi Pulse v0.18.0")
+                font.bold: true
+                font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.1
+            }
+
+            QQC2.Label {
+                text: KI18n.i18n("Real-time Linux hardware telemetry, PSI stall detection, and causal diagnosis engine for KDE Plasma 6.")
+                wrapMode: Text.WordWrap
+                color: Kirigami.Theme.disabledTextColor
+                Layout.maximumWidth: 500
+            }
+        }
+
+        RowLayout {
+            Kirigami.FormData.label: KI18n.i18n("Documentation:")
+            spacing: Kirigami.Units.mediumSpacing
+
+            QQC2.Button {
+                text: KI18n.i18n("Open Documentation")
+                icon.name: "help-contents"
+                Accessible.name: KI18n.i18n("Open online documentation in web browser")
+                onClicked: Qt.openUrlExternally("https://github.com/loofiboss-bit/plasma-hardware-pulse#readme")
+            }
+
+            QQC2.Button {
+                text: KI18n.i18n("Issue Tracker")
+                icon.name: "tools-report-bug"
+                Accessible.name: KI18n.i18n("Open issue tracker on GitHub")
+                onClicked: Qt.openUrlExternally("https://github.com/loofiboss-bit/plasma-hardware-pulse/issues")
+            }
+        }
+
         RowLayout {
             Kirigami.FormData.label: KI18n.i18n("Help & Diagnostics:")
             spacing: Kirigami.Units.mediumSpacing
@@ -465,7 +568,22 @@ Kirigami.ScrollablePage {
                 }
             }
         }
+
+        ColumnLayout {
+            Kirigami.FormData.label: KI18n.i18n("License & Build:")
+            spacing: Kirigami.Units.smallSpacing
+
+            QQC2.Label {
+                text: KI18n.i18n("License: GNU General Public License v3.0 (GPLv3)")
+                color: Kirigami.Theme.disabledTextColor
+            }
+            QQC2.Label {
+                text: KI18n.i18n("Author: Loofi Boss · Fedora Copr & Flatpak ready")
+                color: Kirigami.Theme.disabledTextColor
+            }
+        }
     }
+}
     QQC2.Dialog {
         id: clearDatabaseDialog
         objectName: "clearDatabaseDialog"

@@ -16,6 +16,7 @@
 #include <QQmlContext>
 #include <QQuickStyle>
 #include <QQuickWindow>
+#include <QSettings>
 #include <QTimer>
 #include <QUrl>
 #include <memory>
@@ -89,6 +90,21 @@ int main(int argc, char *argv[])
     if (isSmokeTest) {
         QLocale::setDefault(QLocale(QLocale::English, QLocale::UnitedStates));
         KLocalizedString::setLanguages({QStringLiteral("en_US"), QStringLiteral("en")});
+    } else {
+        QSettings pulseSettings(QStringLiteral("kde.org"), QStringLiteral("com.github.loofi.hardwarepulse"));
+        pulseSettings.beginGroup(QStringLiteral("LoofiPulse"));
+        const QString savedLang = pulseSettings.value(QStringLiteral("savedLanguage"), QStringLiteral("en")).toString();
+        pulseSettings.endGroup();
+
+        if (savedLang == QLatin1String("sv")) {
+            KLocalizedString::setLanguages({QStringLiteral("sv")});
+        } else if (savedLang == QLatin1String("system")) {
+            // Follow system locale: do not force explicit language
+        } else {
+            // Default to English as primary application language
+            QLocale::setDefault(QLocale(QLocale::English, QLocale::UnitedStates));
+            KLocalizedString::setLanguages({QStringLiteral("en_US"), QStringLiteral("en")});
+        }
     }
     KLocalizedString::setApplicationDomain("loofi-pulse");
 

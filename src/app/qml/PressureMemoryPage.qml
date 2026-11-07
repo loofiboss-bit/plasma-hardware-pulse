@@ -98,23 +98,23 @@ Kirigami.ScrollablePage {
         Layout.fillWidth: true
         spacing: Kirigami.Units.largeSpacing
 
-        // Page Title & Header Strip (consistent with Overview)
+        // Page Title & Header Strip (consistent Breeze design tokens)
         RowLayout {
             Layout.fillWidth: true
-            spacing: 12
+            spacing: psiPage.theme.spacingM
 
             ColumnLayout {
                 spacing: 2
                 QQC2.Label {
-                    text: KI18n.i18n("Prestanda & Belastning")
-                    font.bold: true
-                    font.pointSize: 18
-                    color: "#ffffff"
+                    text: KI18n.i18nd("loofi-pulse", "Memory & Pressure")
+                    font.weight: Font.DemiBold
+                    font.pointSize: psiPage.theme.fontHeadline
+                    color: psiPage.theme.textColor
                 }
                 QQC2.Label {
-                    text: KI18n.i18n("Systemtryck (PSI), minnesallokering, ZRAM och processorbelastning i realtid.")
-                    font.pointSize: 9
-                    color: "#94a3b8"
+                    text: KI18n.i18nd("loofi-pulse", "System pressure (PSI), memory allocation, ZRAM and processor load in real time.")
+                    font.pointSize: psiPage.theme.fontCaption
+                    color: psiPage.theme.mutedTextColor
                 }
             }
 
@@ -122,10 +122,10 @@ Kirigami.ScrollablePage {
 
             // Live Sampling Frequency Pill
             Rectangle {
-                radius: 12
-                color: "#161f2c"
+                radius: psiPage.theme.pillRadius
+                color: psiPage.theme.cardNestedBg
                 border.width: 1
-                border.color: "#1e293b"
+                border.color: psiPage.theme.subtleBorderColor
                 implicitHeight: 26
                 implicitWidth: livePsiRow.implicitWidth + 18
 
@@ -137,12 +137,12 @@ Kirigami.ScrollablePage {
                         source: "view-statistics"
                         implicitWidth: 12
                         implicitHeight: 12
-                        color: "#38bdf8"
+                        color: psiPage.theme.highlightColor
                     }
                     QQC2.Label {
                         text: KI18n.i18n("Live · %1 ms", (psiPage.controller.pollIntervalMs || 1000).toLocaleString())
-                        font.pointSize: 8.5
-                        color: "#e2e8f0"
+                        font.pointSize: psiPage.theme.fontCaption
+                        color: psiPage.theme.textColor
                     }
                 }
             }

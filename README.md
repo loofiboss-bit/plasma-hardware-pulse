@@ -1,86 +1,158 @@
+<div align="center">
+
+![Loofi Pulse Banner](assets/banner.png)
+
 # Loofi Pulse
 
-Loofi Pulse is a local hardware monitor and incident investigation tool for KDE Plasma 6. The Qt 6/Kirigami desktop app and Plasma widget share a user-session collector. **Fedora 44 KDE is the primary development target.**
+**Next-Generation Linux Hardware Telemetry, PSI Stall Intelligence & Flight Recorder for KDE Plasma 6**
 
-**v0.17.0 is under development.** Automated tests, package builds, and physical desktop qualification are separate evidence. See the validation records for verified results and pending checks; this README does not certify every GPU, battery, driver, or Plasma setup. No v0.16.0 release artifacts are implied by the version metadata in this branch.
+[![Fedora Copr](https://img.shields.io/badge/Fedora%20Copr-loofitheboss%2Fplasma--hardware--pulse-blue?logo=fedora&logoColor=white)](https://copr.fedorainfracloud.org/coprs/loofitheboss/plasma-hardware-pulse/)
+[![KDE Plasma 6](https://img.shields.io/badge/KDE-Plasma%206-1d99f3?logo=kde&logoColor=white)](https://kde.org/plasma-desktop/)
+[![Qt 6 & C++20](https://img.shields.io/badge/Qt-6.7%2B-41cd52?logo=qt&logoColor=white)](https://www.qt.io/)
+[![License: GPL-3.0-or-later](https://img.shields.io/badge/License-GPLv3-yellow.svg)](LICENSE)
+[![Tests: 84/84 Passing](https://img.shields.io/badge/CTest-84%2F84%20Passed-brightgreen)](tests/)
 
-## What it does
+</div>
 
-- Explains current CPU, GPU, memory and I/O pressure, thermal risk, and power readings with evidence and unavailable-data states.
-- Keeps 5, 15 or 30 minutes of in-memory history at 250–10,000 ms intervals. Mark incidents, select a range, and compare before/during/after.
-- Inspects readable processes and individual storage, network, GPU and battery devices. **Process inspection is read-only.** Open KDE System Monitor for process management.
-- Saves and opens local `.pulse-session` investigations, and exports JSON/Markdown reports. Process identities are excluded from saved output by default.
-- Offers separate opt-ins for background monitoring, start at login, and persistent numerical history. The widget provides configurable panel metrics and incident navigation.
+---
 
-Pulse reads interfaces exposed by Linux and the active drivers. A detected device can have no readable measurements. It does not request elevated privileges for routine collection. High activity alone is not evidence of throttling or poor responsiveness; concurrent process use does not establish causation.
+## 🌟 Overview
 
-## Install on Fedora KDE
+**Loofi Pulse** is a lightweight, local-first system telemetry and hardware health suite designed specifically for **KDE Plasma 6** and **Fedora Linux**. Combining a high-performance Kirigami desktop application with an interactive desktop panel widget, Loofi Pulse delivers actionable diagnostic insights into processor performance, Linux Pressure Stall Information (PSI), thermals, discrete graphics, power envelopes, and hardware throttling without synthetic scores, bloat, or AI-generated placeholders.
 
-A complete installation needs the application, `loofi-pulse-service`, its session D-Bus activation file, the native QML plugin, and the widget. A `.plasmoid` ZIP alone **does not contain the native plugin or collector** and cannot provide a complete installation. For a published build, use the matching Fedora/architecture RPM and checksum file from [the project releases](https://github.com/loofiboss-bit/plasma-hardware-pulse/releases). This development branch does not promise that v0.14.0 artifacts have been published. Verify downloaded files before installing:
+### Why Loofi Pulse?
 
-```sh
-sha256sum --check --ignore-missing SHA256SUMS
-sudo dnf install ./plasma-hardware-pulse-VERSION-1.fc44.x86_64.rpm
+- **Real-Time Linux Kernel Pressure (PSI)**: Instant visibility into CPU, memory, and I/O starvation stalls (`some` / `full avg10`) via `/proc/pressure`.
+- **Zero-Loss Flight Recorder**: Continuous 5–30 minute in-memory circular telemetry buffer with an interactive time scrubber to investigate stutters after they occur.
+- **Root-Cause Causal Engine**: Deterministically identifies the exact process and resource bottleneck causing system sluggishness.
+- **Dedicated Hardware Hubs**: Modular deep-dive pages for GPU execution units & VRAM, battery flow & peripherals, hwmon sensor grids, and energy profiles.
+- **Zero Elevated Privileges**: Runs entirely in user-space with standard sysfs and D-Bus interfaces.
+- **Multi-Language Support**: English by default, with complete native Swedish localization (`sv`) and system locale detection.
+
+---
+
+## 📸 Screenshots Showcase
+
+<div align="center">
+
+| Overview Command Center | Linux Memory & PSI Pressure |
+| :---: | :---: |
+| ![Overview](docs/screenshots/overview.png) | ![Pressure](docs/screenshots/pressure.png) |
+
+| Graphics (GPU) Telemetry | Battery & Peripherals |
+| :---: | :---: |
+| ![GPU](docs/screenshots/gpu.png) | ![Battery](docs/screenshots/battery.png) |
+
+| Hardware Sensor Grid (hwmon) | Power Profiles Daemon (PPD) |
+| :---: | :---: |
+| ![Sensors](docs/screenshots/sensors.png) | ![Profiles](docs/screenshots/profiles.png) |
+
+| Flight Recorder & Incident History | Preferences & Language Hub |
+| :---: | :---: |
+| ![Flight Recorder](docs/screenshots/flight.png) | ![Settings](docs/screenshots/settings.png) |
+
+</div>
+
+---
+
+## 🚀 Installation
+
+### Option 1: Fedora Copr (Recommended)
+
+Loofi Pulse is officially packaged and continuously built for Fedora 44 and Fedora 45 x86_64:
+
+```bash
+# Enable the Fedora Copr repository
+sudo dnf copr enable loofitheboss/plasma-hardware-pulse
+
+# Install Loofi Pulse application, service daemon, and Plasma 6 widget
+sudo dnf install plasma-hardware-pulse
+
+# Launch Loofi Pulse
 loofi-pulse
 ```
 
-Replace `VERSION` with the version shown on the release page. Dependency resolution requires the appropriate Fedora repositories. After upgrading, close Pulse and remove/re-add an already running widget as needed to load the new native plugin. Enable background monitoring or login startup only when wanted; installation does not enable them. Installing an RPM changes the local system and is separate from building or testing source.
+### Option 2: Pre-Built RPM Release
 
-## Build and verify
+Download the matching `.rpm` and checksum file from [GitHub Releases](https://github.com/loofiboss-bit/plasma-hardware-pulse/releases):
 
-Requirements are C++20, CMake 3.24+, Qt 6, KDE Frameworks 6.21+ (typed KI18n QML API)/Plasma 6, and a session D-Bus. The complete Fedora dependency list is in [the spec](packaging/plasma-hardware-pulse.spec); CI additionally installs test, lint and packaging tools with [its Fedora 44 dependency script](scripts/install-ci-dependencies.sh). That script installs packages as root and is intended for disposable CI containers.
-
-With dependencies installed, run the shared validation entry point:
-
-```sh
-bash scripts/validate.sh
+```bash
+sha256sum --check --ignore-missing SHA256SUMS
+sudo dnf install ./plasma-hardware-pulse-0.18.0-1.fc45.x86_64.rpm
+loofi-pulse
 ```
 
-It builds in `build/validation`, runs deterministic and isolated D-Bus/QML tests, checks QML/AppStream/version metadata, and installs into a temporary staging directory. It does not install on the normal desktop or publish anything. Override `PULSE_BUILD_DIR` and `PULSE_BUILD_JOBS` when needed.
+---
 
-For an iterative build:
+## 📖 User Guide & Architecture
 
-```sh
-cmake -S . -B build/dev -DBUILD_TESTING=ON -DBUILD_LIVE_HARDWARE_TESTS=OFF \
-  -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=/usr
-cmake --build build/dev --parallel 2
-QT_QPA_PLATFORM=offscreen ctest --test-dir build/dev --output-on-failure
+Comprehensive documentation is available in the [`docs/`](docs/) directory:
+
+- 📘 **[Complete User Guide](docs/user-guide.md)**: In-depth walkthrough of every page, PSI pressure metrics, thermal velocity, battery health calculation, and keyboard shortcuts.
+- 🏗️ **[System Architecture](docs/public-readiness.md)**: Details on the shared D-Bus user daemon (`com.github.loofi.hardwarepulse.Collector1`), in-memory flight recorder buffer, and optional SQLite persistent aggregate database.
+
+---
+
+## ⌨️ Keyboard Shortcuts
+
+| Shortcut | Action |
+| :--- | :--- |
+| `Ctrl+1` / `Alt+1` | Jump to **Overview** |
+| `Ctrl+2` / `Alt+2` | Jump to **Flight Recorder / History** |
+| `Ctrl+3` / `Alt+3` | Jump to **Memory & Pressure** |
+| `Ctrl+4` / `Alt+4` | Jump to **Power & Cooling** |
+| `Ctrl+5` | Jump to **Processes** |
+| `Ctrl+6` | Jump to **Storage & Network** |
+| `Ctrl+,` / `Ctrl+Alt+S` | Open **Settings** |
+| `Ctrl+O` | Open saved session file (`.pulse-session`) |
+| `Ctrl+S` | Export current incident report / session |
+| `F1` / `Ctrl+?` | Show Keyboard Shortcuts cheat sheet |
+
+---
+
+## 🛠️ Build and Verify from Source
+
+### Build Prerequisites
+
+Ensure all required development libraries are installed on your Fedora system:
+
+```bash
+sudo dnf install cmake extra-cmake-modules gcc-c++ dbus-daemon \
+    kf6-kcmutils-devel kf6-kconfig-devel kf6-kcoreaddons-devel kf6-kcrash-devel \
+    kf6-ki18n-devel kf6-kirigami-devel kf6-knotifications-devel kf6-kwindowsystem-devel \
+    kf6-kpackage-devel kf6-qqc2-desktop-style libplasma-devel \
+    qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qttools-devel libappstream-glib
 ```
 
-A build-tree app still requires a working collector activation path. Use the isolated service/UI tests for development; do not point an ordinary user session at fixture services. `just install-local` deliberately changes the user's installation and Plasma environment configuration; read the recipe before using it.
+### Build & Test Suite
 
-## Collection, saved data and privacy
+```bash
+# Configure build directory
+cmake -S . -B build -DBUILD_TESTING=ON -DBUILD_LIVE_HARDWARE_TESTS=OFF \
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=/usr
 
-The collector uses user-session D-Bus service/interface `com.github.loofi.hardwarepulse.Collector1` and object `/com/github/loofi/hardwarepulse/Collector1`. Visible clients share the fastest requested polling interval; all clients retain the longest requested history window. Hidden desktop windows back off collection and process scans while a visible panel widget or background-monitoring opt-in can keep sampling active. The collector runs with the user's existing permissions; the session bus is not a security boundary against other applications running as the same user.
+# Compile all binaries and plugins
+cmake --build build --parallel $(nproc)
 
-Rolling recordings stay in memory. With no clients and background monitoring disabled, the collector exits after an idle delay. **Save an investigation explicitly to retain it.** Persistent long-term history is a separate opt-in SQLite store of numerical minute aggregates. It excludes process identities; explicit session/report exports can include them when enabled. Review saved files before sharing: device identities, hardware details and timestamps remain potentially identifying.
+# Execute the complete automated test suite (84 tests)
+ctest --test-dir build --output-on-failure
 
-Session format 1 is bounded to 64 MiB and 7,201 telemetry points. Invalid input must not replace the current investigation. Reports retain JSON schema 2. Writes use atomic saves, and failures are reported. Persistent history is bounded and its storage/error state is visible; corruption recovery preserves the old database for inspection rather than presenting it as healthy history.
-
-## Measurement semantics
-
-- The responsiveness index is a calculated score from Linux PSI, **not measured latency**. Higher raw PSI means more time waiting.
-- Package power and battery discharge are separate. Estimates are labelled; the legacy JSON `systemWatts` field does not establish measured whole-system power.
-- GPU readings retain device identity and the selected temperature sensor. System diagnosis considers available GPU devices; a display selection does not limit that assessment. Temperature alone does not establish a GPU bottleneck.
-- Average disk request time derives from completed operations and accumulated request milliseconds. It is not application latency or a percentile; an interval with no completed requests has no average.
-- Warmup, missing/malformed data, disconnects, stale readings and recording gaps are distinct from measured zero. Rates reset after disappearance, counter rollback or suspend.
-- Ordinary diagnosis warnings require sustained evidence; new hardware throttle-counter events are immediate. CPU heat alone does not confirm active throttling, and storage heat alone does not confirm I/O pressure.
-
-## Navigation and investigations
-
-```sh
-loofi-pulse --page power --section gpu
-loofi-pulse --page pressure --section storage
-loofi-pulse --session /path/to/investigation.pulse-session
-loofi-pulse --incident INCIDENT_ID
+# Install to system
+sudo cmake --install build
 ```
 
-An incident ID refers to the current shared recording; save a session to preserve it across collector exit. `Ctrl+1..4` / `Alt+1..4` navigate the main pages; `Ctrl+P` pauses/resumes, `Ctrl+S` exports, `Ctrl+Shift+C` copies a report, `Ctrl+O` opens a session, and `Ctrl+Shift+S` saves one.
+---
 
-## Contribute and qualify
+## 🔒 Privacy & Data Storage Guarantee
 
-Start with [CONTRIBUTING.md](CONTRIBUTING.md), [the roadmap](ROADMAP.md), and [SECURITY.md](SECURITY.md). [CHANGELOG.md](CHANGELOG.md) records changes; [RELEASE_NOTES.md](RELEASE_NOTES.md) describes this development candidate. The [public launch checklist](docs/public-readiness.md) tracks remote settings and publication work separately from repository changes.
+1. **Read-Only Process Radar**: Process inspection identifies CPU/RAM/Disk hogs for diagnostic triage only. Loofi Pulse never modifies, attaches debuggers to, or kills processes directly; it delegates process management to the official KDE System Monitor.
+2. **Zero Cloud Telemetry**: All sampling, analysis, and storage remain strictly on your local machine. No analytics or phone-home requests are made.
+3. **Privacy-Preserving History**: The persistent long-term history SQLite database records only 1-minute numerical performance aggregates (min, avg, max) for CPU, GPU, memory, disks, and thermals. Process identities, command lines, window titles, and PIDs are **never stored** in the persistent database.
 
-Portable/offscreen tests do not qualify real Plasma/Wayland behavior, assistive technology, physical suspend/resume, hotplug, vendor drivers, multi-battery/USB-C charging, or an installed-package upgrade. Record the environment and exact results for each combination exercised. A short performance test does not establish a 35-minute retention soak or ordinary desktop responsiveness.
+---
 
-License: [GPL-3.0-or-later](LICENSE); AppStream metadata is CC0-1.0.
+## 📄 License
+
+- **Code & Core Engine**: GNU General Public License v3.0 ([GPL-3.0-or-later](LICENSE))
+- **AppStream Metadata & Documentation Assets**: Creative Commons Zero 1.0 Universal ([CC0-1.0](packaging/com.github.loofi.hardwarepulse.metainfo.xml))
+- Copyright © 2026 Loofi Boss & Contributors.

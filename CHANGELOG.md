@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.18.0 — Dedicated Hardware Pages, Logical Navigation & Multi-Language Hub (2026-11-07)
+
+### Added
+- **Dedicated Hardware Pages**:
+  - `GpuPage.qml`: Dedicated GPU load gauge, core clock, boost frequency, board power (W), temperature, and VRAM allocation bar.
+  - `BatteryPage.qml`: Power state badge (AC/Battery), charge rate (W), time-to-full/empty, health, and device table for BAT0 and HID++/Bluetooth peripherals.
+  - `SensorsPage.qml`: Active cooling fans with animated RPM indicators, complete `hwmon` sensor domain matrix, and thermal velocity.
+  - `ProfilesPage.qml`: 3 hero interactive cards (Power-saver, Balanced, Performance) hooked into `power-profiles-daemon`, active profile holds, and causal rules.
+- **Logical Sidebar Architecture**: Restructured left sidebar navigation into `SYSTEM`, `HARDWARE & DEVICES`, `CONTROL`, and `FLIGHT RECORDER`, removing the ambiguous "Diagnostics" label.
+- **Pinned Settings Action**: Fastened `Settings` at the bottom above the system info badge with a dedicated divider line.
+- **Application Language Selection**: Configurable language support under Settings (English default, Swedish, and Follow System OS locale).
+- **Expanded About & Documentation Hub**: Restored complete documentation cards, direct GitHub documentation links, issue tracker, license, and shortcuts guide in Settings.
+- **High-Resolution Branding & User Guide**: Brand-new SVG banner (`assets/banner.svg`) and complete user guide (`docs/user-guide.md`) with live app screenshots.
+
+### Changed
+- Standardized UI string identifiers and source text to English while preserving complete Swedish catalog coverage (`po/sv`).
+- Fixed QML layout geometry in `SettingsPage.qml` to ensure smooth full-height scrolling.
+
 ## 0.17.0 — UX/UI Modernization & Genuine Hardware Telemetry (2026-11-07)
 
 ### Added
