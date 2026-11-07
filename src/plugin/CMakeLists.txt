@@ -17,7 +17,6 @@ set(hardwarepulseplugin_QML_FILES
     qml/PulseAreaChart.qml
     qml/PulseRingGauge.qml
     qml/MetricCard.qml
-    qml/HealthHero.qml
     qml/FindingRow.qml
     qml/PulsePageHeader.qml
     qml/DeviceCard.qml

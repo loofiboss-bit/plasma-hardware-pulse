@@ -11,11 +11,16 @@ Kirigami.ScrollablePage {
     id: page
     objectName: "storageNetworkPage"
     title: KI18n.i18n("Storage & Network")
+    globalToolBarStyle: Kirigami.ApplicationHeaderStyle.None
     titleDelegate: Item {
         width: parent ? parent.width : 0
         height: 0
         visible: false
     }
+    topPadding: 16
+    bottomPadding: 16
+    leftPadding: 16
+    rightPadding: 16
     required property var controller
 
     readonly property PulseTheme theme: PulseTheme {
@@ -49,14 +54,53 @@ Kirigami.ScrollablePage {
         Layout.fillWidth: true
         spacing: Kirigami.Units.largeSpacing
 
-        PulsePageHeader {
-            id: pageHeader
+        // Page Title & Header Strip (consistent with Overview)
+        RowLayout {
             Layout.fillWidth: true
-            title: KI18n.i18n("Storage & Network")
-            subtitle: KI18n.i18n("Storage drives, NVMe controller hardware health, and network interfaces")
-            selectedMinutes: Math.max(5, Math.round(page.controller.historyRetentionSeconds / 60))
-            onTimeWindowSelected: function(minutes) {
-                page.controller.historyRetentionSeconds = minutes * 60
+            spacing: 12
+
+            ColumnLayout {
+                spacing: 2
+                QQC2.Label {
+                    text: KI18n.i18n("Lagring & Nätverk")
+                    font.bold: true
+                    font.pointSize: 18
+                    color: "#ffffff"
+                }
+                QQC2.Label {
+                    text: KI18n.i18n("Diskgenomströmning, I/O-aktivitet och nätverkstrafik i realtid.")
+                    font.pointSize: 9
+                    color: "#94a3b8"
+                }
+            }
+
+            Item { Layout.fillWidth: true }
+
+            // Live Sampling Frequency Pill
+            Rectangle {
+                radius: 12
+                color: "#161f2c"
+                border.width: 1
+                border.color: "#1e293b"
+                implicitHeight: 26
+                implicitWidth: liveIoRow.implicitWidth + 18
+
+                RowLayout {
+                    id: liveIoRow
+                    anchors.centerIn: parent
+                    spacing: 6
+                    Kirigami.Icon {
+                        source: "view-statistics"
+                        implicitWidth: 12
+                        implicitHeight: 12
+                        color: "#38bdf8"
+                    }
+                    QQC2.Label {
+                        text: KI18n.i18n("Live · %1 ms", (page.controller.pollIntervalMs || 1000).toLocaleString())
+                        font.pointSize: 8.5
+                        color: "#e2e8f0"
+                    }
+                }
             }
         }
 
@@ -64,6 +108,7 @@ Kirigami.ScrollablePage {
             id: ioChartCard
             Layout.fillWidth: true
             visible: (page.controller.historySamples || []).length > 2
+            Layout.preferredHeight: visible ? -1 : 0
             padding: theme.spacingM
 
             ColumnLayout {

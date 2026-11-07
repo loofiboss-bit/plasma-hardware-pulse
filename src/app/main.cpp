@@ -93,13 +93,16 @@ int main(int argc, char *argv[])
     KLocalizedString::setApplicationDomain("loofi-pulse");
 
     KAboutData aboutData(
-        QStringLiteral("loofi-pulse"),
+        QStringLiteral("com.github.loofi.hardwarepulse"),
         QStringLiteral("Loofi Pulse"),
         QStringLiteral(LOOFI_PULSE_VERSION),
         i18n("KDE Plasma 6 hardware health and pressure monitor"),
         KAboutLicense::GPL_V3,
         QStringLiteral("© 2026 Loofi"));
+    aboutData.setDesktopFileName(QStringLiteral("com.github.loofi.hardwarepulse"));
+    aboutData.setProgramLogo(QIcon::fromTheme(QStringLiteral("com.github.loofi.hardwarepulse")));
     KAboutData::setApplicationData(aboutData);
+    QGuiApplication::setDesktopFileName(QStringLiteral("com.github.loofi.hardwarepulse"));
     app.setWindowIcon(QIcon::fromTheme(QStringLiteral("com.github.loofi.hardwarepulse"),
                                        QIcon::fromTheme(QStringLiteral("utilities-system-monitor"))));
 
@@ -159,7 +162,10 @@ QT_WARNING_POP
 
     if (!automated) {
         auto *window = qobject_cast<QQuickWindow *>(root);
-        auto *telemetry = root->findChild<LoofiPulse::PulseTelemetryController *>(QStringLiteral("telemetryController"));
+        auto *telemetryObj = root->findChild<QObject *>(QStringLiteral("telemetryController"));
+        auto *telemetry = (telemetryObj && QLatin1StringView(telemetryObj->metaObject()->className()) == QLatin1StringView("LoofiPulse::PulseTelemetryController"))
+            ? reinterpret_cast<LoofiPulse::PulseTelemetryController *>(telemetryObj)
+            : qobject_cast<LoofiPulse::PulseTelemetryController *>(telemetryObj);
         trayIcon.init(telemetry, window);
         root->setProperty("tray", QVariant::fromValue(&trayIcon));
     }

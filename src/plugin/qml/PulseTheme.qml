@@ -117,14 +117,14 @@ QtObject {
     }
 
     function severityShortLabel(sev) {
-        if (sev === 4) return KI18n.i18nd("loofi-pulse", "Warming up")
+        if (sev === 4) return KI18n.i18nd("loofi-pulse", "Initializing…")
         if (sev >= 2) return KI18n.i18nd("loofi-pulse", "Critical")
         if (sev === 1) return KI18n.i18nd("loofi-pulse", "Warning")
         return KI18n.i18nd("loofi-pulse", "OK")
     }
 
     function severityDescription(sev) {
-        if (sev === 4) return KI18n.i18nd("loofi-pulse", "Warming up")
+        if (sev === 4) return KI18n.i18nd("loofi-pulse", "Initializing…")
         if (sev === 3) return KI18n.i18nd("loofi-pulse", "Critical Throttle")
         if (sev === 2) return KI18n.i18nd("loofi-pulse", "Bottleneck")
         if (sev === 1) return KI18n.i18nd("loofi-pulse", "Elevated")
@@ -156,7 +156,7 @@ QtObject {
     }
 
     function severityBadgeText(sev) {
-        if (sev === 4) return KI18n.i18nd("loofi-pulse", "WARMING UP")
+        if (sev === 4) return KI18n.i18nd("loofi-pulse", "INITIALIZING")
         if (sev === 3) return KI18n.i18nd("loofi-pulse", "THROTTLING")
         if (sev === 2) return KI18n.i18nd("loofi-pulse", "BOTTLENECK")
         if (sev === 1) return KI18n.i18nd("loofi-pulse", "ELEVATED")

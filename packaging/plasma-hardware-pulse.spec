@@ -1,5 +1,5 @@
 Name:           plasma-hardware-pulse
-Version:        0.15.0
+Version:        0.16.0
 Release:        1%{?dist}
 Summary:        Hardware, temperature, memory pressure, and power monitor for KDE Plasma 6
 
@@ -78,6 +78,16 @@ QT_QPA_PLATFORM=offscreen QML_IMPORT_PATH="%{_vpath_builddir}/bin" ctest --test-
 %{_kf6_metainfodir}/com.github.loofi.hardwarepulse.metainfo.xml
 
 %changelog
+* Sat Nov 07 2026 Loofi <loofi@github.com> - 0.16.0-1
+- Comprehensive UX/UI simplification and KDE Plasma 6 & Breeze native overhaul
+- Dedicated 9-section navigation sidebar with host system identity badge
+- Real-time dual-line system activity chart for CPU and GPU temperatures
+- 5-metric overview cards for CPU, GPU, Power, Battery, and Cooling
+- Two-column split for CPU cores, hardware temperature sensors, power profiles, and individual batteries
+- Flight Recorder status bar and streamlined KDE title header
+- Elimination of redundant modal dialogs, glow cards, and excessive animation overhead
+- 100% localized Swedish translation coverage across the app and widget
+
 * Fri Nov 06 2026 Loofi <loofi@github.com> - 0.15.0-1
 - Full visual and interaction redesign: KDE-native premium design system with ECG wave logo
 - Shared GPU-accelerated QML component library (PulseTheme, PulseCard, PulseAreaChart, PulseRingGauge, HealthHero, MetricCard, FindingRow, DeviceCard)

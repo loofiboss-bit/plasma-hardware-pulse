@@ -108,7 +108,7 @@ Item {
     }
 
     function severityBadgeText(sev) {
-        if (sev === 4) return KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "WARMING UP")
+        if (sev === 4) return KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "INITIALIZING")
         if (sev === 3) return KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "THROTTLING")
         if (sev === 2) return KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "BOTTLENECK")
         if (sev === 1) return KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "ELEVATED")
@@ -122,7 +122,7 @@ Item {
         const state = item.state === "available" ? KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Measured")
                     : item.state === "calculated" ? KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Calculated")
                     : item.state === "estimated" ? KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Estimated")
-                    : item.state === "warming-up" ? KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Warming up")
+                    : item.state === "warming-up" ? KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Initializing…")
                     : KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "Unavailable")
         const explanation = item.detail || (item.state === "unavailable" ? KI18n.i18nd("plasma_applet_com.github.loofi.hardwarepulse", "No valid reading from this source.") : "")
         const sampledAt = item.sampledAtMs > 0

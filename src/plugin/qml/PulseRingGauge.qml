@@ -38,23 +38,11 @@ Item {
     implicitWidth: Kirigami.Units.gridUnit * 6
     implicitHeight: implicitWidth
 
-    // Warning halo; disabled with reduced motion.
-    Rectangle {
-        anchors.centerIn: parent
-        width: Math.min(gauge.width, gauge.height)
-        height: width
-        radius: width / 2
-        color: "transparent"
-        border.width: 2
-        border.color: gauge.segments.length ? gauge.theme.neutralColor : gauge.color
-        visible: gauge.pulsing && gauge.theme.motionAllowed
-        opacity: 0
-        SequentialAnimation on opacity {
-            running: gauge.pulsing && gauge.theme.motionAllowed && gauge.visible
-            loops: Animation.Infinite
-            NumberAnimation { to: 0.45; duration: 900; easing.type: Easing.InOutQuad }
-            NumberAnimation { to: 0.05; duration: 900; easing.type: Easing.InOutQuad }
-        }
+    // Halo disabled in v0.16
+    Item {
+        id: haloSpacer
+        width: 0; height: 0
+        visible: false
     }
 
     Shape {
