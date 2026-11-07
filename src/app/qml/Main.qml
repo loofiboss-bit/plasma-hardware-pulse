@@ -21,6 +21,7 @@ Kirigami.ApplicationWindow {
     property string initialPageName: "overview"
     property string initialSectionName: ""
     property string currentPageName: "overview"
+    property string currentSectionName: ""
 
     readonly property PulseTheme theme: PulseTheme {
         id: theme
@@ -45,8 +46,10 @@ Kirigami.ApplicationWindow {
         property bool savedShowTrayIcon: true
         property bool savedMinimizeToTray: true
         property bool savedTrayCloseNoticeShown: false
+        property string savedLanguage: "en"
     }
 
+    property alias appSettings: appSettings
     property alias savedShowTrayIcon: appSettings.savedShowTrayIcon
     property alias savedMinimizeToTray: appSettings.savedMinimizeToTray
     property var tray: null
@@ -89,6 +92,7 @@ Kirigami.ApplicationWindow {
         theme: appWindow.theme
         controller: telemetry
         currentPage: appWindow.currentPageName
+        currentSection: appWindow.currentSectionName
         onPageSelected: (pageId, section) => appWindow.switchToPage(pageId, section)
     }
 
@@ -261,11 +265,24 @@ Kirigami.ApplicationWindow {
         } else if (name === "power") {
             targetComp = powerComp
             normalized = "power"
+        } else if (name === "gpu") {
+            targetComp = gpuComp
+            normalized = "gpu"
+        } else if (name === "battery") {
+            targetComp = batteryComp
+            normalized = "battery"
+        } else if (name === "sensors") {
+            targetComp = sensorsComp
+            normalized = "sensors"
+        } else if (name === "profiles" || name === "profile") {
+            targetComp = profilesComp
+            normalized = "profiles"
         } else if (name === "settings") {
             targetComp = settingsComp
             normalized = "settings"
         }
         appWindow.currentPageName = normalized
+        appWindow.currentSectionName = section || ""
         var targetPage = appWindow.pageStack.depth > 0
             ? appWindow.pageStack.replace(targetComp) : appWindow.pageStack.push(targetComp)
         Qt.callLater(function() { appWindow.focusPageSection(targetPage, section || "") })
@@ -275,10 +292,46 @@ Kirigami.ApplicationWindow {
         if (pageName === "flight") return KI18n.i18n("History")
         if (pageName === "pressure") return KI18n.i18n("Memory & Pressure")
         if (pageName === "power") return KI18n.i18n("Power & Cooling")
+        if (pageName === "gpu") return KI18n.i18nd("loofi-pulse", "Graphics (GPU)")
+        if (pageName === "battery") return KI18n.i18nd("loofi-pulse", "Battery")
+        if (pageName === "sensors") return KI18n.i18n("Sensors")
+        if (pageName === "profiles" || pageName === "profile") return KI18n.i18n("Profiles")
         if (pageName === "processes") return KI18n.i18n("Processes")
         if (pageName === "storage") return KI18n.i18n("Storage & Network")
         if (pageName === "settings") return KI18n.i18n("Settings")
         return KI18n.i18n("Overview")
+    }
+
+    function pageIcon(pageName) {
+        if (pageName === "flight") return "chronometer"
+        if (pageName === "pressure") return "speedometer"
+        if (pageName === "power") return "battery-profile-performance"
+        if (pageName === "gpu") return "video-display"
+        if (pageName === "battery") return "battery-charging"
+        if (pageName === "sensors") return "temperature-symbolic"
+        if (pageName === "profiles" || pageName === "profile") return "configure-shortcuts"
+        if (pageName === "processes") return "view-process-all"
+        if (pageName === "storage") return "drive-harddisk"
+        if (pageName === "settings") return "settings-configure"
+        return "go-home"
+    }
+
+    function sectionTitle(section) {
+        if (section === "gpu") return KI18n.i18nd("loofi-pulse", "Graphics (GPU)")
+        if (section === "battery") return KI18n.i18nd("loofi-pulse", "Battery")
+        if (section === "sensors") return KI18n.i18n("Sensors")
+        if (section === "profile") return KI18n.i18n("Profiles")
+        if (section === "cpu") return KI18n.i18n("CPU & Power")
+        return ""
+    }
+
+    function sectionIcon(section) {
+        if (section === "gpu") return "video-display"
+        if (section === "battery") return "battery-charging"
+        if (section === "sensors") return "temperature-symbolic"
+        if (section === "profile") return "configure-shortcuts"
+        if (section === "cpu") return "cpu"
+        return ""
     }
 
     function applyInitialNavigation() { switchToPage(initialPageName, initialSectionName) }
@@ -619,83 +672,179 @@ Kirigami.ApplicationWindow {
     }
 
     header: Rectangle {
+        id: mainHeader
         width: appWindow.width
-        implicitHeight: 38
-        color: "#0e131b"
+        implicitHeight: 40
+        color: appWindow.theme.surfaceColor
 
         Rectangle {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.bottom: parent.bottom
             height: 1
-            color: "#1a222e"
+            color: appWindow.theme.cardBorderColor
         }
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 14
-            anchors.rightMargin: 14
-            spacing: 10
+            spacing: 0
 
-            Rectangle {
-                width: 22
-                height: 22
-                radius: 5
-                color: "#2563eb"
-                QQC2.Label {
-                    anchors.centerIn: parent
-                    text: "Lp"
-                    font.bold: true
-                    font.pointSize: 9
-                    color: "#ffffff"
+            // Left branding section (aligned with sidebar width)
+            Item {
+                Layout.preferredWidth: sidebar.visible ? sidebar.width : 160
+                Layout.fillHeight: true
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: appWindow.theme.spacingM
+                    anchors.rightMargin: appWindow.theme.spacingM
+                    spacing: 8
+
+                    Image {
+                        source: "file:///home/loofi/Skrivbord/Loofi Work/plasma-hardware-pulse/assets/logo.svg"
+                        Layout.preferredWidth: 20
+                        Layout.preferredHeight: 20
+                        sourceSize.width: 40
+                        sourceSize.height: 40
+                        fillMode: Image.PreserveAspectFit
+                    }
+
+                    QQC2.Label {
+                        text: "Loofi Pulse"
+                        font.weight: Font.DemiBold
+                        font.pointSize: appWindow.theme.fontBody * 1.05
+                        color: appWindow.theme.textColor
+                    }
+
+                    Item { Layout.fillWidth: true }
+                }
+
+                // Vertical divider line aligned with sidebar right border
+                Rectangle {
+                    visible: sidebar.visible
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: 1
+                    color: appWindow.theme.cardBorderColor
                 }
             }
 
-            QQC2.Label {
-                text: "Loofi Pulse"
-                font.bold: true
-                font.pointSize: 11
-                color: "#ffffff"
-            }
+            // Right content breadcrumb & status overlay
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.leftMargin: appWindow.theme.spacingM
+                Layout.rightMargin: appWindow.theme.spacingM
+                spacing: 8
 
-            QQC2.Label {
-                text: "|"
-                font.pointSize: 11
-                color: "#334155"
-            }
+                // Category & Section Breadcrumb
+                RowLayout {
+                    spacing: 6
 
-            QQC2.Label {
-                text: KI18n.i18n("Systemövervakning & prestandastyrning")
-                font.pointSize: 9.5
-                color: "#94a3b8"
-            }
+                    Kirigami.Icon {
+                        source: appWindow.pageIcon(appWindow.currentPageName)
+                        implicitWidth: 16
+                        implicitHeight: 16
+                        color: appWindow.theme.mutedTextColor
+                    }
 
-            Item { Layout.fillWidth: true }
+                    QQC2.Label {
+                        text: appWindow.pageTitle(appWindow.currentPageName)
+                        font.weight: appWindow.currentSectionName.length > 0 ? Font.Normal : Font.DemiBold
+                        font.pointSize: appWindow.theme.fontBody
+                        color: appWindow.currentSectionName.length > 0 ? appWindow.theme.faintTextColor : appWindow.theme.textColor
+                    }
 
-            // pageSelector for tests and small screens
-            QQC2.ComboBox {
-                id: pageSelector
-                objectName: "pageSelector"
-                visible: appWindow.width < 900
-                implicitHeight: 28
-                Accessible.name: KI18n.i18n("Navigate to page")
-                textRole: "label"
-                valueRole: "id"
-                model: [
-                    { id: "overview", label: KI18n.i18n("Overview") },
-                    { id: "flight", label: KI18n.i18n("History") },
-                    { id: "pressure", label: KI18n.i18n("Memory & Pressure") },
-                    { id: "power", label: KI18n.i18n("Power & Cooling") },
-                    { id: "processes", label: KI18n.i18n("Processes") },
-                    { id: "storage", label: KI18n.i18n("Storage & Network") },
-                    { id: "settings", label: KI18n.i18n("Settings") }
-                ]
-                currentIndex: {
-                    for (let i = 0; i < model.length; ++i)
-                        if (model[i].id === appWindow.currentPageName) return i
-                    return 0
+                    QQC2.Label {
+                        visible: appWindow.currentSectionName.length > 0
+                        text: "›"
+                        font.pointSize: appWindow.theme.fontBody
+                        color: appWindow.theme.faintTextColor
+                    }
+
+                    Kirigami.Icon {
+                        visible: appWindow.currentSectionName.length > 0
+                        source: appWindow.sectionIcon(appWindow.currentSectionName)
+                        implicitWidth: 14
+                        implicitHeight: 14
+                        color: appWindow.theme.highlightColor
+                    }
+
+                    QQC2.Label {
+                        visible: appWindow.currentSectionName.length > 0
+                        text: appWindow.sectionTitle(appWindow.currentSectionName)
+                        font.weight: Font.DemiBold
+                        font.pointSize: appWindow.theme.fontBody
+                        color: appWindow.theme.highlightColor
+                    }
                 }
-                onActivated: index => appWindow.switchToPage(model[index].id)
+
+                Item { Layout.fillWidth: true }
+
+                // System Health Verdict Pill (Overlay across all categories)
+                Rectangle {
+                    id: headerHealthPill
+                    radius: appWindow.theme.pillRadius
+                    color: appWindow.theme.severityBgColor(telemetry.verdictSeverity)
+                    border.width: 1
+                    border.color: appWindow.theme.severityBorderColor(telemetry.verdictSeverity)
+                    implicitHeight: 24
+                    implicitWidth: headerHealthRow.implicitWidth + 16
+
+                    RowLayout {
+                        id: headerHealthRow
+                        anchors.centerIn: parent
+                        spacing: 6
+
+                        Rectangle {
+                            Layout.preferredWidth: 6
+                            Layout.preferredHeight: 6
+                            radius: 3
+                            color: appWindow.theme.severityColor(telemetry.verdictSeverity)
+                        }
+
+                        QQC2.Label {
+                            text: appWindow.theme.severityBadgeText(telemetry.verdictSeverity)
+                            color: appWindow.theme.severityColor(telemetry.verdictSeverity)
+                            font.bold: true
+                            font.pointSize: appWindow.theme.fontCaption
+                        }
+                    }
+
+                    HoverHandler { id: healthHover; cursorShape: Qt.PointingHandCursor }
+                    TapHandler { onTapped: appWindow.switchToPage("overview") }
+                }
+
+                // pageSelector for tests and small screens
+                QQC2.ComboBox {
+                    id: pageSelector
+                    objectName: "pageSelector"
+                    visible: appWindow.width < 900
+                    implicitHeight: 28
+                    Accessible.name: KI18n.i18n("Navigate to page")
+                    textRole: "label"
+                    valueRole: "id"
+                    model: [
+                        { id: "overview", label: KI18n.i18n("Overview") },
+                        { id: "flight", label: KI18n.i18n("History") },
+                        { id: "pressure", label: KI18n.i18n("Memory & Pressure") },
+                        { id: "power", label: KI18n.i18n("Power & Cooling") },
+                        { id: "processes", label: KI18n.i18n("Processes") },
+                        { id: "storage", label: KI18n.i18n("Storage & Network") },
+                        { id: "settings", label: KI18n.i18n("Settings") },
+                        { id: "gpu", label: KI18n.i18nd("loofi-pulse", "Graphics (GPU)") },
+                        { id: "battery", label: KI18n.i18nd("loofi-pulse", "Battery") },
+                        { id: "sensors", label: KI18n.i18n("Sensors") },
+                        { id: "profiles", label: KI18n.i18n("Profiles") }
+                    ]
+                    currentIndex: {
+                        for (let i = 0; i < model.length; ++i)
+                            if (model[i].id === appWindow.currentPageName) return i
+                        return 0
+                    }
+                    onActivated: index => appWindow.switchToPage(model[index].id)
+                }
             }
         }
     }
@@ -808,6 +957,11 @@ Kirigami.ApplicationWindow {
             controller: telemetry
         }
     }
+
+    Component { id: gpuComp; GpuPage { controller: telemetry } }
+    Component { id: batteryComp; BatteryPage { controller: telemetry } }
+    Component { id: sensorsComp; SensorsPage { controller: telemetry } }
+    Component { id: profilesComp; ProfilesPage { controller: telemetry } }
 
     Component { id: processesComp; ProcessesPage { controller: telemetry } }
     Component { id: storageComp; StorageNetworkPage { controller: telemetry } }

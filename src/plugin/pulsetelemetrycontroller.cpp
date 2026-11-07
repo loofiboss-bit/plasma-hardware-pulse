@@ -1,6 +1,8 @@
 #include "pulsetelemetrycontroller.h"
 #include "kernellogreader.h"
 
+#include <KLocalizedString>
+#include <QLocale>
 #include <QSysInfo>
 #include <QFile>
 #include <KNotification>
@@ -222,8 +224,13 @@ QString PulseTelemetryController::verdictAssessment() const
 
 QString PulseTelemetryController::normalizedPageName(const QString &page)
 {
-    const QString normalized = page.trimmed() == QStringLiteral("devices") ? QStringLiteral("storage") : page.trimmed();
-    return QStringList{QStringLiteral("overview"), QStringLiteral("flight"), QStringLiteral("pressure"), QStringLiteral("power"), QStringLiteral("processes"), QStringLiteral("storage")}.contains(normalized)
+    const QString trimmed = page.trimmed();
+    const QString normalized = trimmed == QStringLiteral("devices") ? QStringLiteral("storage")
+                             : (trimmed == QStringLiteral("profile") ? QStringLiteral("profiles") : trimmed);
+    return QStringList{QStringLiteral("overview"), QStringLiteral("flight"), QStringLiteral("pressure"),
+                       QStringLiteral("power"), QStringLiteral("gpu"), QStringLiteral("battery"),
+                       QStringLiteral("sensors"), QStringLiteral("profiles"), QStringLiteral("processes"),
+                       QStringLiteral("storage"), QStringLiteral("settings")}.contains(normalized)
         ? normalized : QStringLiteral("overview");
 }
 
@@ -233,6 +240,11 @@ QString PulseTelemetryController::validatedSectionName(const QString &page, cons
         {QStringLiteral("overview"), {QStringLiteral("status"), QStringLiteral("measurements")}},
         {QStringLiteral("flight"), {QStringLiteral("timeline"), QStringLiteral("incidents"), QStringLiteral("inspector")}},
         {QStringLiteral("power"), {QStringLiteral("cpu"), QStringLiteral("gpu"), QStringLiteral("battery"), QStringLiteral("cooling"), QStringLiteral("profile"), QStringLiteral("cores"), QStringLiteral("sensors")}},
+        {QStringLiteral("gpu"), {QStringLiteral("gpu")}},
+        {QStringLiteral("battery"), {QStringLiteral("battery")}},
+        {QStringLiteral("sensors"), {QStringLiteral("sensors")}},
+        {QStringLiteral("profiles"), {QStringLiteral("profile")}},
+        {QStringLiteral("settings"), {QStringLiteral("monitoring"), QStringLiteral("background"), QStringLiteral("alerts"), QStringLiteral("display"), QStringLiteral("privacy"), QStringLiteral("network"), QStringLiteral("about")}},
         {QStringLiteral("pressure"), {QStringLiteral("overview"), QStringLiteral("cpu"), QStringLiteral("memory"), QStringLiteral("storage"), QStringLiteral("network"), QStringLiteral("allocation"), QStringLiteral("processes")}}
     };
     return sections.value(normalizedPageName(page)).contains(section.trimmed()) ? section.trimmed() : QString();
@@ -1534,6 +1546,23 @@ QVariantList PulseTelemetryController::groupedIncidentHistory() const
     }
 
     return grouped;
+}
+
+void PulseTelemetryController::setApplicationLanguage(const QString &lang)
+{
+    if (lang.isEmpty() || m_applicationLanguage == lang) {
+        return;
+    }
+    m_applicationLanguage = lang;
+    if (lang == QLatin1String("sv")) {
+        KLocalizedString::setLanguages({QStringLiteral("sv")});
+    } else if (lang == QLatin1String("system")) {
+        KLocalizedString::setLanguages({});
+    } else if (lang == QLatin1String("en")) {
+        QLocale::setDefault(QLocale(QLocale::English, QLocale::UnitedStates));
+        KLocalizedString::setLanguages({QStringLiteral("en_US"), QStringLiteral("en")});
+    }
+    Q_EMIT applicationLanguageChanged();
 }
 
 } // namespace LoofiPulse

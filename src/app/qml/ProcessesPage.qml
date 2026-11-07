@@ -71,7 +71,56 @@ Kirigami.Page {
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: Kirigami.Units.smallSpacing
+        spacing: theme.spacingM
+
+        // Page Title & Header Strip (consistent Breeze design tokens)
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: page.theme.spacingM
+
+            ColumnLayout {
+                spacing: 2
+                QQC2.Label {
+                    text: KI18n.i18nd("loofi-pulse", "Processes")
+                    font.weight: Font.DemiBold
+                    font.pointSize: page.theme.fontHeadline
+                    color: page.theme.textColor
+                }
+                QQC2.Label {
+                    text: KI18n.i18nd("loofi-pulse", "Active processes, CPU usage, memory consumption, and I/O wait in real time.")
+                    font.pointSize: page.theme.fontCaption
+                    color: page.theme.mutedTextColor
+                }
+            }
+
+            Item { Layout.fillWidth: true }
+
+            Rectangle {
+                radius: page.theme.pillRadius
+                color: page.theme.cardNestedBg
+                border.width: 1
+                border.color: page.theme.subtleBorderColor
+                implicitHeight: 26
+                implicitWidth: procCountRow.implicitWidth + 18
+
+                RowLayout {
+                    id: procCountRow
+                    anchors.centerIn: parent
+                    spacing: 6
+                    Kirigami.Icon {
+                        source: "view-process-all"
+                        implicitWidth: 12
+                        implicitHeight: 12
+                        color: page.theme.highlightColor
+                    }
+                    QQC2.Label {
+                        text: KI18n.i18n("%1 active processes", (page.controller && page.controller.allProcesses ? page.controller.allProcesses.length : 0))
+                        font.pointSize: page.theme.fontCaption
+                        color: page.theme.textColor
+                    }
+                }
+            }
+        }
 
         // Search, Sort & Summary Control Strip
         PulseCard {

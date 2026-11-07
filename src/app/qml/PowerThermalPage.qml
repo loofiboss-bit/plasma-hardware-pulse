@@ -27,18 +27,34 @@ Kirigami.ScrollablePage {
         return MeasurementLabels.formatTemperature(celsius, powerPage.controller.temperatureUnit)
     }
 
+    property string activeSection: ""
+
+    Timer {
+        id: scrollTimer
+        interval: 60
+        property var targetAction: null
+        onTriggered: {
+            if (targetAction) targetAction()
+        }
+    }
+
     function focusSection(section) {
+        powerPage.activeSection = section || ""
         if (!section) return true
         var targets = {"cpu": pkgCol, "gpu": gpuCol, "battery": batCol, "cooling": coolCol, "profile": profCol, "cores": coresHeading, "sensors": sensorsCol}
         var target = targets[section]
         if (!target) return false
 
-        Qt.callLater(function() {
+        var doScroll = function() {
+            if (!target || !powerPage.flickable || !powerPage.flickable.contentItem) return
             var position = target.mapToItem(powerPage.flickable.contentItem, 0, 0)
-            powerPage.flickable.contentY = Math.max(0, Math.min(position.y - 12,
-                powerPage.flickable.contentHeight - powerPage.flickable.height))
+            var maxY = Math.max(0, powerPage.flickable.contentHeight - powerPage.flickable.height)
+            powerPage.flickable.contentY = Math.max(0, Math.min(position.y - 16, maxY))
             target.forceActiveFocus(Qt.TabFocusReason)
-        })
+        }
+        Qt.callLater(doScroll)
+        scrollTimer.targetAction = doScroll
+        scrollTimer.restart()
         return true
     }
 
@@ -94,23 +110,23 @@ Kirigami.ScrollablePage {
         Layout.fillWidth: true
         spacing: Kirigami.Units.largeSpacing
 
-        // Page Title & Header Strip (consistent with Overview)
+        // Page Title & Header Strip (consistent Breeze design tokens)
         RowLayout {
             Layout.fillWidth: true
-            spacing: 12
+            spacing: powerPage.theme.spacingM
 
             ColumnLayout {
                 spacing: 2
                 QQC2.Label {
-                    text: KI18n.i18n("Effekt & Kylning")
-                    font.bold: true
-                    font.pointSize: 18
-                    color: "#ffffff"
+                    text: KI18n.i18nd("loofi-pulse", "Power & Cooling")
+                    font.weight: Font.DemiBold
+                    font.pointSize: powerPage.theme.fontHeadline
+                    color: powerPage.theme.textColor
                 }
                 QQC2.Label {
-                    text: KI18n.i18n("Energiförbrukning, temperaturer, fläkthastigheter och energiprofiler i realtid.")
-                    font.pointSize: 9
-                    color: "#94a3b8"
+                    text: KI18n.i18nd("loofi-pulse", "Power consumption, temperatures, fan speeds, and energy profiles in real time.")
+                    font.pointSize: powerPage.theme.fontCaption
+                    color: powerPage.theme.mutedTextColor
                 }
             }
 
@@ -118,10 +134,10 @@ Kirigami.ScrollablePage {
 
             // Active Power Profile Pill
             Rectangle {
-                radius: 12
-                color: "#161f2c"
+                radius: powerPage.theme.pillRadius
+                color: powerPage.theme.cardNestedBg
                 border.width: 1
-                border.color: "#1e293b"
+                border.color: powerPage.theme.subtleBorderColor
                 implicitHeight: 26
                 implicitWidth: profRow.implicitWidth + 18
 
@@ -130,26 +146,26 @@ Kirigami.ScrollablePage {
                     anchors.centerIn: parent
                     spacing: 6
                     Kirigami.Icon {
-                        source: "battery-profile-performance"
+                        source: powerPage.profileIcon(powerPage.controller.activePowerProfile)
                         implicitWidth: 12
                         implicitHeight: 12
-                        color: "#22c55e"
+                        color: powerPage.theme.powerAccent
                     }
                     QQC2.Label {
                         text: (powerPage.controller.activePowerProfile ? powerPage.controller.activePowerProfile.toUpperCase() : "BALANCED")
                         font.bold: true
-                        font.pointSize: 8
-                        color: "#22c55e"
+                        font.pointSize: powerPage.theme.fontCaption
+                        color: powerPage.theme.powerAccent
                     }
                 }
             }
 
             // Live Sampling Frequency Pill
             Rectangle {
-                radius: 12
-                color: "#161f2c"
+                radius: powerPage.theme.pillRadius
+                color: powerPage.theme.cardNestedBg
                 border.width: 1
-                border.color: "#1e293b"
+                border.color: powerPage.theme.subtleBorderColor
                 implicitHeight: 26
                 implicitWidth: liveRow.implicitWidth + 18
 
@@ -161,12 +177,12 @@ Kirigami.ScrollablePage {
                         source: "view-statistics"
                         implicitWidth: 12
                         implicitHeight: 12
-                        color: "#38bdf8"
+                        color: powerPage.theme.highlightColor
                     }
                     QQC2.Label {
                         text: KI18n.i18n("Live · %1 ms", (powerPage.controller.pollIntervalMs || 1000).toLocaleString())
-                        font.pointSize: 8.5
-                        color: "#e2e8f0"
+                        font.pointSize: powerPage.theme.fontCaption
+                        color: powerPage.theme.textColor
                     }
                 }
             }
@@ -343,8 +359,8 @@ Kirigami.ScrollablePage {
                 Layout.fillWidth: true
                 implicitHeight: gpuCol.implicitHeight + padding * 2
                 padding: theme.spacingL
-                accentColor: theme.gpuAccent
-                accentStrength: 0.08
+                accentColor: powerPage.activeSection === "gpu" ? theme.highlightColor : theme.gpuAccent
+                accentStrength: powerPage.activeSection === "gpu" ? 0.22 : 0.08
 
                 ColumnLayout {
                     id: gpuCol
@@ -444,8 +460,8 @@ Kirigami.ScrollablePage {
                 Layout.fillWidth: true
                 implicitHeight: batCol.implicitHeight + padding * 2
                 padding: theme.spacingL
-                accentColor: theme.psiAccent
-                accentStrength: 0.08
+                accentColor: powerPage.activeSection === "battery" ? theme.highlightColor : theme.psiAccent
+                accentStrength: powerPage.activeSection === "battery" ? 0.22 : 0.08
 
                 ColumnLayout {
                     id: batCol
@@ -719,6 +735,8 @@ Kirigami.ScrollablePage {
             Layout.fillWidth: true
             implicitHeight: profCol.implicitHeight + padding * 2
             padding: theme.spacingL
+            accentColor: powerPage.activeSection === "profile" ? theme.highlightColor : theme.powerAccent
+            accentStrength: powerPage.activeSection === "profile" ? 0.22 : 0.08
 
             ColumnLayout {
                 id: profCol
@@ -1066,6 +1084,8 @@ Kirigami.ScrollablePage {
             Layout.fillWidth: true
             implicitHeight: sensorsCol.implicitHeight + padding * 2
             padding: theme.spacingL
+            accentColor: powerPage.activeSection === "sensors" ? theme.highlightColor : theme.tempAccent
+            accentStrength: powerPage.activeSection === "sensors" ? 0.22 : 0.08
 
             ColumnLayout {
                 id: sensorsCol

@@ -160,7 +160,30 @@ Kirigami.ScrollablePage {
 
     ColumnLayout {
         Layout.fillWidth: true
-        spacing: Kirigami.Units.largeSpacing
+        spacing: flightPage.theme.spacingM
+
+        // Page Title & Header Strip (consistent Breeze design tokens)
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: flightPage.theme.spacingM
+
+            ColumnLayout {
+                spacing: 2
+                QQC2.Label {
+                    text: KI18n.i18nd("loofi-pulse", "History")
+                    font.weight: Font.DemiBold
+                    font.pointSize: flightPage.theme.fontHeadline
+                    color: flightPage.theme.textColor
+                }
+                QQC2.Label {
+                    text: KI18n.i18nd("loofi-pulse", "Incident timeline, flight recorder telemetry, and system evidence.")
+                    font.pointSize: flightPage.theme.fontCaption
+                    color: flightPage.theme.mutedTextColor
+                }
+            }
+
+            Item { Layout.fillWidth: true }
+        }
 
         // Mode Selector: Flight Recorder vs Long-Term Trends
         RowLayout {

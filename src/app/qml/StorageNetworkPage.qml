@@ -54,23 +54,23 @@ Kirigami.ScrollablePage {
         Layout.fillWidth: true
         spacing: Kirigami.Units.largeSpacing
 
-        // Page Title & Header Strip (consistent with Overview)
+        // Page Title & Header Strip (consistent Breeze design tokens)
         RowLayout {
             Layout.fillWidth: true
-            spacing: 12
+            spacing: page.theme.spacingM
 
             ColumnLayout {
                 spacing: 2
                 QQC2.Label {
-                    text: KI18n.i18n("Lagring & Nätverk")
-                    font.bold: true
-                    font.pointSize: 18
-                    color: "#ffffff"
+                    text: KI18n.i18nd("loofi-pulse", "Storage & Network")
+                    font.weight: Font.DemiBold
+                    font.pointSize: page.theme.fontHeadline
+                    color: page.theme.textColor
                 }
                 QQC2.Label {
-                    text: KI18n.i18n("Diskgenomströmning, I/O-aktivitet och nätverkstrafik i realtid.")
-                    font.pointSize: 9
-                    color: "#94a3b8"
+                    text: KI18n.i18nd("loofi-pulse", "Disk throughput, I/O activity, and network traffic in real time.")
+                    font.pointSize: page.theme.fontCaption
+                    color: page.theme.mutedTextColor
                 }
             }
 
@@ -78,10 +78,10 @@ Kirigami.ScrollablePage {
 
             // Live Sampling Frequency Pill
             Rectangle {
-                radius: 12
-                color: "#161f2c"
+                radius: page.theme.pillRadius
+                color: page.theme.cardNestedBg
                 border.width: 1
-                border.color: "#1e293b"
+                border.color: page.theme.subtleBorderColor
                 implicitHeight: 26
                 implicitWidth: liveIoRow.implicitWidth + 18
 
@@ -93,12 +93,12 @@ Kirigami.ScrollablePage {
                         source: "view-statistics"
                         implicitWidth: 12
                         implicitHeight: 12
-                        color: "#38bdf8"
+                        color: page.theme.highlightColor
                     }
                     QQC2.Label {
                         text: KI18n.i18n("Live · %1 ms", (page.controller.pollIntervalMs || 1000).toLocaleString())
-                        font.pointSize: 8.5
-                        color: "#e2e8f0"
+                        font.pointSize: page.theme.fontCaption
+                        color: page.theme.textColor
                     }
                 }
             }

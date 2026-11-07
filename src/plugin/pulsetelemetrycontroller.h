@@ -203,6 +203,7 @@ class PulseTelemetryController : public QObject
     Q_PROPERTY(bool lastActionSucceeded READ lastActionSucceeded NOTIFY lastActionStatusChanged)
     Q_PROPERTY(QString lastActionPath READ lastActionPath NOTIFY lastActionStatusChanged)
     Q_PROPERTY(bool powerProfileChangePending READ powerProfileChangePending NOTIFY lastActionStatusChanged)
+    Q_PROPERTY(QString applicationLanguage READ applicationLanguage WRITE setApplicationLanguage NOTIFY applicationLanguageChanged)
 
 public:
     ~PulseTelemetryController() override;
@@ -444,6 +445,7 @@ Q_SIGNALS:
     void trendsRangeChanged();
     void persistedIncidentsChanged();
     void incidentKernelLogsChanged();
+    void applicationLanguageChanged();
 
 public:
     Q_PROPERTY(QVariantList allProcesses READ allProcesses NOTIFY telemetryUpdated)
@@ -488,6 +490,8 @@ public:
     QVariantMap collectorPreferences() const { return m_collectorPreferences; }
     QString temperatureUnit() const { return m_temperatureUnit; }
     void setTemperatureUnit(const QString &unit);
+    QString applicationLanguage() const { return m_applicationLanguage; }
+    void setApplicationLanguage(const QString &lang);
     Q_INVOKABLE void updateCollectorPreferences(const QVariantMap &prefs);
     QVariantMap trendsData() const { return m_trendsData; }
     QString trendsError() const { return m_trendsError; }
@@ -584,6 +588,7 @@ private:
     QVariantMap m_investigationSummary;
     QVariantMap m_collectorPreferences;
     QString m_temperatureUnit = QStringLiteral("C");
+    QString m_applicationLanguage;
     quint64 m_preferencesRequestId = 0;
     bool m_preferencesUpdating = false;
     bool m_openedSession = false;

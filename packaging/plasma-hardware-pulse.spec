@@ -1,5 +1,5 @@
 Name:           plasma-hardware-pulse
-Version:        0.17.0
+Version:        0.18.0
 Release:        1%{?dist}
 Summary:        Hardware, temperature, memory pressure, and power monitor for KDE Plasma 6
 
@@ -78,6 +78,15 @@ QT_QPA_PLATFORM=offscreen QML_IMPORT_PATH="%{_vpath_builddir}/bin" ctest --test-
 %{_kf6_metainfodir}/com.github.loofi.hardwarepulse.metainfo.xml
 
 %changelog
+* Sat Nov 07 2026 Loofi <loofi@github.com> - 0.18.0-1
+- Standalone dedicated pages for Graphics (GPU), Battery, Sensors, and Power Profiles
+- Dedicated cards for GPU clock/power/load/VRAM, battery health/rate, and hwmon sensor matrix
+- Reorganized left sidebar navigation into System, Hardware & Devices, Control, and Flight Recorder
+- Pinned standalone Settings action with dedicated subtle divider line
+- Multi-language support: English primary default, Swedish (sv), and Follow System locale
+- Restored and expanded About & Documentation hub with direct links, shortcuts, and license info
+- High-resolution SVG documentation banner and complete user guide with live app screenshots
+
 * Sat Nov 07 2026 Loofi <loofi@github.com> - 0.17.0-1
 - Comprehensive UX/UI modernization and genuine hardware telemetry integration
 - 5 core overview pillars (CPU, Memory, PSI, GPU, Power & Battery) with zero dummy data

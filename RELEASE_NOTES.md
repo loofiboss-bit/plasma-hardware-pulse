@@ -1,29 +1,39 @@
-# Loofi Pulse v0.17.0 — UX/UI Modernization & Genuine Hardware Telemetry
+# Loofi Pulse v0.18.0 — Dedicated Hardware Pages, Logical Navigation & Multi-Language Hub
 
-This release delivers a comprehensive UX/UI modernization across the Loofi Pulse desktop application and KDE Plasma 6 widget, prioritizing genuine hardware telemetry, Breeze-native visual hierarchy, and an uncluttered system monitor experience.
+This major release elevates Loofi Pulse into an intuitive, modular, and KDE Plasma 6-native hardware monitoring experience. It introduces dedicated hardware subpages, a re-architected navigation sidebar, multi-language support (English primary default with Swedish alternative), an expanded documentation hub, and high-resolution visual branding.
 
-## Key Changes
+## Key Highlights
 
-### Desktop Application
+### 1. Dedicated Hardware Pages
+- **Graphics (GPU) Page (`GpuPage.qml`)**: Real-time GPU load arc gauge, core clock MHz, boost frequency, board power (W), temperature (°C), VRAM allocation bar (used vs total MiB), and multi-GPU adapter switcher.
+- **Battery Page (`BatteryPage.qml`)**: AC power state badge, charging/discharging wattage, estimated time to full/empty, battery health percentage, and unified device list for primary system batteries (`BAT0`) and wireless peripherals (Logitech HID++, Bluetooth).
+- **Sensors Page (`SensorsPage.qml`)**: Active cooling fan status with animated RPM indicators, complete `hwmon` sensor domain matrix (CPU, GPU, NVMe composite, Wi-Fi, motherboard), and thermal velocity tracking.
+- **Power Profiles Page (`ProfilesPage.qml`)**: Hero interactive profile cards (`Power-saver`, `Balanced`, `Performance`) hooked into `power-profiles-daemon`, active profile holds summary, and degradation causal rules.
 
-- **Overview Page Pillars**: Reorganized into 5 high-clarity telemetry cards: CPU, Memory, PSI Pressure, GPU, and Power & Battery.
-- **Dual-Line System Activity Chart**: Real-time canvas chart tracking CPU load (%) and temperature (°C) with dynamic axes, time indicators (now, 30s, 60s), and graceful empty states.
-- **Genuine Hardware Readings**: Removed all AI-generated placeholder numbers (`64°C`, `28%`, `40°C`, `17.8W`, `97%`) and dummy core arrays in favor of genuine `hwmonSensorList` and per-core telemetry with semantic `—` fallback markers.
-- **Dynamic Host Detection**: Replaced static developer machine badges with dynamic detection of OS distribution, kernel version, and chassis/product name via `QSysInfo` and DMI `/sys/class/dmi/id/product_name`.
-- **7-Section Navigation**: Restored full navigation sidebar covering Overview, Pressure, Power, Storage, Processes, Flight Recorder, and Settings.
-- **Expandable Details**: Preserved accessible `measurementDetailsButton` and `MeasurementDetails` view.
+### 2. Logical Sidebar Navigation
+- Reorganized sidebar into four distinct, logical categories:
+  - **SYSTEM**: Overview, Memory & Pressure, Power & Cooling
+  - **HARDWARE & DEVICES**: Graphics (GPU), Battery, Sensors, Storage & Network, Processes
+  - **CONTROL**: Profiles
+  - **FLIGHT RECORDER**: History (Flight Recorder & timeline)
+- **Pinned Settings**: Settings is now placed at the very bottom as a standalone, pinned action with its own subtle divider line above the Fedora host badge, eliminating the confusing "Diagnostics" label.
 
-### KDE Plasma 6 Widget
+### 3. Application Language & Internationalization
+- **English as Primary Default**: The application now starts in English by default across all platforms.
+- **Configurable Locale in Settings**: Users can easily choose between `English (Default)`, `Svenska (Swedish)`, or `Follow System (OS Default)` under **Display & Language** in Settings.
+- Dynamic runtime language switching via `PulseTelemetryController::setApplicationLanguage`.
 
-- **Compact & Focused Popup**: Removed the 200+ line raw debug log dump.
-- **Consolidated Controls**: Unified single "Mark Incident" action (eliminating duplicate buttons), snooze, snapshot/copy, and KDE System Monitor launch.
-- **2x2 Metrics Grid & Live Mini Sparkline**: Clear key telemetry with switchable channels (CPU, Temp, PSI, Power, Battery).
-- **Interactive Power Profiles**: Direct one-click profile switching (Performance, Balanced, Power Saver) from the widget.
+### 4. About & Documentation Hub
+- Fully restored and expanded **About & Documentation** section in `SettingsPage.qml`:
+  - Live versioning and architecture summary.
+  - Direct action buttons for online documentation (`README.md`), GitHub issue tracker, About dialog, and Keyboard Shortcuts cheat sheet.
+  - Transparent license (GPLv3) and build information.
 
-### Incident History & Diagnostics
-
-- **Grouped Episode Clustering**: `groupedIncidentHistory` clusters repeated identical incidents by rule ID or headline with `[N×]` multiplier badges, aggregated duration, and latest timestamps, eliminating alert fatigue.
+### 5. High-Resolution Visual Branding & Comprehensive Guides
+- Brand-new SVG and rasterized banner (`assets/banner.svg` and `assets/banner.png`) featuring KDE Plasma 6 design aesthetics and live telemetry ECG motifs.
+- Comprehensive user guide (`docs/user-guide.md`) detailing all 10 views, PSI pressure metrics, thermal velocity, and background daemon operations.
+- Full set of 9 high-resolution live application screenshots in `docs/screenshots/`.
 
 ## Validation Status
-
-Validated with 84/84 automated tests passing (100%), full RPM/SRPM packaging build verification, and secret scanning.
+- 84/84 CTest tests passing (100% test suite pass rate).
+- Validated with `scripts/check-version.sh`, `appstreamcli validate`, and complete RPM packaging.

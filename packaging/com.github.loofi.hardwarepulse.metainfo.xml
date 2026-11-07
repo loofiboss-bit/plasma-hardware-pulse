@@ -18,12 +18,65 @@
     </p>
   </description>
   <launchable type="desktop-id">com.github.loofi.hardwarepulse.desktop</launchable>
+  <categories>
+    <category>System</category>
+    <category>Monitor</category>
+  </categories>
   <url type="homepage">https://github.com/loofiboss-bit/plasma-hardware-pulse</url>
+  <url type="bugtracker">https://github.com/loofiboss-bit/plasma-hardware-pulse/issues</url>
+  <url type="vcs-browser">https://github.com/loofiboss-bit/plasma-hardware-pulse</url>
   <developer id="com.github.loofi">
     <name>Loofi</name>
   </developer>
+  <screenshots>
+    <screenshot type="default">
+      <caption>System Overview Dashboard</caption>
+      <caption xml:lang="sv">Systemöversikt och realtidstelemetri</caption>
+      <image>https://raw.githubusercontent.com/loofiboss-bit/plasma-hardware-pulse/main/docs/screenshots/overview.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Dedicated Hardware Sensors</caption>
+      <caption xml:lang="sv">Hårdvarusensorer och temperaturer</caption>
+      <image>https://raw.githubusercontent.com/loofiboss-bit/plasma-hardware-pulse/main/docs/screenshots/sensors.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Dedicated GPU Diagnostics</caption>
+      <caption xml:lang="sv">Dedikerad grafik- och GPU-diagnostik</caption>
+      <image>https://raw.githubusercontent.com/loofiboss-bit/plasma-hardware-pulse/main/docs/screenshots/gpu.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Linux PSI and Memory Pressure</caption>
+      <caption xml:lang="sv">Linux PSI och minnestryck</caption>
+      <image>https://raw.githubusercontent.com/loofiboss-bit/plasma-hardware-pulse/main/docs/screenshots/pressure.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Battery and Power Telemetry</caption>
+      <caption xml:lang="sv">Batteri- och effekttelemetri</caption>
+      <image>https://raw.githubusercontent.com/loofiboss-bit/plasma-hardware-pulse/main/docs/screenshots/battery.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Power Profiles Daemon Control</caption>
+      <caption xml:lang="sv">Styrning av energiprofiler (PPD)</caption>
+      <image>https://raw.githubusercontent.com/loofiboss-bit/plasma-hardware-pulse/main/docs/screenshots/profiles.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Flight Recorder Incident History</caption>
+      <caption xml:lang="sv">Färdskrivare och incidenthistorik</caption>
+      <image>https://raw.githubusercontent.com/loofiboss-bit/plasma-hardware-pulse/main/docs/screenshots/flight.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Application Settings &amp; Preferences</caption>
+      <caption xml:lang="sv">Programinställningar</caption>
+      <image>https://raw.githubusercontent.com/loofiboss-bit/plasma-hardware-pulse/main/docs/screenshots/settings.png</image>
+    </screenshot>
+  </screenshots>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.18.0" date="2026-11-07" type="stable">
+      <description>
+        <p>Standalone dedicated pages for Graphics (GPU), Battery, Sensors, and Power Profiles with custom telemetry cards and hwmon integration; logical left navigation restructuring with separate pinned Settings action; application language preference supporting English as primary default, Swedish, and system locale; restored and expanded About and Documentation hub; brand-new high-resolution documentation branding and comprehensive guides.</p>
+      </description>
+    </release>
     <release version="0.17.0" date="2026-11-07" type="development">
       <description>
         <p>Comprehensive UX/UI modernization and genuine hardware telemetry integration: 5 core overview pillars (CPU, Memory, PSI, GPU, Power &amp; Battery), zero placeholder values, dynamic dual-line activity chart, compact and focused Plasma 6 widget popup with consolidated incident controls, dynamic host system detection, and grouped incident history clustering repeated episodes.</p>
